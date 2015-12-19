@@ -1,19 +1,30 @@
+jpegView
+- add png, gif
+- add pdf using muPdf
+- add directory layout
+  - and other schemes
+- implement zoom about point, pickedImage
+- animation
+- data icon
+- time icon
+- fix multitasking crashes in debug strings
+- clean and writeback exif, 
+  - fix orientation, thumbnails
+
+player
+- genericise 1d view, share with logic analyser
 - stop resize flashing
 - selection of hls source
-
 - sync video audio with pts
   - crudely from start works, needs frame rate
 - audio scrub and slo mo
 - video slo mo
-
 - esp8266 wifi handling
-
 - spectrograph display
 - shot change detect display
 - video strip display
 - position in whole display
 - zoom in and out of display
-
 - move ffmpeg decodes from loader task
 
 mp4
@@ -32,54 +43,5 @@ offair ts
 - stream BDA tuner directly
 - decode sd mpeg2 ts stream
 - decode hd mpeg4 ts stream
-
 - use 5.1 audio
-
 - volume control
-
-{{{
-//CRITICAL_SECTION mutex;
-//InitializeCriticalSection (&mutex);
-//DeleteCriticalSection (&mutex);
-//EnterCriticalSection (&mutex);
-//LeaveCriticalSection (&mutex);
-
-//curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
-
-//{{{  create wicBitmapDecoder from tv.jpg
-//IWICBitmapDecoder* wicBitmapDecoder = NULL;
-//wicImagingFactory->CreateDecoderFromFilename (
-//   L"tv.jpg",                     // Image to be decoded
-//   NULL,                           // Do not prefer a particular vendor
-//   GENERIC_READ,                   // Desired read access to the file
-//   WICDecodeMetadataCacheOnDemand, // Cache metadata when needed
-//   &wicBitmapDecoder               // Pointer to the decoder
-//   );
-//}}}
-//{{{  create wicBitmapFrameDecode from wicBitmapDecoder frame 0
-//IWICBitmapFrameDecode* wicBitmapFrameDecode  = NULL;
-
-//wicBitmapDecoder->GetFrame (0, &wicBitmapFrameDecode);
-//}}}
-//{{{  Create mWicBitmap from wicBitmapFrameDecode
-//wicImagingFactory->CreateBitmapFromSource (
-//  wicBitmapFrameDecode,     // Create a bitmap from the image frame
-//  WICBitmapCacheOnDemand,   // Cache metadata when needed
-//  &mWicBitmap);              // Pointer to the bitmap
-//}}}
-
-//Microsoft::WRL::ComPtr<ID2D1Effect> bitmapSourceEffect;
-//mD2dContext->CreateEffect(CLSID_D2D1BitmapSource, &bitmapSourceEffect);
-//bitmapSourceEffect->SetValue (D2D1_BITMAPSOURCE_PROP_INTERPOLATION_MODE,
-//                              D2D1_BITMAPSOURCE_INTERPOLATION_MODE_MIPMAP_LINEAR);
-
-//Microsoft::WRL::ComPtr<ID2D1Effect> convolveMatrixEffect;
-//mD2dContext->CreateEffect (CLSID_D2D1ConvolveMatrix, &convolveMatrixEffect);
-//float matrix[9] = {-1, -1, -1, -1, 9, -1, -1, -1, -1};
-//convolveMatrixEffect->SetValue (D2D1_CONVOLVEMATRIX_PROP_KERNEL_MATRIX, matrix);
-//convolveMatrixEffect->SetInputEffect (0, bitmapSourceEffect.Get());
-
-//bitmapSourceEffect->SetValue (D2D1_BITMAPSOURCE_PROP_WIC_BITMAP_SOURCE, wicFormatConverter);
-//mD2dContext->Clear (ColorF (ColorF::Black));
-//mD2dContext->DrawImage (convolveMatrixEffect.Get());
-}}}
