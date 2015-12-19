@@ -7,7 +7,7 @@
 #include "ts.h"
 #include "bda.h"
 #include "../inc/curl/curl.h"
-#include "../libfaad/neaacdec.h"
+#include "../inc/libfaad/neaacdec.h"
 #include "../common/winAudio.h"
 
 #pragma comment(lib,"libcurl.lib")
