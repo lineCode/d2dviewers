@@ -1,0 +1,354 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\SDL_ttf\SDL_ttf.c" />
+    <ClCompile Include="ffplay.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\SDL\src\audio\disk\SDL_diskaudio.h" />
+    <ClInclude Include="..\SDL\src\audio\dummy\SDL_dummyaudio.h" />
+    <ClInclude Include="..\SDL\src\audio\SDL_audiomem.h" />
+    <ClInclude Include="..\SDL\src\audio\SDL_audio_c.h" />
+    <ClInclude Include="..\SDL\src\audio\SDL_sysaudio.h" />
+    <ClInclude Include="..\SDL\src\audio\SDL_wave.h" />
+    <ClInclude Include="..\SDL\src\audio\windib\SDL_dibaudio.h" />
+    <ClInclude Include="..\SDL\src\audio\windx5\SDL_dx5audio.h" />
+    <ClInclude Include="..\SDL\src\cdrom\SDL_syscdrom.h" />
+    <ClInclude Include="..\SDL\src\events\SDL_events_c.h" />
+    <ClInclude Include="..\SDL\src\events\SDL_sysevents.h" />
+    <ClInclude Include="..\SDL\src\joystick\SDL_joystick_c.h" />
+    <ClInclude Include="..\SDL\src\joystick\SDL_sysjoystick.h" />
+    <ClInclude Include="..\SDL\src\SDL_error_c.h" />
+    <ClInclude Include="..\SDL\src\thread\SDL_systhread.h" />
+    <ClInclude Include="..\SDL\src\thread\SDL_thread_c.h" />
+    <ClInclude Include="..\SDL\src\thread\win32\SDL_systhread_c.h" />
+    <ClInclude Include="..\SDL\src\timer\SDL_systimer.h" />
+    <ClInclude Include="..\SDL\src\timer\SDL_timer_c.h" />
+    <ClInclude Include="..\SDL\src\video\dummy\SDL_nullevents_c.h" />
+    <ClInclude Include="..\SDL\src\video\dummy\SDL_nullmouse_c.h" />
+    <ClInclude Include="..\SDL\src\video\dummy\SDL_nullvideo.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_blit.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_blit_A.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_cursor_c.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_leaks.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_pixels_c.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_RLEaccel_c.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_stretch_c.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_sysvideo.h" />
+    <ClInclude Include="..\SDL\src\video\SDL_yuvfuncs.h" />
+    <ClInclude Include="..\SDL\src\video\wincommon\SDL_lowvideo.h" />
+    <ClInclude Include="..\SDL\src\video\wincommon\SDL_sysmouse_c.h" />
+    <ClInclude Include="..\SDL\src\video\wincommon\SDL_syswm_c.h" />
+    <ClInclude Include="..\SDL\src\video\wincommon\SDL_wingl_c.h" />
+    <ClInclude Include="..\SDL\src\video\wincommon\Wmmsg.h" />
+    <ClInclude Include="..\SDL\src\video\windib\SDL_dibevents_c.h" />
+    <ClInclude Include="..\SDL\src\video\windib\SDL_dibvideo.h" />
+    <ClInclude Include="..\SDL\src\video\windib\SDL_vkeys.h" />
+    <ClInclude Include="..\SDL\src\video\Windx5\SDL_dx5events_c.h" />
+    <ClInclude Include="..\SDL\src\video\Windx5\SDL_dx5video.h" />
+    <ClInclude Include="..\SDL\src\video\windx5\SDL_dx5yuv_c.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\config\ftconfig.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\config\ftheader.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\config\ftmodule.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\config\ftoption.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\config\ftstdlib.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\freetype.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftadvanc.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftbbox.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftbdf.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftbitmap.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftbzip2.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftcache.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftchapters.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftcid.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\fterrdef.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\fterrors.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftgasp.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftglyph.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftgxval.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftgzip.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftimage.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftincrem.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftlcdfil.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftlist.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftlzw.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftmac.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftmm.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftmodapi.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftmoderr.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftotval.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftoutln.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftpfr.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftrender.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftsizes.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftsnames.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftstroke.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftsynth.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftsystem.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\fttrigon.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\fttypes.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftwinfnt.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ftxf86.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\t1tables.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ttnameid.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\tttables.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\tttags.h" />
+    <ClInclude Include="..\SDL_ttf\include\freetype\ttunpat.h" />
+    <ClInclude Include="..\SDL_ttf\include\ft2build.h" />
+    <ClInclude Include="..\SDL_ttf\include\SDL_ttf.h" />
+    <ClInclude Include="config.h" />
+    <ClInclude Include="include\libavcodec\avcodec.h" />
+    <ClInclude Include="include\libavcodec\avfft.h" />
+    <ClInclude Include="include\libavcodec\d3d11va.h" />
+    <ClInclude Include="include\libavcodec\dv_profile.h" />
+    <ClInclude Include="include\libavcodec\dxva2.h" />
+    <ClInclude Include="include\libavcodec\old_codec_ids.h" />
+    <ClInclude Include="include\libavcodec\qsv.h" />
+    <ClInclude Include="include\libavcodec\vaapi.h" />
+    <ClInclude Include="include\libavcodec\vda.h" />
+    <ClInclude Include="include\libavcodec\vdpau.h" />
+    <ClInclude Include="include\libavcodec\version.h" />
+    <ClInclude Include="include\libavcodec\vorbis_parser.h" />
+    <ClInclude Include="include\libavcodec\xvmc.h" />
+    <ClInclude Include="include\libavdevice\avdevice.h" />
+    <ClInclude Include="include\libavdevice\version.h" />
+    <ClInclude Include="include\libavfilter\asrc_abuffer.h" />
+    <ClInclude Include="include\libavfilter\avcodec.h" />
+    <ClInclude Include="include\libavfilter\avfilter.h" />
+    <ClInclude Include="include\libavfilter\avfiltergraph.h" />
+    <ClInclude Include="include\libavfilter\buffersink.h" />
+    <ClInclude Include="include\libavfilter\buffersrc.h" />
+    <ClInclude Include="include\libavfilter\version.h" />
+    <ClInclude Include="include\libavformat\avformat.h" />
+    <ClInclude Include="include\libavformat\avio.h" />
+    <ClInclude Include="include\libavformat\version.h" />
+    <ClInclude Include="include\libavutil\adler32.h" />
+    <ClInclude Include="include\libavutil\aes.h" />
+    <ClInclude Include="include\libavutil\attributes.h" />
+    <ClInclude Include="include\libavutil\audioconvert.h" />
+    <ClInclude Include="include\libavutil\audio_fifo.h" />
+    <ClInclude Include="include\libavutil\avassert.h" />
+    <ClInclude Include="include\libavutil\avconfig.h" />
+    <ClInclude Include="include\libavutil\avstring.h" />
+    <ClInclude Include="include\libavutil\avutil.h" />
+    <ClInclude Include="include\libavutil\base64.h" />
+    <ClInclude Include="include\libavutil\blowfish.h" />
+    <ClInclude Include="include\libavutil\bprint.h" />
+    <ClInclude Include="include\libavutil\bswap.h" />
+    <ClInclude Include="include\libavutil\buffer.h" />
+    <ClInclude Include="include\libavutil\camellia.h" />
+    <ClInclude Include="include\libavutil\cast5.h" />
+    <ClInclude Include="include\libavutil\channel_layout.h" />
+    <ClInclude Include="include\libavutil\colorspace.h" />
+    <ClInclude Include="include\libavutil\common.h" />
+    <ClInclude Include="include\libavutil\cpu.h" />
+    <ClInclude Include="include\libavutil\crc.h" />
+    <ClInclude Include="include\libavutil\dict.h" />
+    <ClInclude Include="include\libavutil\display.h" />
+    <ClInclude Include="include\libavutil\downmix_info.h" />
+    <ClInclude Include="include\libavutil\error.h" />
+    <ClInclude Include="include\libavutil\eval.h" />
+    <ClInclude Include="include\libavutil\ffversion.h" />
+    <ClInclude Include="include\libavutil\fifo.h" />
+    <ClInclude Include="include\libavutil\file.h" />
+    <ClInclude Include="include\libavutil\frame.h" />
+    <ClInclude Include="include\libavutil\hash.h" />
+    <ClInclude Include="include\libavutil\hmac.h" />
+    <ClInclude Include="include\libavutil\imgutils.h" />
+    <ClInclude Include="include\libavutil\intfloat.h" />
+    <ClInclude Include="include\libavutil\intreadwrite.h" />
+    <ClInclude Include="include\libavutil\lfg.h" />
+    <ClInclude Include="include\libavutil\log.h" />
+    <ClInclude Include="include\libavutil\lzo.h" />
+    <ClInclude Include="include\libavutil\macros.h" />
+    <ClInclude Include="include\libavutil\mathematics.h" />
+    <ClInclude Include="include\libavutil\md5.h" />
+    <ClInclude Include="include\libavutil\mem.h" />
+    <ClInclude Include="include\libavutil\motion_vector.h" />
+    <ClInclude Include="include\libavutil\murmur3.h" />
+    <ClInclude Include="include\libavutil\old_pix_fmts.h" />
+    <ClInclude Include="include\libavutil\opt.h" />
+    <ClInclude Include="include\libavutil\parseutils.h" />
+    <ClInclude Include="include\libavutil\pixdesc.h" />
+    <ClInclude Include="include\libavutil\pixelutils.h" />
+    <ClInclude Include="include\libavutil\pixfmt.h" />
+    <ClInclude Include="include\libavutil\random_seed.h" />
+    <ClInclude Include="include\libavutil\rational.h" />
+    <ClInclude Include="include\libavutil\replaygain.h" />
+    <ClInclude Include="include\libavutil\ripemd.h" />
+    <ClInclude Include="include\libavutil\samplefmt.h" />
+    <ClInclude Include="include\libavutil\sha.h" />
+    <ClInclude Include="include\libavutil\sha512.h" />
+    <ClInclude Include="include\libavutil\stereo3d.h" />
+    <ClInclude Include="include\libavutil\tea.h" />
+    <ClInclude Include="include\libavutil\threadmessage.h" />
+    <ClInclude Include="include\libavutil\time.h" />
+    <ClInclude Include="include\libavutil\timecode.h" />
+    <ClInclude Include="include\libavutil\timestamp.h" />
+    <ClInclude Include="include\libavutil\twofish.h" />
+    <ClInclude Include="include\libavutil\version.h" />
+    <ClInclude Include="include\libavutil\xtea.h" />
+    <ClInclude Include="include\libswresample\swresample.h" />
+    <ClInclude Include="include\libswresample\version.h" />
+    <ClInclude Include="include\libswscale\swscale.h" />
+    <ClInclude Include="include\libswscale\version.h" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{8126E387-2288-48AC-838A-F9876941D5C7}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ffmpeg</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>ffplay</ProjectName>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../SDL_ttf/include/freetype;../SDL_ttf/include;../SDL/include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\SDL_ttf\lib\x86;..\ffmpeg\lib\Win32;..\Win32x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libfreetype-6.lib;ws2_32.lib;strmiids.lib;Shlwapi.lib;Vfw32.lib;SDL.lib;avfilter.lib;avdevice.lib;avutil.lib;avcodec.lib;avformat.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../SDL_ttf/include/freetype;../SDL_ttf/include;../SDL/include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\SDL_ttf\lib\x64;..\SDL\VisualC\SDLmain\x64\Release;..\ffmpeg\lib\x64;..\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libfreetype-6.lib;ws2_32.lib;strmiids.lib;Shlwapi.lib;Vfw32.lib;SDL.lib;avfilter.lib;avdevice.lib;avutil.lib;avcodec.lib;avformat.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../SDL_ttf/include/freetype;../SDL_ttf/include;../SDL/include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\SDL_ttf\lib\x86;..\SDL\VisualC\SDLmain\Release;..\ffmpeg\lib\Win32;..\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <AdditionalDependencies>libfreetype-6.lib;ws2_32.lib;strmiids.lib;Shlwapi.lib;Vfw32.lib;SDL.lib;avfilter.lib;avdevice.lib;avutil.lib;avcodec.lib;avformat.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../SDL_ttf/include/freetype;../SDL_ttf/include;../SDL/include;include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\SDL_ttf\lib\x64;..\SDL\VisualC\SDLmain\x64\Release;..\ffmpeg\lib\x64;..\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libfreetype-6.lib;ws2_32.lib;strmiids.lib;Shlwapi.lib;Vfw32.lib;SDL.lib;avfilter.lib;avdevice.lib;avutil.lib;avcodec.lib;avformat.lib;swscale.lib;swresample.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
