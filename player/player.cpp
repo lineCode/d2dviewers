@@ -6,7 +6,7 @@
 
 #include "ts.h"
 #include "bda.h"
-#include "../curl/curl.h"
+#include "../inc/curl/curl.h"
 #include "../libfaad/neaacdec.h"
 #include "../common/winAudio.h"
 

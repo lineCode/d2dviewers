@@ -22,7 +22,7 @@
 #include <Wincodec.h>
 
 #include "../common/usbUtils.h"
-#include "../inc/CyAPI.h"
+#include "../inc/CyAPI/CyAPI.h"
 
 using namespace Microsoft::WRL;
 using namespace D2D1;

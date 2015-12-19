@@ -4,7 +4,7 @@
 
 #include "../common/cD2DWindow.h"
 #include "../common/timer.h"
-#include "../inc/jpeglib.h"
+#include "../inc/jpeglib/jpeglib.h"
 
 #pragma comment(lib,"turbojpeg-static")
 

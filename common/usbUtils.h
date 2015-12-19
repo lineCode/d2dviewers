@@ -1,7 +1,7 @@
 // usbUtils.h
 #pragma once
 
-#include "../inc/CyAPI.h"
+#include "../inc/CyAPI/CyAPI.h"
 
 void initUSB();
 void closeUSB();
