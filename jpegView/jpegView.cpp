@@ -1461,6 +1461,16 @@ protected:
             rPanel, getYellowBrush());
           }
           //}}}
+
+        wstringstream stringstream;
+        stringstream << L"images" << mNumNestedImages << L" sub:" << mNumNestedDirectories
+                     << L" loaded:" << mNumThumbsLoaded
+                     << L" scale:" << mCurView->getScale()
+                     << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
+        deviceContext->DrawText (
+          stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
+          RectF(getClientF().width/2.0f, getClientF().height-20.0f, getClientF().width, getClientF().height),
+          getWhiteBrush());
         }
         //}}}
       }
@@ -1479,17 +1489,6 @@ protected:
         RectF(getClientF().width/2.0f, 0, getClientF().width,getClientF().height),
         getWhiteBrush());
       }
-
-    // debug text
-    wstringstream stringstream;
-    stringstream << L"images" << mNumNestedImages << L" sub:" << mNumNestedDirectories
-                 << L" loaded:" << mNumThumbsLoaded
-                 << L" scale:" << mCurView->getScale()
-                 << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
-    deviceContext->SetTransform (Matrix3x2F::Scale(Size(1.0f,1.0f), Point2F(0, 0)));
-    deviceContext->DrawText (stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
-                             RectF(0,0, getClientF().width,getClientF().height),
-                             getWhiteBrush());
     }
   //}}}
 
