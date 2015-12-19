@@ -1462,15 +1462,17 @@ protected:
           }
           //}}}
 
+        //{{{  debug text
         wstringstream stringstream;
-        stringstream << L"images" << mNumNestedImages << L" sub:" << mNumNestedDirectories
-                     << L" loaded:" << mNumThumbsLoaded
+        stringstream << mNumThumbsLoaded << L":" << mNumNestedImages
+                     << L" sub:" << mNumNestedDirectories
                      << L" scale:" << mCurView->getScale()
                      << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
         deviceContext->DrawText (
           stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
           RectF(getClientF().width/2.0f, getClientF().height-20.0f, getClientF().width, getClientF().height),
           getWhiteBrush());
+        //}}}
         }
         //}}}
       }
