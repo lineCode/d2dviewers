@@ -1,6 +1,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 
+#include "../common/date.h"  // doesn't play well with windows min()
+
 #include <windows.h>
 #include <wrl.h>
 

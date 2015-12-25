@@ -9,6 +9,8 @@
 #pragma comment(lib,"turbojpeg-static")
 
 using namespace std;
+using namespace date;
+using namespace std::chrono;
 //}}}
 //{{{  const
 //{{{  tags x
@@ -1599,6 +1601,9 @@ private:
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
+
+  auto today = floor<days>(system_clock::now());
+  cout << today << '\n';
 
   startTimer();
 

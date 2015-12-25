@@ -31,6 +31,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
+    <ClInclude Include="..\common\date.h" />
     <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="..\inc\jconfig.h" />
     <ClInclude Include="..\inc\jerror.h" />

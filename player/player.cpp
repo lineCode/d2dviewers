@@ -244,11 +244,6 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
 
   curl_global_init (CURL_GLOBAL_ALL);
   CURL* curl = curl_easy_init();
-
-#ifdef PLAYLIST_DEBUG
-  curl_easy_setopt (curl, CURLOPT_VERBOSE, 1L);
-#endif
-
   //{{{  get playlist sequenceNum and tsFile filename root, start at last but one
   char filename [200];
   int sequenceNum = 0;
@@ -257,6 +252,13 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
   //}}}
   sequenceNum += numSeqFiles - 4;
 
+  //{{{  init aacDecoder
+  NeAACDecHandle decoder = NeAACDecOpen();
+  NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration (decoder);
+  config->outputFormat = FAAD_FMT_16BIT;
+
+  NeAACDecSetConfiguration (decoder, config);
+  //}}}
   //{{{  init vidCodecContext, vidCodec, vidParser, vidFrame
   av_register_all();
 
@@ -269,9 +271,6 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
   AVFrame* vidFrame = av_frame_alloc();;
   struct SwsContext* swsContext = NULL;
   //}}}
-  NeAACDecHandle decoder = NeAACDecOpen();
-
-  unsigned char* pesAud = NULL;
   unsigned char* pesVid = (unsigned char*)malloc (2000000);
   while (true) {
     printf ("loading tsFile:%d", sequenceNum);
@@ -290,63 +289,43 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
       }
     else {
       int pesAudIndex = 0;
-      int pesAudLen = 0;
       int lastAudPidContinuity = -1;
+      unsigned char* pesAud = tsBuf;
 
       int pesVidIndex = 0;
       int lastVidPidContinuity = -1;
 
       int tsIndex = 0;
       while (tsIndex < tsBufEndIndex) {
-        int tsFrameIndex = 0;
         if (tsBuf[tsIndex] == 0x47) {
           //{{{  tsFrame syncCode found, extract pes from tsFrames
-          bool payStart  =  (tsBuf[tsIndex+tsFrameIndex+1] & 0x40) != 0;
-          int pid        = ((tsBuf[tsIndex+tsFrameIndex+1] & 0x1F) << 8) | tsBuf[tsIndex+2];
-          bool adapt     =  (tsBuf[tsIndex+tsFrameIndex+3] & 0x20) != 0;
-          bool payload   =  (tsBuf[tsIndex+tsFrameIndex+3] & 0x10) != 0;
-          int continuity =   tsBuf[tsIndex+tsFrameIndex+3] & 0x0F;
-          tsFrameIndex += 4;
-
-          if (adapt) {
-            int adaptLen = tsBuf[tsIndex+tsFrameIndex];
-            tsFrameIndex += 1 + adaptLen;
-            }
+          bool payStart  =  (tsBuf[tsIndex+1] & 0x40) != 0;
+          int pid        = ((tsBuf[tsIndex+1] & 0x1F) << 8) | tsBuf[tsIndex+2];
+          int continuity =   tsBuf[tsIndex+3] & 0x0F;
+          bool payload   =  (tsBuf[tsIndex+3] & 0x10) != 0;
+          bool adapt     =  (tsBuf[tsIndex+3] & 0x20) != 0;
+          int tsFrameIndex = adapt ? (5 + tsBuf[tsIndex+4]) : 4;
 
           if (pid == 34) {
             //{{{  handle audio
             if (payload && ((lastAudPidContinuity == -1) || (continuity == ((lastAudPidContinuity+1) & 0x0F)))) {
               while (tsFrameIndex < 188) {
-                if (pesAudLen == 0) {
-                  // look for PES startCode
-                  if (payStart &&
-                      (tsBuf[tsIndex+tsFrameIndex] == 0) &&
-                      (tsBuf[tsIndex+tsFrameIndex+1] == 0) &&
-                      (tsBuf[tsIndex+tsFrameIndex+2] == 1) &&
-                      (tsBuf[tsIndex+tsFrameIndex+3] == 0xC0)) {
-                    // PES start code found
-                    pesAudLen = (tsBuf[tsIndex+tsFrameIndex+4] << 8) | tsBuf[tsIndex+tsFrameIndex+5];
-                    int ph1 = tsBuf[tsIndex+tsFrameIndex+6];
-                    int ph2 = tsBuf[tsIndex+tsFrameIndex+7];
+                // look for PES startCode
+                if (payStart &&
+                    (tsBuf[tsIndex+tsFrameIndex] == 0) &&
+                    (tsBuf[tsIndex+tsFrameIndex+1] == 0) &&
+                    (tsBuf[tsIndex+tsFrameIndex+2] == 1) &&
+                    (tsBuf[tsIndex+tsFrameIndex+3] == 0xC0)) {
+                  // PES start code found
+                  //pesAudLen = (tsBuf[tsIndex+tsFrameIndex+4] << 8) | tsBuf[tsIndex+tsFrameIndex+5];
+                  int ph1 = tsBuf[tsIndex+tsFrameIndex+6];
+                  int ph2 = tsBuf[tsIndex+tsFrameIndex+7];
 
-                    int pesAudHeadLen = tsBuf[tsIndex+tsFrameIndex+8];
-                    tsFrameIndex += 9 + pesAudHeadLen;
-                    pesAudLen -= 3 + pesAudHeadLen;
-                    pesAud = (unsigned char*)realloc (pesAud, pesAudIndex+pesAudLen);
-
-                    if (tsFrameIndex >= 188)
-                      printf ("*** overflow tsFrameIndex:%d\n", tsFrameIndex);
-                    }
-                  else {
-                    printf ("skiping %d looking for PES start\n", tsFrameIndex);
-                    tsFrameIndex++;
-                    }
+                  int pesAudHeadLen = tsBuf[tsIndex+tsFrameIndex+8];
+                  tsFrameIndex += 9 + pesAudHeadLen;
                   }
-                else {
-                  // copy all pes frags from start of tsBuf, always behind ts read ptr
+                else
                   pesAud[pesAudIndex++] = tsBuf[tsIndex+tsFrameIndex++];
-                  pesAudLen--;
-                  }
                 }
               }
             else
@@ -386,24 +365,18 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
         else
           tsIndex++;
         }
+      printf (" ts:%d audPes:%d vidPes:%d\n", tsBufEndIndex, pesAudIndex, pesVidIndex);
 
+      pesAud = tsBuf;
       if (audFramesLoaded == 0) {
-        //{{{  init aud decoder with firstframe
-        decoder = NeAACDecOpen();
-
-        NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration (decoder);
-        config->outputFormat = FAAD_FMT_16BIT;
-        NeAACDecSetConfiguration (decoder, config);
-        NeAACDecInit (decoder, pesAud, FAAD_MIN_STREAMSIZE, &sampleRate, &channels);
+        //{{{  warm up aud decoder with firstframe
+        NeAACDecInit (decoder, tsBuf, 1024, &sampleRate, &channels);
 
         // dummy decode of first frame
         NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode (decoder, &frameInfo, pesAud, FAAD_MIN_STREAMSIZE);
+        NeAACDecDecode (decoder, &frameInfo, tsBuf, 1024);
         }
         //}}}
-
-      printf (" ts:%d audPes:%d vidPes:%d\n", tsBufEndIndex, pesAudIndex, pesVidIndex);
-
       for (int index = 0; index < pesAudIndex;) {
         //{{{  decode audPes into audFrames
         // alloc a frame and copy from pesAud
@@ -413,19 +386,9 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
 
         // decode, accum frameLR power
         NeAACDecFrameInfo frameInfo;
-        short* ptr = (short*)NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[audFramesLoaded], FAAD_MIN_STREAMSIZE);
+        short* ptr = (short*)NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[audFramesLoaded], 1024);
         samples = frameInfo.samples / 2;
         audFramesPerSec = (float)sampleRate / samples;
-
-
-        #ifdef PACKET_DEBUG
-        printf ("audio frame len:%d audFramesLoaded:%d frameInfo.samples:%d\n",
-                len, audFramesLoaded, frameInfo.samples);
-        for (int i = 0; i < 32; i++)
-          printf ("%02x ", (*((char*)audFrames[audFramesLoaded] + i)) &0xFF);
-        printf ("\n");
-        #endif
-
 
         double valueL = 0;
         double valueR = 0;
