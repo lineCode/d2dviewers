@@ -1608,6 +1608,6 @@ int wmain (int argc, wchar_t* argv[]) {
   startTimer();
 
   cAppWindow appWindow;
-  appWindow.run (1860, 1000, L"jpegView", argv[1] ? argv[1] : L"C:\\Users\\nnn\\Pictures", 2);
+  appWindow.run (1860, 1000, L"jpegView", argv[1] ? argv[1] : L"C:\\Users\\colin\\Pictures", 2);
   }
 //}}}
