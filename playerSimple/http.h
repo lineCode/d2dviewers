@@ -867,7 +867,7 @@ private:
 //{{{
 class cHlsChunk {
 public:
-  cHlsChunk() : mSeqNum(0), mSamplesPerFrame(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
+  cHlsChunk() : mSeqNum(0), mSamplesPerFrame(0), mLoaded(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
   //{{{
   ~cHlsChunk() {
 
@@ -878,6 +878,11 @@ public:
     }
   //}}}
 
+  //{{{
+  int getFrame() {
+    return mSeqNum * 300;
+    }
+  //}}}
   //{{{
   int getFrames() {
     return kAacFramesPerChunk;
@@ -904,8 +909,10 @@ public:
   //}}}
 
   //{{{
-  int load (cRadioChan* radioChan) {
+  bool load (cRadioChan* radioChan) {
 
+    bool ok = false;
+    mLoaded = 0;
     mSeqNum = radioChan->getSeqNum();
     mSamplesPerFrame = (radioChan->getBitrate() <= 48000) ? 2048 : 1024;
 
@@ -951,16 +958,28 @@ public:
         *powerPtr++ = (272/2) - leftPix;
         *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
         //}}}
+        mLoaded++;
         }
 
       printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, mSeqNum);
       radioChan->nextSeqNum();
+      ok = true;
       }
     else
       printf ("cHlsChunk:load %d %d failed\n", mSeqNum, response);
 
     NeAACDecClose (decoder);
-    return response;
+    return ok;
+    }
+  //}}}
+  //{{{
+  bool contains (int frame, int& frameInChunk) {
+
+    if ((frame >= getFrame()) && (frame < getFrame() + mLoaded)) {
+      frameInChunk = frame - getFrame();
+      return true;
+      }
+    return false;
     }
   //}}}
 
@@ -1000,6 +1019,8 @@ private:
   // vars
   int mSeqNum;
   int mSamplesPerFrame;
+  int mLoaded;
+
   unsigned long mSampleRate;
   uint8_t mChans;
 

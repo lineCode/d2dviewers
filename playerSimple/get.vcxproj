@@ -1,0 +1,265 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="http.h" />
+    <ClInclude Include="libfaad\include\faad.h" />
+    <ClInclude Include="libfaad\include\neaacdec.h" />
+    <ClInclude Include="libfaad\libfaad\analysis.h" />
+    <ClInclude Include="libfaad\libfaad\bits.h" />
+    <ClInclude Include="libfaad\libfaad\cfft.h" />
+    <ClInclude Include="libfaad\libfaad\cfft_tab.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_1.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_10.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_11.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_2.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_3.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_4.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_5.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_6.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_7.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_8.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_9.h" />
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_sf.h" />
+    <ClInclude Include="libfaad\libfaad\common.h" />
+    <ClInclude Include="libfaad\libfaad\drc.h" />
+    <ClInclude Include="libfaad\libfaad\drm_dec.h" />
+    <ClInclude Include="libfaad\libfaad\error.h" />
+    <ClInclude Include="libfaad\libfaad\filtbank.h" />
+    <ClInclude Include="libfaad\libfaad\fixed.h" />
+    <ClInclude Include="libfaad\libfaad\huffman.h" />
+    <ClInclude Include="libfaad\libfaad\ic_predict.h" />
+    <ClInclude Include="libfaad\libfaad\iq_table.h" />
+    <ClInclude Include="libfaad\libfaad\is.h" />
+    <ClInclude Include="libfaad\libfaad\kbd_win.h" />
+    <ClInclude Include="libfaad\libfaad\lt_predict.h" />
+    <ClInclude Include="libfaad\libfaad\mdct.h" />
+    <ClInclude Include="libfaad\libfaad\mdct_tab.h" />
+    <ClInclude Include="libfaad\libfaad\mp4.h" />
+    <ClInclude Include="libfaad\libfaad\ms.h" />
+    <ClInclude Include="libfaad\libfaad\output.h" />
+    <ClInclude Include="libfaad\libfaad\pns.h" />
+    <ClInclude Include="libfaad\libfaad\ps_dec.h" />
+    <ClInclude Include="libfaad\libfaad\ps_tables.h" />
+    <ClInclude Include="libfaad\libfaad\pulse.h" />
+    <ClInclude Include="libfaad\libfaad\rvlc.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_dct.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_dec.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_e_nf.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_fbt.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_hfadj.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_hfgen.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_huff.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_noise.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_qmf.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_qmf_c.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_syntax.h" />
+    <ClInclude Include="libfaad\libfaad\sbr_tf_grid.h" />
+    <ClInclude Include="libfaad\libfaad\sine_win.h" />
+    <ClInclude Include="libfaad\libfaad\specrec.h" />
+    <ClInclude Include="libfaad\libfaad\ssr.h" />
+    <ClInclude Include="libfaad\libfaad\ssr_fb.h" />
+    <ClInclude Include="libfaad\libfaad\ssr_ipqf.h" />
+    <ClInclude Include="libfaad\libfaad\ssr_win.h" />
+    <ClInclude Include="libfaad\libfaad\structs.h" />
+    <ClInclude Include="libfaad\libfaad\syntax.h" />
+    <ClInclude Include="libfaad\libfaad\tns.h" />
+    <ClInclude Include="winAudio.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\common\Xaudio2.cpp" />
+    <ClCompile Include="radio.cpp" />
+    <ClCompile Include="libfaad\libfaad\bits.c" />
+    <ClCompile Include="libfaad\libfaad\cfft.c" />
+    <ClCompile Include="libfaad\libfaad\common.c" />
+    <ClCompile Include="libfaad\libfaad\decoder.c" />
+    <ClCompile Include="libfaad\libfaad\drc.c" />
+    <ClCompile Include="libfaad\libfaad\drm_dec.c" />
+    <ClCompile Include="libfaad\libfaad\error.c" />
+    <ClCompile Include="libfaad\libfaad\filtbank.c" />
+    <ClCompile Include="libfaad\libfaad\hcr.c" />
+    <ClCompile Include="libfaad\libfaad\huffman.c" />
+    <ClCompile Include="libfaad\libfaad\ic_predict.c" />
+    <ClCompile Include="libfaad\libfaad\is.c" />
+    <ClCompile Include="libfaad\libfaad\lt_predict.c" />
+    <ClCompile Include="libfaad\libfaad\mdct.c" />
+    <ClCompile Include="libfaad\libfaad\mp4.c" />
+    <ClCompile Include="libfaad\libfaad\ms.c" />
+    <ClCompile Include="libfaad\libfaad\output.c" />
+    <ClCompile Include="libfaad\libfaad\pns.c" />
+    <ClCompile Include="libfaad\libfaad\ps_dec.c" />
+    <ClCompile Include="libfaad\libfaad\ps_syntax.c" />
+    <ClCompile Include="libfaad\libfaad\pulse.c" />
+    <ClCompile Include="libfaad\libfaad\rvlc.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_dct.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_dec.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_e_nf.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_fbt.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_hfadj.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_hfgen.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_huff.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_qmf.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_syntax.c" />
+    <ClCompile Include="libfaad\libfaad\sbr_tf_grid.c" />
+    <ClCompile Include="libfaad\libfaad\specrec.c" />
+    <ClCompile Include="libfaad\libfaad\ssr.c" />
+    <ClCompile Include="libfaad\libfaad\ssr_fb.c" />
+    <ClCompile Include="libfaad\libfaad\ssr_ipqf.c" />
+    <ClCompile Include="libfaad\libfaad\syntax.c" />
+    <ClCompile Include="libfaad\libfaad\tns.c" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{D3B4D1C4-493C-451C-B5E9-31114B3494BC}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>get</RootNamespace>
+    <ProjectName>radio</ProjectName>
+    <TargetPlatformVersion>8.1</TargetPlatformVersion>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v140</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <LibraryPath>..\lib86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <LibraryPath>..\lib64;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(Platform)\$(Configuration)\</IntDir>
+    <LibraryPath>..\lib86;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <LibraryPath>..\lib64;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <SDLCheck>true</SDLCheck>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

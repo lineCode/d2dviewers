@@ -1,6 +1,6 @@
 // Xaudio2.cpp
 //{{{  includes
-#include "pch.h"
+#include <windows.h>
 
 #include "winAudio.h"
 
