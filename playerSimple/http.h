@@ -880,11 +880,16 @@ public:
 
   //{{{
   int getFrame() {
-    return mSeqNum * 300;
+    return getSeqNum() * kAacFramesPerChunk;
     }
   //}}}
   //{{{
-  int getFrames() {
+  int getSeqNum() {
+    return mSeqNum - 220000000;
+    }
+  //}}}
+  //{{{
+  int getNumFrames() {
     return kAacFramesPerChunk;
     }
   //}}}
@@ -961,7 +966,7 @@ public:
         mLoaded++;
         }
 
-      printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, mSeqNum);
+      printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, getSeqNum());
       radioChan->nextSeqNum();
       ok = true;
       }
