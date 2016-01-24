@@ -51,8 +51,9 @@
 
 #ifdef r3
   static const char* root = "http://as-hls-uk-live.bbcfmt.vo.llnwd.net/pool_7/live/bbc_radio_three/bbc_radio_three.isml/";
-  static const char* bitrate = "bbc_radio_three-audio%3d128000.m3u8?dvr_window_length=24";
-  //static const char* bitrate = "bbc_radio_three-audio%3d320000.m3u8?dvr_window_length=24";
+  //static const char* bitrate = "bbc_radio_three-audio%3d48000.m3u8?dvr_window_length=24";
+  //static const char* bitrate = "bbc_radio_three-audio%3d128000.m3u8?dvr_window_length=24";
+  static const char* bitrate = "bbc_radio_three-audio%3d320000.m3u8?dvr_window_length=24";
 #endif
 
 #ifdef r6
@@ -370,11 +371,11 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
       pesAud = tsBuf;
       if (audFramesLoaded == 0) {
         //{{{  warm up aud decoder with firstframe
-        NeAACDecInit (decoder, tsBuf, 1024, &sampleRate, &channels);
+        NeAACDecInit (decoder, tsBuf, 2048, &sampleRate, &channels);
 
         // dummy decode of first frame
         NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode (decoder, &frameInfo, tsBuf, 1024);
+        NeAACDecDecode (decoder, &frameInfo, tsBuf, 2048);
         }
         //}}}
       for (int index = 0; index < pesAudIndex;) {
@@ -386,7 +387,7 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
 
         // decode, accum frameLR power
         NeAACDecFrameInfo frameInfo;
-        short* ptr = (short*)NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[audFramesLoaded], 1024);
+        short* ptr = (short*)NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[audFramesLoaded], 2048);
         samples = frameInfo.samples / 2;
         audFramesPerSec = (float)sampleRate / samples;
 
@@ -480,11 +481,11 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
   NeAACDecConfigurationPtr config = NeAACDecGetCurrentConfiguration (decoder);
   config->outputFormat = FAAD_FMT_16BIT;
   NeAACDecSetConfiguration (decoder, config);
-  NeAACDecInit (decoder, (unsigned char*)audFrames[0], FAAD_MIN_STREAMSIZE, &sampleRate, &channels);
+  NeAACDecInit (decoder, (unsigned char*)audFrames[0], 2048, &sampleRate, &channels);
 
   // dummy decode of first frame
   NeAACDecFrameInfo frameInfo;
-  void* sampleBuffer = NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[0], FAAD_MIN_STREAMSIZE);
+  void* sampleBuffer = NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[0], 2048);
   printf ("Player ADTS sampleRate:%d channels:%d %d\n", sampleRate, channels, frameInfo.samples);
 
   winAudioOpen (sampleRate, 16, channels);
@@ -494,7 +495,7 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
       Sleep (40);
     else if (audFrames[int(playFrame)]) {
       NeAACDecFrameInfo frameInfo;
-      void* wavBuf = NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[int(playFrame)], FAAD_MIN_STREAMSIZE);
+      void* wavBuf = NeAACDecDecode (decoder, &frameInfo, (unsigned char*)audFrames[int(playFrame)], 2048);
 
       winAudioPlay (wavBuf, channels * frameInfo.samples,  1.0f);
       lastPlayFrame = playFrame;
