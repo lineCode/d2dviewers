@@ -809,6 +809,11 @@ public:
     }
   //}}}
   //{{{
+  const char* getDateTime() {
+    return mDateTime;
+    }
+  //}}}
+  //{{{
   const char* getChanName() {
     return kChanNames[mChan];
     }
@@ -848,11 +853,18 @@ private:
     else
       strcpy (mHost, m3u8.getRedirectedHost());
 
+    printf ("%s\n", (char*)m3u8.getContent());
+
     // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
     auto extSeq = strstr ((char*)m3u8.getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
     auto extSeqEnd = strchr (extSeq, '\n');
     *extSeqEnd = '\0';
     mSeqNum = atoi (extSeq) + 2;
+
+    auto extDateTime = strstr (extSeqEnd + 1, "#EXT-X-PROGRAM-DATE-TIME:") + strlen ("#EXT-X-PROGRAM-DATE-TIME:");
+    auto extDateTimeEnd = strchr (extDateTime, '\n');
+    *extDateTimeEnd = '\0';
+    strcpy (mDateTime, extDateTime);
     }
   //}}}
 
@@ -860,6 +872,7 @@ private:
   int mSeqNum;
   int mChan;
   int mBitrate;
+  char mDateTime[80];
   char mHost[80];
   char mPath[200];
   };
