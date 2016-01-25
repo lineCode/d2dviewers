@@ -40,21 +40,6 @@ cAppWindow* appWindow = NULL;
 HANDLE hSemaphorePlay;
 HANDLE hSemaphoreLoad;
 
-#define CHUNKS 3
-cHlsChunk hlsChunk[CHUNKS];
-//{{{
-static bool findFrame (int frame, int& chunkIndex, int& frameInChunk) {
-
-  for (auto i = 0; i < CHUNKS; i++) {
-    if (hlsChunk[i].contains (frame, frameInChunk)) {
-      chunkIndex = i;
-      return true;
-      }
-    }
-  return false;
-  }
-//}}}
-
 cRadioChan* radioChan = new cRadioChan();
 
 int playFrame = 0;
@@ -62,17 +47,71 @@ int playPhase = 0;
 bool stopped = false;
 int16_t silence[4096];
 
+#define CHUNKS 3
+cHlsChunk hlsChunk[CHUNKS];
+
+//{{{
+static bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
+
+  for (auto i = 0; i < CHUNKS; i++) {
+    if (hlsChunk[i].contains (frame, seqNum, frameInChunk)) {
+      chunk = i;
+      return true;
+      }
+    }
+  return false;
+  }
+//}}}
+//{{{
+static bool findSeqNumChunk (int seqNum, int offset, int& chunk) {
+
+  // look for matching chunk
+  chunk = 0;
+  while (chunk < CHUNKS) {
+    if (seqNum + offset == hlsChunk[chunk].getSeqNum())
+      return true;
+    chunk++;
+    }
+
+  // look for stale chunk
+  chunk = 0;
+  while (chunk < CHUNKS) {
+    if ((hlsChunk[chunk].getSeqNum() < seqNum-(CHUNKS/2)) || (hlsChunk[chunk].getSeqNum() > seqNum+(CHUNKS/2)))
+      return false;
+    chunk++;
+    }
+
+  printf ("findSeqNumChunk cockup %d", seqNum);
+  for (auto i = 0; i < CHUNKS; i++)
+    printf (" %d", hlsChunk[i].getSeqNum());
+  printf ("\n");
+
+  chunk = 0;
+  return false;
+  }
+//}}}
+
 //{{{
 static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
 
-  int phase = 0;
-  hlsChunk[phase].load (radioChan);
-  playFrame = hlsChunk[phase].getFrame();
+  hlsChunk[0].load (radioChan, radioChan->getBaseSeqNum());
+  playFrame = hlsChunk[0].getFrame();
   ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
 
   while (true) {
-    phase = (phase + 1) % CHUNKS;
-    hlsChunk[phase].load (radioChan);
+    int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
+
+    int chunk;
+    if (!findSeqNumChunk (seqNum, 0, chunk))
+      hlsChunk[chunk].load (radioChan, seqNum);
+
+    for (auto i = 1; i <= CHUNKS/2; i++) {
+      if (!findSeqNumChunk (seqNum, i, chunk))
+        hlsChunk[chunk].load (radioChan, seqNum+i);
+      if (!findSeqNumChunk (seqNum, -i, chunk))
+        hlsChunk[chunk].load (radioChan, seqNum-i);
+      }
+
     WaitForSingleObject (hSemaphorePlay, 20 * 1000);
     }
 
@@ -85,23 +124,24 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
   // wait for first load
   WaitForSingleObject (hSemaphoreLoad, 20 * 1000);
 
+  int lastSeqNum = 0;
   while (true) {
-    int chunk;
-    int frameInChunk;
-    if (stopped)
-      winAudioPlay (silence, hlsChunk[playPhase].getSamplesPerFrame()*4, 1.0f);
-    else if (findFrame (playFrame, chunk, frameInChunk)) {
-      winAudioPlay (hlsChunk[chunk].getAudioSamples (frameInChunk % hlsChunk[chunk].getNumFrames()),
-                    hlsChunk[chunk].getSamplesPerFrame()*4, 1.0f);
-      appWindow->changed();
+    int seqNum = 0;
+    int chunk = 0;
+    int frameInChunk = 0;
 
+    int16_t* audio = (!stopped && findFrame (playFrame, seqNum, chunk, frameInChunk)) ?
+      hlsChunk[chunk].getAudioSamples (frameInChunk) : silence;
+    winAudioPlay (audio, cHlsChunk::getSamplesPerFrame()*4, 1.0f);
+
+    if (!stopped) {
       playFrame++;
-      if (playFrame % hlsChunk[chunk].getNumFrames() == 0)
-        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+      appWindow->changed();
       }
-    else {
-      winAudioPlay (silence, hlsChunk[playPhase].getSamplesPerFrame()*4, 1.0f);
-      playFrame++;
+
+    ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+    if (seqNum != lastSeqNum) {
+      lastSeqNum = seqNum;
       }
     }
 
@@ -118,14 +158,14 @@ bool cAppWindow::onKey (int key) {
 
     case 0x20 : stopped = !stopped; break;
 
-    //case 0x21 : playFrame -= 5.0f * audFramesPerSec; changed(); break;
-    //case 0x22 : playFrame += 5.0f * audFramesPerSec; changed(); break;
+    case 0x21 : playFrame -= 10 * 300; changed(); break;
+    case 0x22 : playFrame += 10 * 300; changed(); break;
 
     //case 0x23 : playFrame = audFramesLoaded - 1.0f; changed(); break;
     //case 0x24 : playFrame = 0; break;
 
-    //case 0x25 : playFrame -= 1.0f * audFramesPerSec; changed(); break;
-    //case 0x27 : playFrame += 1.0f * audFramesPerSec; changed(); break;
+    case 0x25 : playFrame -= 300; changed(); break;
+    case 0x27 : playFrame += 300; changed(); break;
 
     case 0x26 : stopped = true; playFrame -=2; changed(); break;
     case 0x28 : stopped = true; playFrame +=2; changed(); break;
@@ -168,7 +208,6 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
 
   deviceContext->Clear (D2D1::ColorF(D2D1::ColorF::Black));
-
   D2D1_RECT_F rt = D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height);
   D2D1_RECT_F offset = D2D1::RectF(2.0f, 2.0f, getClientF().width, getClientF().height);
 
@@ -179,9 +218,10 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
   for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
     r.right = r.left + 1.0f;
 
-    int chunk;
-    int frameInChunk;
-    if (findFrame (frame, chunk, frameInChunk)) {
+    int seqNum = 0;
+    int chunk = 0;
+    int frameInChunk = 0;
+    if (findFrame (frame, seqNum, chunk, frameInChunk)) {
       uint8_t org = 0;
       uint8_t len = 0;
       hlsChunk[chunk].getAudioPower (frameInChunk, org, len);
@@ -192,13 +232,13 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
     frame++;
     }
 
-  int chunk;
-  int frameInChunk;
-  bool found = findFrame (playFrame, chunk, frameInChunk);
-  int seqNum = found ? hlsChunk[chunk].getSeqNum() : 0;
+  int seqNum = 0;
+  int chunk = 0;
+  int frameInChunk = 0;
+  bool found = findFrame (playFrame, seqNum, chunk, frameInChunk);
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%d %d - %d %d %d", playFrame, seqNum, found, chunk, frameInChunk);
+  swprintf (wStr, 200, L"%d %d - %d %d %d", playFrame, seqNum- radioChan->getBaseSeqNum(), found, chunk, frameInChunk);
   deviceContext->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt, getWhiteBrush());
   }
 //}}}
@@ -225,7 +265,7 @@ int wmain (int argc, wchar_t* argv[]) {
     }
     //}}}
 
-  radioChan->setChan (6, 128000);
+  radioChan->setChan (4, 128000);
 
   hSemaphorePlay = CreateSemaphore (NULL, 0, 1, L"playSem");  // initial 0, max 1
   hSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1

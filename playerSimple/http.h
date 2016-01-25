@@ -774,15 +774,16 @@ private:
 #endif
   };
 //}}}
+
 //{{{
 class cRadioChan {
 public:
-  cRadioChan() : mChan(0), mSeqNum(0) {}
+  cRadioChan() : mChan(0), mBaseSeqNum(0) {}
   ~cRadioChan() {}
 
   //{{{
-  int getSeqNum() {
-    return mSeqNum;
+  int getBaseSeqNum() {
+    return mBaseSeqNum - kOffset;
     }
   //}}}
   //{{{
@@ -801,10 +802,10 @@ public:
     }
   //}}}
   //{{{
-  const char* getPath() {
+  const char* getPath (int seqNum) {
 
     sprintf (mPath, "pool_%d/live/%s/%s.isml/%s-audio=%d-%d.ts",
-             kPool[mChan], kChanNames[mChan], kChanNames[mChan], kChanNames[mChan], mBitrate, mSeqNum);
+             kPool[mChan], kChanNames[mChan], kChanNames[mChan], kChanNames[mChan], mBitrate, seqNum + kOffset);
     return mPath;
     }
   //}}}
@@ -826,18 +827,13 @@ public:
     findM3u8SeqNum();
     }
   //}}}
-  //{{{
-  void nextSeqNum() {
-
-    mSeqNum++;
-    }
-  //}}}
 
 private:
   // const
   const char* kBbcHost = "as-hls-uk-live.bbcfmt.vo.llnwd.net";
   const int kPool [7] = { 0, 0, 0, 7, 6, 0, 6 };
   const char* kChanNames[7] = { "none", "one", "two", "bbc_radio_three", "bbc_radio_fourfm", "five", "bbc_6music" };
+  const int kOffset = 220000000;
 
   //{{{
   void findM3u8SeqNum() {
@@ -859,7 +855,7 @@ private:
     auto extSeq = strstr ((char*)m3u8.getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
     auto extSeqEnd = strchr (extSeq, '\n');
     *extSeqEnd = '\0';
-    mSeqNum = atoi (extSeq) + 2;
+    mBaseSeqNum = atoi (extSeq) + 2;
 
     auto extDateTime = strstr (extSeqEnd + 1, "#EXT-X-PROGRAM-DATE-TIME:") + strlen ("#EXT-X-PROGRAM-DATE-TIME:");
     auto extDateTimeEnd = strchr (extDateTime, '\n');
@@ -869,7 +865,7 @@ private:
   //}}}
 
   // vars
-  int mSeqNum;
+  int mBaseSeqNum;
   int mChan;
   int mBitrate;
   char mDateTime[80];
@@ -877,10 +873,11 @@ private:
   char mPath[200];
   };
 //}}}
+
 //{{{
 class cHlsChunk {
 public:
-  cHlsChunk() : mSeqNum(0), mSamplesPerFrame(0), mLoaded(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
+  cHlsChunk() : mSeqNum(0), mLoaded(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
   //{{{
   ~cHlsChunk() {
 
@@ -892,23 +889,29 @@ public:
   //}}}
 
   //{{{
-  int getFrame() {
-    return getSeqNum() * kAacFramesPerChunk;
-    }
-  //}}}
-  //{{{
-  int getSeqNum() {
-    return mSeqNum - 220000000;
-    }
-  //}}}
-  //{{{
-  int getNumFrames() {
+  static int getNumFrames() {
     return kAacFramesPerChunk;
     }
   //}}}
   //{{{
-  int getSamplesPerFrame() {
+  static int getSamplesPerFrame() {
     return mSamplesPerFrame;
+    }
+  //}}}
+  //{{{
+  static int getFrameSeqNum (int frame) {
+    return frame / kAacFramesPerChunk;
+    }
+  //}}}
+
+  //{{{
+  int getFrame() {
+    return mSeqNum * kAacFramesPerChunk;
+    }
+  //}}}
+  //{{{
+  int getSeqNum() {
+    return mSeqNum;
     }
   //}}}
   //{{{
@@ -927,11 +930,10 @@ public:
   //}}}
 
   //{{{
-  bool load (cRadioChan* radioChan) {
+  bool load (cRadioChan* radioChan, int seqNum) {
 
     bool ok = false;
     mLoaded = 0;
-    mSeqNum = radioChan->getSeqNum();
     mSamplesPerFrame = (radioChan->getBitrate() <= 48000) ? 2048 : 1024;
 
     if (!mPower)
@@ -945,8 +947,10 @@ public:
     NeAACDecSetConfiguration (decoder, config);
 
     cHttp aacHttp;
-    auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath());
+    auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum));
     if (response == 200) {
+      mSeqNum = seqNum;
+
       auto loadPtr = aacHttp.getContent();
       auto loadEnd = packTsBuffer (aacHttp.getContent(), aacHttp.getContentEnd());
 
@@ -979,8 +983,7 @@ public:
         mLoaded++;
         }
 
-      printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, getSeqNum());
-      radioChan->nextSeqNum();
+      printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, mSeqNum);
       ok = true;
       }
     else
@@ -991,9 +994,10 @@ public:
     }
   //}}}
   //{{{
-  bool contains (int frame, int& frameInChunk) {
+  bool contains (int frame, int& seqNum, int& frameInChunk) {
 
     if ((frame >= getFrame()) && (frame < getFrame() + mLoaded)) {
+      seqNum = mSeqNum;
       frameInChunk = frame - getFrame();
       return true;
       }
@@ -1005,7 +1009,8 @@ private:
   // const
   const int kChans = 2;
   const int kBytesPerSample = 2;
-  const int kAacFramesPerChunk = 300;
+  static const int kAacFramesPerChunk = 300;
+  static int mSamplesPerFrame;
 
   //{{{
   uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
@@ -1036,7 +1041,6 @@ private:
 
   // vars
   int mSeqNum;
-  int mSamplesPerFrame;
   int mLoaded;
 
   unsigned long mSampleRate;
@@ -1046,3 +1050,4 @@ private:
   int16_t* mAudio;
   };
 //}}}
+int cHlsChunk::mSamplesPerFrame = 0;
