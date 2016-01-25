@@ -57,7 +57,7 @@ int main (int argc, char* argv[]) {
   //}}}
 
   int chan = (argc >= 2) ? atoi(argv[1]) : 6;
-  int bitrate = (argc >= 3) ? atoi(argv[2]) : 128000;
+  int bitrate = (argc >= 3) ? atoi(argv[2]) : 48000;
   printf ("radio %d %d\n", chan, bitrate);
 
   cRadioChan* radioChan = new cRadioChan();

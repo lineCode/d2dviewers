@@ -35,7 +35,6 @@ protected:
   void onDraw (ID2D1DeviceContext* deviceContext);
   };
 //}}}
-
 cAppWindow* appWindow = NULL;
 
 cHlsChunks hlsChunks;
@@ -128,18 +127,15 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 
   if (!mouseMoved) {
     if (x < 100) {
-      if (y < 272/3) {
-        hlsChunks.setChan (3, 128000);
-        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
-        }
-      else if (y < 272*2/3) {
-        hlsChunks.setChan (4, 128000);
-        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
-        }
-      else {
-        hlsChunks.setChan (6, 128000);
-        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
-        }
+      int chan;
+      if (y < 272/3)
+        chan = 3;
+      else if (y < 272*2/3)
+        chan = 4;
+      else
+        chan = 6;
+      hlsChunks.setChan (chan, 128000);
+      ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
       }
     }
 
@@ -156,23 +152,24 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
   D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
   deviceContext->FillRectangle (r, getGreyBrush());
 
-  int seqNum = 0;
-  int chunk = 0;
-  int frameInChunk = 0;
-  uint8_t org = 0;
-  uint8_t len = 0;
-  int drawFrame = playFrame - int(getClientF().width/2.0f);
+  int frame = playFrame - int(getClientF().width/2.0f);
+  uint8_t* powerPtr = nullptr;
+  int frames = 0;
   for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
     r.right = r.left + 1.0f;
-    if (hlsChunks.power (drawFrame++, org, len)) {
-      r.top = (float)org;
-      r.bottom = (float)org + len;
+    if (!frames)
+      hlsChunks.power (frame, &powerPtr, frames);
+    if (frames) {
+      r.top = (float)*powerPtr++;
+      r.bottom = r.top + *powerPtr++;
       deviceContext->FillRectangle (r, getBlueBrush());
+      frames--;
       }
+    frame++;
     }
 
   // debug str
-  int frame = playFrame - (hlsChunks.getBaseSeqNum() * 300);
+  frame = playFrame - (hlsChunks.getBaseSeqNum() * 300);
   bool minus = frame < 0;
   if (minus)
     frame = -frame;

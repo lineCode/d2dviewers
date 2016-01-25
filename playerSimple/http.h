@@ -934,12 +934,10 @@ public:
     }
   //}}}
   //{{{
-  void getAudioPower (int frame, uint8_t& org, uint8_t& len) {
+  void getAudioPower (int frame, uint8_t** powerPtr) {
 
-    if (mPower) {
-      org = mPower[frame * 2];
-      len = mPower[(frame * 2) + 1];
-      }
+    *powerPtr = mPower ? mPower + (frame * 2) : nullptr;
+
     }
   //}}}
 
@@ -1080,7 +1078,6 @@ private:
 //}}}
 //{{{  cHlsChunk static var init
 NeAACDecHandle cHlsChunk::mDecoder = 0;
-
 bool cHlsChunk::mLoading = false;
 int cHlsChunk::mSamplesPerFrame = 0;
 //}}}
@@ -1140,17 +1137,20 @@ public:
     }
   //}}}
   //{{{
-  bool power (int frame, uint8_t& org, uint8_t& len) {
+  bool power (int frame, uint8_t** powerPtr, int& frames) {
 
     int seqNum;
     int chunk;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      mChunks[chunk].getAudioPower (frameInChunk, org, len);
+      frames = cHlsChunk::getNumFrames() - frameInChunk;
+      mChunks[chunk].getAudioPower (frameInChunk, powerPtr);
       return true;
       }
-    else
+    else {
+      frames = 0;
       return false;
+      }
     }
   //}}}
 
