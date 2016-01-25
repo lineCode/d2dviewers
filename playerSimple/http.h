@@ -1084,3 +1084,80 @@ NeAACDecHandle cHlsChunk::mDecoder = 0;
 bool cHlsChunk::mLoading = false;
 int cHlsChunk::mSamplesPerFrame = 0;
 //}}}
+
+//{{{
+class cHlsChunks {
+public:
+  #define NUM_CHUNKS 3
+  //{{{
+  bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
+
+    for (auto i = 0; i < NUM_CHUNKS; i++) {
+      if (chunks[i].contains (frame, seqNum, frameInChunk)) {
+        chunk = i;
+        return true;
+        }
+      }
+    return false;
+    }
+  //}}}
+  //{{{
+  bool findSeqNumChunk (int seqNum, int offset, int& chunk) {
+
+    // look for matching chunk
+    chunk = 0;
+    while (chunk < NUM_CHUNKS) {
+      if (seqNum + offset == chunks[chunk].getSeqNum())
+        return true;
+      chunk++;
+      }
+
+    // look for stale chunk
+    chunk = 0;
+    while (chunk < NUM_CHUNKS) {
+      if ((chunks[chunk].getSeqNum() < seqNum-(NUM_CHUNKS/2)) || (chunks[chunk].getSeqNum() > seqNum+(NUM_CHUNKS/2)))
+        return false;
+      chunk++;
+      }
+
+    printf ("findSeqNumChunk cockup %d", seqNum);
+    for (auto i = 0; i < NUM_CHUNKS; i++)
+      printf (" %d", chunks[i].getSeqNum());
+    printf ("\n");
+
+    chunk = 0;
+    return false;
+    }
+  //}}}
+
+  //{{{
+  bool ensureLoaded (cRadioChan* radioChan, int playFrame) {
+
+    int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
+
+    bool ok = false;
+    int chunk;
+    if (!findSeqNumChunk (seqNum, 0, chunk))
+      ok &= chunks[chunk].load (radioChan, seqNum);
+
+    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
+      if (!findSeqNumChunk (seqNum, i, chunk))
+        ok &= chunks[chunk].load (radioChan, seqNum+i);
+      if (!findSeqNumChunk (seqNum, -i, chunk))
+        ok &= chunks[chunk].load (radioChan, seqNum-i);
+      }
+
+    return ok;
+    }
+  //}}}
+  //{{{
+  void invalidateChunks() {
+
+    for (auto i = 0; i < NUM_CHUNKS; i++)
+      chunks[i].invalidate();
+    }
+  //}}}
+
+  cHlsChunk chunks[NUM_CHUNKS];
+};
+//}}}
