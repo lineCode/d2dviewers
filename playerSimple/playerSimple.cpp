@@ -37,24 +37,21 @@ protected:
 //}}}
 
 cAppWindow* appWindow = NULL;
-HANDLE hSemaphorePlay;
-
-cRadioChan* radioChan = new cRadioChan();
+HANDLE hSemaphoreLoad;
 
 int playFrame = 0;
-int playPhase = 0;
 bool stopped = false;
-int16_t silence[4096];
 
+cRadioChan* radioChan = new cRadioChan();
 cHlsChunks hlsChunks;
 
 //{{{
 static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
 
   while (true) {
-    if (!hlsChunks.ensureLoaded (radioChan, playFrame))
+    if (!hlsChunks.load (radioChan, playFrame))
       Sleep (1000);
-    WaitForSingleObject (hSemaphorePlay, 20 * 1000);
+    WaitForSingleObject (hSemaphoreLoad, 20 * 1000);
     }
 
   return 0;
@@ -65,20 +62,17 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
 
   int lastSeqNum = 0;
   while (true) {
-    int seqNum = 0;
-    int chunk = 0;
-    int frameInChunk = 0;
-    bool play = !stopped && hlsChunks.findFrame (playFrame, seqNum, chunk, frameInChunk);
+    bool playing = !stopped;
+    int seqNum;
+    winAudioPlay (hlsChunks.play (playFrame, playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
 
-    winAudioPlay (play ? hlsChunks.chunks[chunk].getAudioSamples (frameInChunk) : silence, cHlsChunk::getSamplesPerFrame()*4, 1.0f);
-
-    if (play) {
+    if (playing) {
       playFrame++;
       appWindow->changed();
       }
 
     if (!seqNum || (seqNum != lastSeqNum)) {
-      ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+      ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
       lastSeqNum = seqNum;
       }
     }
@@ -105,8 +99,8 @@ bool cAppWindow::onKey (int key) {
     case 0x25 : playFrame -= 300; changed(); break;
     case 0x27 : playFrame += 300; changed(); break;
 
-    case 0x26 : stopped = true; playFrame -=2; changed(); break;
-    case 0x28 : stopped = true; playFrame +=2; changed(); break;
+    case 0x26 : stopped = true; playFrame -=1; changed(); break;
+    case 0x28 : stopped = true; playFrame +=1; changed(); break;
 
     //case 0x2d : markFrame = playFrame - 2.0f; changed(); break;
     //case 0x2e : playFrame = markFrame; changed(); break;
@@ -133,17 +127,17 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
       if (y < 272/3) {
         radioChan->setChan (3, 128000);
         hlsChunks.invalidateChunks();
-        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       else if (y < 272*2/3) {
         radioChan->setChan (4, 128000);
         hlsChunks.invalidateChunks();
-        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       else {
         radioChan->setChan (6, 128000);
         hlsChunks.invalidateChunks();
-        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       }
     }
@@ -166,32 +160,27 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
   int frameInChunk = 0;
   uint8_t org = 0;
   uint8_t len = 0;
-  int frame = playFrame - int(getClientF().width/2.0f);
+  int drawFrame = playFrame - int(getClientF().width/2.0f);
   for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
     r.right = r.left + 1.0f;
-    if (hlsChunks.findFrame (frame, seqNum, chunk, frameInChunk)) {
-      hlsChunks.chunks[chunk].getAudioPower (frameInChunk, org, len);
+    if (hlsChunks.power (drawFrame++, org, len)) {
       r.top = (float)org;
       r.bottom = (float)org + len;
       deviceContext->FillRectangle (r, getBlueBrush());
       }
-    frame++;
     }
 
   // debug str
-  if (!hlsChunks.findFrame (playFrame, seqNum, chunk, frameInChunk))
-    seqNum = cHlsChunk::getFrameSeqNum (playFrame);
-
+  int frame = playFrame - (radioChan->getBaseSeqNum() * 300);
+  bool minus = frame < 0;
+  if (minus)
+    frame = -frame;
+  int secs100 = frame * 1024 * 100 / 48000;
+  int frac = secs100 % 100;
+  int secs = (secs100 / 100) % 60;
+  int mins = secs100 / (60*100);
   wchar_t wDebugStr[200];
-  swprintf (wDebugStr, 200, L"%d %d - %d %d - %d:%d:%d",
-            playFrame - (radioChan->getBaseSeqNum() * 300), 
-            seqNum - radioChan->getBaseSeqNum(), 
-            frameInChunk, 
-            chunk,
-            hlsChunks.chunks[0].getSeqNum() - radioChan->getBaseSeqNum(),
-            hlsChunks.chunks[1].getSeqNum() - radioChan->getBaseSeqNum(),
-            hlsChunks.chunks[2].getSeqNum() - radioChan->getBaseSeqNum());
-
+  swprintf (wDebugStr, 200, L"%c%d.%d.%d", minus?'-':'+', mins, secs, frac);
   deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
                            cHlsChunk::getLoading() ? getYellowBrush() : getWhiteBrush());
   }
@@ -199,9 +188,6 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
-
-  for (auto i = 0; i < 4096; i++)
-    silence[i] = 0;
 
   CoInitialize (NULL);
   //{{{
@@ -219,7 +205,7 @@ int wmain (int argc, wchar_t* argv[]) {
     }
     //}}}
 
-  hSemaphorePlay = CreateSemaphore (NULL, 0, 1, L"playSem");  // initial 0, max 1
+  hSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
   radioChan->setChan (3, 128000);
   playFrame = radioChan->getBaseSeqNum() * 300;

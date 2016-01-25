@@ -1088,16 +1088,81 @@ int cHlsChunk::mSamplesPerFrame = 0;
 //{{{
 class cHlsChunks {
 public:
+  #define SILENCE_SIZE 4096
   #define NUM_CHUNKS 3
+  //{{{
+  cHlsChunks() {
+    for (auto i = 0; i < SILENCE_SIZE; i++)
+      mSilence[i] = 0;
+    }
+  //}}}
+
+  //{{{
+  bool load (cRadioChan* radioChan, int playFrame) {
+
+    int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
+
+    bool ok = false;
+    int chunk;
+    if (!findSeqNumChunk (seqNum, 0, chunk))
+      ok &= mChunks[chunk].load (radioChan, seqNum);
+
+    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
+      if (!findSeqNumChunk (seqNum, i, chunk))
+        ok &= mChunks[chunk].load (radioChan, seqNum+i);
+      if (!findSeqNumChunk (seqNum, -i, chunk))
+        ok &= mChunks[chunk].load (radioChan, seqNum-i);
+      }
+
+    return ok;
+    }
+  //}}}
+  //{{{
+  int16_t* play (int playFrame, bool& playing, int& seqNum) {
+
+    int chunk;
+    int frameInChunk;
+    playing &= findFrame (playFrame, seqNum, chunk, frameInChunk);
+
+    return playing ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
+    }
+  //}}}
+  //{{{
+  bool power (int frame, uint8_t& org, uint8_t& len) {
+
+    int seqNum;
+    int chunk;
+    int frameInChunk;
+    if (findFrame (frame, seqNum, chunk, frameInChunk)) {
+      mChunks[chunk].getAudioPower (frameInChunk, org, len);
+      return true;
+      }
+    else
+      return false;
+    }
+  //}}}
+  //{{{
+  void invalidateChunks() {
+
+    for (auto i = 0; i < NUM_CHUNKS; i++)
+      mChunks[i].invalidate();
+    }
+  //}}}
+
+private:
   //{{{
   bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
 
     for (auto i = 0; i < NUM_CHUNKS; i++) {
-      if (chunks[i].contains (frame, seqNum, frameInChunk)) {
+      if (mChunks[i].contains (frame, seqNum, frameInChunk)) {
         chunk = i;
         return true;
         }
       }
+
+    seqNum = 0;
+    chunk = 0;
+    frameInChunk = 0;
     return false;
     }
   //}}}
@@ -1107,7 +1172,7 @@ public:
     // look for matching chunk
     chunk = 0;
     while (chunk < NUM_CHUNKS) {
-      if (seqNum + offset == chunks[chunk].getSeqNum())
+      if (seqNum + offset == mChunks[chunk].getSeqNum())
         return true;
       chunk++;
       }
@@ -1115,14 +1180,14 @@ public:
     // look for stale chunk
     chunk = 0;
     while (chunk < NUM_CHUNKS) {
-      if ((chunks[chunk].getSeqNum() < seqNum-(NUM_CHUNKS/2)) || (chunks[chunk].getSeqNum() > seqNum+(NUM_CHUNKS/2)))
+      if ((mChunks[chunk].getSeqNum() < seqNum-(NUM_CHUNKS/2)) || (mChunks[chunk].getSeqNum() > seqNum+(NUM_CHUNKS/2)))
         return false;
       chunk++;
       }
 
     printf ("findSeqNumChunk cockup %d", seqNum);
     for (auto i = 0; i < NUM_CHUNKS; i++)
-      printf (" %d", chunks[i].getSeqNum());
+      printf (" %d", mChunks[i].getSeqNum());
     printf ("\n");
 
     chunk = 0;
@@ -1130,34 +1195,7 @@ public:
     }
   //}}}
 
-  //{{{
-  bool ensureLoaded (cRadioChan* radioChan, int playFrame) {
-
-    int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
-
-    bool ok = false;
-    int chunk;
-    if (!findSeqNumChunk (seqNum, 0, chunk))
-      ok &= chunks[chunk].load (radioChan, seqNum);
-
-    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
-      if (!findSeqNumChunk (seqNum, i, chunk))
-        ok &= chunks[chunk].load (radioChan, seqNum+i);
-      if (!findSeqNumChunk (seqNum, -i, chunk))
-        ok &= chunks[chunk].load (radioChan, seqNum-i);
-      }
-
-    return ok;
-    }
-  //}}}
-  //{{{
-  void invalidateChunks() {
-
-    for (auto i = 0; i < NUM_CHUNKS; i++)
-      chunks[i].invalidate();
-    }
-  //}}}
-
-  cHlsChunk chunks[NUM_CHUNKS];
-};
+  cHlsChunk mChunks[NUM_CHUNKS];
+  int16_t mSilence[SILENCE_SIZE];
+  };
 //}}}
