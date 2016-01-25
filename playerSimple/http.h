@@ -877,7 +877,9 @@ private:
 //{{{
 class cHlsChunk {
 public:
+  //{{{
   cHlsChunk() : mSeqNum(0), mLoaded(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
+  //}}}
   //{{{
   ~cHlsChunk() {
 
@@ -885,6 +887,12 @@ public:
       free (mPower);
     if (mAudio)
       free (mAudio);
+    }
+  //}}}
+
+  //{{{
+  static void closeDecoder() {
+    NeAACDecClose (mDecoder);
     }
   //}}}
 
@@ -903,6 +911,12 @@ public:
     return frame / kAacFramesPerChunk;
     }
   //}}}
+  //{{{
+  static bool getLoading() {
+    return mLoading;
+    }
+  //}}}
+
 
   //{{{
   int getFrame() {
@@ -932,19 +946,24 @@ public:
   //{{{
   bool load (cRadioChan* radioChan, int seqNum) {
 
+    if (!mDecoder) {
+      //{{{  init decoder
+      mDecoder = NeAACDecOpen();
+      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
+      config->outputFormat = FAAD_FMT_16BIT;
+      NeAACDecSetConfiguration (mDecoder, config);
+      }
+      //}}}
+
     bool ok = false;
     mLoaded = 0;
+    mLoading = true;
     mSamplesPerFrame = (radioChan->getBitrate() <= 48000) ? 2048 : 1024;
 
     if (!mPower)
       mPower = (uint8_t*)malloc (kAacFramesPerChunk * kChans);
     if (!mAudio)
       mAudio = (int16_t*)malloc (kAacFramesPerChunk * mSamplesPerFrame * kChans * kBytesPerSample);
-
-    auto decoder = NeAACDecOpen();
-    auto config = NeAACDecGetCurrentConfiguration (decoder);
-    config->outputFormat = FAAD_FMT_16BIT;
-    NeAACDecSetConfiguration (decoder, config);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum));
@@ -955,16 +974,16 @@ public:
       auto loadEnd = packTsBuffer (aacHttp.getContent(), aacHttp.getContentEnd());
 
       // init decoder
-      NeAACDecInit (decoder, loadPtr, 2048, &mSampleRate, &mChans);
+      NeAACDecInit (mDecoder, loadPtr, 2048, &mSampleRate, &mChans);
 
       NeAACDecFrameInfo frameInfo;
-      NeAACDecDecode (decoder, &frameInfo, loadPtr, 2048);
+      NeAACDecDecode (mDecoder, &frameInfo, loadPtr, 2048);
 
       uint8_t* powerPtr = mPower;
       int16_t* buffer = mAudio;
       while (loadPtr < loadEnd) {
         NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode2 (decoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), mSamplesPerFrame * kChans * kBytesPerSample);
+        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), mSamplesPerFrame * kChans * kBytesPerSample);
         loadPtr += frameInfo.bytesconsumed;
         //{{{  calc left, right power
         int valueL = 0;
@@ -987,9 +1006,9 @@ public:
       ok = true;
       }
     else
-      printf ("cHlsChunk:load %d %d failed\n", mSeqNum, response);
+      printf ("cHlsChunk:load %d\n", response);
 
-    NeAACDecClose (decoder);
+    mLoading = false;
     return ok;
     }
   //}}}
@@ -1004,6 +1023,13 @@ public:
     return false;
     }
   //}}}
+  //{{{
+  void invalidate() {
+
+    mSeqNum = 0;
+    mLoaded = 0;
+    }
+  //}}}
 
 private:
   // const
@@ -1011,6 +1037,8 @@ private:
   const int kBytesPerSample = 2;
   static const int kAacFramesPerChunk = 300;
   static int mSamplesPerFrame;
+  static bool mLoading;
+  static NeAACDecHandle mDecoder;
 
   //{{{
   uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
@@ -1050,4 +1078,9 @@ private:
   int16_t* mAudio;
   };
 //}}}
+//{{{  cHlsChunk static var init
+NeAACDecHandle cHlsChunk::mDecoder = 0;
+
+bool cHlsChunk::mLoading = false;
 int cHlsChunk::mSamplesPerFrame = 0;
+//}}}

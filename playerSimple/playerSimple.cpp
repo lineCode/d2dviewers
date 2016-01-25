@@ -90,6 +90,13 @@ static bool findSeqNumChunk (int seqNum, int offset, int& chunk) {
   return false;
   }
 //}}}
+//{{{
+static void invalidateChunks() {
+
+  for (auto i = 0; i < CHUNKS; i++)
+    hlsChunk[i].invalidate();
+  }
+//}}}
 
 //{{{
 static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
@@ -101,16 +108,20 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
   while (true) {
     int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
 
+    bool ok = false;
     int chunk;
     if (!findSeqNumChunk (seqNum, 0, chunk))
-      hlsChunk[chunk].load (radioChan, seqNum);
+      ok &= hlsChunk[chunk].load (radioChan, seqNum);
 
     for (auto i = 1; i <= CHUNKS/2; i++) {
       if (!findSeqNumChunk (seqNum, i, chunk))
-        hlsChunk[chunk].load (radioChan, seqNum+i);
+        ok &= hlsChunk[chunk].load (radioChan, seqNum+i);
       if (!findSeqNumChunk (seqNum, -i, chunk))
-        hlsChunk[chunk].load (radioChan, seqNum-i);
+        ok &= hlsChunk[chunk].load (radioChan, seqNum-i);
       }
+
+    if (!ok)
+      Sleep (1000);
 
     WaitForSingleObject (hSemaphorePlay, 20 * 1000);
     }
@@ -129,18 +140,16 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
     int seqNum = 0;
     int chunk = 0;
     int frameInChunk = 0;
+    bool play = !stopped && findFrame (playFrame, seqNum, chunk, frameInChunk);
+    winAudioPlay (play ? hlsChunk[chunk].getAudioSamples (frameInChunk) : silence, cHlsChunk::getSamplesPerFrame()*4, 1.0f);
 
-    int16_t* audio = (!stopped && findFrame (playFrame, seqNum, chunk, frameInChunk)) ?
-      hlsChunk[chunk].getAudioSamples (frameInChunk) : silence;
-    winAudioPlay (audio, cHlsChunk::getSamplesPerFrame()*4, 1.0f);
-
-    if (!stopped) {
+    if (play) {
       playFrame++;
       appWindow->changed();
       }
 
-    ReleaseSemaphore (hSemaphorePlay, 1, NULL);
-    if (seqNum != lastSeqNum) {
+    if (!seqNum || (seqNum != lastSeqNum)) {
+      ReleaseSemaphore (hSemaphorePlay, 1, NULL);
       lastSeqNum = seqNum;
       }
     }
@@ -192,12 +201,21 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 
   if (!mouseMoved) {
     if (x < 100) {
-      if (y < 272/3)
+      if (y < 272/3) {
         radioChan->setChan (3, 128000);
-      else if (y < 272*2/3)
+        invalidateChunks();
+        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        }
+      else if (y < 272*2/3) {
         radioChan->setChan (4, 128000);
-      else
+        invalidateChunks();
+        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        }
+      else {
         radioChan->setChan (6, 128000);
+        invalidateChunks();
+        ReleaseSemaphore (hSemaphorePlay, 1, NULL);
+        }
       }
     }
 
@@ -237,9 +255,19 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
   int frameInChunk = 0;
   bool found = findFrame (playFrame, seqNum, chunk, frameInChunk);
 
+  if (!found)
+    seqNum = cHlsChunk::getFrameSeqNum (playFrame);
+
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%d %d - %d %d %d", playFrame, seqNum- radioChan->getBaseSeqNum(), found, chunk, frameInChunk);
-  deviceContext->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt, getWhiteBrush());
+  swprintf (wStr, 200, L"%d %d - %d %d %d - %d:%d:%d",
+            playFrame - (radioChan->getBaseSeqNum() * 300),
+            seqNum - radioChan->getBaseSeqNum(), found, chunk, frameInChunk,
+            hlsChunk[0].getSeqNum() - radioChan->getBaseSeqNum(),
+            hlsChunk[1].getSeqNum() - radioChan->getBaseSeqNum(),
+            hlsChunk[2].getSeqNum() - radioChan->getBaseSeqNum());
+
+  deviceContext->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt,
+                           cHlsChunk::getLoading() ? getYellowBrush() : getWhiteBrush());
   }
 //}}}
 
@@ -265,7 +293,7 @@ int wmain (int argc, wchar_t* argv[]) {
     }
     //}}}
 
-  radioChan->setChan (4, 128000);
+  radioChan->setChan (3, 128000);
 
   hSemaphorePlay = CreateSemaphore (NULL, 0, 1, L"playSem");  // initial 0, max 1
   hSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
@@ -278,6 +306,7 @@ int wmain (int argc, wchar_t* argv[]) {
 
   appWindow->messagePump();
 
+  cHlsChunk::closeDecoder();
   CoUninitialize();
   }
 //}}}

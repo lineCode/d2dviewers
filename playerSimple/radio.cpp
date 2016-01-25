@@ -62,15 +62,16 @@ int main (int argc, char* argv[]) {
 
   cRadioChan* radioChan = new cRadioChan();
   radioChan->setChan (chan, bitrate);
-  printf ("radio %d %s\n", radioChan->getSeqNum(), radioChan->getDateTime());
+  printf ("radio %d %s\n", radioChan->getBaseSeqNum(), radioChan->getDateTime());
 
+  int seqNum = radioChan->getBaseSeqNum();
   bool phase = false;
-  hlsChunk[phase].load (radioChan);
+  hlsChunk[phase].load (radioChan, seqNum++);
   std::thread ([=]() { play(); } ).detach();
 
   while (true) {
     phase = !phase;
-    hlsChunk[phase].load (radioChan);
+    hlsChunk[phase].load (radioChan, seqNum++);
     WaitForSingleObject (hSemaphore, 20 * 1000);
     }
 
