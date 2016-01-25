@@ -1098,20 +1098,32 @@ public:
   //}}}
 
   //{{{
-  bool load (cRadioChan* radioChan, int playFrame) {
+  int getBaseSeqNum() {
+    return mRadioChan.getBaseSeqNum();
+    }
+  //}}}
+
+  //{{{
+  void setChan (int chan, int bitrate) {
+    mRadioChan.setChan (chan, bitrate);
+    invalidateChunks();
+    }
+  //}}}
+  //{{{
+  bool load (int playFrame) {
 
     int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
 
     bool ok = false;
     int chunk;
     if (!findSeqNumChunk (seqNum, 0, chunk))
-      ok &= mChunks[chunk].load (radioChan, seqNum);
+      ok &= mChunks[chunk].load (&mRadioChan, seqNum);
 
     for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
       if (!findSeqNumChunk (seqNum, i, chunk))
-        ok &= mChunks[chunk].load (radioChan, seqNum+i);
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i);
       if (!findSeqNumChunk (seqNum, -i, chunk))
-        ok &= mChunks[chunk].load (radioChan, seqNum-i);
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i);
       }
 
     return ok;
@@ -1139,13 +1151,6 @@ public:
       }
     else
       return false;
-    }
-  //}}}
-  //{{{
-  void invalidateChunks() {
-
-    for (auto i = 0; i < NUM_CHUNKS; i++)
-      mChunks[i].invalidate();
     }
   //}}}
 
@@ -1194,8 +1199,16 @@ private:
     return false;
     }
   //}}}
+  //{{{
+  void invalidateChunks() {
 
-  cHlsChunk mChunks[NUM_CHUNKS];
-  int16_t mSilence[SILENCE_SIZE];
+    for (auto i = 0; i < NUM_CHUNKS; i++)
+      mChunks[i].invalidate();
+    }
+  //}}}
+
+  cRadioChan mRadioChan;
+  cHlsChunk mChunks [NUM_CHUNKS];
+  int16_t mSilence [SILENCE_SIZE];
   };
 //}}}

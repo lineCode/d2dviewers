@@ -37,19 +37,18 @@ protected:
 //}}}
 
 cAppWindow* appWindow = NULL;
-HANDLE hSemaphoreLoad;
+
+cHlsChunks hlsChunks;
 
 int playFrame = 0;
 bool stopped = false;
-
-cRadioChan* radioChan = new cRadioChan();
-cHlsChunks hlsChunks;
+HANDLE hSemaphoreLoad;
 
 //{{{
-static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
+static DWORD WINAPI loaderThread (LPVOID arg) {
 
   while (true) {
-    if (!hlsChunks.load (radioChan, playFrame))
+    if (!hlsChunks.load (playFrame))
       Sleep (1000);
     WaitForSingleObject (hSemaphoreLoad, 20 * 1000);
     }
@@ -58,7 +57,10 @@ static DWORD WINAPI hlsLoaderThread (LPVOID arg) {
   }
 //}}}
 //{{{
-static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
+static DWORD WINAPI playerThread (LPVOID arg) {
+
+  CoInitialize (NULL);
+  winAudioOpen (48000, 16, 2);
 
   int lastSeqNum = 0;
   while (true) {
@@ -77,6 +79,8 @@ static DWORD WINAPI hlsPlayerThread (LPVOID arg) {
       }
     }
 
+  winAudioClose();
+  CoUninitialize();
   return 0;
   }
 //}}}
@@ -125,18 +129,15 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
   if (!mouseMoved) {
     if (x < 100) {
       if (y < 272/3) {
-        radioChan->setChan (3, 128000);
-        hlsChunks.invalidateChunks();
+        hlsChunks.setChan (3, 128000);
         ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       else if (y < 272*2/3) {
-        radioChan->setChan (4, 128000);
-        hlsChunks.invalidateChunks();
+        hlsChunks.setChan (4, 128000);
         ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       else {
-        radioChan->setChan (6, 128000);
-        hlsChunks.invalidateChunks();
+        hlsChunks.setChan (6, 128000);
         ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
         }
       }
@@ -171,7 +172,7 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
     }
 
   // debug str
-  int frame = playFrame - (radioChan->getBaseSeqNum() * 300);
+  int frame = playFrame - (hlsChunks.getBaseSeqNum() * 300);
   bool minus = frame < 0;
   if (minus)
     frame = -frame;
@@ -189,14 +190,12 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
-  CoInitialize (NULL);
   //{{{
   #ifndef _DEBUG
   FreeConsole();
   #endif
   //}}}
 
-  winAudioOpen (48000, 16, 2);
   WSADATA wsaData;
   if (WSAStartup (MAKEWORD(2,2), &wsaData)) {
     //{{{  error exit
@@ -207,18 +206,20 @@ int wmain (int argc, wchar_t* argv[]) {
 
   hSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-  radioChan->setChan (3, 128000);
-  playFrame = radioChan->getBaseSeqNum() * 300;
+  int chan = (argc >= 2) ? _wtoi(argv[1]) : 6;
+  int bitrate = (argc >= 3) ? _wtoi(argv[2]) : 128000;
+  printf ("radio %d %d\n", chan, bitrate);
+  hlsChunks.setChan (chan, bitrate);
+  playFrame = hlsChunks.getBaseSeqNum() * 300;
 
   appWindow = cAppWindow::create (L"hls player", 480, 272);
 
-  CreateThread (NULL, 0, hlsLoaderThread, NULL, 0, NULL);
-  HANDLE hHlsPlayerThread  = CreateThread (NULL, 0, hlsPlayerThread, NULL, 0, NULL);
-  SetThreadPriority (hHlsPlayerThread, THREAD_PRIORITY_ABOVE_NORMAL);
+  HANDLE hLoaderThread = CreateThread (NULL, 0, loaderThread, NULL, 0, NULL);
+  HANDLE hPlayerThread = CreateThread (NULL, 0, playerThread, NULL, 0, NULL);
+  SetThreadPriority (hPlayerThread, THREAD_PRIORITY_ABOVE_NORMAL);
 
   appWindow->messagePump();
 
   cHlsChunk::closeDecoder();
-  CoUninitialize();
   }
 //}}}
