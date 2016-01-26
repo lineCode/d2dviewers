@@ -11,7 +11,7 @@ public:
   //{{{
   cHlsChunk() : mSeqNum(0), mFramesLoaded(0), mLoading(false),
                 mChans(0), mSampleRate(0), mAacSamplesPerAacFrame(0),
-                mPower(nullptr), mAudio(nullptr) {}
+                mDecoder(0), mPower(nullptr), mAudio(nullptr) {}
   //}}}
   //{{{
   ~cHlsChunk() {
@@ -20,6 +20,8 @@ public:
       free (mPower);
     if (mAudio)
       free (mAudio);
+
+    NeAACDecClose (mDecoder);
     }
   //}}}
 
@@ -37,11 +39,6 @@ public:
   //{{{
   static int getFramesPerChunk() {
     return kFramesPerChunk;
-    }
-  //}}}
-  //{{{
-  static void closeDecoder() {
-    NeAACDecClose (mDecoder);
     }
   //}}}
 
@@ -87,6 +84,7 @@ public:
     if (!mDecoder) {
       //{{{  init decoder
       mDecoder = NeAACDecOpen();
+
       NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
       config->outputFormat = FAAD_FMT_16BIT;
       NeAACDecSetConfiguration (mDecoder, config);
@@ -159,6 +157,14 @@ public:
   //}}}
 
 private:
+  //{{{  const
+  static const int kSamplesRate = 48000;
+  static const int kSamplesPerFrame = 1024;
+  static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
+
+  const int kChans = 2;
+  const int kBytesPerSample = 2;
+  //}}}
   //{{{
   uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
   // pack transportStream down to aac frames in same buffer
@@ -186,17 +192,7 @@ private:
     }
   //}}}
 
-  //{{{  const
-  const int kChans = 2;
-  const int kBytesPerSample = 2;
-  static const int kSamplesRate = 48000;
-  static const int kSamplesPerFrame = 1024;
-  static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
-  //}}}
-  //{{{  static vars
-  static NeAACDecHandle mDecoder;
-  //}}}
-  //{{{  vars
+  // vars
   int mSeqNum;
   int mFramesLoaded;
   bool mLoading;
@@ -205,10 +201,7 @@ private:
   uint8_t mChans;
   int mAacSamplesPerAacFrame;
 
+  NeAACDecHandle mDecoder;
   uint8_t* mPower;
   int16_t* mAudio;
-  //}}}
   };
-
-// cHlsChunk static var init
-NeAACDecHandle cHlsChunk::mDecoder = 0;

@@ -39,8 +39,6 @@ public:
     std::thread ([=]() { cAppWindow::player(); } ).detach();
 
     messagePump();
-
-    cHlsChunk::closeDecoder();
     };
   //}}}
 
