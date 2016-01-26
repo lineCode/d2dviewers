@@ -9,7 +9,9 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mLoaded(0), mChans(0), mSampleRate(0), mPower(nullptr), mAudio(nullptr) {}
+  cHlsChunk() : mSeqNum(0), mFramesLoaded(0),
+                mChans(0), mSampleRate(0), mAacSamplesPerAacFrame(0),
+                mPower(nullptr), mAudio(nullptr) {}
   //}}}
   //{{{
   ~cHlsChunk() {
@@ -23,23 +25,13 @@ public:
 
   // static members
   //{{{
-  static void closeDecoder() {
-    NeAACDecClose (mDecoder);
-    }
-  //}}}
-  //{{{
-  static int getNumFrames() {
-    return kAacFramesPerChunk;
-    }
-  //}}}
-  //{{{
   static int getSamplesPerFrame() {
-    return mSamplesPerFrame;
+    return kSamplesPerFrame;
     }
   //}}}
   //{{{
-  static int getFrameSeqNum (int frame) {
-    return frame / kAacFramesPerChunk;
+  static int getFramesPerChunk() {
+    return kFramesPerChunk;
     }
   //}}}
   //{{{
@@ -47,21 +39,26 @@ public:
     return mLoading;
     }
   //}}}
-
-  // gets
   //{{{
-  int getFrame() {
-    return mSeqNum * kAacFramesPerChunk;
+  static void closeDecoder() {
+    NeAACDecClose (mDecoder);
     }
   //}}}
+
+  // gets
   //{{{
   int getSeqNum() {
     return mSeqNum;
     }
   //}}}
   //{{{
+  int getFramesLoaded() {
+    return mFramesLoaded;
+    }
+  //}}}
+  //{{{
   int16_t* getAudioSamples (int frame) {
-    return mAudio + (frame * mSamplesPerFrame * mChans);
+    return mAudio + (frame * kSamplesPerFrame * mChans);
     }
   //}}}
   //{{{
@@ -75,6 +72,13 @@ public:
   //{{{
   bool load (cRadioChan* radioChan, int seqNum) {
 
+    //printf ("cHlsChunk::load %d\n", seqNum);
+    mSeqNum = seqNum;
+    mFramesLoaded = 0;
+    bool ok = false;
+    mLoading = true;
+    mAacSamplesPerAacFrame = (radioChan->getBitrate() <= 48000) ? 2048 : 1024;
+
     if (!mDecoder) {
       //{{{  init decoder
       mDecoder = NeAACDecOpen();
@@ -83,93 +87,73 @@ public:
       NeAACDecSetConfiguration (mDecoder, config);
       }
       //}}}
-
-    bool ok = false;
-    mLoaded = 0;
-    mLoading = true;
-    mSamplesPerFrame = (radioChan->getBitrate() <= 48000) ? 2048 : 1024;
-
     if (!mPower)
-      mPower = (uint8_t*)malloc (kAacFramesPerChunk * kChans);
+      mPower = (uint8_t*)malloc (kFramesPerChunk * kBytesPerSample);
     if (!mAudio)
-      mAudio = (int16_t*)malloc (kAacFramesPerChunk * mSamplesPerFrame * kChans * kBytesPerSample);
+      mAudio = (int16_t*)malloc (kFramesPerChunk * kSamplesPerFrame * kChans * kBytesPerSample);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum));
     if (response == 200) {
-      mSeqNum = seqNum;
-
       auto loadPtr = aacHttp.getContent();
       auto loadEnd = packTsBuffer (aacHttp.getContent(), aacHttp.getContentEnd());
 
       // init decoder
-      NeAACDecInit (mDecoder, loadPtr, 2048, &mSampleRate, &mChans);
+      NeAACDecInit (mDecoder, loadPtr, (unsigned long)(aacHttp.getContentEnd() - loadPtr), &mSampleRate, &mChans);
 
       NeAACDecFrameInfo frameInfo;
       int16_t* buffer = mAudio;
-      NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), mSamplesPerFrame * kChans * kBytesPerSample);
+      NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, (unsigned long)(aacHttp.getContentEnd() - loadPtr),
+                       (void**)(&buffer), mAacSamplesPerAacFrame * kChans * kBytesPerSample);
 
       uint8_t* powerPtr = mPower;
       while (loadPtr < loadEnd) {
         NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), mSamplesPerFrame * kChans * kBytesPerSample);
+        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, (unsigned long)(aacHttp.getContentEnd() - loadPtr),
+                         (void**)(&buffer), mAacSamplesPerAacFrame * kChans * kBytesPerSample);
         loadPtr += frameInfo.bytesconsumed;
-        //{{{  calc left, right power
-        int valueL = 0;
-        int valueR = 0;
-        for (int j = 0; j < mSamplesPerFrame; j++) {
-          short sample = (*buffer++) >> 4;
-          valueL += sample * sample;
-          sample = (*buffer++) >> 4;
-          valueR += sample * sample;
-          }
 
-        uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
-        *powerPtr++ = (272/2) - leftPix;
-        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
-        //}}}
-        mLoaded++;
+        // aac HE has double size frames, treat as two normal
+        for (auto i = 0; i < mAacSamplesPerAacFrame / kSamplesPerFrame; i++) {
+          //{{{  calc left, right power
+          int valueL = 0;
+          int valueR = 0;
+          for (int j = 0; j < kSamplesPerFrame; j++) {
+            short sample = (*buffer++) >> 4;
+            valueL += sample * sample;
+            sample = (*buffer++) >> 4;
+            valueR += sample * sample;
+            }
+
+          uint8_t leftPix = (uint8_t)sqrt(valueL / (kSamplesPerFrame * 32.0f));
+          *powerPtr++ = (272/2) - leftPix;
+          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (kSamplesPerFrame * 32.0f));
+          mFramesLoaded++;
+          }
+          //}}}
         }
 
-      printf ("cHlsChunk:load %d %d %d %d\n", mSamplesPerFrame, mSampleRate, mChans, mSeqNum);
+      //printf ("cHlsChunk::loaded %d %d %d %d\n", mAacSamplesPerAacFrame, mSampleRate, mChans, mSeqNum);
       ok = true;
       }
-    else
-      printf ("cHlsChunk:load %d\n", response);
+    else {
+      mSeqNum = 0;
+      printf ("cHlsChunk::load failed%d\n", response);
+      }
 
     mLoading = false;
     return ok;
     }
   //}}}
   //{{{
-  bool contains (int frame, int& seqNum, int& frameInChunk) {
-
-    if ((frame >= getFrame()) && (frame < getFrame() + mLoaded)) {
-      seqNum = mSeqNum;
-      frameInChunk = frame - getFrame();
-      return true;
-      }
-    return false;
-    }
-  //}}}
-  //{{{
   void invalidate() {
 
     mSeqNum = 0;
-    mLoaded = 0;
+    mFramesLoaded = 0;
     }
   //}}}
 
 private:
-  // const
-  const int kChans = 2;
-  const int kBytesPerSample = 2;
-
-  static const int kAacFramesPerChunk = 300;
-  static int mSamplesPerFrame;
-  static bool mLoading;
-  static NeAACDecHandle mDecoder;
-
   //{{{
   uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
   // pack transportStream down to aac frames in same buffer
@@ -197,12 +181,23 @@ private:
     }
   //}}}
 
+  //{{{  const
+  const int kChans = 2;
+  const int kBytesPerSample = 2;
+  static const int kSamplesPerFrame = 1024;
+  static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
+  //}}}
+  //{{{  static vars
+  static bool mLoading;
+  static NeAACDecHandle mDecoder;
+  //}}}
   //{{{  vars
   int mSeqNum;
-  int mLoaded;
+  int mFramesLoaded;
 
   unsigned long mSampleRate;
   uint8_t mChans;
+  int mAacSamplesPerAacFrame;
 
   uint8_t* mPower;
   int16_t* mAudio;
@@ -212,4 +207,3 @@ private:
 // cHlsChunk static var init
 NeAACDecHandle cHlsChunk::mDecoder = 0;
 bool cHlsChunk::mLoading = false;
-int cHlsChunk::mSamplesPerFrame = 0;

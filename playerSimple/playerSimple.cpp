@@ -14,7 +14,7 @@
 #include "cHttp.h"
 #include "cRadioChan.h"
 #include "cHlsChunk.h"
-#include "cHlsChunks.h"
+#include "cHlsRadio.h"
 
 #pragma comment (lib,"ws2_32.lib")
 //}}}
@@ -41,7 +41,7 @@ protected:
 //}}}
 cAppWindow* appWindow = NULL;
 
-cHlsChunks hlsChunks;
+cHlsRadio hlsRadio;
 
 int playFrame = 0;
 bool stopped = false;
@@ -51,7 +51,7 @@ HANDLE hSemaphoreLoad;
 static DWORD WINAPI loaderThread (LPVOID arg) {
 
   while (true) {
-    if (!hlsChunks.load (playFrame))
+    if (!hlsRadio.load (playFrame))
       Sleep (1000);
     WaitForSingleObject (hSemaphoreLoad, 20 * 1000);
     }
@@ -69,7 +69,7 @@ static DWORD WINAPI playerThread (LPVOID arg) {
   while (true) {
     bool playing = !stopped;
     int seqNum;
-    winAudioPlay (hlsChunks.play (playFrame, playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
+    winAudioPlay (hlsRadio.play (playFrame, playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
 
     if (playing) {
       playFrame++;
@@ -138,7 +138,7 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
         chan = 4;
       else
         chan = 6;
-      hlsChunks.setChan (chan, 128000);
+      playFrame = hlsRadio.setChan (chan, 128000);
       ReleaseSemaphore (hSemaphoreLoad, 1, NULL);
       }
     }
@@ -162,7 +162,7 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
   for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
     r.right = r.left + 1.0f;
     if (!frames)
-      hlsChunks.power (frame, &powerPtr, frames);
+      hlsRadio.power (frame, &powerPtr, frames);
     if (frames) {
       r.top = (float)*powerPtr++;
       r.bottom = r.top + *powerPtr++;
@@ -173,16 +173,15 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
     }
 
   // debug str
-  frame = playFrame - (hlsChunks.getBaseSeqNum() * 300);
-  bool minus = frame < 0;
-  if (minus)
-    frame = -frame;
-  int secs100 = frame * 1024 * 100 / 48000;
+  frame = playFrame;
+  int secs100 = (frame * 1024) / 480;
   int frac = secs100 % 100;
   int secs = (secs100 / 100) % 60;
-  int mins = secs100 / (60*100);
+  int mins = (secs100 / (60*100)) % 60;
+  int hours = secs100 / (60*60*100);
+
   wchar_t wDebugStr[200];
-  swprintf (wDebugStr, 200, L"%c%d.%d.%d", minus?'-':'+', mins, secs, frac);
+  swprintf (wDebugStr, 200, L"%d:%02d:%02d.%02d", hours, mins, secs, frac);
   deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
                            cHlsChunk::getLoading() ? getYellowBrush() : getWhiteBrush());
   }
@@ -207,18 +206,12 @@ int wmain (int argc, wchar_t* argv[]) {
 
   hSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-  int chan = (argc >= 2) ? _wtoi(argv[1]) : 6;
-  int bitrate = (argc >= 3) ? _wtoi(argv[2]) : 128000;
-  printf ("radio %d %d\n", chan, bitrate);
-  hlsChunks.setChan (chan, bitrate);
-  playFrame = hlsChunks.getBaseSeqNum() * 300;
+  playFrame = hlsRadio.setChan ((argc >= 2) ? _wtoi(argv[1]) : 6, (argc >= 3) ? _wtoi(argv[2]) : 128000);
 
   appWindow = cAppWindow::create (L"hls player", 480, 272);
-
   HANDLE hLoaderThread = CreateThread (NULL, 0, loaderThread, NULL, 0, NULL);
   HANDLE hPlayerThread = CreateThread (NULL, 0, playerThread, NULL, 0, NULL);
   SetThreadPriority (hPlayerThread, THREAD_PRIORITY_ABOVE_NORMAL);
-
   appWindow->messagePump();
 
   cHlsChunk::closeDecoder();

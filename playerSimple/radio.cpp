@@ -36,7 +36,7 @@ void play() {
 
   bool phase = false;
   while (true) {
-    for (auto frame = 0; frame < hlsChunk[phase].getNumFrames(); frame++)
+    for (auto frame = 0; frame < hlsChunk[phase].getFramesPerChunk(); frame++)
       winAudioPlay (hlsChunk[phase].getAudioSamples (frame), hlsChunk[phase].getSamplesPerFrame()*4, 1.0f);
     phase = !phase;
     ReleaseSemaphore (hSemaphore, 1, NULL);
@@ -60,7 +60,7 @@ int main (int argc, char* argv[]) {
   //}}}
 
   int chan = (argc >= 2) ? atoi(argv[1]) : 6;
-  int bitrate = (argc >= 3) ? atoi(argv[2]) : 48000;
+  int bitrate = (argc >= 3) ? atoi(argv[2]) : 128000;
   printf ("radio %d %d\n", chan, bitrate);
 
   cRadioChan* radioChan = new cRadioChan();

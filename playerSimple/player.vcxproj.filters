@@ -319,9 +319,6 @@
     <ClInclude Include="cHlsChunk.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cHlsChunks.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="cHttp.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -329,6 +326,9 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="cRadioChan.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cHlsRadio.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

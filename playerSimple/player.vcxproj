@@ -266,7 +266,7 @@
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="cHlsChunk.h" />
-    <ClInclude Include="cHlsChunks.h" />
+    <ClInclude Include="cHlsRadio.h" />
     <ClInclude Include="cHttp.h" />
     <ClInclude Include="cParsedUrl.h" />
     <ClInclude Include="cRadioChan.h" />

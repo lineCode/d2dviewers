@@ -1,4 +1,4 @@
-// cHlsChunks.h
+// cHlsRadio.h
 #pragma once
 //{{{  includes
 #include "cParsedUrl.h"
@@ -7,33 +7,36 @@
 #include "cHlsChunk.h"
 //}}}
 
-class cHlsChunks {
+class cHlsRadio {
 public:
   #define SILENCE_SIZE 4096
   #define NUM_CHUNKS 3
   //{{{
-  cHlsChunks() {
+  cHlsRadio() : mBaseSeqNum(0), mBaseFrame(0) {
     for (auto i = 0; i < SILENCE_SIZE; i++)
       mSilence[i] = 0;
     }
   //}}}
 
   //{{{
-  int getBaseSeqNum() {
-    return mRadioChan.getBaseSeqNum();
-    }
-  //}}}
+  int setChan (int chan, int bitrate) {
 
-  //{{{
-  void setChan (int chan, int bitrate) {
-    mRadioChan.setChan (chan, bitrate);
+    printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
+    mBaseSeqNum = mRadioChan.setChan (chan, bitrate);
+
+    // set 10:00:00 base frame for now, eventually parse from getDateTime
+    mBaseFrame = (10 * 60 * 60 * cHlsChunk::getFramesPerChunk() * 10) / 64;
+    printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, mBaseSeqNum, mRadioChan.getDateTime());
+
     invalidateChunks();
+    return mBaseFrame;
     }
   //}}}
   //{{{
-  bool load (int playFrame) {
+  bool load (int frame) {
 
-    int seqNum = cHlsChunk::getFrameSeqNum (playFrame);
+    int seqNum = getSeqNumFromFrame (frame);
+    printf ("cHlsChunks::load frame::%d seqNum::%d\n", frame, seqNum);
 
     bool ok = false;
     int chunk;
@@ -51,11 +54,11 @@ public:
     }
   //}}}
   //{{{
-  int16_t* play (int playFrame, bool& playing, int& seqNum) {
+  int16_t* play (int frame, bool& playing, int& seqNum) {
 
     int chunk;
     int frameInChunk;
-    playing &= findFrame (playFrame, seqNum, chunk, frameInChunk);
+    playing &= findFrame (frame, seqNum, chunk, frameInChunk);
 
     return playing ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
     }
@@ -67,7 +70,7 @@ public:
     int chunk;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      frames = cHlsChunk::getNumFrames() - frameInChunk;
+      frames = cHlsChunk::getFramesPerChunk() - frameInChunk;
       mChunks[chunk].getAudioPower (frameInChunk, powerPtr);
       return true;
       }
@@ -80,17 +83,43 @@ public:
 
 private:
   //{{{
+  int getSeqNumFromFrame (int frame) {
+
+    int t = frame - mBaseFrame;
+    if (t >= 0)
+      return mBaseSeqNum + (t / cHlsChunk::getFramesPerChunk());
+    else
+      return mBaseSeqNum - 1 - ((-t-1)/ cHlsChunk::getFramesPerChunk());
+    }
+  //}}}
+  //{{{
+  int getFrameInChunkFromFrame (int frame) {
+
+    int t = frame - mBaseFrame;
+    if (t >= 0)
+      return t % cHlsChunk::getFramesPerChunk();
+    else
+      return cHlsChunk::getFramesPerChunk() - ((-t) % cHlsChunk::getFramesPerChunk());
+    }
+  //}}}
+  //{{{
   bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
 
+    auto findSeqNum = getSeqNumFromFrame (frame);
     for (auto i = 0; i < NUM_CHUNKS; i++) {
-      if (mChunks[i].contains (frame, seqNum, frameInChunk)) {
-        chunk = i;
-        return true;
+      if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
+        auto findFrameInChunk = getFrameInChunkFromFrame (frame);
+        if ((mChunks[i].getFramesLoaded() > 0) && (findFrameInChunk < mChunks[i].getFramesLoaded())) {
+          seqNum = findSeqNum;
+          chunk = i;
+          frameInChunk = findFrameInChunk;
+          return true;
+          }
         }
       }
 
-    seqNum = 0;
     chunk = 0;
+    seqNum = 0;
     frameInChunk = 0;
     return false;
     }
@@ -132,6 +161,8 @@ private:
   //}}}
 
   cRadioChan mRadioChan;
+  int mBaseSeqNum;
+  int mBaseFrame;
   cHlsChunk mChunks [NUM_CHUNKS];
   int16_t mSilence [SILENCE_SIZE];
   };
