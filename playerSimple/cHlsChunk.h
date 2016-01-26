@@ -25,6 +25,11 @@ public:
 
   // static members
   //{{{
+  static float getFramesPerSec() {
+    return float(kSamplesRate) / (float)kSamplesPerFrame;
+    }
+  //}}}
+  //{{{
   static int getSamplesPerFrame() {
     return kSamplesPerFrame;
     }
@@ -184,6 +189,7 @@ private:
   //{{{  const
   const int kChans = 2;
   const int kBytesPerSample = 2;
+  static const int kSamplesRate = 48000;
   static const int kSamplesPerFrame = 1024;
   static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
   //}}}

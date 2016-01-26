@@ -67,7 +67,7 @@ int main (int argc, char* argv[]) {
   radioChan->setChan (chan, bitrate);
   printf ("radio %d %s\n", radioChan->getBaseSeqNum(), radioChan->getDateTime());
 
-  int seqNum = radioChan->getBaseSeqNum();
+  int seqNum = radioChan->getBaseSeqNum()-1;
   bool phase = false;
   hlsChunk[phase].load (radioChan, seqNum++);
   std::thread ([=]() { play(); } ).detach();

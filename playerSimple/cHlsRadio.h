@@ -24,8 +24,11 @@ public:
     printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
     mBaseSeqNum = mRadioChan.setChan (chan, bitrate);
 
-    // set 10:00:00 base frame for now, eventually parse from getDateTime
-    mBaseFrame = (10 * 60 * 60 * cHlsChunk::getFramesPerChunk() * 10) / 64;
+    const char* dateTime = mRadioChan.getDateTime();
+    int hour = ((dateTime[11] - '0') * 10) + (dateTime[12] - '0');
+    int min = ((dateTime[14] - '0') * 10) + (dateTime[15] - '0');
+    int sec = ((dateTime[17] - '0') * 10) + (dateTime[18] - '0');
+    mBaseFrame = (((hour*60*60) + (min*60) + sec) * cHlsChunk::getFramesPerChunk() * 10) / 64;
     printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, mBaseSeqNum, mRadioChan.getDateTime());
 
     invalidateChunks();
@@ -85,21 +88,18 @@ private:
   //{{{
   int getSeqNumFromFrame (int frame) {
 
-    int t = frame - mBaseFrame;
-    if (t >= 0)
-      return mBaseSeqNum + (t / cHlsChunk::getFramesPerChunk());
+    int r = frame - mBaseFrame;
+    if (r >= 0)
+      return mBaseSeqNum + (r / cHlsChunk::getFramesPerChunk());
     else
-      return mBaseSeqNum - 1 - ((-t-1)/ cHlsChunk::getFramesPerChunk());
+      return mBaseSeqNum - 1 - ((-r-1)/ cHlsChunk::getFramesPerChunk());
     }
   //}}}
   //{{{
   int getFrameInChunkFromFrame (int frame) {
 
-    int t = frame - mBaseFrame;
-    if (t >= 0)
-      return t % cHlsChunk::getFramesPerChunk();
-    else
-      return cHlsChunk::getFramesPerChunk() - ((-t) % cHlsChunk::getFramesPerChunk());
+    int r = (frame - mBaseFrame) % cHlsChunk::getFramesPerChunk();
+    return r < 0 ? r + cHlsChunk::getFramesPerChunk() : r;
     }
   //}}}
   //{{{
