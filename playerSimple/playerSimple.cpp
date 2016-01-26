@@ -18,7 +18,7 @@
 class cAppWindow : public cD2dWindow {
 public:
   //{{{
-  cAppWindow() : mPlayFrame(0), mStopped(false) {
+  cAppWindow() : mPlayFrame(0), mStopped(false), mBetter(false) {
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
@@ -33,6 +33,8 @@ public:
 
     initialise (title, width, height);
 
+    if ((bitrate != 48000) && (bitrate != 320000))
+      bitrate = 128000;
     setPlayFrame (mHlsRadio.setChan (chan, bitrate) - 10.0f * cHlsChunk::getFramesPerSec());
 
     std::thread ([=]() { cAppWindow::loader(); } ).detach();
@@ -133,8 +135,8 @@ protected:
     int hours = (int)(secs100 / (60*60*100));
 
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%d:%02d:%02d.%02d %hs %d",
-              hours, mins, secs, frac, mHlsRadio.getChanName(), mHlsRadio.getBitrate());
+    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
+              hours, mins, secs, mHlsRadio.getChanName(), mHlsRadio.getBitrate()/1000);
     deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
     }
   //}}}
