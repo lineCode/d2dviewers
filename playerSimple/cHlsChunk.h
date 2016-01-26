@@ -9,7 +9,7 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mFramesLoaded(0),
+  cHlsChunk() : mSeqNum(0), mFramesLoaded(0), mLoading(false),
                 mChans(0), mSampleRate(0), mAacSamplesPerAacFrame(0),
                 mPower(nullptr), mAudio(nullptr) {}
   //}}}
@@ -40,11 +40,6 @@ public:
     }
   //}}}
   //{{{
-  static bool getLoading() {
-    return mLoading;
-    }
-  //}}}
-  //{{{
   static void closeDecoder() {
     NeAACDecClose (mDecoder);
     }
@@ -59,6 +54,11 @@ public:
   //{{{
   int getFramesLoaded() {
     return mFramesLoaded;
+    }
+  //}}}
+  //{{{
+  bool getLoading() {
+    return mLoading;
     }
   //}}}
   //{{{
@@ -194,12 +194,12 @@ private:
   static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
   //}}}
   //{{{  static vars
-  static bool mLoading;
   static NeAACDecHandle mDecoder;
   //}}}
   //{{{  vars
   int mSeqNum;
   int mFramesLoaded;
+  bool mLoading;
 
   unsigned long mSampleRate;
   uint8_t mChans;
@@ -212,4 +212,3 @@ private:
 
 // cHlsChunk static var init
 NeAACDecHandle cHlsChunk::mDecoder = 0;
-bool cHlsChunk::mLoading = false;

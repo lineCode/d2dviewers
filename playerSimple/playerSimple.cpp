@@ -1,4 +1,4 @@
-// playerSimple
+// playerSimple.cpp
 //{{{  includes
 #include "pch.h"
 #include <thread>
@@ -19,11 +19,13 @@ class cAppWindow : public cD2dWindow {
 public:
   //{{{
   cAppWindow() : mPlayFrame(0), mStopped(false) {
-    mSemaphoreLoad = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
+    mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
   //{{{
-  ~cAppWindow() {}
+  ~cAppWindow() {
+    CloseHandle (mSemaphore);
+    }
   //}}}
 
   //{{{
@@ -31,7 +33,7 @@ public:
 
     initialise (title, width, height);
 
-    setPlayFrame (mHlsRadio.setChan (chan, bitrate) - (10.0f * cHlsChunk::getFramesPerSec()));
+    setPlayFrame (mHlsRadio.setChan (chan, bitrate) - 10.0f * cHlsChunk::getFramesPerSec());
 
     std::thread ([=]() { cAppWindow::loader(); } ).detach();
     std::thread ([=]() { cAppWindow::player(); } ).detach();
@@ -48,24 +50,24 @@ protected:
 
     switch (key) {
       case 0x00 : break;
-      case 0x1B : return true;
+      case 0x1B : return true; // escape
 
-      case 0x20 : toggleStopped(); break;
+      case 0x20 : toggleStopped(); break;  // space
 
-      case 0x21 : incPlayFrame (-60 * cHlsChunk::getFramesPerSec()); break;
-      case 0x22 : incPlayFrame (+60 * cHlsChunk::getFramesPerSec()); break;
+      case 0x21 : incPlayFrame (-60 * cHlsChunk::getFramesPerSec()); break; // page up
+      case 0x22 : incPlayFrame (+60 * cHlsChunk::getFramesPerSec()); break; // page down
 
-      //case 0x23 : playFrame = audFramesLoaded - 1.0f; changed(); break;
-      //case 0x24 : playFrame = 0; break;
+      //case 0x23 : break; // end
+      //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (-2 * cHlsChunk::getFramesPerSec()); break;
-      case 0x27 : incPlayFrame (+2 * cHlsChunk::getFramesPerSec()); break;
+      case 0x25 : incPlayFrame (-2 * cHlsChunk::getFramesPerSec()); break;  // left arrow
+      case 0x27 : incPlayFrame (+2 * cHlsChunk::getFramesPerSec()); break;  // right arrow
 
-      case 0x26 : setStopped (true); incPlayFrame (-2.0f); break;
-      case 0x28 : setStopped (true); incPlayFrame (+2.0f); break;
+      case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
+      case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
 
-      //case 0x2d : markFrame = playFrame - 2.0f; changed(); break;
-      //case 0x2e : playFrame = markFrame; changed(); break;
+      //case 0x2d : break; // insert
+      //case 0x2e : break; // delete
 
       default   : printf ("key %x\n", key);
       }
@@ -80,13 +82,13 @@ protected:
     }
   //}}}
   //{{{
-  void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
+  void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
     if (!mouseMoved) {
       if (x < 100) {
         int chan = (y < 272/3) ? 3 : (y < 272*2/3) ? 4 : 6;
         setPlayFrame ((float)mHlsRadio.setChan (chan, 128000) - (10.0f * cHlsChunk::getFramesPerSec()));
-        releaseSemaphore();
+        signal();
         }
       }
 
@@ -103,17 +105,18 @@ protected:
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     deviceContext->FillRectangle (r, getGreyBrush());
 
+    bool loading = false;
     int frame = getIntPlayFrame() - int(getClientF().width/2.0f);
     uint8_t* powerPtr = nullptr;
     int frames = 0;
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
       r.right = r.left + 1.0f;
       if (!frames)
-        mHlsRadio.power (frame, &powerPtr, frames);
+        frames = mHlsRadio.power (frame, &powerPtr, loading);
       if (frames) {
         r.top = (float)*powerPtr++;
         r.bottom = r.top + *powerPtr++;
-        deviceContext->FillRectangle (r, getBlueBrush());
+        deviceContext->FillRectangle (r, loading ? getGreyBrush() : getBlueBrush());
         frames--;
         }
       frame++;
@@ -130,8 +133,7 @@ protected:
 
     wchar_t wDebugStr[200];
     swprintf (wDebugStr, 200, L"%d:%02d:%02d.%02d", hours, mins, secs, frac);
-    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
-                             cHlsChunk::getLoading() ? getYellowBrush() : getWhiteBrush());
+    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
     }
   //}}}
 
@@ -178,13 +180,13 @@ private:
 
   // semaphore
   //{{{
-  void waitSemaphore() {
-    WaitForSingleObject (mSemaphoreLoad, 20 * 1000);
+  void wait() {
+    WaitForSingleObject (mSemaphore, 20 * 1000);
     }
   //}}}
   //{{{
-  void releaseSemaphore() {
-    ReleaseSemaphore (mSemaphoreLoad, 1, NULL);
+  void signal() {
+    ReleaseSemaphore (mSemaphore, 1, NULL);
     }
   //}}}
 
@@ -195,7 +197,7 @@ private:
     while (true) {
       if (mHlsRadio.load (getIntPlayFrame()))
         Sleep (1000);
-      waitSemaphore();
+      wait();
       }
     }
   //}}}
@@ -215,7 +217,7 @@ private:
         setPlayFrame (getPlayFrame() + 1.0f);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
-        releaseSemaphore();
+        signal();
         lastSeqNum = seqNum;
         }
       }
@@ -226,10 +228,11 @@ private:
   //}}}
 
   //{{{  private vars
+  cHlsRadio mHlsRadio;
+  HANDLE mSemaphore;
+
   float mPlayFrame;
   bool mStopped;
-  HANDLE mSemaphoreLoad;
-  cHlsRadio mHlsRadio;
   //}}}
   };
 

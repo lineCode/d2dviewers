@@ -19,8 +19,8 @@ public:
     }
   //}}}
   //{{{
-  ~cHlsRadio() { 
-    free (mSilence); 
+  ~cHlsRadio() {
+    free (mSilence);
     }
   //}}}
 
@@ -73,19 +73,20 @@ public:
     }
   //}}}
   //{{{
-  bool power (int frame, uint8_t** powerPtr, int& frames) {
+  int power (int frame, uint8_t** powerPtr, bool& loading) {
 
-    int seqNum;
     int chunk;
+    int seqNum;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      frames = cHlsChunk::getFramesPerChunk() - frameInChunk;
       mChunks[chunk].getAudioPower (frameInChunk, powerPtr);
-      return true;
+      loading = mChunks[chunk].getLoading();
+      return cHlsChunk::getFramesPerChunk() - frameInChunk;
       }
     else {
-      frames = 0;
-      return false;
+      chunk = 0;
+      loading = false;
+      return 0;
       }
     }
   //}}}
