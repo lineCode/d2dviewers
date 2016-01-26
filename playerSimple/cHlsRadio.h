@@ -11,7 +11,7 @@ class cHlsRadio {
 public:
   #define NUM_CHUNKS 3
   //{{{
-  cHlsRadio() : mBaseSeqNum(0), mBaseFrame(0) {
+  cHlsRadio() : mBaseSeqNum(0), mBaseFrame(0), mLoading(0) {
 
     mSilence = (int16_t*) malloc (cHlsChunk::getSamplesPerFrame()*2*2);
     for (auto i = 0; i < cHlsChunk::getSamplesPerFrame()*2; i++)
@@ -26,19 +26,25 @@ public:
 
   //{{{
   int getBitrate() {
-
-    return mRadioChan.getBitrate();
+    return mBitrate;
     }
   //}}}
   //{{{
-  const char* getChanName() {
+  int getLoading() {
+    return mLoading;
+    }
+  //}}}
+  //{{{
+  const char* getChanDisplayName() {
 
-    return mRadioChan.getChanName();
+    return mRadioChan.getChanDisplayName();
     }
   //}}}
 
   //{{{
   int setChan (int chan, int bitrate) {
+
+    mBitrate = bitrate;
 
     printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
     mBaseSeqNum = mRadioChan.setChan (chan, bitrate);
@@ -55,22 +61,44 @@ public:
     }
   //}}}
   //{{{
+  void setBitrate (int bitrate) {
+
+    mBitrate = bitrate;
+    }
+  //}}}
+
+  //{{{
   bool load (int frame, bool better) {
 
-    //mRadioChan.setBetter (better);
+    if (better) {
+      if (mBitrate == 128000)
+        mBitrate = 320000;
+      else if (mBitrate == 48000)
+       mBitrate = 128000;
+     }
+    else
+      mBitrate = 48000;
+
     int seqNum = getSeqNumFromFrame (frame);
 
     bool ok = false;
     int chunk;
-    if (!findSeqNumChunk (seqNum, 0, chunk))
-      ok &= mChunks[chunk].load (&mRadioChan, seqNum);
+    if (!findSeqNumChunk (seqNum, 0, chunk)) {
+      mLoading++;
+      ok &= mChunks[chunk].load (&mRadioChan, seqNum, mBitrate);
+      }
 
     for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
-      if (!findSeqNumChunk (seqNum, i, chunk))
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i);
-      if (!findSeqNumChunk (seqNum, -i, chunk))
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i);
+      if (!findSeqNumChunk (seqNum, i, chunk)) {
+        mLoading++;
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i, mBitrate);
+        }
+      if (!findSeqNumChunk (seqNum, -i, chunk)) {
+        mLoading++;
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i, mBitrate);
+        }
       }
+    mLoading = 0;
 
     return ok;
     }
@@ -86,19 +114,17 @@ public:
     }
   //}}}
   //{{{
-  int power (int frame, uint8_t** powerPtr, bool& loading) {
+  int power (int frame, uint8_t** powerPtr) {
 
     int chunk;
     int seqNum;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
       mChunks[chunk].getAudioPower (frameInChunk, powerPtr);
-      loading = mChunks[chunk].getLoading();
       return cHlsChunk::getFramesPerChunk() - frameInChunk;
       }
     else {
       chunk = 0;
-      loading = false;
       return 0;
       }
     }
@@ -183,6 +209,8 @@ private:
   cRadioChan mRadioChan;
   int mBaseSeqNum;
   int mBaseFrame;
+  int mBitrate;
+  int mLoading;
   cHlsChunk mChunks [NUM_CHUNKS];
   int16_t* mSilence;
   };

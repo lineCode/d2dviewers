@@ -5,18 +5,13 @@
 
 class cRadioChan {
 public:
-  cRadioChan() : mChan(0), mBitrate(0), mBaseSeqNum(0) {}
+  cRadioChan() : mChan(0), mBaseSeqNum(0) {}
   ~cRadioChan() {}
 
   // gets
   //{{{
   int getChan() {
     return mChan;
-    }
-  //}}}
-  //{{{
-  int getBitrate() {
-    return mBitrate;
     }
   //}}}
   //{{{
@@ -30,10 +25,10 @@ public:
     }
   //}}}
   //{{{
-  const char* getPath (int seqNum) {
+  const char* getPath (int seqNum, int bitrate) {
 
     sprintf (mPath, "pool_%d/live/%s/%s.isml/%s-audio=%d-%d.ts",
-             kPool[mChan], kChanPathNames[mChan], kChanPathNames[mChan], kChanPathNames[mChan], mBitrate, seqNum);
+             kPool[mChan], kChanPathNames[mChan], kChanPathNames[mChan], kChanPathNames[mChan], bitrate, seqNum);
     return mPath;
     }
   //}}}
@@ -43,7 +38,7 @@ public:
     }
   //}}}
   //{{{
-  const char* getChanName() {
+  const char* getChanDisplayName() {
     return kChanDisplayNames[mChan];
     }
   //}}}
@@ -52,27 +47,8 @@ public:
   //{{{
   int setChan (int chan, int bitrate) {
     mChan = chan;
-    mBitrate = bitrate;
-    findM3u8SeqNum();
+    findM3u8SeqNum (bitrate);
     return mBaseSeqNum;
-    }
-  //}}}
-  //{{{
-  void setBetter (bool better) {
-
-    if (better) {
-      if (mBitrate <= 48000)
-        mBitrate = 128000;
-      else if (mBitrate <= 128000)
-        mBitrate = 320000;
-      }
-    else
-      mBitrate = 48000;
-    }
-  //}}}
-  //{{{
-  void setBitrate (int bitrate) {
-    mBitrate = bitrate;
     }
   //}}}
 
@@ -84,12 +60,12 @@ private:
   const char* kChanDisplayNames[7] = { "notTuned", "one", "two", "bbcRadio3", "bbcRadio4", "five", "bbcRadio6" };
 
   //{{{
-  void findM3u8SeqNum() {
+  void findM3u8SeqNum (int bitrate) {
 
     cHttp m3u8;
 
     sprintf (mPath, "pool_%d/live/%s/%s.isml/%s-audio%%3d%d.m3u8",
-             kPool[mChan], kChanPathNames[mChan], kChanPathNames[mChan], kChanPathNames[mChan], mBitrate);
+             kPool[mChan], kChanPathNames[mChan], kChanPathNames[mChan], kChanPathNames[mChan], bitrate);
     if (m3u8.get (kBbcHost, mPath) == 302) {
       strcpy (mHost, m3u8.getRedirectedHost());
       m3u8.get (mHost, mPath);
@@ -113,7 +89,6 @@ private:
 
   // vars
   int mChan;
-  int mBitrate;
   int mBaseSeqNum;
   char mDateTime[80];
   char mHost[80];

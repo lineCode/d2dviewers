@@ -69,12 +69,12 @@ int main (int argc, char* argv[]) {
 
   int seqNum = radioChan->getBaseSeqNum()-1;
   bool phase = false;
-  hlsChunk[phase].load (radioChan, seqNum++);
+  hlsChunk[phase].load (radioChan, seqNum++, bitrate);
   std::thread ([=]() { play(); } ).detach();
 
   while (true) {
     phase = !phase;
-    hlsChunk[phase].load (radioChan, seqNum++);
+    hlsChunk[phase].load (radioChan, seqNum++, bitrate);
     WaitForSingleObject (hSemaphore, 20 * 1000);
     }
 

@@ -66,9 +66,18 @@ protected:
       case 0x25 : incPlayFrame (-2 * cHlsChunk::getFramesPerSec()); break;  // left arrow
       case 0x27 : incPlayFrame (+2 * cHlsChunk::getFramesPerSec()); break;  // right arrow
 
-      case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
-      case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
-
+      //case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
+      //case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
+      case 0x26 : if (mHlsRadio.getBitrate() == 320000)
+                    mHlsRadio.setBitrate (128000);
+                   else if (mHlsRadio.getBitrate() == 128000)
+                     mHlsRadio.setBitrate (48000);
+                   break; // up arrow
+      case 0x28 : if (mHlsRadio.getBitrate() == 48000)
+                    mHlsRadio.setBitrate (128000);
+                  else if (mHlsRadio.getBitrate() == 128000)
+                    mHlsRadio.setBitrate (320000);
+                  break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -108,18 +117,17 @@ protected:
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     deviceContext->FillRectangle (r, getGreyBrush());
 
-    bool loading = false;
     int frame = getIntPlayFrame() - int(getClientF().width/2.0f);
     uint8_t* powerPtr = nullptr;
     int frames = 0;
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
       r.right = r.left + 1.0f;
       if (!frames)
-        frames = mHlsRadio.power (frame, &powerPtr, loading);
+        frames = mHlsRadio.power (frame, &powerPtr);
       if (frames) {
         r.top = (float)*powerPtr++;
         r.bottom = r.top + *powerPtr++;
-        deviceContext->FillRectangle (r, loading ? getGreyBrush() : getBlueBrush());
+        deviceContext->FillRectangle (r, getBlueBrush());
         frames--;
         }
       frame++;
@@ -136,8 +144,9 @@ protected:
 
     wchar_t wDebugStr[200];
     swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
-              hours, mins, secs, mHlsRadio.getChanName(), mHlsRadio.getBitrate()/1000);
-    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
+              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000);
+    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, 
+                             mHlsRadio.getLoading() ? getGreyBrush() : getWhiteBrush());
     }
   //}}}
 
