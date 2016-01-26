@@ -9,12 +9,18 @@
 
 class cHlsRadio {
 public:
-  #define SILENCE_SIZE 4096
   #define NUM_CHUNKS 3
   //{{{
   cHlsRadio() : mBaseSeqNum(0), mBaseFrame(0) {
-    for (auto i = 0; i < SILENCE_SIZE; i++)
+
+    mSilence = (int16_t*) malloc (cHlsChunk::getSamplesPerFrame()*2*2);
+    for (auto i = 0; i < cHlsChunk::getSamplesPerFrame()*2; i++)
       mSilence[i] = 0;
+    }
+  //}}}
+  //{{{
+  ~cHlsRadio() { 
+    free (mSilence); 
     }
   //}}}
 
@@ -164,5 +170,5 @@ private:
   int mBaseSeqNum;
   int mBaseFrame;
   cHlsChunk mChunks [NUM_CHUNKS];
-  int16_t mSilence [SILENCE_SIZE];
+  int16_t* mSilence;
   };

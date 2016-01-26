@@ -5,14 +5,10 @@
 
 class cRadioChan {
 public:
-  cRadioChan() : mChan(6), mBitrate(128000), mBaseSeqNum(0) {}
+  cRadioChan() : mChan(0), mBitrate(0), mBaseSeqNum(0) {}
   ~cRadioChan() {}
 
-  //{{{
-  int getBaseSeqNum() {
-    return mBaseSeqNum;
-    }
-  //}}}
+  // gets
   //{{{
   int getChan() {
     return mChan;
@@ -21,6 +17,11 @@ public:
   //{{{
   int getBitrate() {
     return mBitrate;
+    }
+  //}}}
+  //{{{
+  int getBaseSeqNum() {
+    return mBaseSeqNum;
     }
   //}}}
   //{{{
@@ -47,9 +48,9 @@ public:
     }
   //}}}
 
+  // set
   //{{{
   int setChan (int chan, int bitrate) {
-    mChan = chan;
     mChan = chan;
     mBitrate = bitrate;
     findM3u8SeqNum();
@@ -61,7 +62,7 @@ private:
   // const
   const char* kBbcHost = "as-hls-uk-live.bbcfmt.vo.llnwd.net";
   const int kPool [7] = { 0, 0, 0, 7, 6, 0, 6 };
-  const char* kChanNames[7] = { "none", "one", "two", "bbc_radio_three", "bbc_radio_fourfm", "five", "bbc_6music" };
+  const char* kChanNames[7] = { "notTuned", "one", "two", "bbc_radio_three", "bbc_radio_fourfm", "five", "bbc_6music" };
 
   //{{{
   void findM3u8SeqNum() {
@@ -92,9 +93,9 @@ private:
   //}}}
 
   // vars
-  int mBaseSeqNum;
   int mChan;
   int mBitrate;
+  int mBaseSeqNum;
   char mDateTime[80];
   char mHost[80];
   char mPath[200];
