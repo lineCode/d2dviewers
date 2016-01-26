@@ -25,6 +25,19 @@ public:
   //}}}
 
   //{{{
+  int getBitrate() {
+
+    return mRadioChan.getBitrate();
+    }
+  //}}}
+  //{{{
+  const char* getChanName() {
+
+    return mRadioChan.getChanName();
+    }
+  //}}}
+
+  //{{{
   int setChan (int chan, int bitrate) {
 
     printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
@@ -42,10 +55,10 @@ public:
     }
   //}}}
   //{{{
-  bool load (int frame) {
+  bool load (int frame, bool better) {
 
+    //mRadioChan.setBetter (better);
     int seqNum = getSeqNumFromFrame (frame);
-    printf ("cHlsChunks::load frame::%d seqNum::%d\n", frame, seqNum);
 
     bool ok = false;
     int chunk;

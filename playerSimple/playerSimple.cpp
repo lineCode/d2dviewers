@@ -36,7 +36,10 @@ public:
     setPlayFrame (mHlsRadio.setChan (chan, bitrate) - 10.0f * cHlsChunk::getFramesPerSec());
 
     std::thread ([=]() { cAppWindow::loader(); } ).detach();
-    std::thread ([=]() { cAppWindow::player(); } ).detach();
+
+    auto playerThread = std::thread ([=]() { cAppWindow::player(); });
+    SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+    playerThread.detach();
 
     messagePump();
     };
@@ -130,7 +133,8 @@ protected:
     int hours = (int)(secs100 / (60*60*100));
 
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%d:%02d:%02d.%02d", hours, mins, secs, frac);
+    swprintf (wDebugStr, 200, L"%d:%02d:%02d.%02d %hs %d",
+              hours, mins, secs, frac, mHlsRadio.getChanName(), mHlsRadio.getBitrate());
     deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
     }
   //}}}
@@ -193,7 +197,7 @@ private:
   void loader() {
 
     while (true) {
-      if (mHlsRadio.load (getIntPlayFrame()))
+      if (mHlsRadio.load (getIntPlayFrame(), mBetter))
         Sleep (1000);
       wait();
       }
@@ -215,6 +219,7 @@ private:
         setPlayFrame (getPlayFrame() + 1.0f);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
+        mBetter = (seqNum == (lastSeqNum + 1));
         signal();
         lastSeqNum = seqNum;
         }
@@ -231,6 +236,7 @@ private:
 
   float mPlayFrame;
   bool mStopped;
+  bool mBetter;
   //}}}
   };
 
@@ -251,7 +257,7 @@ int wmain (int argc, wchar_t* argv[]) {
 
   cAppWindow appWindow;
   appWindow.run (L"hls player", 480, 272,
-                 (argc >= 2) ? _wtoi(argv[1]) : 6,       // chan
+                 (argc >= 2) ? _wtoi(argv[1]) : 4,       // chan
                  (argc >= 3) ? _wtoi(argv[2]) : 128000); // bitrate
   }
 //}}}

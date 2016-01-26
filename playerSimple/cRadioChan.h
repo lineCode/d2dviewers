@@ -57,6 +57,24 @@ public:
     return mBaseSeqNum;
     }
   //}}}
+  //{{{
+  void setBetter (bool better) {
+
+    if (better) {
+      if (mBitrate <= 48000)
+        mBitrate = 128000;
+      else if (mBitrate <= 128000)
+        mBitrate = 320000;
+      }
+    else
+      mBitrate = 48000;
+    }
+  //}}}
+  //{{{
+  void setBitrate (int bitrate) {
+    mBitrate = bitrate;
+    }
+  //}}}
 
 private:
   // const
