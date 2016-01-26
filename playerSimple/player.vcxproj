@@ -265,6 +265,11 @@
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\winAudio.h" />
+    <ClInclude Include="cHlsChunk.h" />
+    <ClInclude Include="cHlsChunks.h" />
+    <ClInclude Include="cHttp.h" />
+    <ClInclude Include="cParsedUrl.h" />
+    <ClInclude Include="cRadioChan.h" />
     <ClInclude Include="libfaad\include\faad.h" />
     <ClInclude Include="libfaad\include\neaacdec.h" />
     <ClInclude Include="libfaad\libfaad\analysis.h" />

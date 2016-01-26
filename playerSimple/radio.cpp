@@ -8,13 +8,17 @@
 
 #include "libfaad/include/neaacdec.h"
 #include "../common/winaudio.h"
+#pragma comment (lib,"ws2_32.lib")
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
 
 #include <thread>
 
-#pragma comment (lib,"ws2_32.lib")
+#include "cParsedUrl.h"
+#include "cHttp.h"
+#include "cRadioChan.h"
+#include "cHlsChunk.h"
 //}}}
 //{{{  typedef
 typedef unsigned short uint16_t;
@@ -22,7 +26,6 @@ typedef unsigned char uint8_t;
 typedef signed short int16_t;
 typedef signed char int8_t;
 //}}}
-#include "http.h"
 
 HANDLE hSemaphore;
 

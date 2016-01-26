@@ -316,6 +316,21 @@
     <ClInclude Include="libfaad\libfaad\tns.h">
       <Filter>libfaad</Filter>
     </ClInclude>
+    <ClInclude Include="cHlsChunk.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cHlsChunks.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cHttp.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cParsedUrl.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cRadioChan.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

@@ -10,7 +10,11 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 
-#include "http.h"
+#include "cParsedUrl.h"
+#include "cHttp.h"
+#include "cRadioChan.h"
+#include "cHlsChunk.h"
+#include "cHlsChunks.h"
 
 #pragma comment (lib,"ws2_32.lib")
 //}}}
