@@ -21,7 +21,7 @@ public:
   // gets
   //{{{
   int getResponse() {
-    return mResponseCode;
+    return mResponse;
     }
   //}}}
   //{{{
@@ -56,7 +56,7 @@ public:
   // send http GET request to host, return response code
 
     //{{{  init
-    mResponseCode = 0;
+    mResponse = 0;
 
     mState = http_header;
     mParseHeaderState = http_parse_header_done;
@@ -148,7 +148,7 @@ public:
       mErrorStr = "getHttp - error parsing data\n";
 
     closesocket (webSocket);
-    return mResponseCode;
+    return mResponse;
     }
   //}}}
 #else
@@ -157,7 +157,7 @@ public:
   // send http GET request to host, return context
 
     //{{{  init
-    mResponseCode = 0;
+    mResponse = 0;
 
     mState = http_header;
     mParseHeaderState = http_parse_header_done;
@@ -387,7 +387,7 @@ private:
           switch (parseHeaderChar (*data)) {
             case http_parse_header_code_character:
               //{{{  code char
-              mResponseCode = mResponseCode * 10 + *data - '0';
+              mResponse = mResponse * 10 + *data - '0';
               break;
               //}}}
             case http_parse_header_done:
@@ -524,7 +524,7 @@ private:
   //}}}
 
   //{{{  vars
-  int mResponseCode;
+  int mResponse;
   eState mState;
   eParseHeaderState mParseHeaderState;
   int mChunked;

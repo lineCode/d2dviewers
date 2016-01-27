@@ -28,7 +28,6 @@ public:
     CloseHandle (mSemaphore);
     }
   //}}}
-
   //{{{
   void run (wchar_t* title, int width, int height, int chan, int bitrate) {
 
@@ -228,10 +227,10 @@ private:
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (getPlay (getIntPlayFrame(), playing, seqNum), getSamplesPerFrame()*4, 1.0f);
+      winAudioPlay (getAudioSamples (getIntPlayFrame(), playing, seqNum), getSamplesPerPlay(), 1.0f);
 
       if (playing)
-        setPlayFrame (getPlayFrame() + 1.0f);
+        setPlayFrame ((getIntPlayFrame() & ~(getFramesPerPlay()>> 1)) + (float)getFramesPerPlay());
 
       if (!seqNum || (seqNum != lastSeqNum)) {
         mJump = seqNum != lastSeqNum+1;
@@ -255,12 +254,11 @@ private:
     }
   //}}}
 
-  //{{{  private vars
+  // vars
   HANDLE mSemaphore;
   float mPlayFrame;
   bool mStopped;
   bool mJump;
-  //}}}
   };
 
 //{{{

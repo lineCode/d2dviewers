@@ -49,6 +49,8 @@ public:
 
 private:
   // const
+  //"vs-hls-uk-live.bbcfmt.vo.llnwd.net"
+  //"/pool_5/live/bbc_two_hd/bbc_two_hd.isml/bbc_two_hd-pa3%3d96000-video%3d1604000.norewind.m3u8"
   const char* kBbcHost = "as-hls-uk-live.bbcfmt.vo.llnwd.net";
   const int kPool [7] = { 0, 0, 0, 7, 6, 0, 6 };
   const char* kChanPathNames[7] = { "none", "one", "two", "bbc_radio_three", "bbc_radio_fourfm", "five", "bbc_6music" };

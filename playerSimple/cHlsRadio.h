@@ -13,7 +13,7 @@ public:
   //{{{
   cHlsRadio() : mBaseFrame(0), mLoading(0) {
 
-    mSilence = (int16_t*) pvPortMalloc (cHlsChunk::getSamplesPerFrame()*2*2);
+    mSilence = (int16_t*) pvPortMalloc (cHlsChunk::getSamplesPerFrame()*2*2*getFramesPerPlay());
     for (auto i = 0; i < cHlsChunk::getSamplesPerFrame()*2; i++)
       mSilence[i] = 0;
     }
@@ -55,17 +55,6 @@ public:
     }
   //}}}
   //{{{
-  int16_t* getPlay (int frame, bool& playing, int& seqNum) {
-  // return audio buffer for frame, silence if not loaded or not playing
-
-    int chunk;
-    int frameInChunk;
-    playing &= findFrame (frame, seqNum, chunk, frameInChunk);
-
-    return playing ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
-    }
-  //}}}
-  //{{{
   uint8_t* getPower (int frame, int& frames) {
   // return pointer to frame power org,len uint8_t pairs
   // frames = number of valid frames
@@ -82,6 +71,27 @@ public:
       frames = 0;
       return nullptr;
       }
+    }
+  //}}}
+  //{{{
+  int16_t* getAudioSamples (int frame, bool& playing, int& seqNum) {
+  // return audio buffer for frame, silence if not loaded or not playing
+
+    int chunk;
+    int frameInChunk;
+    playing &= findFrame (frame, seqNum, chunk, frameInChunk);
+
+    return playing ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
+    }
+  //}}}
+  //{{{
+  int getFramesPerPlay() {
+    return 1;
+    }
+  //}}}
+  //{{{
+  int getSamplesPerPlay() {
+    return getSamplesPerFrame() * 2 * 2 * getFramesPerPlay();
     }
   //}}}
 
