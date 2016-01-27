@@ -12,6 +12,9 @@
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
+// redefine bigHeap handlers
+#define pvPortMalloc malloc
+#define vPortFree free
 #include "cHlsRadio.h"
 //}}}
 
@@ -143,9 +146,9 @@ protected:
     int hours = (int)(secs100 / (60*60*100));
 
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
-              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000);
-    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, 
+    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk %hs",
+              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000, mHlsRadio.getDebugStr());
+    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
                              mHlsRadio.getLoading() ? getGreyBrush() : getWhiteBrush());
     }
   //}}}

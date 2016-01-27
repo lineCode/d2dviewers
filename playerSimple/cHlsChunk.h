@@ -16,9 +16,9 @@ public:
   ~cHlsChunk() {
 
     if (mPower)
-      free (mPower);
+      vPortFree (mPower);
     if (mAudio)
-      free (mAudio);
+      vPortFree (mAudio);
     }
   //}}}
 
@@ -78,9 +78,9 @@ public:
     NeAACDecSetConfiguration (mDecoder, config);
     //}}}
     if (!mPower)
-      mPower = (uint8_t*)malloc (kFramesPerChunk * 2);
+      mPower = (uint8_t*)pvPortMalloc (kFramesPerChunk * 2);
     if (!mAudio)
-      mAudio = (int16_t*)malloc (kFramesPerChunk * kSamplesPerFrame * kChans * kBytesPerSample);
+      mAudio = (int16_t*)pvPortMalloc (kFramesPerChunk * kSamplesPerFrame * kChans * kBytesPerSample);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));

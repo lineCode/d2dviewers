@@ -11,7 +11,7 @@ public:
   ~cHttp() {
 
     if (mContent)
-      free (mContent);
+      vPortFree (mContent);
 
     if (mRedirectUrl)
       delete mRedirectUrl;
@@ -69,7 +69,7 @@ public:
 
     mContentSize = 0;
     if (mContent) {
-      free (mContent);
+      vPortFree (mContent);
       mContent = nullptr;
       }
     //}}}
@@ -170,7 +170,7 @@ public:
 
     mContentSize = 0;
     if (mContent) {
-      free (mContent);
+      pvPortMalloc (mContent);
       mContent = nullptr;
       }
     //}}}
@@ -436,7 +436,7 @@ private:
                 mContentLen = 0;
                 for (int ii = mKeyStrLen, end = mKeyStrLen + mValueStrLen; ii != end; ++ii)
                   mContentLen = mContentLen * 10 + mScratch[ii] - '0';
-                mContent = (uint8_t*)malloc (mContentLen);
+                mContent = (uint8_t*)pvPortMalloc (mContentLen);
                 }
               else if ((mKeyStrLen == 8) &&
                        (strncmp (mScratch, "location", mKeyStrLen) == 0)) {

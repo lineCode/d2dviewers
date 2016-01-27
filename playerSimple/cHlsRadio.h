@@ -13,14 +13,14 @@ public:
   //{{{
   cHlsRadio() : mBaseSeqNum(0), mBaseFrame(0), mLoading(0) {
 
-    mSilence = (int16_t*) malloc (cHlsChunk::getSamplesPerFrame()*2*2);
+    mSilence = (int16_t*) pvPortMalloc (cHlsChunk::getSamplesPerFrame()*2*2);
     for (auto i = 0; i < cHlsChunk::getSamplesPerFrame()*2; i++)
       mSilence[i] = 0;
     }
   //}}}
   //{{{
   ~cHlsRadio() {
-    free (mSilence);
+    vPortFree (mSilence);
     }
   //}}}
 
@@ -38,6 +38,16 @@ public:
   const char* getChanDisplayName() {
 
     return mRadioChan.getChanDisplayName();
+    }
+  //}}}
+  //{{{
+  const char* getDebugStr() {
+
+    sprintf (mDebugStr, "%d:%d:%d\n", 
+             mChunks[0].getSeqNum() - mBaseSeqNum,
+             mChunks[1].getSeqNum() - mBaseSeqNum,
+             mChunks[2].getSeqNum() - mBaseSeqNum);
+    return mDebugStr;
     }
   //}}}
 
@@ -211,6 +221,7 @@ private:
   int mBaseFrame;
   int mBitrate;
   int mLoading;
+  char mDebugStr [20];
   cHlsChunk mChunks [NUM_CHUNKS];
   int16_t* mSilence;
   };
