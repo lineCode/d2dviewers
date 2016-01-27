@@ -17,7 +17,22 @@ public:
   //{{{
   const char* getPath (int seqNum, int bitrate) {
 
-    sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate, seqNum);
+    if (getRadioTv()) {
+      int audioCode;
+      if (bitrate == 320000)
+        audioCode = 5;
+      else if (bitrate == 128000)
+        audioCode = 4;
+      else if (bitrate == 96000)
+        audioCode = 3;
+      else if (bitrate == 64000)
+        audioCode = 2;
+      else // 24000
+        audioCode = 1;
+      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], audioCode, bitrate, seqNum);
+      }
+    else
+      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate, seqNum);
     return mPath;
     }
   //}}}
@@ -72,25 +87,26 @@ private:
   //{{{  const
   const char* kOrigHost[2] =     { "as-hls-uk-live.bbcfmt.vo.llnwd.net",
                                    "vs-hls-uk-live.bbcfmt.vo.llnwd.net" };
+  const char* kM3u8Path[2] =     { "pool_%d/live/%s/%s.isml/%s-audio%%3d%d.norewind.m3u8",
+                                   "pool_%d/live/%s/%s.isml/%s-pa3%%3d%d.norewind.m3u8" };
+  //                                 "pool_%d/live/%s/%s.isml/%s-pa3%%3d%d-video%3d1604000.norewind.m3u8" };
   const char* kTsPath[2] =       { "pool_%d/live/%s/%s.isml/%s-audio=%d-%d.ts",
-                                   "pool_%d/live/%s/%s.isml/%s-pa3%%3d%d-%d.ts" };
+                                   "pool_%d/live/%s/%s.isml/%s-pa%d%%3d%d-%d.ts" };
   //                                 "pool_%d/live/%s/%s.isml/%s-pa3%%3d%d-video%%3d1604000-%d.ts" };
   // pa1 24000 pa2 64000, pa3 96000, pa4 128000, pa5 320000
   // video=437000 -video=827000 -video=1604000 -video=2812000 -video=5070000
 
-  const char* kM3u8Path[2] =     { "pool_%d/live/%s/%s.isml/%s-audio%%3d%d.norewind.m3u8",
-                                   "pool_%d/live/%s/%s.isml/%s-pa3%%3d%d-video%3d1604000.norewind.m3u8" };
   const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
 
-  const bool kRadioTv    [9] = { false,   false,  false, false,   false, false,   false, true,   true };
-  const int kPool        [9] = {      0,      7,      7,      7,      6,      6,      6,     5,     4 };
-  const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000, 96000, 96000 };
-  const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 96000, 96000 };
-  const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000, 96000, 96000 };
-  const char* kPathNames [9] = { "none", "bbc_radio_one", "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
-                                         "bbc_radio_five_live", "bbc_6music", "bbc_two_hd", "bbc_one_hd"};
+  const bool kRadioTv    [9] = { false,   false,  false, false,   false,  false,  false,   true,   true };
+  const int kPool        [9] = {      0,      7,      7,      7,      6,      6,      6,      4,      5 };
+  const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000 };
+  const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000 };
+  const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000, 128000 };
+  const char* kPathNames [9] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
+                                         "bbc_radio_five_live", "bbc_6music", "bbc_one_hd",      "bbc_two_hd"};
   const char* kChanNames [9] = { "none", "bbcRadio1", "bbcRadio2", "bbcRadio3", "bbcRadio4fm",
-                                         "bbcRadio5",  "bbcRadio6", "bbc2hd", "bbc1hd" };
+                                         "bbcRadio5", "bbcRadio6",    "bbc1hd",       "bbc2hd" };
   //}}}
 
   //{{{
