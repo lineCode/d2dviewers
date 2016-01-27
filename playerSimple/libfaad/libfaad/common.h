@@ -39,7 +39,7 @@ extern "C" {
 #  include "../config.h"
 #endif
 
-#include "../include/neaacdec.h"
+#include "../neaacdec.h"
 
 #if 1
 #define INLINE __inline

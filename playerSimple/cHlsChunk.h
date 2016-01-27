@@ -56,10 +56,8 @@ public:
     }
   //}}}
   //{{{
-  void getAudioPower (int frame, uint8_t** powerPtr) {
-
-    *powerPtr = mPower ? mPower + (frame * 2) : nullptr;
-
+  uint8_t* getAudioPower (int frame) {
+    return mPower ? mPower + (frame * 2) : nullptr;
     }
   //}}}
 

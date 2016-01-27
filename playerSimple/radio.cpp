@@ -5,19 +5,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-
-#include "libfaad/include/neaacdec.h"
-#include "../common/winaudio.h"
-#pragma comment (lib,"ws2_32.lib")
+#include <thread>
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
+#pragma comment (lib,"ws2_32.lib")
 
-#include <thread>
+#include "libfaad/neaacdec.h"
+#include "../common/winaudio.h"
 
-#include "cParsedUrl.h"
-#include "cHttp.h"
-#include "cRadioChan.h"
+// redefine bigHeap handlers
+#define pvPortMalloc malloc
+#define vPortFree free
 #include "cHlsChunk.h"
 //}}}
 //{{{  typedef

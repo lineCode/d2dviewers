@@ -35,6 +35,11 @@ public:
     }
   //}}}
   //{{{
+  float getFramesPerSec() {
+    return cHlsChunk::getFramesPerSec();
+    }
+  //}}}
+  //{{{
   const char* getChanDisplayName() {
 
     return mRadioChan.getChanDisplayName();
@@ -43,7 +48,7 @@ public:
   //{{{
   const char* getDebugStr() {
 
-    sprintf (mDebugStr, "%d:%d:%d\n", 
+    sprintf (mDebugStr, "%d:%d:%d\n",
              mChunks[0].getSeqNum() - mBaseSeqNum,
              mChunks[1].getSeqNum() - mBaseSeqNum,
              mChunks[2].getSeqNum() - mBaseSeqNum);
@@ -52,7 +57,7 @@ public:
   //}}}
 
   //{{{
-  int setChan (int chan, int bitrate) {
+  int setChanBitrate (int chan, int bitrate) {
 
     mBitrate = bitrate;
 
@@ -78,16 +83,7 @@ public:
   //}}}
 
   //{{{
-  bool load (int frame, bool better) {
-
-    if (better) {
-      if (mBitrate == 128000)
-        mBitrate = 320000;
-      else if (mBitrate == 48000)
-       mBitrate = 128000;
-     }
-    else
-      mBitrate = 48000;
+  bool load (int frame) {
 
     int seqNum = getSeqNumFromFrame (frame);
 
@@ -114,7 +110,8 @@ public:
     }
   //}}}
   //{{{
-  int16_t* play (int frame, bool& playing, int& seqNum) {
+  int16_t* getPlay (int frame, bool& playing, int& seqNum) {
+  // return audio buffer for frame, silence if not loaded or not playing
 
     int chunk;
     int frameInChunk;
@@ -124,18 +121,21 @@ public:
     }
   //}}}
   //{{{
-  int power (int frame, uint8_t** powerPtr) {
+  uint8_t* getPower (int frame, int& frames) {
+  // return pointer to frame power org,len uint8_t pairs
+  // frames = number of valid frames
 
     int chunk;
     int seqNum;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      mChunks[chunk].getAudioPower (frameInChunk, powerPtr);
-      return cHlsChunk::getFramesPerChunk() - frameInChunk;
+      frames = cHlsChunk::getFramesPerChunk() - frameInChunk;
+      return mChunks[chunk].getAudioPower (frameInChunk);
       }
     else {
       chunk = 0;
-      return 0;
+      frames = 0;
+      return nullptr;
       }
     }
   //}}}

@@ -1,16 +1,14 @@
 // playerSimple.cpp
 //{{{  includes
 #include "pch.h"
-#include <thread>
-
-#include "../common/cD2dWindow.h"
-
-#include "../common/winAudio.h"
-#include "../inc/libfaad/neaacdec.h"
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
+
+#include "../common/cD2dWindow.h"
+#include "../common/winAudio.h"
+#include "libfaad/neaacdec.h"
 
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
@@ -21,7 +19,7 @@
 class cAppWindow : public cD2dWindow {
 public:
   //{{{
-  cAppWindow() : mPlayFrame(0), mStopped(false), mBetter(false) {
+  cAppWindow() : mPlayFrame(0), mStopped(false) {
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
@@ -38,7 +36,7 @@ public:
 
     if ((bitrate != 48000) && (bitrate != 320000))
       bitrate = 128000;
-    setPlayFrame (mHlsRadio.setChan (chan, bitrate) - 10.0f * cHlsChunk::getFramesPerSec());
+    setPlayFrame (mHlsRadio.setChanBitrate(chan, bitrate) - 10.0f * mHlsRadio.getFramesPerSec());
 
     std::thread ([=]() { cAppWindow::loader(); } ).detach();
 
@@ -60,27 +58,17 @@ protected:
 
       case 0x20 : toggleStopped(); break;  // space
 
-      case 0x21 : incPlayFrame (-60 * cHlsChunk::getFramesPerSec()); break; // page up
-      case 0x22 : incPlayFrame (+60 * cHlsChunk::getFramesPerSec()); break; // page down
+      case 0x21 : incPlayFrame (-60 * mHlsRadio.getFramesPerSec()); break; // page up
+      case 0x22 : incPlayFrame (+60 * mHlsRadio.getFramesPerSec()); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (-2 * cHlsChunk::getFramesPerSec()); break;  // left arrow
-      case 0x27 : incPlayFrame (+2 * cHlsChunk::getFramesPerSec()); break;  // right arrow
+      case 0x25 : incPlayFrame (-2 * mHlsRadio.getFramesPerSec()); break;  // left arrow
+      case 0x27 : incPlayFrame (+2 * mHlsRadio.getFramesPerSec()); break;  // right arrow
 
-      //case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
-      //case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
-      case 0x26 : if (mHlsRadio.getBitrate() == 320000)
-                    mHlsRadio.setBitrate (128000);
-                   else if (mHlsRadio.getBitrate() == 128000)
-                     mHlsRadio.setBitrate (48000);
-                   break; // up arrow
-      case 0x28 : if (mHlsRadio.getBitrate() == 48000)
-                    mHlsRadio.setBitrate (128000);
-                  else if (mHlsRadio.getBitrate() == 128000)
-                    mHlsRadio.setBitrate (320000);
-                  break; // down arrow
+      case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
+      case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -102,7 +90,7 @@ protected:
     if (!mouseMoved) {
       if (x < 100) {
         int chan = (y < 272/3) ? 3 : (y < 272*2/3) ? 4 : 6;
-        setPlayFrame ((float)mHlsRadio.setChan (chan, 128000) - (10.0f * cHlsChunk::getFramesPerSec()));
+        setPlayFrame ((float)mHlsRadio.setChanBitrate (chan, 128000) - 10.0f * cHlsChunk::getFramesPerSec());
         signal();
         }
       }
@@ -115,21 +103,20 @@ protected:
 
     deviceContext->Clear (D2D1::ColorF(D2D1::ColorF::Black));
     D2D1_RECT_F rt = D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height);
-    D2D1_RECT_F offset = D2D1::RectF(2.0f, 2.0f, getClientF().width, getClientF().height);
 
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     deviceContext->FillRectangle (r, getGreyBrush());
 
     int frame = getIntPlayFrame() - int(getClientF().width/2.0f);
-    uint8_t* powerPtr = nullptr;
+    uint8_t* power = nullptr;
     int frames = 0;
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
       r.right = r.left + 1.0f;
       if (!frames)
-        frames = mHlsRadio.power (frame, &powerPtr);
-      if (frames) {
-        r.top = (float)*powerPtr++;
-        r.bottom = r.top + *powerPtr++;
+        power = mHlsRadio.getPower (frame, frames);
+      if (power) {
+        r.top = (float)*power++;
+        r.bottom = r.top + *power++;
         deviceContext->FillRectangle (r, getBlueBrush());
         frames--;
         }
@@ -146,8 +133,12 @@ protected:
     int hours = (int)(secs100 / (60*60*100));
 
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk %hs",
-              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000, mHlsRadio.getDebugStr());
+    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
+              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000);
+    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
+
+    swprintf (wDebugStr, 200, L"%hs", mHlsRadio.getDebugStr());
+    rt.left = getClientF().width/2.0f;
     deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
                              mHlsRadio.getLoading() ? getGreyBrush() : getWhiteBrush());
     }
@@ -173,13 +164,19 @@ private:
 
   // sets
   //{{{
+  void setStopped (bool stopped) {
+    mStopped = stopped;
+    }
+  //}}}
+  //{{{
   void toggleStopped() {
     mStopped = !mStopped;
     }
   //}}}
   //{{{
-  void setStopped (bool stopped) {
-    mStopped = stopped;
+  void setPlayFrame (float frame) {
+    mPlayFrame = frame;
+    changed();
     }
   //}}}
   //{{{
@@ -188,9 +185,8 @@ private:
     }
   //}}}
   //{{{
-  void setPlayFrame (float frame) {
-    mPlayFrame = frame;
-    changed();
+  void incAlignPlayFrame (float inc) {
+    setPlayFrame (mPlayFrame + inc);
     }
   //}}}
 
@@ -211,8 +207,9 @@ private:
   void loader() {
 
     while (true) {
-      if (mHlsRadio.load (getIntPlayFrame(), mBetter))
+      if (mHlsRadio.load (getIntPlayFrame()))
         Sleep (1000);
+
       wait();
       }
     }
@@ -227,13 +224,22 @@ private:
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (mHlsRadio.play (getIntPlayFrame(), playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
+      winAudioPlay (mHlsRadio.getPlay (getIntPlayFrame(), playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
 
       if (playing)
         setPlayFrame (getPlayFrame() + 1.0f);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
-        mBetter = (seqNum == (lastSeqNum + 1));
+        if (seqNum != lastSeqNum+1)
+          // jumping around, low quality
+          mHlsRadio.setBitrate (48000);
+        else if (mHlsRadio.getBitrate() == 48000)
+          // normal play, better quality
+          mHlsRadio.setBitrate (128000);
+        else if (mHlsRadio.getBitrate() == 128000)
+          // normal play, much better quality
+          mHlsRadio.setBitrate (320000);
+
         signal();
         lastSeqNum = seqNum;
         }
@@ -250,7 +256,6 @@ private:
 
   float mPlayFrame;
   bool mStopped;
-  bool mBetter;
   //}}}
   };
 
