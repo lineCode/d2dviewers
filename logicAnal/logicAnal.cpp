@@ -24,7 +24,7 @@ public:
   void preview();
   void loader();
 
-  void onDraw (ID2D1DeviceContext* deviceContext);
+  void onDraw (ID2D1DeviceContext* dc);
 
   bool onKey (int key);
   void onMouseWheel (int delta);
@@ -45,13 +45,13 @@ private:
   void measure (ULONG mask, int sample);
   void count (ULONG mask, int firstSample, int lastSample);
 
-  void clearBackground (ID2D1DeviceContext* deviceContext);
-  void drawGraticule (ID2D1DeviceContext* deviceContext,int rows);
-  void drawLeftLabels (ID2D1DeviceContext* deviceContext,int rows);
-  void drawSamples (ID2D1DeviceContext* deviceContext,ULONG maxMask);
-  void drawMidLine (ID2D1DeviceContext* deviceContext,int rows);
-  void drawSamplesTitle (ID2D1DeviceContext* deviceContext);
-  void drawMeasure (ID2D1DeviceContext* deviceContext);
+  void clearBackground (ID2D1DeviceContext* dc);
+  void drawGraticule (ID2D1DeviceContext* dc,int rows);
+  void drawLeftLabels (ID2D1DeviceContext* dc,int rows);
+  void drawSamples (ID2D1DeviceContext* dc,ULONG maxMask);
+  void drawMidLine (ID2D1DeviceContext* dc,int rows);
+  void drawSamplesTitle (ID2D1DeviceContext* dc);
+  void drawMeasure (ID2D1DeviceContext* dc);
   };
 //}}}
 //{{{  vars
@@ -392,15 +392,15 @@ void cAppWindow::count (ULONG mask, int firstSample, int lastSample) {
 //}}}
 
 //{{{
-void cAppWindow::clearBackground (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::clearBackground (ID2D1DeviceContext* dc) {
 
-  deviceContext->Clear (ColorF(ColorF::Black));
+  dc->Clear (ColorF(ColorF::Black));
   }
 //}}}
 //{{{
-void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext,int rows) {
+void cAppWindow::drawGraticule (ID2D1DeviceContext* dc,int rows) {
 
-  deviceContext->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
+  dc->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
                            RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
 
   auto rg = RectF (0, rowPixels, 0, (rows+1)*rowPixels);
@@ -418,7 +418,7 @@ void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext,int rows) {
     rg.left = float((graticuleSample - midSample) / samplesPerPixel) + getClientF().width/2.0f;
     rg.right = rg.left+1;
     if (graticule > 0)
-      deviceContext->FillRectangle (rg, getGreyBrush());
+      dc->FillRectangle (rg, getGreyBrush());
 
     graticule++;
     graticuleSample += samplesPerGraticule;
@@ -429,20 +429,20 @@ void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext,int rows) {
   }
 //}}}
 //{{{
-void cAppWindow::drawLeftLabels (ID2D1DeviceContext* deviceContext, int rows) {
+void cAppWindow::drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
   auto rl = RectF(0.0f, rowPixels, getClientF().width, getClientF().height);
   for (auto dq = 0; dq < rows; dq++) {
     std::wstringstream stringStream;
     stringStream << L"dq" << dq;
-    deviceContext->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+    dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                              rl, getWhiteBrush());
     rl.top += rowPixels;
     }
   }
 //}}}
 //{{{
-void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext,ULONG maxMask) {
+void cAppWindow::drawSamples (ID2D1DeviceContext* dc,ULONG maxMask) {
 
   auto r = RectF (leftPixels, rowPixels, 0, 0);
   int lastSampleIndex = 0;
@@ -484,7 +484,7 @@ void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext,ULONG maxMask) {
           r.bottom = r.top + 1.0f;
           }
 
-        deviceContext->FillRectangle (r, getBlueBrush());
+        dc->FillRectangle (r, getBlueBrush());
 
         r.top = nextTop;
 
@@ -498,41 +498,41 @@ void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext,ULONG maxMask) {
   }
 //}}}
 //{{{
-void cAppWindow::drawMidLine (ID2D1DeviceContext* deviceContext,int rows) {
+void cAppWindow::drawMidLine (ID2D1DeviceContext* dc,int rows) {
 
-  deviceContext->FillRectangle (
+  dc->FillRectangle (
     RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
     getWhiteBrush());
   }
 //}}}
 //{{{
-void cAppWindow::drawSamplesTitle (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::drawSamplesTitle (ID2D1DeviceContext* dc) {
 
   std::wstringstream stringStream;
   stringStream << L"samples" << midSample / samplesPerSecond << L" of " << samplesLoaded / samplesPerSecond;
-  deviceContext->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+  dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                            RectF(leftPixels, 0, getClientF().width, getClientF().height),
                            getWhiteBrush());
   }
 //}}}
 //{{{
-void cAppWindow::drawMeasure (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::drawMeasure (ID2D1DeviceContext* dc) {
 
-  deviceContext->DrawText (measureStr.c_str(), (UINT32)measureStr.size(), getTextFormat(),
+  dc->DrawText (measureStr.c_str(), (UINT32)measureStr.size(), getTextFormat(),
                            RectF(getClientF().width/2.0f, 0.0f, getClientF().width, getClientF().height),
                            getWhiteBrush());
   }
 //}}}
 //{{{
-void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::onDraw (ID2D1DeviceContext* dc) {
 
-  clearBackground (deviceContext);
-  drawGraticule (deviceContext, 16);
-  drawMidLine (deviceContext, 16);
-  drawSamplesTitle (deviceContext);
-  drawLeftLabels (deviceContext, 16);
-  drawSamples (deviceContext, 0x10000);
-  drawMeasure (deviceContext);
+  clearBackground (dc);
+  drawGraticule (dc, 16);
+  drawMidLine (dc, 16);
+  drawSamplesTitle (dc);
+  drawLeftLabels (dc, 16);
+  drawSamples (dc, 0x10000);
+  drawMeasure (dc);
   }
 //}}}
 

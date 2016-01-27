@@ -103,13 +103,13 @@ protected:
     }
   //}}}
   //{{{
-  void onDraw (ID2D1DeviceContext* deviceContext) {
+  void onDraw (ID2D1DeviceContext* dc) {
 
-    deviceContext->Clear (D2D1::ColorF(D2D1::ColorF::Black));
+    dc->Clear (D2D1::ColorF(D2D1::ColorF::Black));
     D2D1_RECT_F rt = D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height);
 
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
-    deviceContext->FillRectangle (r, getGreyBrush());
+    dc->FillRectangle (r, getGreyBrush());
 
     int frame = getIntPlayFrame() - int(getClientF().width/2.0f);
     uint8_t* power = nullptr;
@@ -121,7 +121,7 @@ protected:
       if (power) {
         r.top = (float)*power++;
         r.bottom = r.top + *power++;
-        deviceContext->FillRectangle (r, getBlueBrush());
+        dc->FillRectangle (r, getBlueBrush());
         frames--;
         }
       frame++;
@@ -139,12 +139,12 @@ protected:
     wchar_t wDebugStr[200];
     swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
               hours, mins, secs, getChanDisplayName(), getBitrate()/1000);
-    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
+    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
 
     swprintf (wDebugStr, 200, L"%hs", getDebugStr());
     rt.left = getClientF().width/2.0f;
-    deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
-                             getLoading() ? getGreyBrush() : getWhiteBrush());
+    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
+                  getLoading() ? getGreyBrush() : getWhiteBrush());
     }
   //}}}
 

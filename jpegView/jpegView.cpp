@@ -328,7 +328,7 @@ public:
     }
   //}}}
   //{{{
-  bool loadThumbBitmap (ID2D1DeviceContext* deviceContext, D2D1_SIZE_U& thumbSize) {
+  bool loadThumbBitmap (ID2D1DeviceContext* dc, D2D1_SIZE_U& thumbSize) {
 
     mNoThumb = false;
 
@@ -412,7 +412,7 @@ public:
     d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
     d2d1_bitmapProperties.dpiX = 96.0f;
     d2d1_bitmapProperties.dpiY = 96.0f;
-    deviceContext->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight),
+    dc->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight),
                                  thumbArray, pitch, &d2d1_bitmapProperties, &mD2D1BitmapThumb);
     free (thumbArray);
 
@@ -423,7 +423,7 @@ public:
     }
   //}}}
   //{{{
-  bool loadFullBitmap (ID2D1DeviceContext* deviceContext, int scale) {
+  bool loadFullBitmap (ID2D1DeviceContext* dc, int scale) {
 
     if (mD2D1BitmapFull)
       return false;
@@ -471,7 +471,7 @@ public:
     d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
     d2d1_bitmapProperties.dpiX = 96.0f;
     d2d1_bitmapProperties.dpiY = 96.0f;
-    deviceContext->CreateBitmap (mFullSize, d2d1_bitmapProperties, &mD2D1BitmapFull);
+    dc->CreateBitmap (mFullSize, d2d1_bitmapProperties, &mD2D1BitmapFull);
 
     BYTE* lineArray[1];
     lineArray[0] = (BYTE*)malloc (pitch);;
@@ -1315,25 +1315,25 @@ protected:
     }
   //}}}
   //{{{
-  void onDraw (ID2D1DeviceContext* deviceContext) {
+  void onDraw (ID2D1DeviceContext* dc) {
 
-    deviceContext->Clear (ColorF(ColorF::Black));
+    dc->Clear (ColorF(ColorF::Black));
 
     if (!mFullImage) {
       // thumbs
-      deviceContext->SetTransform (mThumbView.getMatrix());
+      dc->SetTransform (mThumbView.getMatrix());
       mDirectory.traverseImages (this, &cAppWindow::drawThumb);
 
       if (mPickImage) {
         //{{{  highlight pickImage and draw infoPanel
-        deviceContext->DrawRoundedRectangle (
+        dc->DrawRoundedRectangle (
           RoundedRect (mPickImage->getLayout(), 3.0f,3.0f), getYellowBrush(), 3.0f/mThumbView.getScale());
 
         // draw info panel
-        deviceContext->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
+        dc->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
 
         auto rPanel (RectF (0.0f, getClientF().height-180.0f, getClientF().width, getClientF().height));
-        deviceContext->FillRectangle (rPanel, mPanelBrush);
+        dc->FillRectangle (rPanel, mPanelBrush);
 
         rPanel.left += 10.0f;
         rPanel.top += 10.0f;
@@ -1342,7 +1342,7 @@ protected:
           rPanel.right = rPanel.left + (160.0f*4.0f/3.0f);
           rPanel.bottom = rPanel.top + (120.0f*4.0f/3.0f);
 
-          deviceContext->DrawBitmap (mPickImage->getThumbBitmap(), rPanel);
+          dc->DrawBitmap (mPickImage->getThumbBitmap(), rPanel);
           rPanel.left = rPanel.right + 10.0f;
           rPanel.right = getClientF().width;
           rPanel.bottom = getClientF().height;
@@ -1350,7 +1350,7 @@ protected:
           //}}}
 
         //{{{  draw fullFileName text
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getFullFileName().c_str(), (UINT32)mPickImage->getFullFileName().size(), getTextFormat(),
           rPanel, getWhiteBrush());
         //}}}
@@ -1358,7 +1358,7 @@ protected:
           //{{{  draw exifTime text
           rPanel.top += 20.0f;
 
-          deviceContext->DrawText (
+          dc->DrawText (
             mPickImage->getExifTimeString().c_str(), (UINT32)mPickImage->getExifTimeString().size(), getTextFormat(),
             rPanel, getWhiteBrush());
           }
@@ -1367,19 +1367,19 @@ protected:
         rPanel.top += 20.0f;
         wstring str (to_wstring (mPickImage->getImageSize().width) + L"x" +
                           to_wstring (mPickImage->getImageSize().height));
-        deviceContext->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+        dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
         //}}}
         //{{{  draw make text
         rPanel.top += 20.0f;
 
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getMake().c_str(), (UINT32)mPickImage->getMake().size(), getTextFormat(),
           rPanel, getWhiteBrush());
         //}}}
         //{{{  draw model text
         rPanel.top += 20.0f;
 
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getModel().c_str(), (UINT32)mPickImage->getModel().size(), getTextFormat(),
           rPanel, getWhiteBrush());
         //}}}
@@ -1389,7 +1389,7 @@ protected:
 
           wstringstream stringstream;
           stringstream << L"orientation " << mPickImage->getOrientation();
-          deviceContext->DrawText (stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
+          dc->DrawText (stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
                                    rPanel, getWhiteBrush());
           }
           //}}}
@@ -1398,7 +1398,7 @@ protected:
           rPanel.top += 20.0f;
 
           wstring str (L"aperture " + to_wstring(mPickImage->getAperture()));
-          deviceContext->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
         if (mPickImage->getFocalLength() > 0) {
@@ -1406,7 +1406,7 @@ protected:
           rPanel.top += 20.0f;
 
           wstring str (L"focal length " + to_wstring(mPickImage->getFocalLength()));
-          deviceContext->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
         if (mPickImage->getExposure() > 0) {
@@ -1414,7 +1414,7 @@ protected:
           rPanel.top += 20.0f;
 
           wstring str (L"exposure " + to_wstring(mPickImage->getExposure()));
-          deviceContext->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
 
@@ -1422,12 +1422,12 @@ protected:
         rPanel.top = getClientF().height-180.0f + 10.0f;
         if (true)
           //{{{  draw debugStr
-          deviceContext->DrawText (
+          dc->DrawText (
             mPickImage->getDebugInfo().c_str(), (UINT32)mPickImage->getDebugInfo().size(), getTextFormat(),
             rPanel, getYellowBrush());
 
           rPanel.top += 20.0f;
-          deviceContext->DrawText (
+          dc->DrawText (
             mPickImage->getDebugInfo1().c_str(), (UINT32)mPickImage->getDebugInfo1().size(), getTextFormat(),
             rPanel, getYellowBrush());
           //}}}
@@ -1435,21 +1435,21 @@ protected:
         //{{{  draw creationTime
         rPanel.top += 20.0f;
 
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getCreationTime().c_str(), (UINT32)mPickImage->getCreationTime().size(), getTextFormat(),
           rPanel, getYellowBrush());
         //}}}
         //{{{  draw lastAccessTime
         rPanel.top += 20.0f;
 
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getLastAccessTime().c_str(), (UINT32)mPickImage->getLastAccessTime().size(), getTextFormat(),
           rPanel, getYellowBrush());
         //}}}
         //{{{  draw lastWriteTime
         rPanel.top += 20.0f;
 
-        deviceContext->DrawText (
+        dc->DrawText (
           mPickImage->getLastWriteTime().c_str(), (UINT32)mPickImage->getLastWriteTime().size(), getTextFormat(),
           rPanel, getYellowBrush());
         //}}}
@@ -1458,7 +1458,7 @@ protected:
           //{{{  draw GPSinfo
           rPanel.top += 20.0f;
 
-          deviceContext->DrawText (
+          dc->DrawText (
             mPickImage->getGPSinfo().c_str(), (UINT32)mPickImage->getGPSinfo().size(), getTextFormat(),
             rPanel, getYellowBrush());
           }
@@ -1470,7 +1470,7 @@ protected:
                      << L" sub:" << mNumNestedDirectories
                      << L" scale:" << mCurView->getScale()
                      << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
-        deviceContext->DrawText (
+        dc->DrawText (
           stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
           RectF(getClientF().width/2.0f, getClientF().height-20.0f, getClientF().width, getClientF().height),
           getWhiteBrush());
@@ -1481,14 +1481,14 @@ protected:
 
     else if (mFullImage->getFullBitmap()) {
       // fullImage
-      deviceContext->SetTransform (mFullView.getMatrix());
-      deviceContext->DrawBitmap (
+      dc->SetTransform (mFullView.getMatrix());
+      dc->DrawBitmap (
         mFullImage->getFullBitmap(),
         RectF (0,0, (float)mFullImage->getFullSize().width,(float)mFullImage->getFullSize().height));
 
       // full image text
-      deviceContext->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
-      deviceContext->DrawText (
+      dc->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
+      dc->DrawText (
         mFullImage->getFullFileName().c_str(), (UINT32)mFullImage->getFullFileName().size(), getTextFormat(),
         RectF(getClientF().width/2.0f, 0, getClientF().width,getClientF().height),
         getWhiteBrush());

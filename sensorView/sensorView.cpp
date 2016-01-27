@@ -29,7 +29,7 @@ public:
   void pll (int m, int n, int p);
 
   void loader();
-  void onDraw (ID2D1DeviceContext* deviceContext);
+  void onDraw (ID2D1DeviceContext* dc);
 
   bool onKey (int key);
   void onMouseWheel (int delta);
@@ -56,15 +56,15 @@ private:
   void measure (ULONG mask, int sample);
   void count (ULONG mask, int firstSample, int lastSample);
 
-  void drawBackground (ID2D1DeviceContext* deviceContext, BYTE* framePtr);
-  void drawSamplesFramesTitle (ID2D1DeviceContext* deviceContext);
-  void drawSensor (ID2D1DeviceContext* deviceContext, int sensorid);
-  void drawLeftLabels (ID2D1DeviceContext* deviceContext, int rows);
-  void drawSamples (ID2D1DeviceContext* deviceContext, ULONG maxMask);
-  void drawGraticule (ID2D1DeviceContext* deviceContext, int rows);
-  void drawMidLine (ID2D1DeviceContext* deviceContext, int rows);
-  void drawHistogram (ID2D1DeviceContext* deviceContext);
-  void drawVector (ID2D1DeviceContext* deviceContext);
+  void drawBackground (ID2D1DeviceContext* dc, BYTE* framePtr);
+  void drawSamplesFramesTitle (ID2D1DeviceContext* dc);
+  void drawSensor (ID2D1DeviceContext* dc, int sensorid);
+  void drawLeftLabels (ID2D1DeviceContext* dc, int rows);
+  void drawSamples (ID2D1DeviceContext* dc, ULONG maxMask);
+  void drawGraticule (ID2D1DeviceContext* dc, int rows);
+  void drawMidLine (ID2D1DeviceContext* dc, int rows);
+  void drawHistogram (ID2D1DeviceContext* dc);
+  void drawVector (ID2D1DeviceContext* dc);
 
   // private vars
   //{{{  layout
@@ -662,7 +662,7 @@ void cAppWindow::count (ULONG mask, int firstSample, int lastSample) {
 //}}}
 
 //{{{
-void cAppWindow::drawBackground (ID2D1DeviceContext* deviceContext, BYTE* framePtr) {
+void cAppWindow::drawBackground (ID2D1DeviceContext* dc, BYTE* framePtr) {
 
   if (framePtr && (framePtr != lastFramePtr)) {
     grabbedFrameBytes = frameBytes;
@@ -671,13 +671,13 @@ void cAppWindow::drawBackground (ID2D1DeviceContext* deviceContext, BYTE* frameP
     }
 
   if (mD2D1Bitmap)
-    deviceContext->DrawBitmap (mD2D1Bitmap, RectF(0,0, getClientF().width, getClientF().height));
+    dc->DrawBitmap (mD2D1Bitmap, RectF(0,0, getClientF().width, getClientF().height));
   else
-    deviceContext->Clear (ColorF(ColorF::Black));
+    dc->Clear (ColorF(ColorF::Black));
   }
 //}}}
 //{{{
-void cAppWindow::drawSamplesFramesTitle (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
 
   std::wstringstream stringStream;
   stringStream << L"samples" << midSample / samplesPerSecond
@@ -689,36 +689,36 @@ void cAppWindow::drawSamplesFramesTitle (ID2D1DeviceContext* deviceContext) {
                << L" " << width
                << L" " << height
                << L" " << focus;
-  deviceContext->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+  dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                            RectF(leftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
   }
 //}}}
 //{{{
-void cAppWindow::drawSensor (ID2D1DeviceContext* deviceContext, int sensorid) {
+void cAppWindow::drawSensor (ID2D1DeviceContext* dc, int sensorid) {
 
   if (sensorid == 0x1519) {
     std::wstringstream stringStream;
     stringStream << L"mt9d111";
-    deviceContext->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+    dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                              RectF(getClientF().width - 2*rightPixels, 0, getClientF().width, rowPixels), getWhiteBrush());
     }
   }
 //}}}
 //{{{
-void cAppWindow::drawLeftLabels (ID2D1DeviceContext* deviceContext, int rows) {
+void cAppWindow::drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
   auto rl = RectF(0.0f, rowPixels, getClientF().width, getClientF().height);
   for (auto dq = 0; dq < rows; dq++) {
     std::wstringstream stringStream;
     stringStream << L"dq" << dq;
-    deviceContext->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+    dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                              rl, getWhiteBrush());
     rl.top += rowPixels;
     }
   }
 //}}}
 //{{{
-void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext, ULONG maxMask) {
+void cAppWindow::drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
 
   auto r = RectF (leftPixels, rowPixels, 0, 0);
   auto lastSampleIndex = 0;
@@ -760,7 +760,7 @@ void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext, ULONG maxMask) 
           r.bottom = r.top + 1.0f;
           }
 
-        deviceContext->FillRectangle (r, getBlueBrush());
+        dc->FillRectangle (r, getBlueBrush());
 
         r.top = nextTop;
 
@@ -774,9 +774,9 @@ void cAppWindow::drawSamples (ID2D1DeviceContext* deviceContext, ULONG maxMask) 
   }
 //}}}
 //{{{
-void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext, int rows) {
+void cAppWindow::drawGraticule (ID2D1DeviceContext* dc, int rows) {
 
-  deviceContext->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
+  dc->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
                            RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
 
   auto rg = RectF (0, rowPixels, 0, (rows+1)*rowPixels);
@@ -794,7 +794,7 @@ void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext, int rows) {
     rg.left = float((graticuleSample - midSample) / samplesPerPixel) + getClientF().width/2.0f;
     rg.right = rg.left+1;
     if (graticule > 0)
-      deviceContext->FillRectangle (rg, getGreyBrush());
+      dc->FillRectangle (rg, getGreyBrush());
 
     graticule++;
     graticuleSample += samplesPerGraticule;
@@ -805,15 +805,15 @@ void cAppWindow::drawGraticule (ID2D1DeviceContext* deviceContext, int rows) {
   }
 //}}}
 //{{{
-void cAppWindow::drawMidLine (ID2D1DeviceContext* deviceContext, int rows) {
+void cAppWindow::drawMidLine (ID2D1DeviceContext* dc, int rows) {
 
-  deviceContext->FillRectangle (
+  dc->FillRectangle (
     RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
     getBlackBrush());
   }
 //}}}
 //{{{
-void cAppWindow::drawHistogram (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::drawHistogram (ID2D1DeviceContext* dc) {
 
   auto r = RectF (10.0f, 0, 0, getClientF().height - 10.0f);
 
@@ -824,19 +824,19 @@ void cAppWindow::drawHistogram (ID2D1DeviceContext* deviceContext) {
   for (auto i = 0; i < 0x100 >> bucket; i++) {
     r.right = r.left + inc;
     r.top = r.bottom - histogramValues[i] - 1;
-    deviceContext->FillRectangle (r, getWhiteBrush());
+    dc->FillRectangle (r, getWhiteBrush());
     r.left = r.right;
     }
   }
 //}}}
 //{{{
-void cAppWindow::drawVector (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::drawVector (ID2D1DeviceContext* dc) {
 
-  deviceContext->FillRectangle (
+  dc->FillRectangle (
     RectF (getClientF().width - 128.0f, getClientF().height - 256.0f,
            getClientF().width - 128.0f + 1.0f, getClientF().height), getBlackBrush());
 
-  deviceContext->FillRectangle (
+  dc->FillRectangle (
     RectF (getClientF().width - 256.0f, getClientF().height - 128.0f,
            getClientF().width, getClientF().height - 128.0f - 1.0f), getBlackBrush());
 
@@ -848,7 +848,7 @@ void cAppWindow::drawVector (ID2D1DeviceContext* deviceContext) {
     for (int i = 0; i < 0x80; i++) {
       r.right = r.left + 2.0f;
       if (vectorValues[index++])
-        deviceContext->FillRectangle (r, getWhiteBrush());
+        dc->FillRectangle (r, getWhiteBrush());
       r.left = r.right;
       }
     r.left = getClientF().width - 256.0f;
@@ -857,21 +857,21 @@ void cAppWindow::drawVector (ID2D1DeviceContext* deviceContext) {
   }
 //}}}
 //{{{
-void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::onDraw (ID2D1DeviceContext* dc) {
 
-  drawBackground (deviceContext, framePtr);
-  drawSamplesFramesTitle (deviceContext);
-  drawSensor (deviceContext, sensorid);
+  drawBackground (dc, framePtr);
+  drawSamplesFramesTitle (dc);
+  drawSensor (dc, sensorid);
   if (waveform) {
-    drawLeftLabels (deviceContext, 8);
-    drawSamples (deviceContext, 0x100);
-    drawGraticule (deviceContext, 8);
-    drawMidLine (deviceContext, 8);
+    drawLeftLabels (dc, 8);
+    drawSamples (dc, 0x100);
+    drawGraticule (dc, 8);
+    drawMidLine (dc, 8);
     }
   if (!bayer10 && !jpeg422 && histogram)
-    drawHistogram (deviceContext);
+    drawHistogram (dc);
   if (!bayer10 && !jpeg422 && vector)
-    drawVector (deviceContext);
+    drawVector (dc);
   }
 //}}}
 

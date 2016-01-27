@@ -85,7 +85,7 @@ protected:
   bool onKey (int key);
   void onMouseMove (bool right, int x, int y, int xInc, int yInc);
   void onMouseUp (bool right, bool mouseMoved, int x, int y);
-  void onDraw (ID2D1DeviceContext* deviceContext);
+  void onDraw (ID2D1DeviceContext* dc);
   };
 //}}}
 //{{{  vars
@@ -798,7 +798,7 @@ void cAppWindow::onMouseUp  (bool right, bool mouseMoved, int x, int y) {
   }
 //}}}
 //{{{
-void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
+void cAppWindow::onDraw (ID2D1DeviceContext* dc) {
 
   vidPlayFrame = int((playFrame / audFramesPerSec) * 25);
   if (vidPlayFrame < 0)
@@ -815,20 +815,20 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
                                     WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
     if (mD2D1Bitmap)
       mD2D1Bitmap->Release();
-    if (deviceContext)
-      deviceContext->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
+    if (dc)
+      dc->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
     }
 
   if (mD2D1Bitmap)
-    deviceContext->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f,0.0f,getClientF().width, getClientF().height));
+    dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f,0.0f,getClientF().width, getClientF().height));
   else
-    deviceContext->Clear (D2D1::ColorF(D2D1::ColorF::Black));
+    dc->Clear (D2D1::ColorF(D2D1::ColorF::Black));
 
   D2D1_RECT_F rt = D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height);
   D2D1_RECT_F offset = D2D1::RectF(2.0f, 2.0f, getClientF().width, getClientF().height);
 
   D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
-  deviceContext->FillRectangle (r, getGreyBrush());
+  dc->FillRectangle (r, getGreyBrush());
 
   int j = int(playFrame) - (int)(getClientF().width/2);
   for (float i = 0.0f; (i < getClientF().width) && (j < audFramesLoaded); i++, j++) {
@@ -837,15 +837,15 @@ void cAppWindow::onDraw (ID2D1DeviceContext* deviceContext) {
     if (j >= 0) {
       r.top = (getClientF().height/2.0f) - audFramesPowerL[j];
       r.bottom = (getClientF().height/2.0f) + audFramesPowerR[j];
-      deviceContext->FillRectangle (r, getBlueBrush());
+      dc->FillRectangle (r, getBlueBrush());
       }
     }
 
   wchar_t wStr[200];
   swprintf (wStr, 200, L"%4.1fs - %2.0f:%d of %2d:%d",
             playFrame/audFramesPerSec, playFrame, vidPlayFrame, audFramesLoaded, vidFramesLoaded);
-  deviceContext->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), offset, getBlackBrush());
-  deviceContext->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt, getWhiteBrush());
+  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), offset, getBlackBrush());
+  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt, getWhiteBrush());
   }
 //}}}
 

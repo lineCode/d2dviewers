@@ -42,7 +42,7 @@ protected:
   virtual void onMouseDown (bool right, int x, int y) {};
   virtual void onMouseMove (bool right, int x, int y, int xInc, int yInc) {}
   virtual void onMouseUp (bool right, bool mouseMoved, int x, int y) {}
-  virtual void onDraw (ID2D1DeviceContext* deviceContext) = 0;
+  virtual void onDraw (ID2D1DeviceContext* dc) = 0;
   //{{{  protected vars
   bool keyDown;
   bool shiftKeyDown;
