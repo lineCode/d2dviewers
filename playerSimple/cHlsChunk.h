@@ -57,7 +57,7 @@ public:
   //}}}
   //{{{
   int16_t* getAudioSamples (int frame) {
-    return mAudio + (frame * getSamplesPerFrame() * mChans);
+    return mAudio ? (mAudio + (frame * getSamplesPerFrame() * mChans)) : nullptr;
     }
   //}}}
 
@@ -75,10 +75,12 @@ public:
     config->outputFormat = FAAD_FMT_16BIT;
     NeAACDecSetConfiguration (mDecoder, config);
     //}}}
-    if (!mPower)
-      mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
-    if (!mAudio)
-      mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
+
+    // better test for same size
+    vPortFree (mPower);
+    mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
+    vPortFree (mAudio);
+    mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));

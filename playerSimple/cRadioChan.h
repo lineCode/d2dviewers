@@ -69,7 +69,7 @@ public:
   //}}}
 
 private:
-  // const
+  //{{{  const
   const char* kOrigHost[2] = { "as-hls-uk-live.bbcfmt.vo.llnwd.net",
                                "vs-hls-uk-live.bbcfmt.vo.llnwd.net" };
   const char* kTsPath[2] =   { "pool_%d/live/%s/%s.isml/%s-audio=%d-%d.ts",
@@ -86,6 +86,7 @@ private:
   const int kHighBitrate [8] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000, 96000 };
   const char* kPathNames[8] =  { "none", "one", "two", "bbc_radio_three", "bbc_radio_fourfm", "five", "bbc_6music", "bbc_two_hd" };
   const char* kChanNames[8] =  { "none", "one", "two", "bbcRadio3",       "bbcRadio4",        "five", "bbcRadio6",  "bbc2" };
+  //}}}
 
   //{{{
   int getRadioTv() {
@@ -120,7 +121,8 @@ private:
       }
     else
       strcpy (mHost, m3u8.getRedirectedHost());
-    printf ("%s\n", (char*)m3u8.getContent());
+
+    //printf ("%s\n", (char*)m3u8.getContent());
 
     // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
     auto extSeq = strstr ((char*)m3u8.getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");

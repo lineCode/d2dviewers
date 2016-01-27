@@ -80,8 +80,9 @@ public:
     int chunk;
     int frameInChunk;
     playing &= findFrame (frame, seqNum, chunk, frameInChunk);
-
-    return playing ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
+    
+    int16_t* audioSamples = mChunks[chunk].getAudioSamples(frameInChunk);
+    return (playing && audioSamples) ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
     }
   //}}}
   //{{{
