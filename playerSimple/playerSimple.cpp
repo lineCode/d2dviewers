@@ -94,7 +94,7 @@ protected:
     if (!mouseMoved) {
       if (x < 100) {
         int chan = (y < 272/3) ? 3 : (y < 272*2/3) ? 4 : 6;
-        setPlayFrame ((float)setChanBitrate (chan, 128000) - 10*cHlsChunk::getFramesPerSec());
+        setPlayFrame (setChanBitrate (chan, 128000) - 10*getFramesPerSec());
         signal();
         }
       }
@@ -213,7 +213,6 @@ private:
     while (true) {
       if (load (getIntPlayFrame()))
         Sleep (1000);
-
       wait();
       }
     }
@@ -228,7 +227,7 @@ private:
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (getPlay (getIntPlayFrame(), playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
+      winAudioPlay (getPlay (getIntPlayFrame(), playing, seqNum), getSamplesPerFrame()*4, 1.0f);
 
       if (playing)
         setPlayFrame (getPlayFrame() + 1.0f);

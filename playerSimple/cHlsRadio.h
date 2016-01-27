@@ -40,6 +40,11 @@ public:
     }
   //}}}
   //{{{
+  int getSamplesPerFrame() {
+    return cHlsChunk::getSamplesPerFrame();
+    }
+  //}}}
+  //{{{
   const char* getDebugStr() {
 
     sprintf (mDebugStr, "%d:%d:%d\n",
