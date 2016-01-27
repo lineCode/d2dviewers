@@ -29,14 +29,12 @@ public:
     }
   //}}}
   //{{{
-  void run (wchar_t* title, int width, int height, int chan, int bitrate) {
+  void run (wchar_t* title, int width, int height, int chan) {
 
     // init window
     initialise (title, width, height);
 
-    if ((bitrate != 48000) && (bitrate != 320000))
-      bitrate = 128000;
-    setPlayFrame (setChanBitrate (chan, bitrate) - 10*getFramesPerSec());
+    setPlayFrame (setChanBitrate (chan) - 10*getFramesPerSec());
 
     // launch loaderThread
     std::thread ([=]() { loader(); } ).detach();
@@ -93,7 +91,7 @@ protected:
     if (!mouseMoved) {
       if (x < 100) {
         int chan = (y < 272/3) ? 3 : (y < 272*2/3) ? 4 : 6;
-        setPlayFrame (setChanBitrate (chan, 128000) - 10*getFramesPerSec());
+        setPlayFrame (setChanBitrate (chan) - 10*getFramesPerSec());
         signal();
         }
       }
@@ -137,7 +135,7 @@ protected:
 
     wchar_t wDebugStr[200];
     swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
-              hours, mins, secs, getChanDisplayName(), getBitrate()/1000);
+              hours, mins, secs, getChanName(), getBitrate()/1000);
     dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
 
     swprintf (wDebugStr, 200, L"%hs", getDebugStr());
@@ -236,13 +234,13 @@ private:
         mJump = seqNum != lastSeqNum+1;
         if (mJump)
           // jumping around, low quality
-          setBitrate (48000);
-        else if (getBitrate() == 48000)
+          setBitrate (getLowBitrate());
+        else if (getBitrate() == getLowBitrate())
           // normal play, better quality
-          setBitrate (128000);
-        else if (getBitrate() == 128000)
+          setBitrate (getMidBitrate());
+        else if (getBitrate() == getMidBitrate())
           // normal play, much better quality
-          setBitrate (320000);
+          setBitrate (getHighBitrate());
 
         signal();
         lastSeqNum = seqNum;
@@ -277,8 +275,6 @@ int wmain (int argc, wchar_t* argv[]) {
 #endif
 
   cHlsRadioWindow hlsRadioWindow;
-  hlsRadioWindow.run (L"hls player", 480, 272,
-                      argc >= 2 ? _wtoi (argv[1]) : 4,       // chan
-                      argc >= 3 ? _wtoi (argv[2]) : 128000); // bitrate
+  hlsRadioWindow.run (L"hls player", 480, 272, argc >= 2 ? _wtoi (argv[1]) : 4);
   }
 //}}}

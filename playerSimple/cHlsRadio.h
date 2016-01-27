@@ -63,7 +63,7 @@ public:
     int seqNum;
     int frameInChunk;
     if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      frames = cHlsChunk::getFramesPerChunk() - frameInChunk;
+      frames = getFramesPerChunk() - frameInChunk;
       return mChunks[chunk].getAudioPower (frameInChunk);
       }
     else {
@@ -96,17 +96,17 @@ public:
   //}}}
 
   //{{{
-  int setChanBitrate (int chan, int bitrate) {
+  int setChanBitrate (int chan) {
 
-    mBitrate = bitrate;
 
-    printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
-    setChan (chan, bitrate);
+    printf ("cHlsChunks::setChan %d\n", chan);
+    setChan (chan);
+    mBitrate = getLowBitrate();
 
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
     int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    mBaseFrame = (((hour*60*60) + (min*60) + sec) * cHlsChunk::getFramesPerChunk() * 10) / 64;
+    mBaseFrame = (((hour*60*60) + (min*60) + sec) * getFramesPerChunk() * 10) / 64;
     printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, getBaseSeqNum(), getDateTime());
 
     invalidateChunks();
@@ -159,16 +159,16 @@ private:
 
     int r = frame - mBaseFrame;
     if (r >= 0)
-      return getBaseSeqNum() + (r / cHlsChunk::getFramesPerChunk());
+      return getBaseSeqNum() + (r / getFramesPerChunk());
     else
-      return getBaseSeqNum() - 1 - ((-r-1)/ cHlsChunk::getFramesPerChunk());
+      return getBaseSeqNum() - 1 - ((-r-1)/ getFramesPerChunk());
     }
   //}}}
   //{{{
   int getFrameInChunkFromFrame (int frame) {
 
-    int r = (frame - mBaseFrame) % cHlsChunk::getFramesPerChunk();
-    return r < 0 ? r + cHlsChunk::getFramesPerChunk() : r;
+    int r = (frame - mBaseFrame) % getFramesPerChunk();
+    return r < 0 ? r + getFramesPerChunk() : r;
     }
   //}}}
 

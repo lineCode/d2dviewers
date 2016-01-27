@@ -33,11 +33,6 @@ public:
     return 1024;
     }
   //}}}
-  //{{{
-  static int getFramesPerChunk() {
-    return 300;
-    }
-  //}}}
 
   // gets
   //{{{
@@ -81,9 +76,9 @@ public:
     NeAACDecSetConfiguration (mDecoder, config);
     //}}}
     if (!mPower)
-      mPower = (uint8_t*)pvPortMalloc (getFramesPerChunk() * 2);
+      mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
     if (!mAudio)
-      mAudio = (int16_t*)pvPortMalloc (getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
+      mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
