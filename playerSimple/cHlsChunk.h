@@ -25,17 +25,17 @@ public:
   // static members
   //{{{
   static float getFramesPerSec() {
-    return float(kSamplesRate) / (float)kSamplesPerFrame;
+    return 48000 / (float)getSamplesPerFrame();
     }
   //}}}
   //{{{
   static int getSamplesPerFrame() {
-    return kSamplesPerFrame;
+    return 1024;
     }
   //}}}
   //{{{
   static int getFramesPerChunk() {
-    return kFramesPerChunk;
+    return 300;
     }
   //}}}
 
@@ -62,7 +62,7 @@ public:
   //}}}
   //{{{
   int16_t* getAudioSamples (int frame) {
-    return mAudio + (frame * kSamplesPerFrame * mChans);
+    return mAudio + (frame * getSamplesPerFrame() * mChans);
     }
   //}}}
 
@@ -81,9 +81,9 @@ public:
     NeAACDecSetConfiguration (mDecoder, config);
     //}}}
     if (!mPower)
-      mPower = (uint8_t*)pvPortMalloc (kFramesPerChunk * 2);
+      mPower = (uint8_t*)pvPortMalloc (getFramesPerChunk() * 2);
     if (!mAudio)
-      mAudio = (int16_t*)pvPortMalloc (kFramesPerChunk * kSamplesPerFrame * kChans * kBytesPerSample);
+      mAudio = (int16_t*)pvPortMalloc (getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
@@ -100,26 +100,26 @@ public:
 
       NeAACDecFrameInfo frameInfo;
       int16_t* buffer = mAudio;
-      NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * kChans * kBytesPerSample);
+      NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
 
       uint8_t* powerPtr = mPower;
       while (loadPtr < loadEnd) {
-        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * kChans * kBytesPerSample);
+        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
         loadPtr += frameInfo.bytesconsumed;
         for (int i = 0; i < framesPerAacFrame; i++) {
           //{{{  calc left, right power
           int valueL = 0;
           int valueR = 0;
-          for (int j = 0; j < kSamplesPerFrame; j++) {
+          for (int j = 0; j < getSamplesPerFrame(); j++) {
             short sample = (*buffer++) >> 4;
             valueL += sample * sample;
             sample = (*buffer++) >> 4;
             valueR += sample * sample;
             }
 
-          uint8_t leftPix = (uint8_t)sqrt(valueL / (kSamplesPerFrame * 32.0f));
+          uint8_t leftPix = (uint8_t)sqrt(valueL / (getSamplesPerFrame() * 32.0f));
           *powerPtr++ = (272/2) - leftPix;
-          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (kSamplesPerFrame * 32.0f));
+          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (getSamplesPerFrame() * 32.0f));
           mFramesLoaded++;
           }
           //}}}
@@ -146,14 +146,6 @@ public:
   //}}}
 
 private:
-  //{{{  const
-  static const int kSamplesRate = 48000;
-  static const int kSamplesPerFrame = 1024;
-  static const int kFramesPerChunk = 300; // actually 150 for 48k aac he, 300 for 320k 128k 300 frames
-
-  const int kChans = 2;
-  const int kBytesPerSample = 2;
-  //}}}
   //{{{
   uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
   // pack transportStream down to aac frames in same buffer

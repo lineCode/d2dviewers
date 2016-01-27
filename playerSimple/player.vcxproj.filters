@@ -130,189 +130,6 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="libfaad\libfaad\analysis.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\bits.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\cfft.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\cfft_tab.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\common.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\drc.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\drm_dec.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\error.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\include\faad.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\filtbank.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\fixed.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_1.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_2.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_3.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_4.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_5.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_6.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_7.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_8.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_9.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_10.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_11.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\codebook\hcb_sf.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\huffman.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ic_predict.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\iq_table.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\is.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\kbd_win.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\lt_predict.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\mdct.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\mdct_tab.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\mp4.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ms.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\include\neaacdec.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\output.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\pns.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ps_dec.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ps_tables.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\pulse.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\rvlc.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_dct.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_dec.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_e_nf.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_fbt.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_hfadj.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_hfgen.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_huff.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_noise.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_qmf.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_qmf_c.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_syntax.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sbr_tf_grid.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\sine_win.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\specrec.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ssr.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ssr_fb.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ssr_ipqf.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\ssr_win.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\structs.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
-    <ClInclude Include="libfaad\libfaad\syntax.h">
-      <Filter>libfaad</Filter>
-    </ClInclude>
     <ClInclude Include="libfaad\libfaad\tns.h">
       <Filter>libfaad</Filter>
     </ClInclude>
@@ -331,6 +148,189 @@
     <ClInclude Include="cHlsRadio.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="libfaad\libfaad\analysis.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\bits.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\cfft.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\common.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\cfft_tab.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\drc.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\drm_dec.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\error.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\include\faad.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\filtbank.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\fixed.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_1.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_2.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_3.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_4.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_5.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_6.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_7.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_10.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_11.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_sf.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_9.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\codebook\hcb_8.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\huffman.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ic_predict.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\iq_table.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\is.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\kbd_win.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\lt_predict.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\mdct_tab.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\mp4.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ms.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\include\neaacdec.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\output.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ps_dec.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\mdct.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\pns.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ps_tables.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\pulse.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\rvlc.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_dct.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_dec.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_e_nf.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_fbt.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_hfadj.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_hfgen.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_huff.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_noise.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_qmf.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\syntax.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\structs.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ssr_win.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ssr_ipqf.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ssr_fb.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\ssr.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\specrec.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sine_win.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_tf_grid.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_syntax.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
+    <ClInclude Include="libfaad\libfaad\sbr_qmf_c.h">
+      <Filter>libfaad\header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
@@ -339,6 +339,9 @@
     </Filter>
     <Filter Include="libfaad">
       <UniqueIdentifier>{062ec5ac-3600-4b38-8f0a-67ca71b1bf1c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="libfaad\header">
+      <UniqueIdentifier>{8edfa2d8-2dab-4e11-86bf-4168a871859f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

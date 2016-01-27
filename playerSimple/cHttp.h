@@ -9,10 +9,8 @@ public:
   cHttp() : mContent(nullptr), mRedirectUrl(nullptr) {}
   //{{{
   ~cHttp() {
-
     if (mContent)
       vPortFree (mContent);
-
     if (mRedirectUrl)
       delete mRedirectUrl;
     }
@@ -153,7 +151,7 @@ public:
   //}}}
 #else
   //{{{
-  void get (const char* host, const char* path) {
+  int get (const char* host, const char* path) {
   // send http GET request to host, return context
 
     //{{{  init
@@ -234,7 +232,7 @@ public:
       mErrorStr = "getHttp - error parsing data\n";
 
     netconn_close (mConn);
-    return;
+    return mResponse;
     }
   //}}}
 #endif
