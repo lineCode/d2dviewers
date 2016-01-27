@@ -118,7 +118,7 @@ public:
   //}}}
 
   //{{{
-  bool load (int frame) {
+  bool load (int frame, bool jump) {
   // return false if load failure, usually 404
 
     bool ok = false;
@@ -131,14 +131,17 @@ public:
       ok &= mChunks[chunk].load (&mRadioChan, seqNum, mBitrate);
       }
 
-    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
-      if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
-        mLoading++;
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i, mBitrate);
-        }
-      if (!findSeqNumChunk (seqNum, mBitrate, -i, chunk)) {
-        mLoading++;
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i, mBitrate);
+    if (!jump) {
+      // load chunks before and after
+      for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
+        if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
+          mLoading++;
+          ok &= mChunks[chunk].load (&mRadioChan, seqNum+i, mBitrate);
+          }
+        if (!findSeqNumChunk (seqNum, mBitrate, -i, chunk)) {
+          mLoading++;
+          ok &= mChunks[chunk].load (&mRadioChan, seqNum-i, mBitrate);
+          }
         }
       }
     mLoading = 0;

@@ -19,7 +19,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() : mPlayFrame(0), mStopped(false) {
+  cHlsRadioWindow() : mPlayFrame(0), mStopped(false), mJump(false) {
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
@@ -211,8 +211,9 @@ private:
   void loader() {
 
     while (true) {
-      if (load (getIntPlayFrame()))
+      if (load (getIntPlayFrame(), mJump))
         Sleep (1000);
+      mJump = false;
       wait();
       }
     }
@@ -233,7 +234,8 @@ private:
         setPlayFrame (getPlayFrame() + 1.0f);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
-        if (seqNum != lastSeqNum+1)
+        mJump = seqNum != lastSeqNum+1;
+        if (mJump)
           // jumping around, low quality
           setBitrate (48000);
         else if (getBitrate() == 48000)
@@ -257,6 +259,7 @@ private:
   HANDLE mSemaphore;
   float mPlayFrame;
   bool mStopped;
+  bool mJump;
   //}}}
   };
 
