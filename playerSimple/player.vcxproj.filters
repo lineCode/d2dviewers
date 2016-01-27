@@ -4,7 +4,6 @@
     <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="playerSimple.cpp" />
     <ClCompile Include="libfaad\libfaad\bits.c">
       <Filter>libfaad</Filter>
     </ClCompile>
@@ -119,6 +118,7 @@
     <ClCompile Include="libfaad\libfaad\tns.c">
       <Filter>libfaad</Filter>
     </ClCompile>
+    <ClCompile Include="cHlsRadioWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

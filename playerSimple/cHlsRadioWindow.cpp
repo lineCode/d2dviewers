@@ -1,4 +1,4 @@
-// playerSimple.cpp
+// cHlsRadioWindow.cpp
 //{{{  includes
 #include "pch.h"
 
@@ -16,15 +16,15 @@
 #include "cHlsRadio.h"
 //}}}
 
-class cAppWindow : public cD2dWindow, public cHlsRadio {
+class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cAppWindow() : mPlayFrame(0), mStopped(false) {
+  cHlsRadioWindow() : mPlayFrame(0), mStopped(false) {
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
   //{{{
-  ~cAppWindow() {
+  ~cHlsRadioWindow() {
     CloseHandle (mSemaphore);
     }
   //}}}
@@ -40,10 +40,10 @@ public:
     setPlayFrame (setChanBitrate (chan, bitrate) - 10*getFramesPerSec());
 
     // launch loaderThread
-    std::thread ([=]() { cAppWindow::loader(); } ).detach();
+    std::thread ([=]() { loader(); } ).detach();
 
     // launch playerThread, higher priority
-    auto playerThread = std::thread ([=]() { cAppWindow::player(); });
+    auto playerThread = std::thread ([=]() { player(); });
     SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
     playerThread.detach();
 
@@ -275,9 +275,9 @@ int wmain (int argc, wchar_t* argv[]) {
   FreeConsole();
 #endif
 
-  cAppWindow appWindow;
-  appWindow.run (L"hls player", 480, 272,
-                 (argc >= 2) ? _wtoi(argv[1]) : 4,       // chan
-                 (argc >= 3) ? _wtoi(argv[2]) : 128000); // bitrate
+  cHlsRadioWindow hlsRadioWindow;
+  hlsRadioWindow.run (L"hls player", 480, 272,
+                      argc >= 2 ? _wtoi (argv[1]) : 4,       // chan
+                      argc >= 3 ? _wtoi (argv[2]) : 128000); // bitrate
   }
 //}}}
