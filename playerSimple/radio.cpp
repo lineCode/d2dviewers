@@ -63,7 +63,9 @@ int main (int argc, char* argv[]) {
   printf ("radio %d %d\n", chan, bitrate);
 
   cRadioChan* radioChan = new cRadioChan();
-  radioChan->setChan (chan, bitrate);
+  radioChan->setChan (chan);
+  radioChan->getFramesPerChunk();
+
   printf ("radio %d %s\n", radioChan->getBaseSeqNum(), radioChan->getDateTime());
 
   int seqNum = radioChan->getBaseSeqNum()-1;

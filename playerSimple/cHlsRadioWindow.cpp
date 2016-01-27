@@ -73,10 +73,15 @@ protected:
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
-      case 0x33 : setPlayFrame (setChanBitrate (3) - 10*getFramesPerSec()); break;
-      case 0x34 : setPlayFrame (setChanBitrate (4) - 10*getFramesPerSec()); break;
-      case 0x36 : setPlayFrame (setChanBitrate (6) - 10*getFramesPerSec()); break;
-      case 0x37 : setPlayFrame (setChanBitrate (7) - 10*getFramesPerSec()); break;
+      case 0x31 :
+      case 0x32 :
+      case 0x33 :
+      case 0x34 :
+      case 0x35 :
+      case 0x36 :
+      case 0x37 :
+      case 0x38 : 
+      case 0x39 : setPlayFrame (setChanBitrate (key-'0') - 10*getFramesPerSec()); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -94,11 +99,6 @@ protected:
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
     if (!mouseMoved) {
-      if (x < 100) {
-        int chan = (y < 272/4) ? 3 : (y < 272/2) ? 4 : (y < 272*3/4) ? 6 : 7;
-        setPlayFrame (setChanBitrate (chan) - 10*getFramesPerSec());
-        signal();
-        }
       }
 
     changed();

@@ -9,7 +9,7 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0),
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mFramesPerChunk(0),
                 mChans(0), mSampleRate(0), mDecoder(0), mPower(nullptr), mAudio(nullptr) {}
   //}}}
   //{{{
@@ -51,6 +51,11 @@ public:
     }
   //}}}
   //{{{
+  int getFramesPerChunk() {
+    return mFramesPerChunk;
+    }
+  //}}}
+  //{{{
   uint8_t* getAudioPower (int frame) {
     return mPower ? mPower + (frame * 2) : nullptr;
     }
@@ -68,6 +73,7 @@ public:
     mSeqNum = seqNum;
     mBitrate = bitrate;
     mFramesLoaded = 0;
+    mFramesPerChunk = radioChan->getFramesPerChunk();
 
     //{{{  init decoder
     mDecoder = NeAACDecOpen();
@@ -78,9 +84,9 @@ public:
 
     // better test for same size
     vPortFree (mPower);
-    mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
+    mPower = (uint8_t*)pvPortMalloc (mFramesPerChunk * 2);
     vPortFree (mAudio);
-    mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * getSamplesPerFrame() * 2 * 2);
+    mAudio = (int16_t*)pvPortMalloc (mFramesPerChunk * getSamplesPerFrame() * 2 * 2);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
@@ -174,6 +180,7 @@ private:
   int mSeqNum;
   int mBitrate;
   int mFramesLoaded;
+  int mFramesPerChunk;
 
   unsigned long mSampleRate;
   uint8_t mChans;
