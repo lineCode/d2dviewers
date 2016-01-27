@@ -46,18 +46,23 @@ public:
     }
   //}}}
   //{{{
+  int getBitrate() {
+    return mBitrate;
+    }
+  //}}}
+  //{{{
   int getFramesLoaded() {
     return mFramesLoaded;
     }
   //}}}
   //{{{
-  int16_t* getAudioSamples (int frame) {
-    return mAudio + (frame * kSamplesPerFrame * mChans);
+  uint8_t* getAudioPower (int frame) {
+    return mPower ? mPower + (frame * 2) : nullptr;
     }
   //}}}
   //{{{
-  uint8_t* getAudioPower (int frame) {
-    return mPower ? mPower + (frame * 2) : nullptr;
+  int16_t* getAudioSamples (int frame) {
+    return mAudio + (frame * kSamplesPerFrame * mChans);
     }
   //}}}
 

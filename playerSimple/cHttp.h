@@ -45,7 +45,7 @@ public:
     }
   //}}}
   //{{{
-  const char* getError() {
+  const char* getErrorStr() {
     return mErrorStr;
     }
   //}}}

@@ -16,7 +16,7 @@
 #include "cHlsRadio.h"
 //}}}
 
-class cAppWindow : public cD2dWindow {
+class cAppWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
   cAppWindow() : mPlayFrame(0), mStopped(false) {
@@ -32,18 +32,22 @@ public:
   //{{{
   void run (wchar_t* title, int width, int height, int chan, int bitrate) {
 
+    // init window
     initialise (title, width, height);
 
     if ((bitrate != 48000) && (bitrate != 320000))
       bitrate = 128000;
-    setPlayFrame (mHlsRadio.setChanBitrate(chan, bitrate) - 10.0f * mHlsRadio.getFramesPerSec());
+    setPlayFrame (setChanBitrate (chan, bitrate) - 10*getFramesPerSec());
 
+    // launch loaderThread
     std::thread ([=]() { cAppWindow::loader(); } ).detach();
 
+    // launch playerThread, higher priority
     auto playerThread = std::thread ([=]() { cAppWindow::player(); });
     SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
     playerThread.detach();
 
+    // loop in windows message pump till quit
     messagePump();
     };
   //}}}
@@ -58,14 +62,14 @@ protected:
 
       case 0x20 : toggleStopped(); break;  // space
 
-      case 0x21 : incPlayFrame (-60 * mHlsRadio.getFramesPerSec()); break; // page up
-      case 0x22 : incPlayFrame (+60 * mHlsRadio.getFramesPerSec()); break; // page down
+      case 0x21 : incPlayFrame (-60*getFramesPerSec()); break; // page up
+      case 0x22 : incPlayFrame (+60*getFramesPerSec()); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (-2 * mHlsRadio.getFramesPerSec()); break;  // left arrow
-      case 0x27 : incPlayFrame (+2 * mHlsRadio.getFramesPerSec()); break;  // right arrow
+      case 0x25 : incPlayFrame (-2*getFramesPerSec()); break;  // left arrow
+      case 0x27 : incPlayFrame (+2*getFramesPerSec()); break;  // right arrow
 
       case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
       case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
@@ -90,7 +94,7 @@ protected:
     if (!mouseMoved) {
       if (x < 100) {
         int chan = (y < 272/3) ? 3 : (y < 272*2/3) ? 4 : 6;
-        setPlayFrame ((float)mHlsRadio.setChanBitrate (chan, 128000) - 10.0f * cHlsChunk::getFramesPerSec());
+        setPlayFrame ((float)setChanBitrate (chan, 128000) - 10*cHlsChunk::getFramesPerSec());
         signal();
         }
       }
@@ -113,7 +117,7 @@ protected:
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
       r.right = r.left + 1.0f;
       if (!frames)
-        power = mHlsRadio.getPower (frame, frames);
+        power = getPower (frame, frames);
       if (power) {
         r.top = (float)*power++;
         r.bottom = r.top + *power++;
@@ -134,13 +138,13 @@ protected:
 
     wchar_t wDebugStr[200];
     swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
-              hours, mins, secs, mHlsRadio.getChanDisplayName(), mHlsRadio.getBitrate()/1000);
+              hours, mins, secs, getChanDisplayName(), getBitrate()/1000);
     deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
 
-    swprintf (wDebugStr, 200, L"%hs", mHlsRadio.getDebugStr());
+    swprintf (wDebugStr, 200, L"%hs", getDebugStr());
     rt.left = getClientF().width/2.0f;
     deviceContext->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
-                             mHlsRadio.getLoading() ? getGreyBrush() : getWhiteBrush());
+                             getLoading() ? getGreyBrush() : getWhiteBrush());
     }
   //}}}
 
@@ -207,7 +211,7 @@ private:
   void loader() {
 
     while (true) {
-      if (mHlsRadio.load (getIntPlayFrame()))
+      if (load (getIntPlayFrame()))
         Sleep (1000);
 
       wait();
@@ -224,7 +228,7 @@ private:
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (mHlsRadio.getPlay (getIntPlayFrame(), playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
+      winAudioPlay (getPlay (getIntPlayFrame(), playing, seqNum), cHlsChunk::getSamplesPerFrame()*4, 1.0f);
 
       if (playing)
         setPlayFrame (getPlayFrame() + 1.0f);
@@ -232,13 +236,13 @@ private:
       if (!seqNum || (seqNum != lastSeqNum)) {
         if (seqNum != lastSeqNum+1)
           // jumping around, low quality
-          mHlsRadio.setBitrate (48000);
-        else if (mHlsRadio.getBitrate() == 48000)
+          setBitrate (48000);
+        else if (getBitrate() == 48000)
           // normal play, better quality
-          mHlsRadio.setBitrate (128000);
-        else if (mHlsRadio.getBitrate() == 128000)
+          setBitrate (128000);
+        else if (getBitrate() == 128000)
           // normal play, much better quality
-          mHlsRadio.setBitrate (320000);
+          setBitrate (320000);
 
         signal();
         lastSeqNum = seqNum;
@@ -251,9 +255,7 @@ private:
   //}}}
 
   //{{{  private vars
-  cHlsRadio mHlsRadio;
   HANDLE mSemaphore;
-
   float mPlayFrame;
   bool mStopped;
   //}}}

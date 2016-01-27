@@ -40,73 +40,19 @@ public:
     }
   //}}}
   //{{{
-  const char* getChanDisplayName() {
-
-    return mRadioChan.getChanDisplayName();
-    }
-  //}}}
-  //{{{
   const char* getDebugStr() {
 
     sprintf (mDebugStr, "%d:%d:%d\n",
-             mChunks[0].getSeqNum() - mBaseSeqNum,
-             mChunks[1].getSeqNum() - mBaseSeqNum,
-             mChunks[2].getSeqNum() - mBaseSeqNum);
+             mChunks[0].getSeqNum() ? mChunks[0].getSeqNum() - mBaseSeqNum : 9999,
+             mChunks[1].getSeqNum() ? mChunks[1].getSeqNum() - mBaseSeqNum : 9999,
+             mChunks[2].getSeqNum() ? mChunks[2].getSeqNum() - mBaseSeqNum : 9999);
     return mDebugStr;
     }
   //}}}
-
   //{{{
-  int setChanBitrate (int chan, int bitrate) {
+  const char* getChanDisplayName() {
 
-    mBitrate = bitrate;
-
-    printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
-    mBaseSeqNum = mRadioChan.setChan (chan, bitrate);
-
-    const char* dateTime = mRadioChan.getDateTime();
-    int hour = ((dateTime[11] - '0') * 10) + (dateTime[12] - '0');
-    int min = ((dateTime[14] - '0') * 10) + (dateTime[15] - '0');
-    int sec = ((dateTime[17] - '0') * 10) + (dateTime[18] - '0');
-    mBaseFrame = (((hour*60*60) + (min*60) + sec) * cHlsChunk::getFramesPerChunk() * 10) / 64;
-    printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, mBaseSeqNum, mRadioChan.getDateTime());
-
-    invalidateChunks();
-    return mBaseFrame;
-    }
-  //}}}
-  //{{{
-  void setBitrate (int bitrate) {
-
-    mBitrate = bitrate;
-    }
-  //}}}
-
-  //{{{
-  bool load (int frame) {
-
-    int seqNum = getSeqNumFromFrame (frame);
-
-    bool ok = false;
-    int chunk;
-    if (!findSeqNumChunk (seqNum, 0, chunk)) {
-      mLoading++;
-      ok &= mChunks[chunk].load (&mRadioChan, seqNum, mBitrate);
-      }
-
-    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
-      if (!findSeqNumChunk (seqNum, i, chunk)) {
-        mLoading++;
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i, mBitrate);
-        }
-      if (!findSeqNumChunk (seqNum, -i, chunk)) {
-        mLoading++;
-        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i, mBitrate);
-        }
-      }
-    mLoading = 0;
-
-    return ok;
+    return mRadioChan.getChanDisplayName();
     }
   //}}}
   //{{{
@@ -140,6 +86,62 @@ public:
     }
   //}}}
 
+  //{{{
+  int setChanBitrate (int chan, int bitrate) {
+
+    mBitrate = bitrate;
+
+    printf ("cHlsChunks::setChan %d %d\n", chan, bitrate);
+    mBaseSeqNum = mRadioChan.setChan (chan, bitrate);
+
+    const char* dateTime = mRadioChan.getDateTime();
+    int hour = ((dateTime[11] - '0') * 10) + (dateTime[12] - '0');
+    int min = ((dateTime[14] - '0') * 10) + (dateTime[15] - '0');
+    int sec = ((dateTime[17] - '0') * 10) + (dateTime[18] - '0');
+    mBaseFrame = (((hour*60*60) + (min*60) + sec) * cHlsChunk::getFramesPerChunk() * 10) / 64;
+    printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, mBaseSeqNum, mRadioChan.getDateTime());
+
+    invalidateChunks();
+    return mBaseFrame;
+    }
+  //}}}
+  //{{{
+  void setBitrate (int bitrate) {
+
+    mBitrate = bitrate;
+    }
+  //}}}
+
+  //{{{
+  bool load (int frame) {
+  // return false if load failure, usually 404
+
+    bool ok = false;
+
+    mLoading = 0;
+    int chunk;
+    int seqNum = getSeqNumFromFrame (frame);
+    if (!findSeqNumChunk (seqNum, mBitrate, 0, chunk)) {
+      mLoading++;
+      ok &= mChunks[chunk].load (&mRadioChan, seqNum, mBitrate);
+      }
+
+    for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
+      if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
+        mLoading++;
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum+i, mBitrate);
+        }
+      if (!findSeqNumChunk (seqNum, mBitrate, -i, chunk)) {
+        mLoading++;
+        ok &= mChunks[chunk].load (&mRadioChan, seqNum-i, mBitrate);
+        }
+      }
+    mLoading = 0;
+
+    return ok;
+    }
+  //}}}
+
 private:
   //{{{
   int getSeqNumFromFrame (int frame) {
@@ -158,6 +160,7 @@ private:
     return r < 0 ? r + cHlsChunk::getFramesPerChunk() : r;
     }
   //}}}
+
   //{{{
   bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
 
@@ -181,13 +184,17 @@ private:
     }
   //}}}
   //{{{
-  bool findSeqNumChunk (int seqNum, int offset, int& chunk) {
+  bool findSeqNumChunk (int seqNum, int bitrate, int offset, int& chunk) {
+  // return true if match found
+  // - if not chunk = best reuse
+  // - reuse same seqNum chunk if diff bitrate
 
     // look for matching chunk
     chunk = 0;
     while (chunk < NUM_CHUNKS) {
       if (seqNum + offset == mChunks[chunk].getSeqNum())
         return true;
+        //return bitrate != mChunks[chunk].getBitrate();
       chunk++;
       }
 
@@ -199,11 +206,7 @@ private:
       chunk++;
       }
 
-    printf ("findSeqNumChunk cockup %d", seqNum);
-    for (auto i = 0; i < NUM_CHUNKS; i++)
-      printf (" %d", mChunks[i].getSeqNum());
-    printf ("\n");
-
+    printf ("cHlsRadio::findSeqNumChunk problem %d", seqNum);
     chunk = 0;
     return false;
     }
