@@ -10,16 +10,6 @@ public:
 
   // gets
   //{{{
-  int getChan() {
-    return mChan;
-    }
-  //}}}
-  //{{{
-  int getBaseSeqNum() {
-    return mBaseSeqNum;
-    }
-  //}}}
-  //{{{
   const char* getHost() {
     return mHost;
     }
@@ -33,22 +23,27 @@ public:
     }
   //}}}
   //{{{
-  const char* getDateTime() {
-    return mDateTime;
+  const char* getChanDisplayName() {
+    return kChanDisplayNames[mChan];
     }
   //}}}
   //{{{
-  const char* getChanDisplayName() {
-    return kChanDisplayNames[mChan];
+  int getBaseSeqNum() {
+    return mBaseSeqNum;
+    }
+  //}}}
+  //{{{
+  const char* getDateTime() {
+    return mDateTime;
     }
   //}}}
 
   // set
   //{{{
-  int setChan (int chan, int bitrate) {
+  void setChan (int chan, int bitrate) {
+
     mChan = chan;
     findM3u8SeqNum (bitrate);
-    return mBaseSeqNum;
     }
   //}}}
 
@@ -89,8 +84,8 @@ private:
 
   // vars
   int mChan;
-  int mBaseSeqNum;
-  char mDateTime[80];
   char mHost[80];
   char mPath[200];
+  int mBaseSeqNum;
+  char mDateTime[80];
   };
