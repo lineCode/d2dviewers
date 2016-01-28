@@ -30,12 +30,12 @@ HANDLE hSemaphore;
 cHlsChunk hlsChunk[2];
 
 //{{{
-void player() {
+void player (int framesPerChunk) {
 
   bool phase = false;
   while (true) {
-    for (auto frame = 0; frame < hlsChunk[phase].getFramesPerChunk(); frame++)
-      winAudioPlay (hlsChunk[phase].getAudioSamples (frame), hlsChunk[phase].getSamplesPerFrame()*4, 1.0f);
+    for (auto frame = 0; frame < framesPerChunk; frame++)
+      winAudioPlay (hlsChunk[phase].getAudioSamples (frame), 1024*4, 1.0f);
     phase = !phase;
     ReleaseSemaphore (hSemaphore, 1, NULL);
     }
@@ -60,7 +60,8 @@ int main (int argc, char* argv[]) {
 
   cRadioChan radioChan;
   radioChan.setChan (chan);
-  printf ("radio %d %d %s\n", radioChan.getBaseSeqNum(), radioChan.getFramesPerChunk(), radioChan.getDateTime());
+  int framesPerChunk = radioChan.getFramesPerChunk();
+  printf ("radio seqNum:%d framesPerChunk:%d %s\n", radioChan.getBaseSeqNum(), framesPerChunk, radioChan.getDateTime());
 
   // preload
   int seqNum = radioChan.getBaseSeqNum()-1;
@@ -69,12 +70,13 @@ int main (int argc, char* argv[]) {
 
   // sync and thread
   hSemaphore = CreateSemaphore (NULL, 0, 1, "playSem");  // initial 0, max 1
-  std::thread ([=]() { player(); } ).detach();
+  std::thread ([=]() { player (framesPerChunk); } ).detach();
 
   // loader
   while (true) {
     phase = !phase;
     hlsChunk[phase].load (&radioChan, seqNum++, bitrate);
+    printf ("radio load %d\n", seqNum-1);
     WaitForSingleObject (hSemaphore, 20 * 1000);
     }
 

@@ -10,19 +10,8 @@
 class cHlsRadio : public cRadioChan {
 public:
   #define NUM_CHUNKS 3
-  //{{{
-  cHlsRadio() : mBaseFrame(0), mLoading(0) {
-
-    mSilence = (int16_t*) pvPortMalloc (1024*2*2*getFramesPerPlay());
-    for (auto i = 0; i < 1024*2; i++)
-      mSilence[i] = 0;
-    }
-  //}}}
-  //{{{
-  ~cHlsRadio() {
-    vPortFree (mSilence);
-    }
-  //}}}
+  cHlsRadio() : mBaseFrame(0), mLoading(0) {}
+  ~cHlsRadio() {}
 
   //{{{
   int getBitrate() {
@@ -64,25 +53,12 @@ public:
     }
   //}}}
   //{{{
-  int16_t* getAudioSamples (int frame, bool& playing, int& seqNum) {
-  // return audio buffer for frame, silence if not loaded or not playing
+  int16_t* getAudioSamples (int frame, int& seqNum) {
+  // return audio buffer for frame
 
     int chunk;
     int frameInChunk;
-    playing &= findFrame (frame, seqNum, chunk, frameInChunk);
-
-    int16_t* audioSamples = mChunks[chunk].getAudioSamples(frameInChunk);
-    return (playing && audioSamples) ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
-    }
-  //}}}
-  //{{{
-  int getFramesPerPlay() {
-    return 1;
-    }
-  //}}}
-  //{{{
-  int getSamplesPerPlay() {
-    return getSamplesPerFrame() * 2 * 2 * getFramesPerPlay();
+    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioSamples (frameInChunk) : nullptr;
     }
   //}}}
 
@@ -225,5 +201,4 @@ private:
   int mLoading;
   char mDebugStr [20];
   cHlsChunk mChunks [NUM_CHUNKS];
-  int16_t* mSilence;
   };

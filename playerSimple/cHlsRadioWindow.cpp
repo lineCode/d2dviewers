@@ -20,11 +20,18 @@ class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
   cHlsRadioWindow() : mPlayFrame(0), mStopped(false), mJump(false) {
+
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
+
+    mSilence = (int16_t*) pvPortMalloc (1024*2*2*getFramesPerPlay());
+    for (auto i = 0; i < 1024*2; i++)
+      mSilence[i] = 0;
     }
   //}}}
   //{{{
   ~cHlsRadioWindow() {
+
+    vPortFree (mSilence);
     CloseHandle (mSemaphore);
     }
   //}}}
@@ -162,6 +169,16 @@ private:
     return mPlayFrame;
     }
   //}}}
+  //{{{
+  int getFramesPerPlay() {
+    return 1;
+    }
+  //}}}
+  //{{{
+  int getSamplesPerPlay() {
+    return getSamplesPerFrame() * 2 * 2 * getFramesPerPlay();
+    }
+  //}}}
 
   // sets
   //{{{
@@ -225,10 +242,11 @@ private:
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (getAudioSamples (getPlayFrame(), playing, seqNum), getSamplesPerPlay(), 1.0f);
+      int16_t* audioSamples = getAudioSamples (getPlayFrame(), seqNum);
+      winAudioPlay ((playing && audioSamples) ? audioSamples : mSilence, getSamplesPerPlay(), 1.0f);
 
       if (playing)
-        setPlayFrame ((getPlayFrame() & ~(getFramesPerPlay()>> 1)) + getFramesPerPlay());
+        setPlayFrame ((getPlayFrame() & ~(getFramesPerPlay() >> 1)) + getFramesPerPlay());
 
       if (!seqNum || (seqNum != lastSeqNum)) {
         mJump = seqNum != lastSeqNum+1;
@@ -257,6 +275,7 @@ private:
   int mPlayFrame;
   bool mStopped;
   bool mJump;
+  int16_t* mSilence;
   };
 
 //{{{
