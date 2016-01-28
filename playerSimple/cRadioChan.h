@@ -43,10 +43,26 @@ public:
   //}}}
 
   //{{{
+  int getSampleRate() {
+    return kSampleRate;
+    }
+  //}}}
+  //{{{
+  int getSamplesPerFrame() {
+    return kSamplesPerFrame;
+    }
+  //}}}
+  //{{{
+  int getFramesFromSec (int sec) {
+     return (sec * getSampleRate()) / getSamplesPerFrame();
+    }
+  //}}}
+  //{{{
   int getFramesPerChunk() {
     return kFramesPerChunk [getRadioTv()];
     }
   //}}}
+
   //{{{
   int getLowBitrate() {
     return kLowBitrate [mChan];
@@ -85,6 +101,9 @@ public:
 
 private:
   //{{{  const
+  const int kSampleRate = 48000;
+  const int kSamplesPerFrame = 1024;
+
   const char* kOrigHost[2] =     { "as-hls-uk-live.bbcfmt.vo.llnwd.net",
                                    "vs-hls-uk-live.bbcfmt.vo.llnwd.net" };
   const char* kM3u8Path[2] =     { "pool_%d/live/%s/%s.isml/%s-audio%%3d%d.norewind.m3u8",

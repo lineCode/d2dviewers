@@ -9,7 +9,7 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mFramesPerChunk(0),
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0),
                 mChans(0), mSampleRate(0), mDecoder(0), mPower(nullptr), mAudio(nullptr) {}
   //}}}
   //{{{
@@ -19,18 +19,6 @@ public:
       vPortFree (mPower);
     if (mAudio)
       vPortFree (mAudio);
-    }
-  //}}}
-
-  // static members
-  //{{{
-  static float getFramesPerSec() {
-    return 48000 / (float)getSamplesPerFrame();
-    }
-  //}}}
-  //{{{
-  static int getSamplesPerFrame() {
-    return 1024;
     }
   //}}}
 
@@ -51,18 +39,13 @@ public:
     }
   //}}}
   //{{{
-  int getFramesPerChunk() {
-    return mFramesPerChunk;
-    }
-  //}}}
-  //{{{
   uint8_t* getAudioPower (int frame) {
     return mPower ? mPower + (frame * 2) : nullptr;
     }
   //}}}
   //{{{
   int16_t* getAudioSamples (int frame) {
-    return mAudio ? (mAudio + (frame * getSamplesPerFrame() * mChans)) : nullptr;
+    return mAudio ? (mAudio + (frame * mSamplesPerFrame * mChans)) : nullptr;
     }
   //}}}
 
@@ -73,7 +56,8 @@ public:
     mSeqNum = seqNum;
     mBitrate = bitrate;
     mFramesLoaded = 0;
-    mFramesPerChunk = radioChan->getFramesPerChunk();
+    mSampleRate = radioChan->getSampleRate();
+    mSamplesPerFrame = radioChan->getSamplesPerFrame();
 
     //{{{  init decoder
     mDecoder = NeAACDecOpen();
@@ -84,9 +68,9 @@ public:
 
     // better test for same size
     vPortFree (mPower);
-    mPower = (uint8_t*)pvPortMalloc (mFramesPerChunk * 2);
+    mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
     vPortFree (mAudio);
-    mAudio = (int16_t*)pvPortMalloc (mFramesPerChunk * getSamplesPerFrame() * 2 * 2);
+    mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * mSamplesPerFrame * 2 * 2);
 
     cHttp aacHttp;
     auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
@@ -99,7 +83,7 @@ public:
 
       // aac HE has double size frames, treat as two normal
       int framesPerAacFrame = (mBitrate <= 48000) ? 2 : 1;
-      int samplesPerAacFrame = 1024 * framesPerAacFrame;
+      int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
 
       NeAACDecFrameInfo frameInfo;
       int16_t* buffer = mAudio;
@@ -113,16 +97,16 @@ public:
           //{{{  calc left, right power
           int valueL = 0;
           int valueR = 0;
-          for (int j = 0; j < getSamplesPerFrame(); j++) {
+          for (int j = 0; j < mSamplesPerFrame; j++) {
             short sample = (*buffer++) >> 4;
             valueL += sample * sample;
             sample = (*buffer++) >> 4;
             valueR += sample * sample;
             }
 
-          uint8_t leftPix = (uint8_t)sqrt(valueL / (getSamplesPerFrame() * 32.0f));
+          uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
           *powerPtr++ = (272/2) - leftPix;
-          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (getSamplesPerFrame() * 32.0f));
+          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
           mFramesLoaded++;
           }
           //}}}
@@ -180,7 +164,7 @@ private:
   int mSeqNum;
   int mBitrate;
   int mFramesLoaded;
-  int mFramesPerChunk;
+  int mSamplesPerFrame;
 
   unsigned long mSampleRate;
   uint8_t mChans;

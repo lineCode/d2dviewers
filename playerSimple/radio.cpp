@@ -27,11 +27,10 @@ typedef signed char int8_t;
 //}}}
 
 HANDLE hSemaphore;
-
 cHlsChunk hlsChunk[2];
 
 //{{{
-void play() {
+void player() {
 
   bool phase = false;
   while (true) {
@@ -44,7 +43,7 @@ void play() {
 //}}}
 
 int main (int argc, char* argv[]) {
-  //{{{  init win32 stuff
+ // init win32 stuff
   CoInitialize (NULL);
   winAudioOpen (48000, 16, 2);
   WSADATA wsaData;
@@ -55,36 +54,34 @@ int main (int argc, char* argv[]) {
     }
     //}}}
 
-  hSemaphore = CreateSemaphore (NULL, 0, 1, "playSem");  // initial 0, max 1
-  //}}}
-
   int chan = (argc >= 2) ? atoi(argv[1]) : 6;
   int bitrate = (argc >= 3) ? atoi(argv[2]) : 128000;
   printf ("radio %d %d\n", chan, bitrate);
 
-  cRadioChan* radioChan = new cRadioChan();
-  radioChan->setChan (chan);
-  radioChan->getFramesPerChunk();
+  cRadioChan radioChan;
+  radioChan.setChan (chan);
+  printf ("radio %d %d %s\n", radioChan.getBaseSeqNum(), radioChan.getFramesPerChunk(), radioChan.getDateTime());
 
-  printf ("radio %d %s\n", radioChan->getBaseSeqNum(), radioChan->getDateTime());
-
-  int seqNum = radioChan->getBaseSeqNum()-1;
+  // preload
+  int seqNum = radioChan.getBaseSeqNum()-1;
   bool phase = false;
-  hlsChunk[phase].load (radioChan, seqNum++, bitrate);
-  std::thread ([=]() { play(); } ).detach();
+  hlsChunk[phase].load (&radioChan, seqNum++, bitrate);
 
+  // sync and thread
+  hSemaphore = CreateSemaphore (NULL, 0, 1, "playSem");  // initial 0, max 1
+  std::thread ([=]() { player(); } ).detach();
+
+  // loader
   while (true) {
     phase = !phase;
-    hlsChunk[phase].load (radioChan, seqNum++, bitrate);
+    hlsChunk[phase].load (&radioChan, seqNum++, bitrate);
     WaitForSingleObject (hSemaphore, 20 * 1000);
     }
 
-  //{{{  cleanup win32 stuff
+  // cleanup win32 stuff
   CloseHandle(hSemaphore);
-
   winAudioClose();
   WSACleanup();
   CoUninitialize();
   return 0;
-  //}}}
   }

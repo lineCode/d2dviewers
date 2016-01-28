@@ -34,7 +34,7 @@ public:
     // init window
     initialise (title, width, height);
 
-    setPlayFrame (setChanBitrate (chan) - 10*getFramesPerSec());
+    setPlayFrame (changeChan (chan) - getFramesFromSec (10));
 
     // launch loaderThread
     std::thread ([=]() { loader(); } ).detach();
@@ -59,17 +59,17 @@ protected:
 
       case 0x20 : toggleStopped(); break;  // space
 
-      case 0x21 : incPlayFrame (-60*getFramesPerSec()); break; // page up
-      case 0x22 : incPlayFrame (+60*getFramesPerSec()); break; // page down
+      case 0x21 : incPlayFrame (getFramesFromSec(-60)); break; // page up
+      case 0x22 : incPlayFrame (getFramesFromSec(+60)); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (-2*getFramesPerSec()); break;  // left arrow
-      case 0x27 : incPlayFrame (+2*getFramesPerSec()); break;  // right arrow
+      case 0x25 : incPlayFrame (getFramesFromSec(-2)); break;  // left arrow
+      case 0x27 : incPlayFrame (getFramesFromSec(+2)); break;  // right arrow
 
-      case 0x26 : setStopped (true); incPlayFrame (-2.0f); break; // up arrow
-      case 0x28 : setStopped (true); incPlayFrame (+2.0f); break; // down arrow
+      case 0x26 : setStopped (true); incPlayFrame (-2); break; // up arrow
+      case 0x28 : setStopped (true); incPlayFrame (+2); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -80,8 +80,8 @@ protected:
       case 0x35 :
       case 0x36 :
       case 0x37 :
-      case 0x38 : 
-      case 0x39 : setPlayFrame (setChanBitrate (key-'0') - 10*getFramesPerSec()); break;
+      case 0x38 :
+      case 0x39 : setPlayFrame (changeChan (key-'0') - getFramesFromSec(10)); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -92,7 +92,7 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    incPlayFrame ((float)-xInc);
+    incPlayFrame (-xInc);
     }
   //}}}
   //{{{
@@ -113,7 +113,7 @@ protected:
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
 
-    int frame = getIntPlayFrame() - int(getClientF().width/2.0f);
+    int frame = getPlayFrame() - int(getClientF().width/2.0f);
     uint8_t* power = nullptr;
     int frames = 0;
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
@@ -130,9 +130,9 @@ protected:
       }
 
     // debug str
-    long long secs100 = getIntPlayFrame();
-    secs100 *= 1024;
-    secs100 /= 480;
+    long long secs100 = getPlayFrame();
+    secs100 *= getSamplesPerFrame()*100;
+    secs100 /= getSampleRate();
     int frac = secs100 % 100;
     int secs = (secs100 / 100) % 60;
     int mins = (secs100 / (60*100)) % 60;
@@ -158,13 +158,8 @@ private:
     }
   //}}}
   //{{{
-  float getPlayFrame() {
+  int getPlayFrame() {
     return mPlayFrame;
-    }
-  //}}}
-  //{{{
-  int getIntPlayFrame() {
-    return (int)mPlayFrame;
     }
   //}}}
 
@@ -180,18 +175,18 @@ private:
     }
   //}}}
   //{{{
-  void setPlayFrame (float frame) {
+  void setPlayFrame (int frame) {
     mPlayFrame = frame;
     changed();
     }
   //}}}
   //{{{
-  void incPlayFrame (float inc) {
+  void incPlayFrame (int inc) {
     setPlayFrame (mPlayFrame + inc);
     }
   //}}}
   //{{{
-  void incAlignPlayFrame (float inc) {
+  void incAlignPlayFrame (int inc) {
     setPlayFrame (mPlayFrame + inc);
     }
   //}}}
@@ -213,7 +208,7 @@ private:
   void loader() {
 
     while (true) {
-      if (load (getIntPlayFrame(), mJump))
+      if (load (getPlayFrame(), mJump))
         Sleep (1000);
       mJump = false;
       wait();
@@ -224,16 +219,16 @@ private:
   void player() {
 
     CoInitialize (NULL);
-    winAudioOpen (48000, 16, 2);
+    winAudioOpen (getSampleRate(), 16, 2);
 
     int lastSeqNum = 0;
     while (true) {
       bool playing = !getStopped();
       int seqNum;
-      winAudioPlay (getAudioSamples(getIntPlayFrame(), playing, seqNum), getSamplesPerPlay(), 1.0f);
+      winAudioPlay (getAudioSamples (getPlayFrame(), playing, seqNum), getSamplesPerPlay(), 1.0f);
 
       if (playing)
-        setPlayFrame ((getIntPlayFrame() & ~(getFramesPerPlay()>> 1)) + (float)getFramesPerPlay());
+        setPlayFrame ((getPlayFrame() & ~(getFramesPerPlay()>> 1)) + getFramesPerPlay());
 
       if (!seqNum || (seqNum != lastSeqNum)) {
         mJump = seqNum != lastSeqNum+1;
@@ -259,7 +254,7 @@ private:
 
   // vars
   HANDLE mSemaphore;
-  float mPlayFrame;
+  int mPlayFrame;
   bool mStopped;
   bool mJump;
   };

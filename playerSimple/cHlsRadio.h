@@ -13,8 +13,8 @@ public:
   //{{{
   cHlsRadio() : mBaseFrame(0), mLoading(0) {
 
-    mSilence = (int16_t*) pvPortMalloc (cHlsChunk::getSamplesPerFrame()*2*2*getFramesPerPlay());
-    for (auto i = 0; i < cHlsChunk::getSamplesPerFrame()*2; i++)
+    mSilence = (int16_t*) pvPortMalloc (1024*2*2*getFramesPerPlay());
+    for (auto i = 0; i < 1024*2; i++)
       mSilence[i] = 0;
     }
   //}}}
@@ -32,16 +32,6 @@ public:
   //{{{
   int getLoading() {
     return mLoading;
-    }
-  //}}}
-  //{{{
-  float getFramesPerSec() {
-    return cHlsChunk::getFramesPerSec();
-    }
-  //}}}
-  //{{{
-  int getSamplesPerFrame() {
-    return cHlsChunk::getSamplesPerFrame();
     }
   //}}}
   //{{{
@@ -80,7 +70,7 @@ public:
     int chunk;
     int frameInChunk;
     playing &= findFrame (frame, seqNum, chunk, frameInChunk);
-    
+
     int16_t* audioSamples = mChunks[chunk].getAudioSamples(frameInChunk);
     return (playing && audioSamples) ? mChunks[chunk].getAudioSamples (frameInChunk) : mSilence;
     }
@@ -97,8 +87,7 @@ public:
   //}}}
 
   //{{{
-  int setChanBitrate (int chan) {
-
+  int changeChan (int chan) {
 
     printf ("cHlsChunks::setChan %d\n", chan);
     setChan (chan);
@@ -107,7 +96,7 @@ public:
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
     int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    mBaseFrame = (((hour*60*60) + (min*60) + sec) * getFramesPerChunk() * 10) / 64;
+    mBaseFrame = getFramesFromSec ((hour * 60 * 60) + (min * 60) + sec);
     printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, getBaseSeqNum(), getDateTime());
 
     invalidateChunks();
