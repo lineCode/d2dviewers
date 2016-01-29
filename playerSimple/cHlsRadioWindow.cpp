@@ -18,12 +18,13 @@
 
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
+  const int kFramesPerPlay = 1;
   //{{{
-  cHlsRadioWindow() : mPlayFrame(0), mStopped(false), mJump(false) {
+  cHlsRadioWindow() : mPlayFrame(0), mPlaying(true), mJump(false) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-    mSilence = (int16_t*) pvPortMalloc (1024*2*2*getFramesPerPlay());
+    mSilence = (int16_t*) pvPortMalloc (1024*2*2*kFramesPerPlay);
     for (auto i = 0; i < 1024*2; i++)
       mSilence[i] = 0;
     }
@@ -64,7 +65,7 @@ protected:
       case 0x00 : break;
       case 0x1B : return true; // escape
 
-      case 0x20 : toggleStopped(); break;  // space
+      case 0x20 : togglePlaying(); break;  // space
 
       case 0x21 : incPlayFrame (getFramesFromSec(-60)); break; // page up
       case 0x22 : incPlayFrame (getFramesFromSec(+60)); break; // page down
@@ -75,8 +76,8 @@ protected:
       case 0x25 : incPlayFrame (getFramesFromSec(-2)); break;  // left arrow
       case 0x27 : incPlayFrame (getFramesFromSec(+2)); break;  // right arrow
 
-      case 0x26 : setStopped (true); incPlayFrame (-2); break; // up arrow
-      case 0x28 : setStopped (true); incPlayFrame (+2); break; // down arrow
+      case 0x26 : setPlaying (false); incPlayFrame (-2); break; // up arrow
+      case 0x28 : setPlaying (false); incPlayFrame (+2); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -120,7 +121,7 @@ protected:
     D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
 
-    int frame = getPlayFrame() - int(getClientF().width/2.0f);
+    int frame = mPlayFrame - int(getClientF().width/2.0f);
     uint8_t* power = nullptr;
     int frames = 0;
     for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
@@ -137,7 +138,7 @@ protected:
       }
 
     // debug str
-    long long secs100 = getPlayFrame();
+    long long secs100 = mPlayFrame;
     secs100 *= getSamplesPerFrame()*100;
     secs100 /= getSampleRate();
     int frac = secs100 % 100;
@@ -158,37 +159,15 @@ protected:
   //}}}
 
 private:
-  // gets
-  //{{{
-  bool getStopped() {
-    return mStopped;
-    }
-  //}}}
-  //{{{
-  int getPlayFrame() {
-    return mPlayFrame;
-    }
-  //}}}
-  //{{{
-  int getFramesPerPlay() {
-    return 1;
-    }
-  //}}}
-  //{{{
-  int getSamplesPerPlay() {
-    return getSamplesPerFrame() * 2 * 2 * getFramesPerPlay();
-    }
-  //}}}
-
   // sets
   //{{{
-  void setStopped (bool stopped) {
-    mStopped = stopped;
+  void setPlaying (bool playing) {
+    mPlaying = playing;
     }
   //}}}
   //{{{
-  void toggleStopped() {
-    mStopped = !mStopped;
+  void togglePlaying() {
+    mPlaying = !mPlaying;
     }
   //}}}
   //{{{
@@ -225,7 +204,7 @@ private:
   void loader() {
 
     while (true) {
-      if (load (getPlayFrame(), mJump))
+      if (load (mPlayFrame, mJump))
         Sleep (1000);
       mJump = false;
       wait();
@@ -240,13 +219,12 @@ private:
 
     int lastSeqNum = 0;
     while (true) {
-      bool playing = !getStopped();
       int seqNum;
-      int16_t* audioSamples = getAudioSamples (getPlayFrame(), seqNum);
-      winAudioPlay ((playing && audioSamples) ? audioSamples : mSilence, getSamplesPerPlay(), 1.0f);
+      int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*2*kFramesPerPlay, 1.0f);
 
-      if (playing)
-        setPlayFrame ((getPlayFrame() & ~(getFramesPerPlay() >> 1)) + getFramesPerPlay());
+      if (mPlaying)
+        setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
         mJump = seqNum != lastSeqNum+1;
@@ -273,7 +251,7 @@ private:
   // vars
   HANDLE mSemaphore;
   int mPlayFrame;
-  bool mStopped;
+  bool mPlaying;
   bool mJump;
   int16_t* mSilence;
   };
