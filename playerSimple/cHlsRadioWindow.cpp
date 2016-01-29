@@ -65,7 +65,7 @@ protected:
       case 0x00 : break;
       case 0x1B : return true; // escape
 
-      case 0x20 : togglePlaying(); break;  // space
+      case 0x20 : mPlaying = !mPlaying; break;  // space
 
       case 0x21 : incPlayFrame (getFramesFromSec(-60)); break; // page up
       case 0x22 : incPlayFrame (getFramesFromSec(+60)); break; // page down
@@ -76,8 +76,8 @@ protected:
       case 0x25 : incPlayFrame (getFramesFromSec(-2)); break;  // left arrow
       case 0x27 : incPlayFrame (getFramesFromSec(+2)); break;  // right arrow
 
-      case 0x26 : setPlaying (false); incPlayFrame (-2); break; // up arrow
-      case 0x28 : setPlaying (false); incPlayFrame (+2); break; // down arrow
+      case 0x26 : mPlaying = false; incPlayFrame (-2); break; // up arrow
+      case 0x28 : mPlaying = false; incPlayFrame (+2); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -160,16 +160,6 @@ protected:
 
 private:
   // sets
-  //{{{
-  void setPlaying (bool playing) {
-    mPlaying = playing;
-    }
-  //}}}
-  //{{{
-  void togglePlaying() {
-    mPlaying = !mPlaying;
-    }
-  //}}}
   //{{{
   void setPlayFrame (int frame) {
     mPlayFrame = frame;
