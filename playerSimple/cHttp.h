@@ -6,13 +6,36 @@
 
 class cHttp {
 public:
-  cHttp() : mContent(nullptr), mRedirectUrl(nullptr) {}
+  //{{{
+  cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
+            mChunked(0), mContentLen(-1), mKeyStrLen(0), mValueStrLen(0), mContentSize(0),
+            mContent(nullptr), mRedirectUrl(nullptr), mOrigHost(nullptr),
+  #ifdef WIN32
+    mWebSocket(-1)
+  #else
+    mConn(0)
+  #endif
+
+    {
+    mInfoStr[0] = 0;
+    }
+  //}}}
   //{{{
   ~cHttp() {
+
     if (mContent)
       vPortFree (mContent);
+
     if (mRedirectUrl)
       delete mRedirectUrl;
+
+  #ifdef WIN32
+    if (mWebSocket != -1)
+      closesocket (mWebSocket);
+  #else
+    if (mConn)
+      netconn_close (mConn);
+  #endif
     }
   //}}}
 
@@ -43,8 +66,8 @@ public:
     }
   //}}}
   //{{{
-  const char* getErrorStr() {
-    return mErrorStr;
+  const char* getInfoStr() {
+    return mInfoStr;
     }
   //}}}
 
@@ -70,44 +93,60 @@ public:
       vPortFree (mContent);
       mContent = nullptr;
       }
+
+    mInfoStr[0] = 0;;
     //}}}
-    //{{{  create webSocket from host, connect
-    struct addrinfo hints;
-    memset (&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;       // IPv4
-    hints.ai_protocol = IPPROTO_TCP; // TCP
-    hints.ai_socktype = SOCK_STREAM; // TCP so its SOCK_STREAM
 
-    struct addrinfo* targetAddressInfo = NULL;
-    unsigned long getAddrRes = getaddrinfo (host, NULL, &hints, &targetAddressInfo);
-    if (getAddrRes != 0 || targetAddressInfo == NULL) {
-      printf ("Could not resolve the Host Name\n");
-      return 0;
+    if ((mWebSocket != -1) || (strcmp (host, mHost) != 0)) {
+      //{{{  find host ipAddress, create webSocket, and connect
+      strcpy (mHost, host);
+
+      // close any open webSocket
+      if (mWebSocket != 1)
+        closesocket (mWebSocket);
+
+      // find host ipAddress
+      struct addrinfo hints;
+      memset (&hints, 0, sizeof(hints));
+      hints.ai_family = AF_INET;       // IPv4
+      hints.ai_protocol = IPPROTO_TCP; // TCP
+      hints.ai_socktype = SOCK_STREAM; // TCP so its SOCK_STREAM
+      struct addrinfo* targetAddressInfo = NULL;
+      unsigned long getAddrRes = getaddrinfo (host, NULL, &hints, &targetAddressInfo);
+      if (getAddrRes != 0 || targetAddressInfo == NULL) {
+        //{{{  error
+        strcpy (mInfoStr, "Could not resolve the Host Name");
+        return -1;
+        }
+        //}}}
+
+      // create webSocket
+      mWebSocket = (unsigned int)socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
+      if (mWebSocket == -1) {
+        //{{{  error
+        strcpy (mInfoStr, "Creation of the Socket Failed");
+        return -2;
+        }
+        //}}}
+
+      // connect to webSocket
+      struct sockaddr_in sockAddr;
+      sockAddr.sin_addr = ((struct sockaddr_in*)targetAddressInfo->ai_addr)->sin_addr;
+      sockAddr.sin_family = AF_INET; // IPv4
+      sockAddr.sin_port = htons (80); // HTTP Port: 80
+      if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
+        //{{{  error
+        strcpy (mInfoStr, "Could not connect");
+        closesocket (mWebSocket);
+        mWebSocket = -1;
+        return -3;
+        }
+        //}}}
+
+      // free targetAddressInfo from getaddrinfo
+      freeaddrinfo (targetAddressInfo);
       }
-
-    // create webSocket
-    struct sockaddr_in sockAddr;
-    sockAddr.sin_addr = ((struct sockaddr_in*)targetAddressInfo->ai_addr)->sin_addr;
-    sockAddr.sin_family = AF_INET; // IPv4
-    sockAddr.sin_port = htons(80); // HTTP Port: 80
-
-    // free targetAddressInfo from getaddrinfo
-    freeaddrinfo (targetAddressInfo);
-
-    // create socket
-    unsigned int webSocket = (unsigned int)socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (webSocket == -1) {
-      printf ("Creation of the Socket Failed\n");
-      return 0;
-      }
-
-    // connection to webSocket
-    if (connect (webSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
-      closesocket (webSocket);
-      printf ("Could not connect\n");
-      return 0;
-      }
-    //}}}
+      //}}}
 
     strcpy (mScratch, "GET /");
     strcat (mScratch, path);
@@ -116,23 +155,29 @@ public:
     strcat (mScratch, "\r\n\r\n");
     int httpRequestStrLen = (int)strlen (mScratch);
 
-    int sentBytes = (int)send (webSocket, mScratch, httpRequestStrLen, 0);
+    int sentBytes = (int)send (mWebSocket, mScratch, httpRequestStrLen, 0);
     if ((sentBytes < httpRequestStrLen) || (sentBytes == -1)) {
-      closesocket (webSocket);
-      printf ("Could not send the request to the Server\n");
-      return 0;
+      //{{{  error
+      strcpy (mInfoStr, "Could not send the request to the Server");
+      closesocket (mWebSocket);
+      mWebSocket = -1;
+      return -4;
       }
+      //}}}
 
     char buffer[0x10000];
     int needMoreData = 1;
     while (needMoreData) {
       const char* bufferPtr = buffer;
-      int bufferBytesReceived = recv (webSocket, buffer, sizeof(buffer), 0);
+      int bufferBytesReceived = recv (mWebSocket, buffer, sizeof(buffer), 0);
       if (bufferBytesReceived <= 0) {
-        printf ("Error receiving data\n");
-        closesocket (webSocket);
-        return 0;
+        //{{{  error
+        strcpy (mInfoStr, "Error receiving data");
+        closesocket (mWebSocket);
+        mWebSocket = -1;
+        return -5;
         }
+        //}}}
 
       while (needMoreData && (bufferBytesReceived > 0)) {
         int bytesReceived;
@@ -143,9 +188,13 @@ public:
       }
 
     if (mState == http_error)
-      mErrorStr = "getHttp - error parsing data\n";
+      strcpy (mInfoStr, "getHttp - error parsing data");
 
-    closesocket (webSocket);
+    if (mState == http_error)
+      strcpy (mInfoStr, "httpErr");
+    else
+      sprintf (mInfoStr, "s:%d", mContentSize);
+
     return mResponse;
     }
   //}}}
@@ -171,20 +220,24 @@ public:
       vPortFree (mContent);
       mContent = nullptr;
       }
+
+    mInfoStr[0] = 0;;
     //}}}
 
-    if (netconn_gethostbyname (host, &mIpAddr) != ERR_OK) {
+    ip_addr_t ipAddr;
+    if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
       //{{{  error return
-      mErrorStr = "getHttp - netconn_gethostbyname failed\n";
-      return 0;
+      sprintf (mInfoStr, "getHostByNameFail %s", host);
+      return -1;
       }
       //}}}
 
     mConn = netconn_new (NETCONN_TCP);
-    if (netconn_connect (mConn, &mIpAddr, 80) != ERR_OK){
+    if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
       //{{{  error return
-      mErrorStr = "getHttp - netconn_connect failed\n";
-      return 0;
+      sprintf (mInfoStr, "connFail %d.%d.%d.%d %s",
+               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
+      return -2;
       }
       //}}}
 
@@ -197,9 +250,9 @@ public:
     int httpRequestStrLen = (int)strlen (mScratch);
     if (netconn_write (mConn, mScratch, httpRequestStrLen, NETCONN_NOCOPY) != ERR_OK) {
       //{{{  error return
-      mErrorStr = "getHttp - send failed\n";
+      strcpy (mInfoStr, "httpSendFail");
       netconn_close (mConn);
-      return 0;
+      return -3;
       }
       //}}}
 
@@ -208,9 +261,9 @@ public:
     while (needMoreData) {
       if (netconn_recv (mConn, &buf) != ERR_OK) {
         //{{{  error return;
-        mErrorStr = "getHttp - netconn_recv failed\n";
+        strcpy (mInfoStr, "connRecvFail");
         netconn_close (mConn);
-        return 0;
+        return -4;
         }
         //}}}
 
@@ -229,13 +282,21 @@ public:
       }
 
     if (mState == http_error)
-      mErrorStr = "getHttp - error parsing data\n";
-
-    netconn_close (mConn);
+      strcpy (mInfoStr, "errParse");
+    else
+      sprintf (mInfoStr, "%d.%d.%d.%d s:%d",
+               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), mContentSize);
     return mResponse;
     }
   //}}}
 #endif
+  //{{{
+  void freeContent() {
+    if (mContent)
+      vPortFree (mContent);
+    mContent = nullptr;
+    }
+  //}}}
 
 private:
   //{{{
@@ -534,13 +595,17 @@ private:
 
   int mContentSize;
   uint8_t* mContent;
-  const char* mErrorStr;
+  char mInfoStr[100];
 
   const char* mOrigHost;
   cParsedUrl* mRedirectUrl;
+
+  char mHost[100];
+
+  #ifdef WIN32
+    unsigned int mWebSocket;
+  #else
+    struct netconn* mConn;
+  #endif
   //}}}
-#ifndef WIN32
-  ip_addr_t mIpAddr;
-  struct netconn* mConn;
-#endif
   };

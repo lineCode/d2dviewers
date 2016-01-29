@@ -19,12 +19,12 @@
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() : mPlayFrame(0), mPlaying(true) {
+  cHlsRadioWindow() : mTuneChan(0), mPlayFrame(0), mPlaying(true) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
-    memset (mSilence, 0, getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
+    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
+    memset (mSilence, 0, getSamplesPerFrame()*2*kFramesPerPlay*2);
     }
   //}}}
   //{{{
@@ -40,9 +40,8 @@ public:
     // init window
     initialise (title, width, height);
 
-    setPlayFrame (changeChan (chan) - getFramesFromSec (10));
-
     // launch loaderThread
+    mTuneChan = chan;
     std::thread ([=]() { loader(); } ).detach();
 
     // launch playerThread, higher priority
@@ -87,7 +86,7 @@ protected:
       case 0x36 :
       case 0x37 :
       case 0x38 :
-      case 0x39 : setPlayFrame (changeChan (key-'0') - getFramesFromSec(10)); break;
+      case 0x39 : mTuneChan = key - '0'; signal(); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -177,8 +176,11 @@ private:
   // threads
   //{{{
   void loader() {
+  // loader task, handles all http gets
 
     while (true) {
+      if (getChan() != mTuneChan)
+        setPlayFrame (changeChan (mTuneChan) - getFramesFromSec(10));
       if (load (mPlayFrame))
         Sleep (1000);
       wait();
@@ -195,7 +197,7 @@ private:
     while (true) {
       int seqNum;
       int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*getChans()*kFramesPerPlay*2, 1.0f);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1.0f);
 
       if (mPlaying)
         setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
@@ -214,6 +216,7 @@ private:
 
   // vars
   HANDLE mSemaphore;
+  int mTuneChan;
   int mPlayFrame;
   bool mPlaying;
   int16_t* mSilence;

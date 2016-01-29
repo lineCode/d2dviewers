@@ -8,7 +8,10 @@
 
 class cHlsChunk {
 public:
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mDecoder(0), mAudio(nullptr), mPower(nullptr) {}
+  //{{{
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAudio(nullptr), mPower(nullptr) {
+    }
+  //}}}
   //{{{
   ~cHlsChunk() {
     if (mPower)
@@ -35,6 +38,11 @@ public:
     }
   //}}}
   //{{{
+  const char* getInfoStr() {
+    return mInfoStr;
+    }
+  //}}}
+  //{{{
   uint8_t* getAudioPower (int frameInChunk) {
     return mPower ? mPower + (frameInChunk * 2) : nullptr;
     }
@@ -51,31 +59,24 @@ public:
     bool ok = false;
     mFramesLoaded = 0;
 
-    mSeqNum = seqNum;
-    mBitrate = bitrate;
-    mSamplesPerFrame = radioChan->getSamplesPerFrame();
-
-    //{{{  init decoder
     mDecoder = NeAACDecOpen();
     NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
     config->outputFormat = FAAD_FMT_16BIT;
     NeAACDecSetConfiguration (mDecoder, config);
-    //}}}
 
-    // better test for same size needed
-    if (mAudio)
-      vPortFree (mAudio);
-    mAudio = (int16_t*)pvPortMalloc (radioChan->getFramesPerChunk() * mSamplesPerFrame * 2 * 2);
+    mSeqNum = seqNum;
+    mBitrate = bitrate;
+    mSamplesPerFrame = radioChan->getSamplesPerFrame();
 
-    if (mPower)
-      vPortFree (mPower);
-    mPower = (uint8_t*)pvPortMalloc (radioChan->getFramesPerChunk() * 2);
+    if (!mAudio)
+      mAudio = (int16_t*)pvPortMalloc (radioChan->getMaxFramesPerChunk() * mSamplesPerFrame * 2 * 2);
+    if (!mPower)
+      mPower = (uint8_t*)pvPortMalloc (radioChan->getMaxFramesPerChunk() * 2);
 
-    cHttp aacHttp;
-    auto response = aacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
+    auto response = mAacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
     if (response == 200) {
-      auto loadPtr = aacHttp.getContent();
-      auto loadEnd = packTsBuffer (aacHttp.getContent(), aacHttp.getContentEnd());
+      auto loadPtr = mAacHttp.getContent();
+      auto loadEnd = packTsBuffer (mAacHttp.getContent(), mAacHttp.getContentEnd());
 
       // init decoder
       unsigned long sampleRate;
@@ -116,12 +117,14 @@ public:
       //printf ("cHlsChunk::loaded %d %d %d %d %d\n", samplesPerAacFrame, mBitrate, mSampleRate, mChans, mSeqNum);
       ok = true;
       }
-    else {
+    else
       mSeqNum = 0;
-      printf ("cHlsChunk::load failed%d\n", response);
-      }
+
+    sprintf (mInfoStr, "%d %s", response, mAacHttp.getInfoStr());
+    mAacHttp.freeContent();
 
     NeAACDecClose (mDecoder);
+
     return ok;
     }
   //}}}
@@ -166,7 +169,9 @@ private:
   int mBitrate;
   int mFramesLoaded;
   int mSamplesPerFrame;
+  char mInfoStr[100];
 
+  cHttp mAacHttp;
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;

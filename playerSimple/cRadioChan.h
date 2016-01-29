@@ -43,8 +43,8 @@ public:
   //}}}
 
   //{{{
-  int getChans() {
-    return kChans;
+  int getChan() {
+    return mChan;
     }
   //}}}
   //{{{
@@ -70,6 +70,11 @@ public:
   //{{{
   int getFramesPerChunk() {
     return kFramesPerChunk [getRadioTv()];
+    }
+  //}}}
+  //{{{
+  int getMaxFramesPerChunk() {
+    return kMaxFramesPerChunk;
     }
   //}}}
 
@@ -111,9 +116,9 @@ public:
 
 private:
   //{{{  const
-  const int kChans = 2;
   const int kSampleRate = 48000;
   const int kSamplesPerFrame = 1024;
+  const int kMaxFramesPerChunk = 375;
 
   const char* kOrigHost[2] =     { "as-hls-uk-live.bbcfmt.vo.llnwd.net",
                                    "vs-hls-uk-live.bbcfmt.vo.llnwd.net" };
