@@ -23,9 +23,8 @@ public:
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-    mSilence = (int16_t*) pvPortMalloc (getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
-    for (auto i = 0; i < getSamplesPerFrame()*getChans()*kFramesPerPlay; i++)
-      mSilence[i] = 0;
+    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
+    memset (mSilence, 0, getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
     }
   //}}}
   //{{{
