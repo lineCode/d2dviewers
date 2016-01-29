@@ -18,14 +18,13 @@
 
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
-  const int kFramesPerPlay = 1;
   //{{{
-  cHlsRadioWindow() : mPlayFrame(0), mPlaying(true), mJump(false) {
+  cHlsRadioWindow() : mPlayFrame(0), mPlaying(true) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
-    mSilence = (int16_t*) pvPortMalloc (1024*2*2*kFramesPerPlay);
-    for (auto i = 0; i < 1024*2; i++)
+    mSilence = (int16_t*) pvPortMalloc (getSamplesPerFrame()*getChans()*kFramesPerPlay*2);
+    for (auto i = 0; i < getSamplesPerFrame()*getChans()*kFramesPerPlay; i++)
       mSilence[i] = 0;
     }
   //}}}
@@ -137,28 +136,15 @@ protected:
       frame++;
       }
 
-    // debug str
-    long long secs100 = mPlayFrame;
-    secs100 *= getSamplesPerFrame()*100;
-    secs100 /= getSampleRate();
-    int frac = secs100 % 100;
-    int secs = (secs100 / 100) % 60;
-    int mins = (secs100 / (60*100)) % 60;
-    int hours = (int)(secs100 / (60*60*100));
-
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%d:%02d:%02d %hs %dk",
-              hours, mins, secs, getChanName(), getBitrate()/1000);
+    swprintf (wDebugStr, 200, L"%hs", getInfoStr (mPlayFrame));
     dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
-
-    swprintf (wDebugStr, 200, L"%hs", getDebugStr());
-    rt.left = getClientF().width/2.0f;
-    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt,
-                  getLoading() ? getGreyBrush() : getWhiteBrush());
     }
   //}}}
 
 private:
+  const int kFramesPerPlay = 1;
+
   // sets
   //{{{
   void setPlayFrame (int frame) {
@@ -194,9 +180,8 @@ private:
   void loader() {
 
     while (true) {
-      if (load (mPlayFrame, mJump))
+      if (load (mPlayFrame))
         Sleep (1000);
-      mJump = false;
       wait();
       }
     }
@@ -211,25 +196,15 @@ private:
     while (true) {
       int seqNum;
       int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*2*kFramesPerPlay, 1.0f);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*getChans()*kFramesPerPlay*2, 1.0f);
 
       if (mPlaying)
         setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
 
       if (!seqNum || (seqNum != lastSeqNum)) {
-        mJump = seqNum != lastSeqNum+1;
-        if (mJump)
-          // jumping around, low quality
-          setBitrate (getLowBitrate());
-        else if (getBitrate() == getLowBitrate())
-          // normal play, better quality
-          setBitrate (getMidBitrate());
-        else if (getBitrate() == getMidBitrate())
-          // normal play, much better quality
-          setBitrate (getHighBitrate());
-
-        signal();
+        setBitrateStrategy (seqNum != lastSeqNum+1);
         lastSeqNum = seqNum;
+        signal();
         }
       }
 
@@ -242,7 +217,6 @@ private:
   HANDLE mSemaphore;
   int mPlayFrame;
   bool mPlaying;
-  bool mJump;
   int16_t* mSilence;
   };
 

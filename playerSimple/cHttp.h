@@ -168,15 +168,15 @@ public:
 
     mContentSize = 0;
     if (mContent) {
-      pvPortMalloc (mContent);
+      vPortFree (mContent);
       mContent = nullptr;
       }
     //}}}
 
     if (netconn_gethostbyname (host, &mIpAddr) != ERR_OK) {
       //{{{  error return
-      mErrorStr = getHostByNameError;
-      return;
+      mErrorStr = "getHttp - netconn_gethostbyname failed\n";
+      return 0;
       }
       //}}}
 
@@ -184,7 +184,7 @@ public:
     if (netconn_connect (mConn, &mIpAddr, 80) != ERR_OK){
       //{{{  error return
       mErrorStr = "getHttp - netconn_connect failed\n";
-      return;
+      return 0;
       }
       //}}}
 
@@ -199,7 +199,7 @@ public:
       //{{{  error return
       mErrorStr = "getHttp - send failed\n";
       netconn_close (mConn);
-      return;
+      return 0;
       }
       //}}}
 
@@ -210,7 +210,7 @@ public:
         //{{{  error return;
         mErrorStr = "getHttp - netconn_recv failed\n";
         netconn_close (mConn);
-        return;
+        return 0;
         }
         //}}}
 
@@ -220,7 +220,7 @@ public:
 
       while (needMoreData && (bufferBytesReceived > 0)) {
         int bytesReceived;
-        needMoreData = parseRecvData (bufferPtr, bufferBytesReceived, &bytesReceived) != 0;
+        needMoreData = parseRecvData (bufferPtr, bufferBytesReceived, bytesReceived);
         bufferBytesReceived -= bytesReceived;
         bufferPtr += bytesReceived;
         }

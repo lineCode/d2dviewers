@@ -10,7 +10,7 @@
 class cHlsRadio : public cRadioChan {
 public:
   #define NUM_CHUNKS 3
-  cHlsRadio() : mBaseFrame(0), mLoading(0) {}
+  cHlsRadio() : mBaseFrame(0), mLoading(0), mJumped(false) {}
   ~cHlsRadio() {}
 
   //{{{
@@ -24,13 +24,20 @@ public:
     }
   //}}}
   //{{{
-  const char* getDebugStr() {
+  const char* getInfoStr (int frame) {
 
-    sprintf (mDebugStr, "%d:%d:%d\n",
+    int secsSinceMidnight = int (frame / getFramesPerSecond());
+    int secs = secsSinceMidnight % 60;
+    int mins = (secsSinceMidnight / 60) % 60;
+    int hours = secsSinceMidnight / (60*60);
+
+    sprintf (mInfoStr, "%d:%02d:%02d %s %dk %d:%d:%d",
+             hours, mins, secs, getChanName(), getBitrate()/1000,
              mChunks[0].getSeqNum() ? mChunks[0].getSeqNum() - getBaseSeqNum() : 9999,
              mChunks[1].getSeqNum() ? mChunks[1].getSeqNum() - getBaseSeqNum() : 9999,
              mChunks[2].getSeqNum() ? mChunks[2].getSeqNum() - getBaseSeqNum() : 9999);
-    return mDebugStr;
+
+    return mInfoStr;
     }
   //}}}
   //{{{
@@ -72,8 +79,10 @@ public:
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
     int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    mBaseFrame = getFramesFromSec ((hour * 60 * 60) + (min * 60) + sec);
-    printf ("- baseFrame:%d baseSeqNum:%d dateTime:%s\n", mBaseFrame, getBaseSeqNum(), getDateTime());
+    int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
+    mBaseFrame = getFramesFromSec (secsSinceMidnight);
+    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
+            getBaseSeqNum(), getDateTime(), hour, min, sec, secsSinceMidnight, mBaseFrame);
 
     invalidateChunks();
     return mBaseFrame;
@@ -85,9 +94,24 @@ public:
     mBitrate = bitrate;
     }
   //}}}
+  //{{{
+  void setBitrateStrategy (bool jumped) {
+
+    mJumped = jumped;
+    if (jumped)
+      // jumping around, low quality
+      setBitrate (getLowBitrate());
+    else if (getBitrate() == getLowBitrate())
+      // normal play, better quality
+      setBitrate (getMidBitrate());
+    else if (getBitrate() == getMidBitrate())
+      // normal play, much better quality
+      setBitrate (getHighBitrate());
+    }
+  //}}}
 
   //{{{
-  bool load (int frame, bool jump) {
+  bool load (int frame) {
   // return false if load failure, usually 404
 
     bool ok = false;
@@ -100,7 +124,7 @@ public:
       ok &= mChunks[chunk].load (this, seqNum, mBitrate);
       }
 
-    if (!jump) {
+    if (!mJumped) {
       // load chunks before and after
       for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
         if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
@@ -113,6 +137,7 @@ public:
           }
         }
       }
+    mJumped = false;
     mLoading = 0;
 
     return ok;
@@ -199,6 +224,7 @@ private:
   int mBaseFrame;
   int mBitrate;
   int mLoading;
-  char mDebugStr [20];
+  bool mJumped;
+  char mInfoStr [40];
   cHlsChunk mChunks [NUM_CHUNKS];
   };

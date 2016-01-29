@@ -43,6 +43,11 @@ public:
   //}}}
 
   //{{{
+  int getChans() {
+    return kChans;
+    }
+  //}}}
+  //{{{
   int getSampleRate() {
     return kSampleRate;
     }
@@ -53,8 +58,13 @@ public:
     }
   //}}}
   //{{{
+  float getFramesPerSecond() {
+    return (float)kSampleRate / (float)kSamplesPerFrame;
+    }
+  //}}}
+  //{{{
   int getFramesFromSec (int sec) {
-     return (sec * getSampleRate()) / getSamplesPerFrame();
+    return int (sec * getFramesPerSecond());
     }
   //}}}
   //{{{
@@ -101,6 +111,7 @@ public:
 
 private:
   //{{{  const
+  const int kChans = 2;
   const int kSampleRate = 48000;
   const int kSamplesPerFrame = 1024;
 
