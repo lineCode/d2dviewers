@@ -3,10 +3,12 @@
 
 class cD2dWindow {
 public:
+  //{{{
   cD2dWindow() : mHWND(0), mChanged(false), mChangeRate(0),
                  keyDown(false), shiftKeyDown(false), controlKeyDown(false),
                  mouseDown(false), rightDown(false), mouseMoved(false),
                  downMousex(0), downMousey(0), lastMousex(0), lastMousey(0), proxMousex(0), proxMousey(0) {}
+  //}}}
   virtual ~cD2dWindow() {}
 
   void initialise (wchar_t* title, int width, int height);

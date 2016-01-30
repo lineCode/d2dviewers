@@ -124,12 +124,12 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    dc->Clear (D2D1::ColorF(D2D1::ColorF::Black));
+    dc->Clear (ColorF(ColorF::Black));
 
-    D2D1_RECT_F r = D2D1::RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
+    D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
 
-    D2D1_RECT_F rVol= D2D1::RectF (getClientF().width - 20.0f,0, getClientF().width, mTuneVol * getClientF().height / 100.0f);
+    D2D1_RECT_F rVol= RectF (getClientF().width - 20.0f,0, getClientF().width, mTuneVol * getClientF().height / 100.0f);
     dc->FillRectangle (rVol, getYellowBrush());
 
     int frame = mPlayFrame - int(getClientF().width/2.0f);
@@ -148,16 +148,14 @@ protected:
       frame++;
       }
 
-    wchar_t wDebugStr[200];
+    wchar_t wStr[40];
     for (auto i = 1; i <= 8; i++) {
-      swprintf (wDebugStr, 200, L"%hs", cRadioChan::getChanName(i));
-      dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(),
-                    D2D1::RectF (0.0f, i * 20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
+      swprintf (wStr, 40, L"%hs", cRadioChan::getChanName(i));
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF (0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
       }
 
-    swprintf (wDebugStr, 200, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
-    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(),
-                  D2D1::RectF (0.0f, 0.0f, getClientF().width, 20.0f), getWhiteBrush());
+    swprintf (wStr, 40, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF (0, 0, getClientF().width, 20.0f), getWhiteBrush());
     }
   //}}}
 
@@ -263,6 +261,6 @@ int wmain (int argc, wchar_t* argv[]) {
 #endif
 
   cHlsRadioWindow hlsRadioWindow;
-  hlsRadioWindow.run (L"hls player", 480, 272, argc >= 2 ? _wtoi (argv[1]) : 4);
+  hlsRadioWindow.run (L"hlsRadioWindow", 480, 272, argc >= 2 ? _wtoi (argv[1]) : 4);
   }
 //}}}

@@ -156,6 +156,7 @@ public:
     }
   //}}}
 
+  // public vars for quick and dirty hacks
   int mTuneVol;
   int mTuneChan;
   int mPlayFrame;
@@ -165,6 +166,7 @@ public:
 private:
   //{{{
   int getSeqNumFromFrame (int frame) {
+  // works for -ve frame
 
     int r = frame - mBaseFrame;
     if (r >= 0)
@@ -175,6 +177,7 @@ private:
   //}}}
   //{{{
   int getFrameInChunkFromFrame (int frame) {
+  // works for -ve frame
 
     int r = (frame - mBaseFrame) % getFramesPerChunk();
     return r < 0 ? r + getFramesPerChunk() : r;
@@ -183,6 +186,8 @@ private:
 
   //{{{
   bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
+  // return true, seqNum, chunk and frameInChunk of loadedChunk from frame
+  // - return false if not found
 
     auto findSeqNum = getSeqNumFromFrame (frame);
     for (auto i = 0; i < 3; i++) {
@@ -197,8 +202,8 @@ private:
         }
       }
 
-    chunk = 0;
     seqNum = 0;
+    chunk = 0;
     frameInChunk = 0;
     return false;
     }
@@ -206,8 +211,8 @@ private:
   //{{{
   bool findSeqNumChunk (int seqNum, int bitrate, int offset, int& chunk) {
   // return true if match found
-  // - if not chunk = best reuse
-  // - reuse same seqNum chunk if diff bitrate
+  // - if not, chunk = best reuse
+  // - reuse same seqNum chunk if diff bitrate ?
 
     // look for matching chunk
     chunk = 0;
@@ -233,12 +238,12 @@ private:
   //}}}
   //{{{
   void invalidateChunks() {
-
     for (auto i = 0; i < 3; i++)
       mChunks[i].invalidate();
     }
   //}}}
 
+  // private vars
   int mBaseFrame;
   int mBitrate;
   int mLoading;

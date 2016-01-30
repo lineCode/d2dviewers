@@ -16,40 +16,6 @@ public:
 
   // gets
   //{{{
-  const char* getHost() {
-    return mHost;
-    }
-  //}}}
-  //{{{
-  const char* getPath (int seqNum, int bitrate) {
-
-    if (getRadioTv()) {
-      // tv
-      int audioCode;
-      if (bitrate == 320000)
-        audioCode = 5;
-      else if (bitrate == 128000)
-        audioCode = 4;
-      else if (bitrate == 96000)
-        audioCode = 3;
-      else if (bitrate == 64000)
-        audioCode = 2;
-      else // 24000
-        audioCode = 1;
-      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], audioCode, bitrate, seqNum);
-      }
-    else  // radio
-      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate, seqNum);
-    return mPath;
-    }
-  //}}}
-  //{{{
-  const char* getChanName (int chan) {
-    return kChanNames [chan];
-    }
-  //}}}
-
-  //{{{
   int getChan() {
     return mChan;
     }
@@ -99,6 +65,41 @@ public:
   //{{{
   int getBaseSeqNum() {
     return mBaseSeqNum;
+    }
+  //}}}
+
+  //{{{
+  const char* getHost() {
+    return mHost;
+    }
+  //}}}
+  //{{{
+  const char* getPath (int seqNum, int bitrate) {
+
+    if (getRadioTv()) {
+      // tv
+      int audioCode;
+      if (bitrate == 320000)
+        audioCode = 5;
+      else if (bitrate == 128000)
+        audioCode = 4;
+      else if (bitrate == 96000)
+        audioCode = 3;
+      else if (bitrate == 64000)
+        audioCode = 2;
+      else // 24000
+        audioCode = 1;
+      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], audioCode, bitrate, seqNum);
+      }
+    else  // radio
+      sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate, seqNum);
+
+    return mPath;
+    }
+  //}}}
+  //{{{
+  const char* getChanName (int chan) {
+    return kChanNames [chan];
     }
   //}}}
   //{{{
