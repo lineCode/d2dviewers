@@ -8,7 +8,8 @@
 
 #include "../common/cD2dWindow.h"
 #include "../common/winAudio.h"
-#include "libfaad/neaacdec.h"
+#include "../libfaad/include/neaacdec.h"
+#pragma comment (lib,"libfaad.lib")
 
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
