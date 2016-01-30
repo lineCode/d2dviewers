@@ -284,3 +284,4 @@ $RECYCLE.BIN/
 *.~cpp
 *.~h
 lib64/libfaad.lib
+lib86/libfaad.lib
