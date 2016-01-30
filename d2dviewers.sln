@@ -10,8 +10,14 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "logicAnal", "logicAnal\logicAnal.vcxproj", "{DFEA5026-824D-4C12-B04D-E5DB174B57A8}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hlsRadioWindow", "playerSimple\player.vcxproj", "{E532C54A-C565-43A2-BDA2-30750BCD0946}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BC3EFE27-9015-4C9C-AD3C-72B3B7ED2114} = {BC3EFE27-9015-4C9C-AD3C-72B3B7ED2114}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "radio", "playerSimple\get.vcxproj", "{D3B4D1C4-493C-451C-B5E9-31114B3494BC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{BC3EFE27-9015-4C9C-AD3C-72B3B7ED2114} = {BC3EFE27-9015-4C9C-AD3C-72B3B7ED2114}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libfaad", "libfaad\libfaad\libfaad.vcxproj", "{BC3EFE27-9015-4C9C-AD3C-72B3B7ED2114}"
 EndProject

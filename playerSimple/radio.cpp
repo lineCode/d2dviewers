@@ -11,8 +11,9 @@
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
-#include "libfaad/neaacdec.h"
 #include "../common/winaudio.h"
+#include "../libfaad/include/neaacdec.h"
+#pragma comment (lib,"libfaad.lib")
 
 // redefine bigHeap handlers
 #define pvPortMalloc malloc

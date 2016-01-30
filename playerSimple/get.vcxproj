@@ -87,44 +87,6 @@
   <ItemGroup>
     <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="radio.cpp" />
-    <ClCompile Include="libfaad\libfaad\bits.c" />
-    <ClCompile Include="libfaad\libfaad\cfft.c" />
-    <ClCompile Include="libfaad\libfaad\common.c" />
-    <ClCompile Include="libfaad\libfaad\decoder.c" />
-    <ClCompile Include="libfaad\libfaad\drc.c" />
-    <ClCompile Include="libfaad\libfaad\drm_dec.c" />
-    <ClCompile Include="libfaad\libfaad\error.c" />
-    <ClCompile Include="libfaad\libfaad\filtbank.c" />
-    <ClCompile Include="libfaad\libfaad\hcr.c" />
-    <ClCompile Include="libfaad\libfaad\huffman.c" />
-    <ClCompile Include="libfaad\libfaad\ic_predict.c" />
-    <ClCompile Include="libfaad\libfaad\is.c" />
-    <ClCompile Include="libfaad\libfaad\lt_predict.c" />
-    <ClCompile Include="libfaad\libfaad\mdct.c" />
-    <ClCompile Include="libfaad\libfaad\mp4.c" />
-    <ClCompile Include="libfaad\libfaad\ms.c" />
-    <ClCompile Include="libfaad\libfaad\output.c" />
-    <ClCompile Include="libfaad\libfaad\pns.c" />
-    <ClCompile Include="libfaad\libfaad\ps_dec.c" />
-    <ClCompile Include="libfaad\libfaad\ps_syntax.c" />
-    <ClCompile Include="libfaad\libfaad\pulse.c" />
-    <ClCompile Include="libfaad\libfaad\rvlc.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_dct.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_dec.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_e_nf.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_fbt.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_hfadj.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_hfgen.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_huff.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_qmf.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_syntax.c" />
-    <ClCompile Include="libfaad\libfaad\sbr_tf_grid.c" />
-    <ClCompile Include="libfaad\libfaad\specrec.c" />
-    <ClCompile Include="libfaad\libfaad\ssr.c" />
-    <ClCompile Include="libfaad\libfaad\ssr_fb.c" />
-    <ClCompile Include="libfaad\libfaad\ssr_ipqf.c" />
-    <ClCompile Include="libfaad\libfaad\syntax.c" />
-    <ClCompile Include="libfaad\libfaad\tns.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D3B4D1C4-493C-451C-B5E9-31114B3494BC}</ProjectGuid>
