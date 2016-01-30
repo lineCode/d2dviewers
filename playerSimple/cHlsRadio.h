@@ -10,7 +10,7 @@
 class cHlsRadio : public cRadioChan {
 public:
   #define NUM_CHUNKS 3
-  cHlsRadio() : mBaseFrame(0), mLoading(0), mJumped(false) {}
+  cHlsRadio() : mTuneVol(75), mTuneChan(4), mPlayFrame(0), mPlaying(true), mBaseFrame(0), mLoading(0), mJumped(false) {}
   ~cHlsRadio() {}
 
   //{{{
@@ -151,6 +151,11 @@ public:
     return ok;
     }
   //}}}
+
+  int mTuneVol;
+  int mTuneChan;
+  int mPlayFrame;
+  bool mPlaying;
 
 private:
   //{{{

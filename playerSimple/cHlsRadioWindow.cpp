@@ -19,7 +19,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() : mTuneChan(0), mPlayFrame(0), mPlaying(true) {
+  cHlsRadioWindow() {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
@@ -217,9 +217,6 @@ private:
 
   // vars
   HANDLE mSemaphore;
-  int mTuneChan;
-  int mPlayFrame;
-  bool mPlaying;
   int16_t* mSilence;
   };
 

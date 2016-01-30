@@ -5,7 +5,13 @@
 
 class cRadioChan {
 public:
-  cRadioChan() : mChan(0), mBaseSeqNum(0) {}
+  //{{{
+  cRadioChan() : mChan(0), mBaseSeqNum(0) {
+    mHost[0] = 0;
+    mPath[0] = 0;
+    mDateTime[0] = 0;
+    }
+  //}}}
   ~cRadioChan() {}
 
   // gets
@@ -18,6 +24,7 @@ public:
   const char* getPath (int seqNum, int bitrate) {
 
     if (getRadioTv()) {
+      // tv
       int audioCode;
       if (bitrate == 320000)
         audioCode = 5;
@@ -31,7 +38,7 @@ public:
         audioCode = 1;
       sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], audioCode, bitrate, seqNum);
       }
-    else
+    else  // radio
       sprintf (mPath, getTsPath(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate, seqNum);
     return mPath;
     }
@@ -105,7 +112,27 @@ public:
   void setChan (cHttp* http, int chan) {
 
     mChan = chan;
-    findM3u8SeqNum (http, getLowBitrate());
+
+    sprintf (mPath, getM3u8Path(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], getMidBitrate());
+    if (http->get (getOrigHost(), mPath) == 302) {
+      strcpy (mHost, http->getRedirectedHost());
+      http->get (mHost, mPath);
+      }
+    else
+      strcpy (mHost, http->getRedirectedHost());
+
+    //printf ("%s\n", (char*)m3u8.getContent());
+
+    // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
+    auto extSeq = strstr ((char*)http->getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
+    auto extSeqEnd = strchr (extSeq, '\n');
+    *extSeqEnd = '\0';
+    mBaseSeqNum = atoi (extSeq) + 3;
+
+    auto extDateTime = strstr (extSeqEnd + 1, "#EXT-X-PROGRAM-DATE-TIME:") + strlen ("#EXT-X-PROGRAM-DATE-TIME:");
+    auto extDateTimeEnd = strchr (extDateTime, '\n');
+    *extDateTimeEnd = '\0';
+    strcpy (mDateTime, extDateTime);
     }
   //}}}
 
@@ -134,9 +161,9 @@ private:
   const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000 };
   const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000, 128000 };
   const char* kPathNames [9] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
-                                         "bbc_radio_five_live", "bbc_6music", "bbc_one_hd",      "bbc_two_hd"};
-  const char* kChanNames [9] = { "none", "bbcRadio1", "bbcRadio2", "bbcRadio3", "bbcRadio4fm",
-                                         "bbcRadio5", "bbcRadio6",    "bbc1hd",       "bbc2hd" };
+                                         "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",       "bbc_two_hd" };
+  const char* kChanNames [9] = { "none", "bbcRadio1", "bbcRadio2", "bbcRadio3", "bbcRadio4",
+                                         "bbcRadio5", "bbcRadio6",    "bbc1hd", "   bbc2hd" };
   //}}}
 
   //{{{
@@ -160,36 +187,10 @@ private:
     }
   //}}}
 
-  //{{{
-  void findM3u8SeqNum (cHttp* http, int bitrate) {
-
-    sprintf (mPath, getM3u8Path(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate);
-    if (http->get (getOrigHost(), mPath) == 302) {
-      strcpy (mHost, http->getRedirectedHost());
-      http->get (mHost, mPath);
-      }
-    else
-      strcpy (mHost, http->getRedirectedHost());
-
-    //printf ("%s\n", (char*)m3u8.getContent());
-
-    // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
-    auto extSeq = strstr ((char*)http->getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
-    auto extSeqEnd = strchr (extSeq, '\n');
-    *extSeqEnd = '\0';
-    mBaseSeqNum = atoi (extSeq) + 3;
-
-    auto extDateTime = strstr (extSeqEnd + 1, "#EXT-X-PROGRAM-DATE-TIME:") + strlen ("#EXT-X-PROGRAM-DATE-TIME:");
-    auto extDateTimeEnd = strchr (extDateTime, '\n');
-    *extDateTimeEnd = '\0';
-    strcpy (mDateTime, extDateTime);
-    }
-  //}}}
-
   // vars
   int mChan;
+  int mBaseSeqNum;
   char mHost[80];
   char mPath[200];
-  int mBaseSeqNum;
   char mDateTime[80];
   };

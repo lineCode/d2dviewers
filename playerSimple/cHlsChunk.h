@@ -9,7 +9,7 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0) {
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHe(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
     mInfoStr[0] = 0;
@@ -64,14 +64,24 @@ public:
     bool ok = false;
     mFramesLoaded = 0;
 
-    mDecoder = NeAACDecOpen();
-    NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
-    config->outputFormat = FAAD_FMT_16BIT;
-    NeAACDecSetConfiguration (mDecoder, config);
-
     mSeqNum = seqNum;
     mBitrate = bitrate;
+
+    // aac HE has double size frames, treat as two normal frames
+    bool aacHe = mBitrate <= 48000;
+    int framesPerAacFrame = aacHe ? 2 : 1;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
+    int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
+
+    if ((mDecoder == 0) || (aacHe != mAacHe)) {
+      if (aacHe != mAacHe)
+        NeAACDecClose (mDecoder);
+      mDecoder = NeAACDecOpen();
+      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
+      config->outputFormat = FAAD_FMT_16BIT;
+      NeAACDecSetConfiguration (mDecoder, config);
+      mAacHe = aacHe;
+      }
 
     auto response = http->get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
     if (response == 200) {
@@ -82,10 +92,6 @@ public:
       unsigned long sampleRate;
       uint8_t chans;
       NeAACDecInit (mDecoder, loadPtr, 2048, &sampleRate, &chans);
-
-      // aac HE has double size frames, treat as two normal
-      int framesPerAacFrame = (mBitrate <= 48000) ? 2 : 1;
-      int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
 
       NeAACDecFrameInfo frameInfo;
       int16_t* buffer = mAudio;
@@ -121,8 +127,6 @@ public:
       mSeqNum = 0;
 
     sprintf (mInfoStr, "%d %d %d %s", response, seqNum, bitrate, http->getInfoStr());
-
-    NeAACDecClose (mDecoder);
     return ok;
     }
   //}}}
@@ -169,6 +173,7 @@ private:
   int mSamplesPerFrame;
   char mInfoStr[100];
 
+  bool mAacHe;
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;

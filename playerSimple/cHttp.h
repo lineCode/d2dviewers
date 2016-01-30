@@ -8,8 +8,9 @@ class cHttp {
 public:
   //{{{
   cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
-            mChunked(0), mContentLen(-1), mKeyStrLen(0), mValueStrLen(0), mContentSize(0),
-            mContent(nullptr), mRedirectUrl(nullptr), mOrigHost(nullptr),
+            mChunked(0), mKeyStrLen(0), mValueStrLen(0),
+            mContentLen(-1), mContentSize(0), mContent(nullptr),
+            mOrigHost(nullptr), mRedirectUrl(nullptr),
   #ifdef WIN32
     mWebSocket(-1)
   #else
@@ -17,6 +18,7 @@ public:
   #endif
 
     {
+    mHost[0] = 0;
     mInfoStr[0] = 0;
     }
   //}}}
@@ -514,6 +516,7 @@ private:
               break;
               }
               //}}}
+            default:;
             }
           --len;
           ++data;
@@ -575,6 +578,7 @@ private:
         case http_close:
         case http_error:
           break;
+        default:;
         }
 
       if (mState == http_error || mState == http_close) {
@@ -601,12 +605,12 @@ private:
 
   int mContentSize;
   uint8_t* mContent;
-  char mInfoStr[100];
 
   const char* mOrigHost;
   cParsedUrl* mRedirectUrl;
 
   char mHost[100];
+  char mInfoStr[100];
 
   #ifdef WIN32
     unsigned int mWebSocket;
