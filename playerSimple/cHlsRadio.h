@@ -50,18 +50,11 @@ public:
   // return pointer to frame power org,len uint8_t pairs
   // frames = number of valid frames
 
-    int chunk;
     int seqNum;
+    int chunk = 0;
     int frameInChunk;
-    if (findFrame (frame, seqNum, chunk, frameInChunk)) {
-      frames = getFramesPerChunk() - frameInChunk;
-      return mChunks[chunk].getAudioPower (frameInChunk);
-      }
-    else {
-      chunk = 0;
-      frames = 0;
-      return nullptr;
-      }
+    frames = 0;
+    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioPower (frameInChunk, frames) : nullptr;
     }
   //}}}
   //{{{
@@ -111,6 +104,16 @@ public:
       setBitrate (getMidBitrate());
     else if (getBitrate() == getMidBitrate())
       // normal play, much better quality
+      setBitrate (getHighBitrate());
+    }
+  //}}}
+  //{{{
+  void setBitrateStrategy2 (bool jumped) {
+
+    mJumped = false;
+    if (jumped)
+      setBitrate (getMidBitrate());
+    else if (getBitrate() == getMidBitrate())
       setBitrate (getHighBitrate());
     }
   //}}}

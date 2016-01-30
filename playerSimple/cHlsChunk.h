@@ -10,16 +10,15 @@ class cHlsChunk {
 public:
   //{{{
   cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0) {
-
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
-    mPower = (uint8_t*)pvPortMalloc (375 * 2);
+    mPower = (uint8_t*)malloc (375 * 2);
     mInfoStr[0] = 0;
     }
   //}}}
   //{{{
   ~cHlsChunk() {
     if (mPower)
-      vPortFree (mPower);
+      free (mPower);
     if (mAudio)
       vPortFree (mAudio);
     }
@@ -47,7 +46,9 @@ public:
     }
   //}}}
   //{{{
-  uint8_t* getAudioPower (int frameInChunk) {
+  uint8_t* getAudioPower (int frameInChunk, int& frames) {
+
+    frames = getFramesLoaded() - frameInChunk;
     return mPower ? mPower + (frameInChunk * 2) : nullptr;
     }
   //}}}
@@ -113,14 +114,13 @@ public:
           //}}}
         }
 
-      //printf ("cHlsChunk::loaded %d %d %d %d %d\n", samplesPerAacFrame, mBitrate, mSampleRate, mChans, mSeqNum);
       http->freeContent();
       ok = true;
       }
     else
       mSeqNum = 0;
 
-    sprintf (mInfoStr, "%d %s", response, http->getInfoStr());
+    sprintf (mInfoStr, "%d %d %d %s", response, seqNum, bitrate, http->getInfoStr());
 
     NeAACDecClose (mDecoder);
     return ok;
