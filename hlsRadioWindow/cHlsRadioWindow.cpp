@@ -99,13 +99,23 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    incPlayFrame (-xInc);
+    if (x > int(getClientF().width-20))
+      mTuneVol  = int(y * 100.0f / getClientF().height);
+    else
+      incPlayFrame (-xInc);
     }
   //}}}
   //{{{
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
     if (!mouseMoved) {
+      if (x < 80) {
+        int chan = y / 20;
+        if ((chan >= 1) && (chan <= 8)) {
+          mTuneChan = chan;
+          signal();
+          }
+        }
       }
 
     changed();
@@ -115,10 +125,12 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     dc->Clear (D2D1::ColorF(D2D1::ColorF::Black));
-    D2D1_RECT_F rt = D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height);
 
-    D2D1_RECT_F r = D2D1::RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
+    D2D1_RECT_F r = D2D1::RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
+
+    D2D1_RECT_F rVol= D2D1::RectF (getClientF().width - 20.0f,0, getClientF().width, mTuneVol * getClientF().height / 100.0f);
+    dc->FillRectangle (rVol, getYellowBrush());
 
     int frame = mPlayFrame - int(getClientF().width/2.0f);
     uint8_t* power = nullptr;
@@ -137,8 +149,15 @@ protected:
       }
 
     wchar_t wDebugStr[200];
+    for (auto i = 1; i <= 8; i++) {
+      swprintf (wDebugStr, 200, L"%hs", cRadioChan::getChanName(i));
+      dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(),
+                    D2D1::RectF (0.0f, i * 20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
+      }
+
     swprintf (wDebugStr, 200, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
-    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
+    dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(),
+                  D2D1::RectF (0.0f, 0.0f, getClientF().width, 20.0f), getWhiteBrush());
     }
   //}}}
 
@@ -203,6 +222,9 @@ private:
     while (true) {
       int seqNum;
       int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
+      if (audioSamples && (mTuneVol != 80))
+        for (auto i = 0; i < 4096; i++)
+          audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
       winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1.0f);
 
       if (mPlaying)

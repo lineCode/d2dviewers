@@ -10,7 +10,7 @@
 class cHlsRadio : public cRadioChan {
 public:
   //{{{
-  cHlsRadio() : mTuneVol(75), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
+  cHlsRadio() : mTuneVol(80), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
                 mBaseFrame(0), mLoading(0), mJumped(false) {}
   //}}}
   ~cHlsRadio() {}
@@ -34,7 +34,7 @@ public:
     int hours = secsSinceMidnight / (60*60);
 
     sprintf (mInfoStr, "%d:%02d:%02d %s %dk %d:%d:%d",
-             hours, mins, secs, getChanName(), getBitrate()/1000,
+             hours, mins, secs, getChanName(getChan()), getBitrate()/1000,
              mChunks[0].getSeqNum() ? mChunks[0].getSeqNum() - getBaseSeqNum() : 9999,
              mChunks[1].getSeqNum() ? mChunks[1].getSeqNum() - getBaseSeqNum() : 9999,
              mChunks[2].getSeqNum() ? mChunks[2].getSeqNum() - getBaseSeqNum() : 9999);

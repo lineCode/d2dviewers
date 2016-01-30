@@ -44,8 +44,8 @@ public:
     }
   //}}}
   //{{{
-  const char* getChanName() {
-    return kChanNames[mChan];
+  const char* getChanName (int chan) {
+    return kChanNames [chan];
     }
   //}}}
 
@@ -160,10 +160,9 @@ private:
   const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000 };
   const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000 };
   const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000, 128000 };
+  const char* kChanNames [9] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2" };
   const char* kPathNames [9] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
                                          "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",       "bbc_two_hd" };
-  const char* kChanNames [9] = { "none", "bbcRadio1", "bbcRadio2", "bbcRadio3", "bbcRadio4",
-                                         "bbcRadio5", "bbcRadio6",    "bbc1hd", "   bbc2hd" };
   //}}}
   //{{{
   int getRadioTv() {
