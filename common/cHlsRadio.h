@@ -9,7 +9,6 @@
 
 class cHlsRadio : public cRadioChan {
 public:
-  #define NUM_CHUNKS 3
   cHlsRadio() : mTuneVol(75), mTuneChan(4), mPlayFrame(0), mPlaying(true), mBaseFrame(0), mLoading(0), mJumped(false) {}
   ~cHlsRadio() {}
 
@@ -120,29 +119,31 @@ public:
 
   //{{{
   bool load (cHttp* http, int frame) {
-  // return false if load failure, usually 404
+  // return false if any load failed
 
-    bool ok = false;
+    bool ok = true;
 
     mLoading = 0;
     int chunk;
     int seqNum = getSeqNumFromFrame (frame);
+
     if (!findSeqNumChunk (seqNum, mBitrate, 0, chunk)) {
+      // load required chunk
       mLoading++;
       ok &= mChunks[chunk].load (http, this, seqNum, mBitrate);
       }
 
     if (!mJumped) {
-      // load chunks before and after
-      for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
-        if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
-          mLoading++;
-          ok &= mChunks[chunk].load (http, this, seqNum+i, mBitrate);
-          }
-        if (!findSeqNumChunk (seqNum, mBitrate, -i, chunk)) {
-          mLoading++;
-          ok &= mChunks[chunk].load (http, this, seqNum-i, mBitrate);
-          }
+      if (!findSeqNumChunk (seqNum, mBitrate, 1, chunk)) {
+        // load chunk before
+        mLoading++;
+        ok &= mChunks[chunk].load (http, this, seqNum+1, mBitrate);
+        }
+
+      if (!findSeqNumChunk (seqNum, mBitrate, -1, chunk)) {
+        // load chunk after
+        mLoading++;
+        ok &= mChunks[chunk].load (http, this, seqNum-1, mBitrate);
         }
       }
     mJumped = false;
@@ -180,7 +181,7 @@ private:
   bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
 
     auto findSeqNum = getSeqNumFromFrame (frame);
-    for (auto i = 0; i < NUM_CHUNKS; i++) {
+    for (auto i = 0; i < 3; i++) {
       if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
         auto findFrameInChunk = getFrameInChunkFromFrame (frame);
         if ((mChunks[i].getFramesLoaded() > 0) && (findFrameInChunk < mChunks[i].getFramesLoaded())) {
@@ -206,7 +207,7 @@ private:
 
     // look for matching chunk
     chunk = 0;
-    while (chunk < NUM_CHUNKS) {
+    while (chunk < 3) {
       if (seqNum + offset == mChunks[chunk].getSeqNum())
         return true;
         //return bitrate != mChunks[chunk].getBitrate();
@@ -215,8 +216,8 @@ private:
 
     // look for stale chunk
     chunk = 0;
-    while (chunk < NUM_CHUNKS) {
-      if ((mChunks[chunk].getSeqNum() < seqNum-(NUM_CHUNKS/2)) || (mChunks[chunk].getSeqNum() > seqNum+(NUM_CHUNKS/2)))
+    while (chunk < 3) {
+      if ((mChunks[chunk].getSeqNum() < seqNum-1) || (mChunks[chunk].getSeqNum() > seqNum+1))
         return false;
       chunk++;
       }
@@ -229,7 +230,7 @@ private:
   //{{{
   void invalidateChunks() {
 
-    for (auto i = 0; i < NUM_CHUNKS; i++)
+    for (auto i = 0; i < 3; i++)
       mChunks[i].invalidate();
     }
   //}}}
@@ -239,5 +240,5 @@ private:
   int mLoading;
   bool mJumped;
   char mInfoStr [40];
-  cHlsChunk mChunks [NUM_CHUNKS];
+  cHlsChunk mChunks[3];
   };

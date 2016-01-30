@@ -1,13 +1,13 @@
 // cHlsRadioWindow.cpp
 //{{{  includes
-
 #include "pch.h"
+
+#include "../common/cD2dWindow.h"
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
-#include "../common/cD2dWindow.h"
 #include "../common/winAudio.h"
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
@@ -178,14 +178,16 @@ private:
   // threads
   //{{{
   void loader() {
-  // loader task, handles all http gets
+  // loader task, handles all http gets, sleep 1s if no load suceeded
 
     cHttp http;
     while (true) {
       if (getChan() != mTuneChan)
-        setPlayFrame (changeChan (&http, mTuneChan) - getFramesFromSec(10));
-      if (load (&http, mPlayFrame))
+        setPlayFrame (changeChan (&http, mTuneChan) - getFramesFromSec(6));
+      if (!load (&http, mPlayFrame)) {
+        printf ("sleep frame:%d\n", mPlayFrame);
         Sleep (1000);
+        }
       wait();
       }
     }

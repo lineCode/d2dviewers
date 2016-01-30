@@ -9,7 +9,7 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHe(false), mDecoder(0) {
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
     mInfoStr[0] = 0;
@@ -61,26 +61,24 @@ public:
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int bitrate) {
 
-    bool ok = false;
     mFramesLoaded = 0;
-
     mSeqNum = seqNum;
     mBitrate = bitrate;
 
-    // aac HE has double size frames, treat as two normal frames
-    bool aacHe = mBitrate <= 48000;
-    int framesPerAacFrame = aacHe ? 2 : 1;
+    // aacHE has double size frames, treat as two normal frames
+    bool aacHE = mBitrate <= 48000;
+    int framesPerAacFrame = aacHE ? 2 : 1;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
     int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
 
-    if ((mDecoder == 0) || (aacHe != mAacHe)) {
-      if (aacHe != mAacHe)
+    if ((mDecoder == 0) || (aacHE != mAacHE)) {
+      if (aacHE != mAacHE)
         NeAACDecClose (mDecoder);
       mDecoder = NeAACDecOpen();
       NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
       config->outputFormat = FAAD_FMT_16BIT;
       NeAACDecSetConfiguration (mDecoder, config);
-      mAacHe = aacHe;
+      mAacHE = aacHE;
       }
 
     auto response = http->get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
@@ -121,13 +119,14 @@ public:
         }
 
       http->freeContent();
-      ok = true;
+      sprintf (mInfoStr, "ok %d %d", seqNum, bitrate);
+      return true;
       }
-    else
+    else {
       mSeqNum = 0;
-
-    sprintf (mInfoStr, "%d %d %d %s", response, seqNum, bitrate, http->getInfoStr());
-    return ok;
+      sprintf (mInfoStr, "%d %d %d %s", response, seqNum, bitrate, http->getInfoStr());
+      return false;
+      }
     }
   //}}}
   //{{{
@@ -173,7 +172,7 @@ private:
   int mSamplesPerFrame;
   char mInfoStr[100];
 
-  bool mAacHe;
+  bool mAacHE;
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;
