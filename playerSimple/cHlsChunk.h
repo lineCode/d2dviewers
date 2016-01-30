@@ -9,7 +9,11 @@
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAudio(nullptr), mPower(nullptr) {
+  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0) {
+
+    mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
+    mPower = (uint8_t*)pvPortMalloc (375 * 2);
+    mInfoStr[0] = 0;
     }
   //}}}
   //{{{
@@ -54,7 +58,7 @@ public:
   //}}}
 
   //{{{
-  bool load (cRadioChan* radioChan, int seqNum, int bitrate) {
+  bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int bitrate) {
 
     bool ok = false;
     mFramesLoaded = 0;
@@ -68,15 +72,10 @@ public:
     mBitrate = bitrate;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
 
-    if (!mAudio)
-      mAudio = (int16_t*)pvPortMalloc (radioChan->getMaxFramesPerChunk() * mSamplesPerFrame * 2 * 2);
-    if (!mPower)
-      mPower = (uint8_t*)pvPortMalloc (radioChan->getMaxFramesPerChunk() * 2);
-
-    auto response = mAacHttp.get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
+    auto response = http->get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
     if (response == 200) {
-      auto loadPtr = mAacHttp.getContent();
-      auto loadEnd = packTsBuffer (mAacHttp.getContent(), mAacHttp.getContentEnd());
+      auto loadPtr = http->getContent();
+      auto loadEnd = packTsBuffer (http->getContent(), http->getContentEnd());
 
       // init decoder
       unsigned long sampleRate;
@@ -115,16 +114,15 @@ public:
         }
 
       //printf ("cHlsChunk::loaded %d %d %d %d %d\n", samplesPerAacFrame, mBitrate, mSampleRate, mChans, mSeqNum);
+      http->freeContent();
       ok = true;
       }
     else
       mSeqNum = 0;
 
-    sprintf (mInfoStr, "%d %s", response, mAacHttp.getInfoStr());
-    mAacHttp.freeContent();
+    sprintf (mInfoStr, "%d %s", response, http->getInfoStr());
 
     NeAACDecClose (mDecoder);
-
     return ok;
     }
   //}}}
@@ -171,7 +169,6 @@ private:
   int mSamplesPerFrame;
   char mInfoStr[100];
 
-  cHttp mAacHttp;
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;

@@ -178,10 +178,11 @@ private:
   void loader() {
   // loader task, handles all http gets
 
+    cHttp http;
     while (true) {
       if (getChan() != mTuneChan)
-        setPlayFrame (changeChan (mTuneChan) - getFramesFromSec(10));
-      if (load (mPlayFrame))
+        setPlayFrame (changeChan (&http, mTuneChan) - getFramesFromSec(10));
+      if (load (&http, mPlayFrame))
         Sleep (1000);
       wait();
       }

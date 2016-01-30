@@ -41,6 +41,11 @@ public:
     }
   //}}}
   //{{{
+  const char* getChunkInfoStr (int chunk) {
+    return mChunks[chunk].getInfoStr();
+    }
+  //}}}
+  //{{{
   uint8_t* getPower (int frame, int& frames) {
   // return pointer to frame power org,len uint8_t pairs
   // frames = number of valid frames
@@ -70,10 +75,10 @@ public:
   //}}}
 
   //{{{
-  int changeChan (int chan) {
+  int changeChan (cHttp* http, int chan) {
 
     printf ("cHlsChunks::setChan %d\n", chan);
-    setChan (chan);
+    setChan (http, chan);
     mBitrate = getLowBitrate();
 
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
@@ -111,7 +116,7 @@ public:
   //}}}
 
   //{{{
-  bool load (int frame) {
+  bool load (cHttp* http, int frame) {
   // return false if load failure, usually 404
 
     bool ok = false;
@@ -121,7 +126,7 @@ public:
     int seqNum = getSeqNumFromFrame (frame);
     if (!findSeqNumChunk (seqNum, mBitrate, 0, chunk)) {
       mLoading++;
-      ok &= mChunks[chunk].load (this, seqNum, mBitrate);
+      ok &= mChunks[chunk].load (http, this, seqNum, mBitrate);
       }
 
     if (!mJumped) {
@@ -129,11 +134,11 @@ public:
       for (auto i = 1; i <= NUM_CHUNKS/2; i++) {
         if (!findSeqNumChunk (seqNum, mBitrate, i, chunk)) {
           mLoading++;
-          ok &= mChunks[chunk].load (this, seqNum+i, mBitrate);
+          ok &= mChunks[chunk].load (http, this, seqNum+i, mBitrate);
           }
         if (!findSeqNumChunk (seqNum, mBitrate, -i, chunk)) {
           mLoading++;
-          ok &= mChunks[chunk].load (this, seqNum-i, mBitrate);
+          ok &= mChunks[chunk].load (http, this, seqNum-i, mBitrate);
           }
         }
       }

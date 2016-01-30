@@ -72,11 +72,6 @@ public:
     return kFramesPerChunk [getRadioTv()];
     }
   //}}}
-  //{{{
-  int getMaxFramesPerChunk() {
-    return kMaxFramesPerChunk;
-    }
-  //}}}
 
   //{{{
   int getLowBitrate() {
@@ -107,10 +102,10 @@ public:
 
   // set
   //{{{
-  void setChan (int chan) {
+  void setChan (cHttp* http, int chan) {
 
     mChan = chan;
-    findM3u8SeqNum (getLowBitrate());
+    findM3u8SeqNum (http, getLowBitrate());
     }
   //}}}
 
@@ -166,22 +161,20 @@ private:
   //}}}
 
   //{{{
-  void findM3u8SeqNum (int bitrate) {
-
-    cHttp m3u8;
+  void findM3u8SeqNum (cHttp* http, int bitrate) {
 
     sprintf (mPath, getM3u8Path(), kPool[mChan], kPathNames[mChan], kPathNames[mChan], kPathNames[mChan], bitrate);
-    if (m3u8.get (getOrigHost(), mPath) == 302) {
-      strcpy (mHost, m3u8.getRedirectedHost());
-      m3u8.get (mHost, mPath);
+    if (http->get (getOrigHost(), mPath) == 302) {
+      strcpy (mHost, http->getRedirectedHost());
+      http->get (mHost, mPath);
       }
     else
-      strcpy (mHost, m3u8.getRedirectedHost());
+      strcpy (mHost, http->getRedirectedHost());
 
     //printf ("%s\n", (char*)m3u8.getContent());
 
     // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
-    auto extSeq = strstr ((char*)m3u8.getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
+    auto extSeq = strstr ((char*)http->getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
     auto extSeqEnd = strchr (extSeq, '\n');
     *extSeqEnd = '\0';
     mBaseSeqNum = atoi (extSeq) + 3;

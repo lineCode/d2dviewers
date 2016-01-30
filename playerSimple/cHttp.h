@@ -97,7 +97,7 @@ public:
     mInfoStr[0] = 0;;
     //}}}
 
-    if ((mWebSocket != -1) || (strcmp (host, mHost) != 0)) {
+    if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
       //{{{  find host ipAddress, create webSocket, and connect
       strcpy (mHost, host);
 
@@ -223,21 +223,27 @@ public:
 
     mInfoStr[0] = 0;;
     //}}}
+    if ((mConn == 0) || (strcmp (host, mHost) != 0)) {
+      //{{{  find host ipAddress, create connection, and connect
+      strcpy (mHost, host);
 
-    ip_addr_t ipAddr;
-    if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
-      //{{{  error return
-      sprintf (mInfoStr, "getHostByNameFail %s", host);
-      return -1;
-      }
-      //}}}
+      if (mConn != 0)
+        netconn_close (mConn);
 
-    mConn = netconn_new (NETCONN_TCP);
-    if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
-      //{{{  error return
-      sprintf (mInfoStr, "connFail %d.%d.%d.%d %s",
-               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
-      return -2;
+      ip_addr_t ipAddr;
+      if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
+        // error return
+        sprintf (mInfoStr, "getHostByNameFail %s", host);
+        return -1;
+        }
+
+      mConn = netconn_new (NETCONN_TCP);
+      if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
+        // error return
+        sprintf (mInfoStr, "connFail %d.%d.%d.%d %s",
+                 int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
+        return -2;
+        }
       }
       //}}}
 
@@ -284,8 +290,8 @@ public:
     if (mState == http_error)
       strcpy (mInfoStr, "errParse");
     else
-      sprintf (mInfoStr, "%d.%d.%d.%d s:%d",
-               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), mContentSize);
+      sprintf (mInfoStr, "s:%d", mContentSize);
+
     return mResponse;
     }
   //}}}

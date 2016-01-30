@@ -58,15 +58,16 @@ int main (int argc, char* argv[]) {
   int bitrate = (argc >= 3) ? atoi(argv[2]) : 128000;
   printf ("radio %d %d\n", chan, bitrate);
 
+  cHttp http;
   cRadioChan radioChan;
-  radioChan.setChan (chan);
+  radioChan.setChan (&http, chan);
   int framesPerChunk = radioChan.getFramesPerChunk();
   printf ("radio seqNum:%d framesPerChunk:%d %s\n", radioChan.getBaseSeqNum(), framesPerChunk, radioChan.getDateTime());
 
   // preload
   int seqNum = radioChan.getBaseSeqNum()-1;
   bool phase = false;
-  hlsChunk[phase].load (&radioChan, seqNum++, bitrate);
+  hlsChunk[phase].load (&http, &radioChan, seqNum++, bitrate);
 
   // sync and thread
   hSemaphore = CreateSemaphore (NULL, 0, 1, "playSem");  // initial 0, max 1
@@ -75,7 +76,7 @@ int main (int argc, char* argv[]) {
   // loader
   while (true) {
     phase = !phase;
-    hlsChunk[phase].load (&radioChan, seqNum++, bitrate);
+    hlsChunk[phase].load (&http, &radioChan, seqNum++, bitrate);
     printf ("radio load %d\n", seqNum-1);
     WaitForSingleObject (hSemaphore, 20 * 1000);
     }
