@@ -1,11 +1,7 @@
-// radio.cpp
+// pch.cpp
 //{{{  includes
-#define _CRT_SECURE_NO_WARNINGS
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <thread>
+#include "pch.h"
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
@@ -18,7 +14,7 @@
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
 #define vPortFree free
-#include "cHlsChunk.h"
+#include "../common/cHlsChunk.h"
 //}}}
 //{{{  typedef
 typedef unsigned short uint16_t;

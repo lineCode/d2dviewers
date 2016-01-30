@@ -36,12 +36,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
+    <ClInclude Include="..\common\cHlsChunk.h" />
+    <ClInclude Include="..\common\cHlsRadio.h" />
+    <ClInclude Include="..\common\cHttp.h" />
+    <ClInclude Include="..\common\cParsedUrl.h" />
+    <ClInclude Include="..\common\cRadioChan.h" />
     <ClInclude Include="..\common\winAudio.h" />
-    <ClInclude Include="cHlsChunk.h" />
-    <ClInclude Include="cHlsRadio.h" />
-    <ClInclude Include="cHttp.h" />
-    <ClInclude Include="cParsedUrl.h" />
-    <ClInclude Include="cRadioChan.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

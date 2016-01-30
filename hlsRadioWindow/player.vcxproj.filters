@@ -2,33 +2,33 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\common\Xaudio2.cpp" />
-    <ClCompile Include="pch.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="cHlsRadioWindow.cpp" />
+    <ClCompile Include="pch.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="pch.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cHlsChunk.h">
+    <ClInclude Include="..\common\cRadioChan.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cHttp.h">
+    <ClInclude Include="..\common\cHlsChunk.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cParsedUrl.h">
+    <ClInclude Include="..\common\cHlsRadio.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cRadioChan.h">
+    <ClInclude Include="..\common\cHttp.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cHlsRadio.h">
+    <ClInclude Include="..\common\cParsedUrl.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

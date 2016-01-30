@@ -1,7 +1,5 @@
 // Xaudio2.cpp
 //{{{  includes
-#include <windows.h>
-
 #include "winAudio.h"
 
 #include <stdio.h>

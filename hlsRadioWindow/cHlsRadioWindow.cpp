@@ -1,5 +1,6 @@
 // cHlsRadioWindow.cpp
 //{{{  includes
+
 #include "pch.h"
 
 #include <winsock2.h>
@@ -14,7 +15,7 @@
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
 #define vPortFree free
-#include "cHlsRadio.h"
+#include "../common/cHlsRadio.h"
 //}}}
 
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
