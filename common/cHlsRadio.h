@@ -9,7 +9,10 @@
 
 class cHlsRadio : public cRadioChan {
 public:
-  cHlsRadio() : mTuneVol(75), mTuneChan(4), mPlayFrame(0), mPlaying(true), mBaseFrame(0), mLoading(0), mJumped(false) {}
+  //{{{
+  cHlsRadio() : mTuneVol(75), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
+                mBaseFrame(0), mLoading(0), mJumped(false) {}
+  //}}}
   ~cHlsRadio() {}
 
   //{{{
@@ -157,6 +160,7 @@ public:
   int mTuneChan;
   int mPlayFrame;
   bool mPlaying;
+  int mRxBytes;
 
 private:
   //{{{

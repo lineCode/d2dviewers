@@ -78,7 +78,6 @@ public:
     }
   //}}}
 
-#ifdef WIN32
   //{{{
   int get (const char* host, const char* path) {
   // send http GET request to host, return response code
@@ -103,7 +102,15 @@ public:
 
     mInfoStr[0] = 0;;
     //}}}
+    strcpy (mScratch, "GET /");
+    strcat (mScratch, path);
+    strcat (mScratch, " HTTP/1.1\r\nHost: ");
+    strcat (mScratch, host);
+    strcat (mScratch, "\r\n\r\n");
+    int httpRequestStrLen = (int)strlen (mScratch);
 
+  #ifdef WIN32
+    //{{{  win32
     if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
       //{{{  find host ipAddress, create webSocket, and connect
       strcpy (mHost, host);
@@ -155,13 +162,7 @@ public:
       }
       //}}}
 
-    strcpy (mScratch, "GET /");
-    strcat (mScratch, path);
-    strcat (mScratch, " HTTP/1.1\r\nHost: ");
-    strcat (mScratch, host);
-    strcat (mScratch, "\r\n\r\n");
-    int httpRequestStrLen = (int)strlen (mScratch);
-
+    // win32 write, recv
     int sentBytes = (int)send (mWebSocket, mScratch, httpRequestStrLen, 0);
     if ((sentBytes < httpRequestStrLen) || (sentBytes == -1)) {
       //{{{  error
@@ -185,52 +186,9 @@ public:
         return -5;
         }
         //}}}
-
-      while (needMoreData && (bufferBytesReceived > 0)) {
-        int bytesReceived;
-        needMoreData = parseRecvData (bufferPtr, bufferBytesReceived, bytesReceived);
-        bufferBytesReceived -= bytesReceived;
-        bufferPtr += bytesReceived;
-        }
-      }
-
-    if (mState == http_error)
-      strcpy (mInfoStr, "getHttp - error parsing data");
-
-    if (mState == http_error)
-      strcpy (mInfoStr, "httpErr");
-    else
-      sprintf (mInfoStr, "s:%d", mContentSize);
-
-    mRxBytes += mContentSize;
-    return mResponse;
-    }
-  //}}}
-#else
-  //{{{
-  int get (const char* host, const char* path) {
-  // send http GET request to host, return context
-
-    //{{{  init
-    mResponse = 0;
-
-    mState = http_header;
-    mParseHeaderState = http_parse_header_done;
-    mChunked = 0;
-
-    mContentLen = -1;
-    mKeyStrLen = 0;
-    mValueStrLen = 0;
-    mOrigHost = host;
-
-    mContentSize = 0;
-    if (mContent) {
-      vPortFree (mContent);
-      mContent = nullptr;
-      }
-
-    mInfoStr[0] = 0;;
     //}}}
+  #else
+    //{{{  lwip
     if ((mConn == 0) || (strcmp (host, mHost) != 0)) {
       //{{{  find host ipAddress, create connection, and connect
       strcpy (mHost, host);
@@ -255,13 +213,7 @@ public:
       }
       //}}}
 
-    // use header buffer as send buffer
-    strcpy (mScratch, "GET /");
-    strcat (mScratch, path);
-    strcat (mScratch, " HTTP/1.1\r\nHost: ");
-    strcat (mScratch, host);
-    strcat (mScratch, "\r\n\r\n");
-    int httpRequestStrLen = (int)strlen (mScratch);
+    // lwip write, recv
     if (netconn_write (mConn, mScratch, httpRequestStrLen, NETCONN_NOCOPY) != ERR_OK) {
       //{{{  error return
       strcpy (mInfoStr, "httpSendFail");
@@ -284,6 +236,8 @@ public:
       char* bufferPtr;
       uint16_t bufferBytesReceived;
       netbuf_data (buf, (void**)(&bufferPtr), &bufferBytesReceived);
+    //}}}
+  #endif
 
       while (needMoreData && (bufferBytesReceived > 0)) {
         int bytesReceived;
@@ -292,11 +246,16 @@ public:
         bufferPtr += bytesReceived;
         }
 
+  #ifndef WIN32
       netbuf_delete (buf);
+  #endif
       }
 
     if (mState == http_error)
-      strcpy (mInfoStr, "errParse");
+      strcpy (mInfoStr, "getHttp - error parsing data");
+
+    if (mState == http_error)
+      strcpy (mInfoStr, "httpErr");
     else
       sprintf (mInfoStr, "s:%d", mContentSize);
 
@@ -304,7 +263,6 @@ public:
     return mResponse;
     }
   //}}}
-#endif
   //{{{
   void freeContent() {
     if (mContent)
@@ -608,7 +566,6 @@ private:
   int mKeyStrLen;
   int mValueStrLen;
   int mContentLen;
-  char mScratch[256];
 
   int mContentSize;
   uint8_t* mContent;
@@ -618,6 +575,7 @@ private:
   int mRxBytes;
 
   char mHost[100];
+  char mScratch[256];
   char mInfoStr[100];
 
   #ifdef WIN32
