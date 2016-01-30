@@ -121,7 +121,7 @@ public:
     else
       strcpy (mHost, http->getRedirectedHost());
 
-    //printf ("%s\n", (char*)m3u8.getContent());
+    printf ("%s\n", (char*)http->getContent());
 
     // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
     auto extSeq = strstr ((char*)http->getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
@@ -155,7 +155,7 @@ private:
 
   const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
 
-  const bool kRadioTv    [9] = { false,   false,  false, false,   false,  false,  false,   true,   true };
+  const bool kRadioTv    [9] = { false,   false,  false,  false,  false,  false,  false,   true,   true };
   const int kPool        [9] = {      0,      7,      7,      7,      6,      6,      6,      4,      5 };
   const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000 };
   const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000 };
@@ -165,7 +165,6 @@ private:
   const char* kChanNames [9] = { "none", "bbcRadio1", "bbcRadio2", "bbcRadio3", "bbcRadio4",
                                          "bbcRadio5", "bbcRadio6",    "bbc1hd", "   bbc2hd" };
   //}}}
-
   //{{{
   int getRadioTv() {
     return kRadioTv[mChan];
