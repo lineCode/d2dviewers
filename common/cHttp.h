@@ -10,7 +10,7 @@ public:
   cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
             mChunked(0), mKeyStrLen(0), mValueStrLen(0),
             mContentLen(-1), mContentSize(0), mContent(nullptr),
-            mOrigHost(nullptr), mRedirectUrl(nullptr),
+            mOrigHost(nullptr), mRedirectUrl(nullptr), mRxBytes(0),
   #ifdef WIN32
     mWebSocket(-1)
   #else
@@ -60,11 +60,16 @@ public:
   //{{{
   int getContentSize() {
     return mContentSize;
-      }
+    }
   //}}}
   //{{{
   uint8_t* getContentEnd() {
     return mContent + mContentSize;
+    }
+  //}}}
+  //{{{
+  int getRxBytes() {
+    return mRxBytes;
     }
   //}}}
   //{{{
@@ -197,6 +202,7 @@ public:
     else
       sprintf (mInfoStr, "s:%d", mContentSize);
 
+    mRxBytes += mContentSize;
     return mResponse;
     }
   //}}}
@@ -294,6 +300,7 @@ public:
     else
       sprintf (mInfoStr, "s:%d", mContentSize);
 
+    mRxBytes += mContentSize;
     return mResponse;
     }
   //}}}
@@ -608,6 +615,7 @@ private:
 
   const char* mOrigHost;
   cParsedUrl* mRedirectUrl;
+  int mRxBytes;
 
   char mHost[100];
   char mInfoStr[100];

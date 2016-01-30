@@ -21,7 +21,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() {
+  cHlsRadioWindow() : mRxBytes(0) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
@@ -137,7 +137,8 @@ protected:
       }
 
     wchar_t wDebugStr[200];
-    swprintf (wDebugStr, 200, L"%hs", getInfoStr (mPlayFrame));
+    swprintf (wDebugStr, 200, L"%hs %4.3f%c",
+              getInfoStr (mPlayFrame), (mRxBytes < 1000000) ? (mRxBytes/1000.0f) : (mRxBytes/1000000.0f), mRxBytes < 1000000 ? 'k':'m');
     dc->DrawText (wDebugStr, (UINT32)wcslen(wDebugStr), getTextFormat(), rt, getWhiteBrush());
     }
   //}}}
@@ -188,6 +189,7 @@ private:
         printf ("sleep frame:%d\n", mPlayFrame);
         Sleep (1000);
         }
+      mRxBytes = http.getRxBytes();
       wait();
       }
     }
@@ -222,6 +224,7 @@ private:
   // vars
   HANDLE mSemaphore;
   int16_t* mSilence;
+  int mRxBytes;
   };
 
 //{{{
