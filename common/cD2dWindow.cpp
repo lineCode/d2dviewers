@@ -75,7 +75,7 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
     //}}}
     //{{{
     case WM_KEYDOWN:
-      keyDown = true;
+      keyDown++;
 
       if (wparam == 0x10)
         shiftKeyDown = true;
@@ -89,9 +89,13 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
     //}}}
     //{{{
     case WM_KEYUP:
-      keyDown = false;
-      shiftKeyDown = false;
-      controlKeyDown = false;
+      keyDown--;
+
+      if (wparam == 0x10)
+        shiftKeyDown = false;
+      if (wparam == 0x11)
+        controlKeyDown = false;
+
       return 0;
     //}}}
 

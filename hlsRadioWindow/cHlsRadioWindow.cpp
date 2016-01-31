@@ -21,7 +21,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() {
+  cHlsRadioWindow() : mShowChan(false) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
 
@@ -58,6 +58,11 @@ public:
 
 protected:
   //{{{
+  int keyInc() {
+    return controlKeyDown ? 60*60 : shiftKeyDown ? 60 : 1;
+    }
+  //}}}
+  //{{{
   bool onKey (int key) {
 
     switch (key) {
@@ -66,17 +71,17 @@ protected:
 
       case 0x20 : mPlaying = !mPlaying; break;  // space
 
-      case 0x21 : incPlayFrame (getFramesFromSec(-60)); break; // page up
-      case 0x22 : incPlayFrame (getFramesFromSec(+60)); break; // page down
+      case 0x21 : incPlayFrame (getFramesFromSec(-5*60)); break; // page up
+      case 0x22 : incPlayFrame (getFramesFromSec(+5*60)); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (getFramesFromSec(-2)); break;  // left arrow
-      case 0x27 : incPlayFrame (getFramesFromSec(+2)); break;  // right arrow
+      case 0x25 : incPlayFrame (getFramesFromSec(-keyInc())); break;  // left arrow
+      case 0x27 : incPlayFrame (getFramesFromSec(+keyInc())); break;  // right arrow
 
-      case 0x26 : mPlaying = false; incPlayFrame (-2); break; // up arrow
-      case 0x28 : mPlaying = false; incPlayFrame (+2); break; // down arrow
+      case 0x26 : mPlaying = false; incPlayFrame (-keyInc()); break; // up arrow
+      case 0x28 : mPlaying = false; incPlayFrame (+keyInc()); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -110,6 +115,7 @@ protected:
   //}}}
   //{{{
   void onMouseProx (int x, int y) {
+    mShowChan = x < 80;
     }
   //}}}
   //{{{
@@ -178,11 +184,12 @@ protected:
     swprintf (wStr, 100, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
-    // radio chans str
-    for (auto i = 1; i <= 8; i++) {
-      swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i));
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
-      }
+    // left radio chans str
+    if (mShowChan)
+      for (auto i = 1; i <= 8; i++) {
+        swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i));
+        dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
+        }
 
     // botLine radioChan info str
     swprintf (wStr, 100, L"%hs", getChanInfoStr());
@@ -273,6 +280,7 @@ private:
   //}}}
 
   // vars
+  bool mShowChan;
   HANDLE mSemaphore;
   int16_t* mSilence;
   };

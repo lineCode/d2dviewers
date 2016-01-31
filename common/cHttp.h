@@ -114,7 +114,7 @@ public:
   #ifdef WIN32
     //{{{  win32
     if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
-      //{{{  find host ipAddress, create webSocket, and connect
+      // find host ipAddress, create webSocket, and connect
       strcpy (mHost, host);
 
       // close any open webSocket
@@ -136,6 +136,15 @@ public:
         }
         //}}}
 
+      // form sockAddr
+      struct sockaddr_in sockAddr;
+      sockAddr.sin_addr = ((struct sockaddr_in*)targetAddressInfo->ai_addr)->sin_addr;
+      sockAddr.sin_family = AF_INET; // IPv4
+      sockAddr.sin_port = htons (80); // HTTP Port: 80
+
+      // free targetAddressInfo from getaddrinfo
+      freeaddrinfo (targetAddressInfo);
+
       // create webSocket
       mWebSocket = (unsigned int)socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
       if (mWebSocket == -1) {
@@ -146,10 +155,6 @@ public:
         //}}}
 
       // connect to webSocket
-      struct sockaddr_in sockAddr;
-      sockAddr.sin_addr = ((struct sockaddr_in*)targetAddressInfo->ai_addr)->sin_addr;
-      sockAddr.sin_family = AF_INET; // IPv4
-      sockAddr.sin_port = htons (80); // HTTP Port: 80
       if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
         //{{{  error
         strcpy (mInfoStr, "Could not connect");
@@ -158,13 +163,9 @@ public:
         return -3;
         }
         //}}}
-
-      // free targetAddressInfo from getaddrinfo
-      freeaddrinfo (targetAddressInfo);
       }
-      //}}}
 
-    // win32 write, recv
+    // write
     int sentBytes = (int)send (mWebSocket, mScratch, httpRequestStrLen, 0);
     if ((sentBytes < httpRequestStrLen) || (sentBytes == -1)) {
       //{{{  error
@@ -175,6 +176,7 @@ public:
       }
       //}}}
 
+    // recv
     char buffer[0x10000];
     int needMoreData = 1;
     while (needMoreData) {
@@ -192,7 +194,7 @@ public:
   #else
     //{{{  lwip
     if ((mConn == 0) || (strcmp (host, mHost) != 0)) {
-      //{{{  find host ipAddress, create connection, and connect
+      // find host ipAddress, create connection, and connect
       strcpy (mHost, host);
 
       if (mConn != 0)
@@ -213,7 +215,6 @@ public:
         return -2;
         }
       }
-      //}}}
 
     // lwip write, recv
     if (netconn_write (mConn, mScratch, httpRequestStrLen, NETCONN_NOCOPY) != ERR_OK) {

@@ -5,7 +5,7 @@ class cD2dWindow {
 public:
   //{{{
   cD2dWindow() : mHWND(0), mChanged(false), mChangeRate(0),
-                 keyDown(false), shiftKeyDown(false), controlKeyDown(false),
+                 keyDown(0), shiftKeyDown(false), controlKeyDown(false),
                  mouseDown(false), rightDown(false), mouseMoved(false),
                  downMousex(0), downMousey(0), lastMousex(0), lastMousey(0), proxMousex(0), proxMousey(0) {}
   //}}}
@@ -46,7 +46,7 @@ protected:
   virtual void onMouseUp (bool right, bool mouseMoved, int x, int y) {}
   virtual void onDraw (ID2D1DeviceContext* dc) = 0;
   //{{{  protected vars
-  bool keyDown;
+  int keyDown;
   bool shiftKeyDown;
   bool controlKeyDown;
 
