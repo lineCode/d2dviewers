@@ -28,7 +28,7 @@ public:
 
   bool onKey (int key);
   void onMouseWheel (int delta);
-  void onMouseProx (int x, int y);
+  void onMouseProx (bool inClient, int x, int y);
   void onMouseDown (bool right, int x, int y);
   void onMouseMove (bool right, int x, int y, int xInc, int yInc);
   void onMouseUp (bool right, bool mouseMoved, int x, int y);
@@ -610,7 +610,7 @@ void cAppWindow::onMouseWheel (int delta) {
   }
 //}}}
 //{{{
-void cAppWindow::onMouseProx (int x, int y) {
+void cAppWindow::onMouseProx (bool inClient, int x, int y) {
 
   ULONG mask;
   if (getMask (x, y, mask))

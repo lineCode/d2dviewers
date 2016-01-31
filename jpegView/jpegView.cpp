@@ -1264,7 +1264,7 @@ protected:
     }
   //}}}
   //{{{
-  void onMouseProx (int x, int y) {
+  void onMouseProx (bool inClient, int x, int y) {
 
     if (!mFullImage) {
       // displaying thumbs

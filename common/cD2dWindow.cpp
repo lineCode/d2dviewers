@@ -156,8 +156,18 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
       else {
         proxMousex = x;
         proxMousey = y;
-        onMouseProx (x, y);
+        onMouseProx (true, x, y);
         }
+
+      if (!mMouseTracking) {
+        TRACKMOUSEEVENT tme;
+         tme.cbSize = sizeof(TRACKMOUSEEVENT);
+         tme.dwFlags = TME_LEAVE;
+         tme.hwndTrack = hWnd;
+
+         if (TrackMouseEvent(&tme))
+           mMouseTracking = true;
+         }
 
       return 0;
       }
@@ -170,12 +180,20 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
       return 0;
       }
     //}}}
-
     //{{{
-    case WM_DESTROY:
+    case WM_MOUSELEAVE: {
+      onMouseProx (false, 0, 0);
+      mMouseTracking =  false;
+      return 0;
+      }
+    //}}}
+    //{{{
+    case WM_DESTROY: {
       PostQuitMessage(0) ;
       return 0;
+      }
     //}}}
+
     //case WM_PAINT:
     //  ValidateRect (hWnd, NULL);
     //  return 0;

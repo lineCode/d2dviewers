@@ -4,7 +4,7 @@
 class cD2dWindow {
 public:
   //{{{
-  cD2dWindow() : mHWND(0), mChanged(false), mChangeRate(0),
+  cD2dWindow() : mHWND(0), mChanged(false), mChangeRate(0), mMouseTracking(false),
                  keyDown(0), shiftKeyDown(false), controlKeyDown(false),
                  mouseDown(false), rightDown(false), mouseMoved(false),
                  downMousex(0), downMousey(0), lastMousex(0), lastMousey(0), proxMousex(0), proxMousey(0) {}
@@ -40,7 +40,7 @@ public:
 protected:
   virtual bool onKey(int key) { return false; }
   virtual void onMouseWheel (int delta) {}
-  virtual void onMouseProx (int x, int y) {}
+  virtual void onMouseProx (bool inClient, int x, int y) {}
   virtual void onMouseDown (bool right, int x, int y) {};
   virtual void onMouseMove (bool right, int x, int y, int xInc, int yInc) {}
   virtual void onMouseUp (bool right, bool mouseMoved, int x, int y) {}
@@ -77,6 +77,7 @@ private:
   HWND mHWND;
   bool mChanged;
   int mChangeRate;
+  bool mMouseTracking;
   //{{{  deviceIndependentResources
   ComPtr<ID2D1Factory1> mD2D1Factory;
   IDWriteFactory* DWriteFactory;

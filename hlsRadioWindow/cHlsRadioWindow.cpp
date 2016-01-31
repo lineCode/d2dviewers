@@ -114,13 +114,15 @@ protected:
     }
   //}}}
   //{{{
-  void onMouseProx (int x, int y) {
-    mShowChan = x < 80;
+  void onMouseProx (bool inClient, int x, int y) {
+    bool showChan = mShowChan;
+    mShowChan = inClient && (x < 80);
+    if (showChan != mShowChan)
+      changed();
     }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
-
     if (x < 80) {
       int chan = y / 20;
       if ((chan >= 1) && (chan <= 8)) {
@@ -133,7 +135,6 @@ protected:
   //}}}
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
-
     if (x > int(getClientF().width-20))
       mTuneVol  = int(y * 100 / getClientF().height);
     else
@@ -142,10 +143,8 @@ protected:
   //}}}
   //{{{
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
-
     if (!mouseMoved) {
       }
-
     }
   //}}}
   //{{{
