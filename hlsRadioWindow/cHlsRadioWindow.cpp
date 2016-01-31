@@ -190,6 +190,16 @@ protected:
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
         }
 
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (0));
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                  RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (1));
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                  RectF(0, getClientF().height-60, getClientF().width, getClientF().height), getWhiteBrush());
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (2));
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                  RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
+
     // botLine radioChan info str
     swprintf (wStr, 100, L"%hs", getChanInfoStr());
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),

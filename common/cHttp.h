@@ -10,14 +10,14 @@ public:
   cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
             mChunked(0), mKeyStrLen(0), mValueStrLen(0),
             mContentLen(-1), mContentSize(0), mContent(nullptr),
-            mOrigHost(nullptr), mRedirectUrl(nullptr), mRxBytes(0),
+            mOrigHost(nullptr), mRedirectUrl(nullptr), mRxBytes(0)
+
   #ifdef WIN32
-    mWebSocket(-1)
+            , mWebSocket(-1) {
   #else
-    mConn(0)
+            , mConn(nullptr) {
   #endif
 
-    {
     mHost[0] = 0;
     mInfoStr[0] = 0;
     }
@@ -34,11 +34,6 @@ public:
   #ifdef WIN32
     if (mWebSocket != -1)
       closesocket (mWebSocket);
-    mWebSocket = -1;
-  #else
-    if (mConn)
-      netconn_close (mConn);
-    mConn = 0;
   #endif
     }
   //}}}
@@ -96,13 +91,14 @@ public:
     if (mContent)
       vPortFree (mContent);
     mContent = nullptr;
-    mInfoStr[0] = 0;
 
+    mInfoStr[0] = 0;
     sprintf (mScratch, "GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n", path, host);
 
   #ifdef WIN32
     //{{{  win32
     if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
+      // not connected or different host
       strcpy (mHost, host);
       //{{{  close any open webSocket
       if (mWebSocket != 1)
@@ -188,40 +184,41 @@ public:
     //}}}
   #else
     //{{{  lwip
-    if ((mConn == 0) || (strcmp (host, mHost) != 0)) {
-      strcpy (mHost, host);
-
-      if (mConn != 0)
-        netconn_close (mConn);
-
-      // lwip find host ipAddress,
-      ip_addr_t ipAddr;
-      if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
-        //{{{  error return
-        sprintf (mInfoStr, "getHostByNameFail %s", host);
-        return -1;
-        }
-        //}}}
-
-      // lwip create connection
-      mConn = netconn_new (NETCONN_TCP);
-
-      // lwip connect
-      if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
-        //{{{  error return
-        sprintf (mInfoStr, "connFail %d.%d.%d.%d %s",
-                 int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
-        return -2;
-        }
-        //}}}
+    // lwip find host ipAddress,
+    ip_addr_t ipAddr;
+    if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
+      //{{{  error return
+      sprintf (mInfoStr, "getHostByNameFail %s", host);
+      mResponse = -1;
+      return -1;
       }
+      //}}}
+
+    mConn = netconn_new (NETCONN_TCP);
+    if (mConn == nullptr) {
+      //{{{  error return
+      sprintf (mInfoStr, "netconnNewFail %s", host);
+      mResponse = -2;
+      return -2;
+      }
+      //}}}
+    if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
+      //{{{  error return
+      netconn_delete (mConn);
+      sprintf (mInfoStr, "netconnFail %d.%d.%d.%d %s",
+               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
+      mResponse = -3;
+      return -3;
+      }
+      //}}}
 
     // lwip write
     if (netconn_write (mConn, mScratch, strlen (mScratch), NETCONN_NOCOPY) != ERR_OK) {
       //{{{  error return
-      strcpy (mInfoStr, "httpSendFail");
-      netconn_close (mConn);
-      return -3;
+      netconn_delete (mConn);
+      strcpy (mInfoStr, "netconnSendFail");
+      mResponse = -4;
+      return -4;
       }
       //}}}
 
@@ -231,9 +228,10 @@ public:
     while (needMoreData) {
       if (netconn_recv (mConn, &buf) != ERR_OK) {
         //{{{  error return;
-        strcpy (mInfoStr, "connRecvFail");
-        netconn_close (mConn);
-        return -4;
+        netconn_delete (mConn);
+        strcpy (mInfoStr, "netconnRecvFail");
+        mResponse = -5;
+        return -5;
         }
         //}}}
 
@@ -250,8 +248,12 @@ public:
 
       netbuf_delete (buf);
       }
+
+    netconn_delete (mConn);
+    mConn = nullptr;
     //}}}
   #endif
+
     mRxBytes += mContentSize;
 
     if (mState == http_error)

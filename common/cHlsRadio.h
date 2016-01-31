@@ -74,7 +74,7 @@ public:
 
     printf ("cHlsChunks::setChan %d\n", chan);
     setChan (http, chan);
-    mBitrate = getLowBitrate();
+    mBitrate = getMidBitrate();
 
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
