@@ -84,44 +84,32 @@ public:
   int get (const char* host, const char* path) {
   // send http GET request to host, return response code
 
-    //{{{  init
+   // init
     mResponse = 0;
-
     mState = http_header;
     mParseHeaderState = http_parse_header_done;
     mChunked = 0;
-
     mContentLen = -1;
     mKeyStrLen = 0;
     mValueStrLen = 0;
     mOrigHost = host;
-
     mContentSize = 0;
-    if (mContent) {
+    if (mContent)
       vPortFree (mContent);
-      mContent = nullptr;
-      }
+    mContent = nullptr;
+    mInfoStr[0] = 0;
 
-    mInfoStr[0] = 0;;
-    //}}}
-    strcpy (mScratch, "GET /");
-    strcat (mScratch, path);
-    strcat (mScratch, " HTTP/1.1\r\nHost: ");
-    strcat (mScratch, host);
-    strcat (mScratch, "\r\n\r\n");
-    int httpRequestStrLen = (int)strlen (mScratch);
+    sprintf (mScratch, "GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n", path, host);
 
   #ifdef WIN32
     //{{{  win32
     if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
-      // find host ipAddress, create webSocket, and connect
       strcpy (mHost, host);
-
-      // close any open webSocket
+      //{{{  close any open webSocket
       if (mWebSocket != 1)
         closesocket (mWebSocket);
-
-      // find host ipAddress
+      //}}}
+      //{{{  win32 find host ipAddress
       struct addrinfo hints;
       memset (&hints, 0, sizeof(hints));
       hints.ai_family = AF_INET;       // IPv4
@@ -144,8 +132,9 @@ public:
 
       // free targetAddressInfo from getaddrinfo
       freeaddrinfo (targetAddressInfo);
+      //}}}
 
-      // create webSocket
+      // win32 create webSocket
       mWebSocket = (unsigned int)socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
       if (mWebSocket == -1) {
         //{{{  error
@@ -154,7 +143,7 @@ public:
         }
         //}}}
 
-      // connect to webSocket
+      // win32 connect webSocket
       if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
         //{{{  error
         strcpy (mInfoStr, "Could not connect");
@@ -165,9 +154,9 @@ public:
         //}}}
       }
 
-    // write
-    int sentBytes = (int)send (mWebSocket, mScratch, httpRequestStrLen, 0);
-    if ((sentBytes < httpRequestStrLen) || (sentBytes == -1)) {
+    // win32 send
+    int sentBytes = (int)send (mWebSocket, mScratch, (int)strlen (mScratch), 0);
+    if ((sentBytes < strlen (mScratch)) || (sentBytes == -1)) {
       //{{{  error
       strcpy (mInfoStr, "Could not send the request to the Server");
       closesocket (mWebSocket);
@@ -176,7 +165,7 @@ public:
       }
       //}}}
 
-    // recv
+    // win32 recv
     char buffer[0x10000];
     int needMoreData = 1;
     while (needMoreData) {
@@ -190,34 +179,47 @@ public:
         return -5;
         }
         //}}}
+
+      while (needMoreData && (bufferBytesReceived > 0)) {
+        int bytesReceived;
+        needMoreData = parseRecvData (bufferPtr, bufferBytesReceived, bytesReceived);
+        bufferBytesReceived -= bytesReceived;
+        bufferPtr += bytesReceived;
+        }
+      }
     //}}}
   #else
     //{{{  lwip
     if ((mConn == 0) || (strcmp (host, mHost) != 0)) {
-      // find host ipAddress, create connection, and connect
       strcpy (mHost, host);
 
       if (mConn != 0)
         netconn_close (mConn);
 
+      // lwip find host ipAddress,
       ip_addr_t ipAddr;
       if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
-        // error return
+        //{{{  error return
         sprintf (mInfoStr, "getHostByNameFail %s", host);
         return -1;
         }
+        //}}}
 
+      // lwip create connection
       mConn = netconn_new (NETCONN_TCP);
+
+      // lwip connect
       if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
-        // error return
+        //{{{  error return
         sprintf (mInfoStr, "connFail %d.%d.%d.%d %s",
                  int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
         return -2;
         }
+        //}}}
       }
 
-    // lwip write, recv
-    if (netconn_write (mConn, mScratch, httpRequestStrLen, NETCONN_NOCOPY) != ERR_OK) {
+    // lwip write
+    if (netconn_write (mConn, mScratch, strlen (mScratch), NETCONN_NOCOPY) != ERR_OK) {
       //{{{  error return
       strcpy (mInfoStr, "httpSendFail");
       netconn_close (mConn);
@@ -225,6 +227,7 @@ public:
       }
       //}}}
 
+    // lwip recv
     struct netbuf* buf = NULL;
     bool needMoreData = true;
     while (needMoreData) {
@@ -239,8 +242,6 @@ public:
       char* bufferPtr;
       uint16_t bufferBytesReceived;
       netbuf_data (buf, (void**)(&bufferPtr), &bufferBytesReceived);
-    //}}}
-  #endif
 
       while (needMoreData && (bufferBytesReceived > 0)) {
         int bytesReceived;
@@ -249,20 +250,17 @@ public:
         bufferPtr += bytesReceived;
         }
 
-  #ifndef WIN32
       netbuf_delete (buf);
-  #endif
       }
-
-    if (mState == http_error)
-      strcpy (mInfoStr, "getHttp - error parsing data");
+    //}}}
+  #endif
+    mRxBytes += mContentSize;
 
     if (mState == http_error)
       strcpy (mInfoStr, "httpErr");
     else
       sprintf (mInfoStr, "s:%d", mContentSize);
 
-    mRxBytes += mContentSize;
     return mResponse;
     }
   //}}}
