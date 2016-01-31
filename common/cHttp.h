@@ -84,7 +84,6 @@ public:
   int get (const char* host, const char* path) {
   // send http GET request to host, return response code
 
-   // init
     mResponse = 0;
     mState = http_header;
     mParseHeaderState = http_parse_header_done;
@@ -155,8 +154,7 @@ public:
       }
 
     // win32 send
-    int sentBytes = (int)send (mWebSocket, mScratch, (int)strlen (mScratch), 0);
-    if ((sentBytes < strlen (mScratch)) || (sentBytes == -1)) {
+    if (send (mWebSocket, mScratch, (int)strlen (mScratch), 0) == -1) {
       //{{{  error
       strcpy (mInfoStr, "Could not send the request to the Server");
       closesocket (mWebSocket);
@@ -166,7 +164,7 @@ public:
       //}}}
 
     // win32 recv
-    char buffer[0x10000];
+    char buffer[220000];
     int needMoreData = 1;
     while (needMoreData) {
       const char* bufferPtr = buffer;
