@@ -10,6 +10,7 @@ public:
     mHost[0] = 0;
     mPath[0] = 0;
     mDateTime[0] = 0;
+    mChanInfoStr[0] = 0;
     }
   //}}}
   ~cRadioChan() {}
@@ -31,6 +32,11 @@ public:
     }
   //}}}
   //{{{
+  int getFramesPerChunk() {
+    return kFramesPerChunk [getRadioTv()];
+    }
+  //}}}
+  //{{{
   float getFramesPerSecond() {
     return (float)kSampleRate / (float)kSamplesPerFrame;
     }
@@ -38,11 +44,6 @@ public:
   //{{{
   int getFramesFromSec (int sec) {
     return int (sec * getFramesPerSecond());
-    }
-  //}}}
-  //{{{
-  int getFramesPerChunk() {
-    return kFramesPerChunk [getRadioTv()];
     }
   //}}}
 
@@ -62,6 +63,11 @@ public:
     }
   //}}}
 
+  //{{{
+  int getRadioTv() {
+    return kRadioTv[mChan];
+    }
+  //}}}
   //{{{
   int getBaseSeqNum() {
     return mBaseSeqNum;
@@ -107,6 +113,11 @@ public:
     return mDateTime;
     }
   //}}}
+  //{{{
+  const char* getChanInfoStr() {
+    return mChanInfoStr;
+    }
+  //}}}
 
   // set
   //{{{
@@ -122,7 +133,7 @@ public:
     else
       strcpy (mHost, http->getRedirectedHost());
 
-    printf ("%s\n", (char*)http->getContent());
+    //printf ("%s\n", (char*)http->getContent());
 
     // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
     auto extSeq = strstr ((char*)http->getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
@@ -134,6 +145,8 @@ public:
     auto extDateTimeEnd = strchr (extDateTime, '\n');
     *extDateTimeEnd = '\0';
     strcpy (mDateTime, extDateTime);
+
+    sprintf (mChanInfoStr, "%d %s %s", http->getResponse(), http->getInfoStr(), mPath);
     }
   //}}}
 
@@ -166,11 +179,6 @@ private:
                                          "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",       "bbc_two_hd" };
   //}}}
   //{{{
-  int getRadioTv() {
-    return kRadioTv[mChan];
-    }
-  //}}}
-  //{{{
   const char* getOrigHost() {
     return kOrigHost [getRadioTv()];
     }
@@ -190,6 +198,7 @@ private:
   int mChan;
   int mBaseSeqNum;
   char mHost[80];
-  char mPath[200];
-  char mDateTime[80];
+  char mPath[100];
+  char mDateTime[40];
+  char mChanInfoStr[120];
   };

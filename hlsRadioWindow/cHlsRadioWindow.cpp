@@ -97,10 +97,39 @@ protected:
     }
   //}}}
   //{{{
+  void onMouseWheel (int delta) {
+
+    float ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+    if (delta > 0)
+      ratio = 1.0f/ratio;
+
+    mTuneVol = (int)(mTuneVol * ratio);
+
+    changed();
+    }
+  //}}}
+  //{{{
+  void onMouseProx (int x, int y) {
+    }
+  //}}}
+  //{{{
+  void onMouseDown (bool right, int x, int y) {
+
+    if (x < 80) {
+      int chan = y / 20;
+      if ((chan >= 1) && (chan <= 8)) {
+        mTuneChan = chan;
+        signal();
+        changed();
+        }
+      }
+    }
+  //}}}
+  //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     if (x > int(getClientF().width-20))
-      mTuneVol  = int(y * 100.0f / getClientF().height);
+      mTuneVol  = int(y * 100 / getClientF().height);
     else
       incPlayFrame (-xInc);
     }
@@ -109,34 +138,30 @@ protected:
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
     if (!mouseMoved) {
-      if (x < 80) {
-        int chan = y / 20;
-        if ((chan >= 1) && (chan <= 8)) {
-          mTuneChan = chan;
-          signal();
-          }
-        }
       }
 
-    changed();
     }
   //}}}
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
+    // clear
     dc->Clear (ColorF(ColorF::Black));
 
-    D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
+    // grey mid line
+    D2D1_RECT_F r = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
 
-    D2D1_RECT_F rVol= RectF (getClientF().width - 20.0f,0, getClientF().width, mTuneVol * getClientF().height / 100.0f);
+    // yellow vol bar
+    D2D1_RECT_F rVol= RectF (getClientF().width - 20,0, getClientF().width, mTuneVol * getClientF().height/100);
     dc->FillRectangle (rVol, getYellowBrush());
 
-    int frame = mPlayFrame - int(getClientF().width/2.0f);
+    // waveform
+    int frame = mPlayFrame - int(getClientF().width/2);
     uint8_t* power = nullptr;
     int frames = 0;
-    for (r.left = 0.0f; r.left < getClientF().width; r.left++) {
-      r.right = r.left + 1.0f;
+    for (r.left = 0; r.left < getClientF().width; r.left++) {
+      r.right = r.left + 1;
       if (!frames)
         power = getPower (frame, frames);
       if (power) {
@@ -148,14 +173,21 @@ protected:
       frame++;
       }
 
-    wchar_t wStr[40];
+    // topLine info str
+    wchar_t wStr[100];
+    swprintf (wStr, 100, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
+
+    // radio chans str
     for (auto i = 1; i <= 8; i++) {
-      swprintf (wStr, 40, L"%hs", cRadioChan::getChanName(i));
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF (0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
+      swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i));
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
       }
 
-    swprintf (wStr, 40, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF (0, 0, getClientF().width, 20.0f), getWhiteBrush());
+    // botLine radioChan info str
+    swprintf (wStr, 100, L"%hs", getChanInfoStr());
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                  RectF(0, getClientF().height-20, getClientF().width, getClientF().height), getWhiteBrush());
     }
   //}}}
 
@@ -223,7 +255,7 @@ private:
       if (audioSamples && (mTuneVol != 80))
         for (auto i = 0; i < 4096; i++)
           audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1.0f);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
 
       if (mPlaying)
         setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);

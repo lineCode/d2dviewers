@@ -34,9 +34,11 @@ public:
   #ifdef WIN32
     if (mWebSocket != -1)
       closesocket (mWebSocket);
+    mWebSocket = -1;
   #else
     if (mConn)
       netconn_close (mConn);
+    mConn = 0;
   #endif
     }
   //}}}
