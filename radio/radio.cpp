@@ -58,7 +58,7 @@ int main (int argc, char* argv[]) {
   cRadioChan radioChan;
   radioChan.setChan (&http, chan);
   int framesPerChunk = radioChan.getFramesPerChunk();
-  printf ("radio seqNum:%d framesPerChunk:%d %s\n", radioChan.getBaseSeqNum(), framesPerChunk, radioChan.getDateTime());
+  printf ("radio seqNum:%d framesPerChunk:%d %hs\n", radioChan.getBaseSeqNum(), framesPerChunk, radioChan.getDateTime().c_str());
 
   // preload
   int seqNum = radioChan.getBaseSeqNum()-1;

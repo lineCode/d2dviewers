@@ -1,6 +1,10 @@
 // cHlsRadio.h
 #pragma once
 //{{{  includes
+#include <string>
+//#include <sstream>
+//#include <iostream>
+//#include <iomanip>
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "cRadioChan.h"
@@ -26,24 +30,24 @@ public:
     }
   //}}}
   //{{{
-  const char* getInfoStr (int frame) {
+  std::string getInfoStr (int frame) {
 
     int secsSinceMidnight = int (frame / getFramesPerSecond());
     int secs = secsSinceMidnight % 60;
     int mins = (secsSinceMidnight / 60) % 60;
     int hours = secsSinceMidnight / (60*60);
 
-    sprintf (mInfoStr, "%d:%02d:%02d %s %dk %d:%d:%d",
-             hours, mins, secs, getChanName(getChan()), getBitrate()/1000,
-             mChunks[0].getSeqNum() ? mChunks[0].getSeqNum() - getBaseSeqNum() : 9999,
-             mChunks[1].getSeqNum() ? mChunks[1].getSeqNum() - getBaseSeqNum() : 9999,
-             mChunks[2].getSeqNum() ? mChunks[2].getSeqNum() - getBaseSeqNum() : 9999);
+    mInfoStr = std::to_string (hours) + ':' + std::to_string (mins) + ':' + std::to_string (secs) + ' ' +
+               getChanName (getChan()) + '.' + std::to_string (getBitrate()/1000) + "k " +
+               (mChunks[0].getSeqNum() ? std::to_string (mChunks[0].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
+               (mChunks[1].getSeqNum() ? std::to_string (mChunks[1].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
+               (mChunks[2].getSeqNum() ? std::to_string (mChunks[2].getSeqNum() - getBaseSeqNum()) : "*");
 
     return mInfoStr;
     }
   //}}}
   //{{{
-  const char* getChunkInfoStr (int chunk) {
+  std::string getChunkInfoStr (int chunk) {
     return mChunks[chunk].getInfoStr();
     }
   //}}}
@@ -82,7 +86,7 @@ public:
     int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
     mBaseFrame = getFramesFromSec (secsSinceMidnight);
     printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
-            getBaseSeqNum(), getDateTime(), hour, min, sec, secsSinceMidnight, mBaseFrame);
+            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseFrame);
 
     invalidateChunks();
     return mBaseFrame;
@@ -248,6 +252,6 @@ private:
   int mBitrate;
   int mLoading;
   bool mJumped;
-  char mInfoStr [40];
+  std::string mInfoStr;
   cHlsChunk mChunks[3];
   };

@@ -1,5 +1,9 @@
 // cParsedUrl.h
 #pragma once
+#include <string>
+//#include <sstream>
+//#include <iostream>
+//#include <iomanip>
 
 class cParsedUrl {
 public:

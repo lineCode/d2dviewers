@@ -180,28 +180,28 @@ protected:
 
     // topLine info str
     wchar_t wStr[100];
-    swprintf (wStr, 100, L"%hs %4.3fm", getInfoStr (mPlayFrame), mRxBytes/1000000.0f);
+    swprintf (wStr, 100, L"%hs %4.3fm", getInfoStr (mPlayFrame).c_str(), mRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
     // left radio chans str
     if (mShowChan)
       for (auto i = 1; i <= 8; i++) {
-        swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i));
+        swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
         }
 
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (0));
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (0).c_str());
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (1));
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (1).c_str());
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, getClientF().height-60, getClientF().width, getClientF().height), getWhiteBrush());
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (2));
+    swprintf (wStr, 100, L"%hs", getChunkInfoStr (2).c_str());
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
 
     // botLine radioChan info str
-    swprintf (wStr, 100, L"%hs", getChanInfoStr());
+    swprintf (wStr, 100, L"%hs", getChanInfoStr().c_str());
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, getClientF().height-20, getClientF().width, getClientF().height), getWhiteBrush());
     }

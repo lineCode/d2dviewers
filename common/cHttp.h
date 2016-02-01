@@ -1,8 +1,13 @@
 // cHttp.h
 #pragma once
 //{{{  includes
+#include <string>
+//#include <sstream>
+//#include <iostream>
+//#include <iomanip>
 #include "cParsedUrl.h"
 //}}}
+#define maxScratch 200
 
 class cHttp {
 public:
@@ -10,17 +15,13 @@ public:
   cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
             mChunked(0), mKeyStrLen(0), mValueStrLen(0),
             mContentLen(-1), mContentSize(0), mContent(nullptr),
-            mOrigHost(nullptr), mRedirectUrl(nullptr), mRxBytes(0)
+            mRedirectUrl(nullptr), mRxBytes(0)
 
   #ifdef WIN32
-            , mWebSocket(-1) {
+            , mWebSocket(-1) {}
   #else
-            , mConn(nullptr) {
+            , mConn(nullptr) {}
   #endif
-
-    mHost[0] = 0;
-    mInfoStr[0] = 0;
-    }
   //}}}
   //{{{
   ~cHttp() {
@@ -45,8 +46,8 @@ public:
     }
   //}}}
   //{{{
-  const char* getRedirectedHost() {
-    return mRedirectUrl ? mRedirectUrl->host : nullptr;
+  std::string getRedirectedHost() {
+    return mRedirectUrl ? mRedirectUrl->host : "none";
     }
   //}}}
   //{{{
@@ -54,11 +55,11 @@ public:
     return mContent;
     }
   //}}}
-  //{{{
-  int getContentSize() {
-    return mContentSize;
-    }
-  //}}}
+   //{{{
+   int getContentSize() {
+     return mContentSize;
+     }
+   //}}}
   //{{{
   uint8_t* getContentEnd() {
     return mContent + mContentSize;
@@ -70,13 +71,13 @@ public:
     }
   //}}}
   //{{{
-  const char* getInfoStr() {
+  std::string getInfoStr() {
     return mInfoStr;
     }
   //}}}
 
   //{{{
-  int get (const char* host, const char* path) {
+  int get (std::string host, std::string path) {
   // send http GET request to host, return response code
 
     mResponse = 0;
@@ -86,20 +87,17 @@ public:
     mContentLen = -1;
     mKeyStrLen = 0;
     mValueStrLen = 0;
-    mOrigHost = host;
     mContentSize = 0;
     if (mContent)
       vPortFree (mContent);
     mContent = nullptr;
-
-    mInfoStr[0] = 0;
-    sprintf (mScratch, "GET /%s HTTP/1.1\r\nHost: %s\r\n\r\n", path, host);
+    std::string sendStr = "GET /" + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
 
   #ifdef WIN32
     //{{{  win32
-    if ((mWebSocket == -1) || (strcmp (host, mHost) != 0)) {
+    if ((mWebSocket == -1) || (host != mLastHost)) {
       // not connected or different host
-      strcpy (mHost, host);
+      mLastHost = host;
       //{{{  close any open webSocket
       if (mWebSocket != 1)
         closesocket (mWebSocket);
@@ -111,10 +109,10 @@ public:
       hints.ai_protocol = IPPROTO_TCP; // TCP
       hints.ai_socktype = SOCK_STREAM; // TCP so its SOCK_STREAM
       struct addrinfo* targetAddressInfo = NULL;
-      unsigned long getAddrRes = getaddrinfo (host, NULL, &hints, &targetAddressInfo);
+      unsigned long getAddrRes = getaddrinfo (host.c_str(), NULL, &hints, &targetAddressInfo);
       if (getAddrRes != 0 || targetAddressInfo == NULL) {
         //{{{  error
-        strcpy (mInfoStr, "Could not resolve the Host Name");
+        mInfoStr = "Could not resolve the Host Name";
         return -1;
         }
         //}}}
@@ -133,7 +131,7 @@ public:
       mWebSocket = (unsigned int)socket (AF_INET, SOCK_STREAM, IPPROTO_TCP);
       if (mWebSocket == -1) {
         //{{{  error
-        strcpy (mInfoStr, "Creation of the Socket Failed");
+        mInfoStr = "Creation of the Socket Failed";
         return -2;
         }
         //}}}
@@ -141,7 +139,7 @@ public:
       // win32 connect webSocket
       if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
         //{{{  error
-        strcpy (mInfoStr, "Could not connect");
+        mInfoStr = "Could not connect";
         closesocket (mWebSocket);
         mWebSocket = -1;
         return -3;
@@ -150,9 +148,9 @@ public:
       }
 
     // win32 send
-    if (send (mWebSocket, mScratch, (int)strlen (mScratch), 0) == -1) {
+    if (send (mWebSocket, sendStr.c_str(), (int)sendStr.size(), 0) == -1) {
       //{{{  error
-      strcpy (mInfoStr, "Could not send the request to the Server");
+      mInfoStr = "Could not send the request to the Server";
       closesocket (mWebSocket);
       mWebSocket = -1;
       return -4;
@@ -167,7 +165,7 @@ public:
       int bufferBytesReceived = recv (mWebSocket, buffer, sizeof(buffer), 0);
       if (bufferBytesReceived <= 0) {
         //{{{  error
-        strcpy (mInfoStr, "Error receiving data");
+        mInfoStr = "Error receiving data";
         closesocket (mWebSocket);
         mWebSocket = -1;
         return -5;
@@ -186,9 +184,9 @@ public:
     //{{{  lwip
     // lwip find host ipAddress,
     ip_addr_t ipAddr;
-    if (netconn_gethostbyname (host, &ipAddr) != ERR_OK) {
+    if (netconn_gethostbyname (host.c_str(), &ipAddr) != ERR_OK) {
       //{{{  error return
-      sprintf (mInfoStr, "getHostByNameFail %s", host);
+      mInfoStr = "getHostByNameFail" + host;
       mResponse = -1;
       return -1;
       }
@@ -197,7 +195,7 @@ public:
     mConn = netconn_new (NETCONN_TCP);
     if (mConn == nullptr) {
       //{{{  error return
-      sprintf (mInfoStr, "netconnNewFail %s", host);
+      mInfoStr = "netconnNewFail" + host;
       mResponse = -2;
       return -2;
       }
@@ -205,18 +203,19 @@ public:
     if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
       //{{{  error return
       netconn_delete (mConn);
-      sprintf (mInfoStr, "netconnFail %d.%d.%d.%d %s",
-               int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
+      mInfoStr = "netconnFail";
+      //  %d.%d.%d.%d %s",
+      //         int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
       mResponse = -3;
       return -3;
       }
       //}}}
 
     // lwip write
-    if (netconn_write (mConn, mScratch, strlen (mScratch), NETCONN_NOCOPY) != ERR_OK) {
+    if (netconn_write (mConn, sendStr.c_str(), (int)sendStr.size(), NETCONN_NOCOPY) != ERR_OK) {
       //{{{  error return
       netconn_delete (mConn);
-      strcpy (mInfoStr, "netconnSendFail");
+      mInfoStr = "netconnSendFail";
       mResponse = -4;
       return -4;
       }
@@ -229,7 +228,7 @@ public:
       if (netconn_recv (mConn, &buf) != ERR_OK) {
         //{{{  error return;
         netconn_delete (mConn);
-        strcpy (mInfoStr, "netconnRecvFail");
+        mInfoStr = "netconnRecvFail";
         mResponse = -5;
         return -5;
         }
@@ -257,9 +256,9 @@ public:
     mRxBytes += mContentSize;
 
     if (mState == http_error)
-      strcpy (mInfoStr, "httpErr");
+      mInfoStr = "httpErr";
     else
-      sprintf (mInfoStr, "s:%d", mContentSize);
+      mInfoStr = "s:" + std::to_string (mContentSize);
 
     return mResponse;
     }
@@ -447,13 +446,19 @@ private:
             case http_parse_header_key_character:
               //{{{  header key char
               mScratch [mKeyStrLen] = tolower((uint8_t)(*data));
-              mKeyStrLen++;
+              if (mKeyStrLen >= maxScratch)
+                printf ("mScratch overflow\n");
+              else
+                mKeyStrLen++;
               break;
               //}}}
             case http_parse_header_value_character:
               //{{{  header value char
               mScratch [mKeyStrLen + mValueStrLen] = *data;
-              mValueStrLen++;
+              if (mKeyStrLen + mValueStrLen >= maxScratch)
+                printf ("mScratch overflow\n");
+              else
+                mValueStrLen++;
               break;
               //}}}
             case http_parse_header_store_keyvalue: {
@@ -571,13 +576,12 @@ private:
   int mContentSize;
   uint8_t* mContent;
 
-  const char* mOrigHost;
   cParsedUrl* mRedirectUrl;
   int mRxBytes;
 
-  char mHost[100];
-  char mScratch[256];
-  char mInfoStr[100];
+  char mScratch[maxScratch];
+  std::string mInfoStr;
+  std::string mLastHost;
 
   #ifdef WIN32
     unsigned int mWebSocket;

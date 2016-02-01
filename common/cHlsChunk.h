@@ -1,6 +1,10 @@
 // cHlsChunk.h
 #pragma once
 //{{{  includes
+#include <string>
+//#include <sstream>
+//#include <iostream>
+//#include <iomanip>
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "cRadioChan.h"
@@ -12,7 +16,6 @@ public:
   cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
-    mInfoStr[0] = 0;
     }
   //}}}
   //{{{
@@ -41,7 +44,7 @@ public:
     }
   //}}}
   //{{{
-  const char* getInfoStr() {
+  std::string getInfoStr() {
     return mInfoStr;
     }
   //}}}
@@ -81,7 +84,7 @@ public:
       mAacHE = aacHE;
       }
 
-    auto response = http->get (radioChan->getHost(), radioChan->getPath (seqNum, mBitrate));
+    auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mBitrate));
     if (response == 200) {
       auto loadPtr = http->getContent();
       auto loadEnd = packTsBuffer (http->getContent(), http->getContentEnd());
@@ -119,12 +122,12 @@ public:
         }
 
       http->freeContent();
-      sprintf (mInfoStr, "ok %d %d", seqNum, bitrate);
+      mInfoStr = "ok " + std::to_string (seqNum) + ' ' + std::to_string (bitrate);
       return true;
       }
     else {
       mSeqNum = 0;
-      sprintf (mInfoStr, "%d %d %d %s", response, seqNum, bitrate, http->getInfoStr());
+      mInfoStr = std::to_string(response) + ' ' + std::to_string(seqNum) + ' ' + std::to_string(bitrate) + ' ' + http->getInfoStr();
       return false;
       }
     }
@@ -170,7 +173,7 @@ private:
   int mBitrate;
   int mFramesLoaded;
   int mSamplesPerFrame;
-  char mInfoStr[100];
+  std::string mInfoStr;
 
   bool mAacHE;
   NeAACDecHandle mDecoder;
