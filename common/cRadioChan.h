@@ -198,7 +198,7 @@ private:
   int mChan;
   int mBaseSeqNum;
   char mHost[80];
-  char mPath[100];
+  char mPath[200];
   char mDateTime[40];
   char mChanInfoStr[120];
   };
