@@ -1,10 +1,6 @@
 // cHlsChunk.h
 #pragma once
 //{{{  includes
-#include <string>
-//#include <sstream>
-//#include <iostream>
-//#include <iomanip>
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "cRadioChan.h"
@@ -122,12 +118,12 @@ public:
         }
 
       http->freeContent();
-      mInfoStr = "ok " + std::to_string (seqNum) + ' ' + std::to_string (bitrate);
+      mInfoStr = "ok " + toString (seqNum) + ' ' + toString (bitrate);
       return true;
       }
     else {
       mSeqNum = 0;
-      mInfoStr = std::to_string(response) + ' ' + std::to_string(seqNum) + ' ' + std::to_string(bitrate) + ' ' + http->getInfoStr();
+      mInfoStr = toString(response) + ' ' + toString(seqNum) + ' ' + toString(bitrate) + ' ' + http->getInfoStr();
       return false;
       }
     }

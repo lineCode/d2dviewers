@@ -1,10 +1,6 @@
 // cHttp.h
 #pragma once
 //{{{  includes
-#include <string>
-//#include <sstream>
-//#include <iostream>
-//#include <iomanip>
 #include "cParsedUrl.h"
 //}}}
 #define maxScratch 200
@@ -258,7 +254,7 @@ public:
     if (mState == http_error)
       mInfoStr = "httpErr";
     else
-      mInfoStr = "s:" + std::to_string (mContentSize);
+      mInfoStr = "s:" + toString (mContentSize);
 
     return mResponse;
     }

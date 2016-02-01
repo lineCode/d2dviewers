@@ -1,10 +1,6 @@
 // cHlsRadio.h
 #pragma once
 //{{{  includes
-#include <string>
-//#include <sstream>
-//#include <iostream>
-//#include <iomanip>
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "cRadioChan.h"
@@ -37,11 +33,11 @@ public:
     int mins = (secsSinceMidnight / 60) % 60;
     int hours = secsSinceMidnight / (60*60);
 
-    mInfoStr = std::to_string (hours) + ':' + std::to_string (mins) + ':' + std::to_string (secs) + ' ' +
-               getChanName (getChan()) + '.' + std::to_string (getBitrate()/1000) + "k " +
-               (mChunks[0].getSeqNum() ? std::to_string (mChunks[0].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
-               (mChunks[1].getSeqNum() ? std::to_string (mChunks[1].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
-               (mChunks[2].getSeqNum() ? std::to_string (mChunks[2].getSeqNum() - getBaseSeqNum()) : "*");
+    mInfoStr = toString (hours) + ':' + toString (mins) + ':' + toString (secs) + ' ' +
+               getChanName (getChan()) + '.' + toString (getBitrate()/1000) + "k " +
+               (mChunks[0].getSeqNum() ? toString (mChunks[0].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
+               (mChunks[1].getSeqNum() ? toString (mChunks[1].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
+               (mChunks[2].getSeqNum() ? toString (mChunks[2].getSeqNum() - getBaseSeqNum()) : "*");
 
     return mInfoStr;
     }

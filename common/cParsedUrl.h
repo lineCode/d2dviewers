@@ -1,9 +1,24 @@
 // cParsedUrl.h
 #pragma once
 #include <string>
-//#include <sstream>
-//#include <iostream>
-//#include <iomanip>
+#include <sstream>
+#include <iostream>
+#include <iomanip>
+
+// broken std::to_string in g++
+//{{{
+template <typename T> std::string toString (T value) {
+
+  // create an output string stream
+  std::ostringstream os;
+
+  // throw the value into the string stream
+  os << value;
+
+  // convert the string stream into a string and return
+  return os.str();
+  }
+//}}}
 
 class cParsedUrl {
 public:

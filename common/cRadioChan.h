@@ -1,10 +1,6 @@
 // cRadioChan.h
 #pragma once
 //{{{  includes
-#include <string>
-//#include <sstream>
-//#include <iostream>
-//#include <iomanip>
 #include "cParsedUrl.h"
 #include "cHttp.h"
 //}}}
@@ -86,7 +82,7 @@ public:
   //{{{
   std::string getTsPath (int seqNum, int bitrate) {
 
-    return getPathRoot (bitrate) + '-' + std::to_string (seqNum) + ".ts";
+    return getPathRoot (bitrate) + '-' + toString (seqNum) + ".ts";
     }
   //}}}
   //{{{
@@ -131,7 +127,7 @@ public:
     *extDateTimeEnd = '\0';
     mDateTime = extDateTime;
 
-    mChanInfoStr = std::to_string(http->getResponse()) + ' ' + http->getInfoStr() + ' ' + getM3u8path (getMidBitrate());
+    mChanInfoStr = toString(http->getResponse()) + ' ' + http->getInfoStr() + ' ' + getM3u8path (getMidBitrate());
     }
   //}}}
 
@@ -154,7 +150,7 @@ private:
   //{{{
   std::string getPathRoot (int bitrate) {
 
-    std::string path = "pool_" + std::to_string (kPool[mChan]) + "/live/" + kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
+    std::string path = "pool_" + toString (kPool[mChan]) + "/live/" + kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
 
     if (getRadioTv()) {
       // tv
@@ -169,10 +165,10 @@ private:
         audioCode = 2;
       else // 24000
         audioCode = 1;
-      return path + "-pa" + std::to_string (audioCode) + '=' + std::to_string (bitrate);
+      return path + "-pa" + toString (audioCode) + '=' + toString (bitrate);
       }
     else // radio
-      return path + "-audio" + '=' + std::to_string (bitrate);
+      return path + "-audio" + '=' + toString (bitrate);
     }
   //}}}
 
