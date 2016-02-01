@@ -172,8 +172,8 @@ private:
   const bool kRadioTv    [9] = { false,   false,  false,  false,  false,  false,  false,   true,   true };
   const int kPool        [9] = {      0,      7,      7,      7,      6,      6,      6,      4,      5 };
   const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000 };
-  const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000, 128000 };
-  const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000, 128000 };
+  const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000,  96000,  96000 };
+  const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000,  96000 };
   const char* kChanNames [9] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2" };
   const char* kPathNames [9] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
                                          "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",       "bbc_two_hd" };
@@ -198,7 +198,7 @@ private:
   int mChan;
   int mBaseSeqNum;
   char mHost[80];
-  char mPath[200];
+  char mPath[120];
   char mDateTime[40];
   char mChanInfoStr[120];
   };
