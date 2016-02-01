@@ -154,8 +154,8 @@ protected:
     dc->Clear (ColorF(ColorF::Black));
 
     // grey mid line
-    D2D1_RECT_F r = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
-    dc->FillRectangle (r, getGreyBrush());
+    D2D1_RECT_F rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
+    dc->FillRectangle (rMid, getGreyBrush());
 
     // yellow vol bar
     D2D1_RECT_F rVol= RectF (getClientF().width - 20,0, getClientF().width, mTuneVol * getClientF().height/100);
@@ -165,45 +165,46 @@ protected:
     int frame = mPlayFrame - int(getClientF().width/2);
     uint8_t* power = nullptr;
     int frames = 0;
-    for (r.left = 0; r.left < getClientF().width; r.left++) {
-      r.right = r.left + 1;
+    D2D1_RECT_F rWave = RectF (0,0,1,0);
+    for (; rWave.left < getClientF().width; rWave.left++, rWave.right++, frame++) {
       if (!frames)
         power = getPower (frame, frames);
       if (power) {
-        r.top = (float)*power++;
-        r.bottom = r.top + *power++;
-        dc->FillRectangle (r, getBlueBrush());
+        rWave.top = (float)*power++;
+        rWave.bottom = rWave.top + *power++;
+        dc->FillRectangle (rWave, getBlueBrush());
         frames--;
         }
-      frame++;
       }
 
     // topLine info str
-    wchar_t wStr[100];
-    swprintf (wStr, 100, L"%hs %4.3fm", getInfoStr (mPlayFrame).c_str(), mRxBytes/1000000.0f);
+    wchar_t wStr[200];
+    swprintf (wStr, 200, L"%hs %4.3fm", getInfoStr (mPlayFrame).c_str(), mRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
-    // left radio chans str
-    if (mShowChan)
+    if (mShowChan) {
+      //{{{  show chan and debug info
       for (auto i = 1; i <= 8; i++) {
-        swprintf (wStr, 100, L"%hs", cRadioChan::getChanName(i).c_str());
+        swprintf (wStr, 200, L"%hs", cRadioChan::getChanName(i).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
         }
 
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (0).c_str());
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (1).c_str());
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0, getClientF().height-60, getClientF().width, getClientF().height), getWhiteBrush());
-    swprintf (wStr, 100, L"%hs", getChunkInfoStr (2).c_str());
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
+      swprintf (wStr, 200, L"%hs", getChunkInfoStr (0).c_str());
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
+      swprintf (wStr, 200, L"%hs", getChunkInfoStr (1).c_str());
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0, getClientF().height-60, getClientF().width, getClientF().height), getWhiteBrush());
+      swprintf (wStr, 200, L"%hs", getChunkInfoStr (2).c_str());
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
 
-    // botLine radioChan info str
-    swprintf (wStr, 100, L"%hs", getChanInfoStr().c_str());
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0, getClientF().height-20, getClientF().width, getClientF().height), getWhiteBrush());
+      // botLine radioChan info str
+      swprintf (wStr, 200, L"%hs", getChanInfoStr().c_str());
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0, getClientF().height-20, getClientF().width, getClientF().height), getWhiteBrush());
+      }
+      //}}}
     }
   //}}}
 

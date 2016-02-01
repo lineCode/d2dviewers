@@ -75,11 +75,6 @@ public:
     }
   //}}}
   //{{{
-  std::string getM3u8path (int bitrate) {
-    return getPathRoot (bitrate) + ".norewind.m3u8";;
-    }
-  //}}}
-  //{{{
   std::string getTsPath (int seqNum, int bitrate) {
 
     return getPathRoot (bitrate) + '-' + toString (seqNum) + ".ts";
@@ -107,9 +102,10 @@ public:
 
     mChan = chan;
     mHost = getRadioTv() ? "vs-hls-uk-live.bbcfmt.vo.llnwd.net" : "as-hls-uk-live.bbcfmt.vo.llnwd.net";
-    if (http->get (mHost, getM3u8path (getMidBitrate())) == 302) {
+
+    if (http->get (mHost, getM3u8path()) == 302) {
       mHost = http->getRedirectedHost();
-      http->get (mHost, getM3u8path (getMidBitrate()));
+      http->get (mHost, getM3u8path());
       }
     else
       mHost = http->getRedirectedHost();
@@ -127,7 +123,7 @@ public:
     *extDateTimeEnd = '\0';
     mDateTime = extDateTime;
 
-    mChanInfoStr = toString(http->getResponse()) + ' ' + http->getInfoStr() + ' ' + getM3u8path (getMidBitrate());
+    mChanInfoStr = toString (http->getResponse()) + ' ' + http->getInfoStr() + ' ' + getM3u8path() + ' ' + mDateTime;
     }
   //}}}
 
@@ -152,23 +148,23 @@ private:
 
     std::string path = "pool_" + toString (kPool[mChan]) + "/live/" + kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
 
-    if (getRadioTv()) {
-      // tv
-      int audioCode;
-      if (bitrate == 320000)
-        audioCode = 5;
-      else if (bitrate == 128000)
-        audioCode = 4;
-      else if (bitrate == 96000)
-        audioCode = 3;
-      else if (bitrate == 64000)
-        audioCode = 2;
-      else // 24000
-        audioCode = 1;
-      return path + "-pa" + toString (audioCode) + '=' + toString (bitrate);
-      }
-    else // radio
-      return path + "-audio" + '=' + toString (bitrate);
+    if (!getRadioTv()) // radio
+      return path + "-audio=" + toString (bitrate);
+    else if (bitrate == 128000)
+      return path + "-pa4=128000";
+    else if (bitrate == 320000)
+      return path + "-pa5=320000";
+    else if (bitrate == 64000)
+      return path + "-pa2=64000";
+    else if (bitrate == 24000)
+      return path + "-pa1=24000";
+    else // default
+      return path + "-pa3=96000";
+    }
+  //}}}
+  //{{{
+  std::string getM3u8path () {
+    return getPathRoot (getMidBitrate()) + ".norewind.m3u8";
     }
   //}}}
 

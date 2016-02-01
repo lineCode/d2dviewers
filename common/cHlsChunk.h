@@ -118,12 +118,12 @@ public:
         }
 
       http->freeContent();
-      mInfoStr = "ok " + toString (seqNum) + ' ' + toString (bitrate);
+      mInfoStr = "ok " + toString (seqNum) + ':' + toString (bitrate/1000) + 'k';
       return true;
       }
     else {
       mSeqNum = 0;
-      mInfoStr = toString(response) + ' ' + toString(seqNum) + ' ' + toString(bitrate) + ' ' + http->getInfoStr();
+      mInfoStr = toString(response) + ':' + toString (seqNum) + ':' + toString (bitrate/1000) + "k " + http->getInfoStr();
       return false;
       }
     }

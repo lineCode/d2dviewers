@@ -27,24 +27,24 @@ public:
   //}}}
   //{{{
   std::string getInfoStr (int frame) {
+    return getChanName (getChan()) + ':' + toString (getBitrate()/1000) + "k " + getFrameInfo (frame);
+           //+ getChunkNumStr (0) + ':' + getChunkNumStr (1) + ':' + getChunkNumStr (2);
+    }
+  //}}}
+  //{{{
+  std::string getFrameInfo (int frame) {
 
     int secsSinceMidnight = int (frame / getFramesPerSecond());
     int secs = secsSinceMidnight % 60;
     int mins = (secsSinceMidnight / 60) % 60;
     int hours = secsSinceMidnight / (60*60);
 
-    mInfoStr = toString (hours) + ':' + toString (mins) + ':' + toString (secs) + ' ' +
-               getChanName (getChan()) + '.' + toString (getBitrate()/1000) + "k " +
-               (mChunks[0].getSeqNum() ? toString (mChunks[0].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
-               (mChunks[1].getSeqNum() ? toString (mChunks[1].getSeqNum() - getBaseSeqNum()) : "*") + ':' +
-               (mChunks[2].getSeqNum() ? toString (mChunks[2].getSeqNum() - getBaseSeqNum()) : "*");
-
-    return mInfoStr;
+    return toString (hours) + ':' + toString (mins) + ':' + toString (secs);
     }
   //}}}
   //{{{
   std::string getChunkInfoStr (int chunk) {
-    return mChunks[chunk].getInfoStr();
+    return getChunkNumStr (chunk) + ':' + mChunks[chunk].getInfoStr();
     }
   //}}}
   //{{{
@@ -181,6 +181,11 @@ private:
 
     int r = (frame - mBaseFrame) % getFramesPerChunk();
     return r < 0 ? r + getFramesPerChunk() : r;
+    }
+  //}}}
+  //{{{
+  std::string getChunkNumStr (int chunk) {
+    return mChunks[chunk].getSeqNum() ? toString (mChunks[chunk].getSeqNum() - getBaseSeqNum()) : "*";
     }
   //}}}
 
