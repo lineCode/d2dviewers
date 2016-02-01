@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{9d6f9922-eb16-4a7c-8e12-90d53dd4ed36}</UniqueIdentifier>
+      <Extensions>cpp;c;cxx;rc;def;r;odl;idl;hpj;bat</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{c917794b-c0d0-458f-8c60-5365d5cdf2f9}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="mp4atom.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mp4ff.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mp4meta.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mp4sample.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mp4tagupdate.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="mp4util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="drmstables.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mp4ff.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mp4ff_int_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="mp4ffint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

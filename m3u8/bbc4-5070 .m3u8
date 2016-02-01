@@ -1,0 +1,4 @@
+#EXTM3U
+#EXT-X-VERSION:2
+#EXT-X-STREAM-INF:PROGRAM-ID=1
+http://vs-hls-uk-live.bbcfmt.vo.llnwd.net/pool_2/live/bbc_four_hd/bbc_four_hd.isml/bbc_four_hd-pa3%3d96000-video%3d5070000.norewind.m3u8

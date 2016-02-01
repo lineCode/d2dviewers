@@ -1,0 +1,4 @@
+#EXTM3U
+#EXT-X-VERSION:2
+#EXT-X-STREAM-INF:PROGRAM-ID=1
+http://vs-hls-uk-live.bbcfmt.vo.llnwd.net/pool_4/live/bbc_one_hd/bbc_one_hd.isml/bbc_one_hd-pa3%3d96000-video%3d5070000.norewind.m3u8
