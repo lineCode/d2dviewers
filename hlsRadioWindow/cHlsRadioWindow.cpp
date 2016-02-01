@@ -24,15 +24,10 @@ public:
   cHlsRadioWindow() : mShowChan(false) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
-
-    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
-    memset (mSilence, 0, getSamplesPerFrame()*2*kFramesPerPlay*2);
     }
   //}}}
   //{{{
   ~cHlsRadioWindow() {
-
-    vPortFree (mSilence);
     CloseHandle (mSemaphore);
     }
   //}}}
@@ -71,17 +66,17 @@ protected:
 
       case 0x20 : mPlaying = !mPlaying; break;  // space
 
-      case 0x21 : incPlayFrame (getFramesFromSec(-5*60)); break; // page up
-      case 0x22 : incPlayFrame (getFramesFromSec(+5*60)); break; // page down
+      case 0x21 : incPlayFrame (getFramesFromSec (-5*60)); break; // page up
+      case 0x22 : incPlayFrame (getFramesFromSec (+5*60)); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (getFramesFromSec(-keyInc())); break;  // left arrow
-      case 0x27 : incPlayFrame (getFramesFromSec(+keyInc())); break;  // right arrow
+      case 0x25 : incPlayFrame (getFramesFromSec (-keyInc())); break;  // left arrow
+      case 0x27 : incPlayFrame (getFramesFromSec (+keyInc())); break;  // right arrow
 
-      case 0x26 : mPlaying = false; incPlayFrame (-keyInc()); break; // up arrow
-      case 0x28 : mPlaying = false; incPlayFrame (+keyInc()); break; // down arrow
+      case 0x26 : mPlaying = false; incPlayFrame (-keyInc()); changed(); break; // up arrow
+      case 0x28 : mPlaying = false; incPlayFrame (+keyInc()); changed(); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -208,28 +203,24 @@ protected:
     }
   //}}}
 
-private:
-  const int kFramesPerPlay = 1;
-
-  // sets
+protected:
   //{{{
-  void setPlayFrame (int frame) {
-    mPlayFrame = frame;
-    changed();
-    }
+  void playOpen() {
+    CoInitialize (NULL);
+    winAudioOpen (getSampleRate(), 16, 2);
+    };
   //}}}
   //{{{
-  void incPlayFrame (int inc) {
-    setPlayFrame (mPlayFrame + inc);
-    }
+  void playSamples (int16_t* samples, int numSamples) {
+    winAudioPlay (samples, numSamples, 1);
+    };
   //}}}
   //{{{
-  void incAlignPlayFrame (int inc) {
-    setPlayFrame (mPlayFrame + inc);
-    }
+  void playClose() {
+    winAudioClose();
+    CoUninitialize();
+    };
   //}}}
-
-  // semaphore
   //{{{
   void wait() {
     WaitForSingleObject (mSemaphore, 20 * 1000);
@@ -240,59 +231,20 @@ private:
     ReleaseSemaphore (mSemaphore, 1, NULL);
     }
   //}}}
-
-  // threads
   //{{{
-  void loader() {
-  // loader task, handles all http gets, sleep 1s if no load suceeded
-
-    cHttp http;
-    while (true) {
-      if (getChan() != mTuneChan)
-        setPlayFrame (changeChan (&http, mTuneChan) - getFramesFromSec(6));
-      if (!load (&http, mPlayFrame)) {
-        printf ("sleep frame:%d\n", mPlayFrame);
-        Sleep (1000);
-        }
-      mRxBytes = http.getRxBytes();
-      wait();
-      }
+  void update() {
+    changed();
     }
   //}}}
   //{{{
-  void player() {
-
-    CoInitialize (NULL);
-    winAudioOpen (getSampleRate(), 16, 2);
-
-    int lastSeqNum = 0;
-    while (true) {
-      int seqNum;
-      int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
-      if (audioSamples && (mTuneVol != 80))
-        for (auto i = 0; i < 4096; i++)
-          audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
-
-      if (mPlaying)
-        setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
-
-      if (!seqNum || (seqNum != lastSeqNum)) {
-        setBitrateStrategy (seqNum != lastSeqNum+1);
-        lastSeqNum = seqNum;
-        signal();
-        }
-      }
-
-    winAudioClose();
-    CoUninitialize();
+  void sleep (int ms) {
+    Sleep (ms);
     }
   //}}}
 
-  // vars
+private:
   bool mShowChan;
   HANDLE mSemaphore;
-  int16_t* mSilence;
   };
 
 //{{{
