@@ -7,7 +7,7 @@
 
 #pragma comment(lib,"Xaudio2.lib")
 //}}}
-#define NUM_BUFFERS 4
+#define NUM_BUFFERS 8
 
 //{{{
 class cAudio2VoiceCallback : public IXAudio2VoiceCallback {
@@ -32,7 +32,7 @@ IXAudio2MasteringVoice* xAudio2MasteringVoice;
 IXAudio2SourceVoice* xAudio2SourceVoice;
 
 int bufferIndex = 0;
-BYTE* buffers [NUM_BUFFERS] = { NULL, NULL, NULL, NULL };
+BYTE* buffers [NUM_BUFFERS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 cAudio2VoiceCallback audio2VoiceCallback;
 
 //{{{

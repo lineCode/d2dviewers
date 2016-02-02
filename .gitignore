@@ -283,3 +283,5 @@ $RECYCLE.BIN/
 *.~*
 libfaad.lib
 lib64/libfaad.lib
+lib64/libfaad.lib
+lib64/mp4ff.lib

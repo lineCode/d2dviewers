@@ -12,10 +12,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "libfaad/include/neaacdec.h"
-#include "../mp4ff/mp4ff.h"
 #include "../common/winAudio.h"
 
+#include "../libfaad/include/neaacdec.h"
+#pragma comment (lib,"libfaad.lib")
+
+#include "../mp4ff/mp4ff.h"
 #pragma comment(lib,"mp4ff.lib")
 //}}}
 //{{{  const

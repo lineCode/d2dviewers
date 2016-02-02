@@ -45,7 +45,7 @@ public:
 
     // launch playerThread, higher priority
     auto playerThread = std::thread ([=]() { player(); });
-    SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+    SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
     playerThread.detach();
 
     // loop in windows message pump till quit
