@@ -6,7 +6,6 @@
 #include "image.h"
 #include "memalloc.h"
 #include "sei.h"
-#include "input.h"
 #include "fast_memory.h"
 /*}}}*/
 
@@ -56,7 +55,7 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
     return;
 
 #if (ENABLE_OUTPUT_TONEMAPPING)
-  /*{{{   note: this tone-mapping is working for RGB format only. Sharp*/
+  /*{{{  note: this tone-mapping is working for RGB format only. Sharp*/
   if (p->seiHasTone_mapping && rgb_output)
   {
     //printf("output frame %d with tone model id %d\n",  p->frame_num, p->tone_mapping_model_id);
@@ -434,21 +433,15 @@ static void img2buf_endian (imgpel** imgX, unsigned char* buf, int size_x, int s
 /*{{{*/
 void init_output(CodingParameters *p_cps, int symbol_size_in_bytes)
 {
-  if (( sizeof(char) == sizeof (imgpel)))
-  {
+  if (( sizeof(char) == sizeof (imgpel))) {
     if ( sizeof(char) == symbol_size_in_bytes)
       p_cps->img2buf = img2buf_byte;
     else
       p_cps->img2buf = img2buf_normal;
-  }
+    }
   else
-  {
-    if (testEndian())
-      p_cps->img2buf = img2buf_endian;
-    else
-      p_cps->img2buf = img2buf_normal;
+    p_cps->img2buf = img2buf_normal;
   }
-}
 /*}}}*/
 
 #if (PAIR_FIELDS_IN_OUTPUT)

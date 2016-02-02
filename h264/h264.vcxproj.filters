@@ -7,21 +7,6 @@
     <ClCompile Include="..\lcommon\src\blk_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lcommon\src\img_io.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\img_process.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\input.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\io_raw.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\io_tiff.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\lcommon\src\mbuffer_common.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -35,9 +20,6 @@
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lcommon\src\parsetcommon.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\resize.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lcommon\src\transform.c">
@@ -208,25 +190,7 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\lcommon\inc\img_io.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\img_process.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\img_process_types.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\lcommon\inc\input.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\io_image.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\io_raw.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\io_tiff.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\lcommon\inc\io_video.h">

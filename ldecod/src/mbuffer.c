@@ -31,7 +31,6 @@
 #include "output.h"
 #include "mbuffer_mvc.h"
 #include "fast_memory.h"
-#include "input.h"
 
 static void insert_picture_in_dpb    (VideoParameters *p_Vid, FrameStore* fs, StorablePicture* p);
 static int output_one_frame_from_dpb (DecodedPictureBuffer *p_Dpb);
