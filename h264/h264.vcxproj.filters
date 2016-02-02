@@ -7,9 +7,6 @@
     <ClCompile Include="..\lcommon\src\blk_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lcommon\src\config_common.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\lcommon\src\img_io.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -47,9 +44,6 @@
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\lcommon\src\win32.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ldecod\src\configfile.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\context_ini.c">

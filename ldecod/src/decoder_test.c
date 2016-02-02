@@ -1,16 +1,12 @@
 #define _CRT_SECURE_NO_WARNINGS
 /*{{{  includes*/
-#include <sys/stat.h>
 #include "win32.h"
 #include "h264decoder.h"
-#include "configfile.h"
 
 #include "decoder_test.h"
 /*}}}*/
-#define DECOUTPUT_TEST    0
-#define PRINT_OUTPUT_POC  0
 /*{{{*/
-static int WriteOneFrame (DecodedPicList* pDecPic, int hFileOutput0, int hFileOutput1, int bOutputAllFrames) {
+static int WriteOneFrame (DecodedPicList* pDecPic) {
 
   DecodedPicList* pPic = pDecPic;
   int i, iWidth, iHeight, iStride, iWidthUV, iHeightUV, iStrideUV;
@@ -48,44 +44,41 @@ static int WriteOneFrame (DecodedPicList* pDecPic, int hFileOutput0, int hFileOu
 
 void decodeMain() {
 
-  int argc = 0;
-  char argv = "";
-  
-  int iRet;
-  DecodedPicList* pDecPicList;
-  int hFileDecOutput0=-1, hFileDecOutput1=-1;
-  int iFramesOutput=0, iFramesDecoded=0;
-  InputParameters InputParams;
-
   init_time();
 
+  InputParameters InputParams;
   memset (&InputParams, 0, sizeof(InputParameters));
-  strcpy (InputParams.outfile, ""); //! set default output file name
-  strcpy (InputParams.reffile, ""); //! set default reference file name
-  ParseCommand (&InputParams, argc, &argv);
+  strcpy (InputParams.infile, "C:/Users/colin/Desktop/h264avc/test.h264"); // set default bitstream name
+  strcpy (InputParams.outfile, "nnn.yuv");  // set default output file name
+  InputParams.write_uv = 1;                 // Write 4:2:0 chroma components for monochrome streams
+  InputParams.FileFormat = 0;               // NAL mode (0=Annex B, 1: RTP packets)
+  InputParams.ref_offset = 0;               // SNR computation offset
+  InputParams.poc_scale = 2;                // Poc Scale (1 or 2)
+  InputParams.bDisplayDecParams = 0;        // 1: Display parameters;
+  InputParams.conceal_mode = 0;             // Err Concealment(0:Off,1:Frame Copy,2:Motion Copy)
+  InputParams.ref_poc_gap = 2;              // Reference POC gap (2: IPP (Default), 4: IbP / IpP)
+  InputParams.poc_gap = 2;                  // POC gap (2: IPP /IbP/IpP (Default), 4: IPP with frame skip = 1 etc.)
+  InputParams.silent = 0;                   // Silent decode
+  InputParams.intra_profile_deblocking = 1; // Enable Deblocking filter in intra only profiles (0=disable, 1=filter according to SPS parameters)
+  InputParams.iDecFrmNum = 100;             // Number of frames to be decoded (-n)
+  InputParams.DecodeAllLayers = 0;          // Decode all views (-mpr)
 
-  strcpy (InputParams.infile, "C:/Users/colin/Desktop/d2dviewers/test.h264"); //! set default bitstream name
-  fprintf(stdout,"JM %s %s\n", VERSION, EXT_VERSION);
+  printf ("JM %s %s\n", VERSION, EXT_VERSION);
 
-  //open decoder;
-  iRet = OpenDecoder (&InputParams);
-  if (iRet != DEC_OPEN_NOERR) {
-    fprintf (stderr, "Open encoder failed: 0x%x!\n", iRet);
-    return; //failed;
+  if (OpenDecoder (&InputParams) != DEC_OPEN_NOERR) {
+    printf ("Open encoder failed\n");
+    return;
     }
 
-  //decoding;
+  // decoding;
+  DecodedPicList* pDecPicList;
   for (int i = 0; i < 100; i++) {
-    iRet = DecodeOneFrame (&pDecPicList);
-    if (iRet == DEC_EOS || iRet == DEC_SUCCEED) {
-      // process the decoded picture, output or display;
-      iFramesOutput += WriteOneFrame (pDecPicList, hFileDecOutput0, hFileDecOutput1, 0);
-      iFramesDecoded++;
-      }
+    int iRet = DecodeOneFrame (&pDecPicList);
+    if (iRet == DEC_EOS || iRet == DEC_SUCCEED)
+      WriteOneFrame (pDecPicList);
     };
-  iRet = FinitDecoder(&pDecPicList);
+  FinitDecoder (&pDecPicList);
 
-  iFramesOutput += WriteOneFrame (pDecPicList, hFileDecOutput0, hFileDecOutput1 , 1);
-  iRet = CloseDecoder();
-
+  WriteOneFrame (pDecPicList);
+  CloseDecoder();
   }
