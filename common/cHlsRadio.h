@@ -11,17 +11,9 @@ class cHlsRadio : public cRadioChan {
 public:
   //{{{
   cHlsRadio() : mTuneVol(80), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
-                mBaseFrame(0), mLoading(0), mJumped(false) {
-
-    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
-    memset (mSilence, 0, getSamplesPerFrame()*2*kFramesPerPlay*2);
-    }
+                mBaseFrame(0), mLoading(0), mJumped(false) {}
   //}}}
-  //{{{
-  ~cHlsRadio() {
-    vPortFree (mSilence);
-    }
-  //}}}
+  ~cHlsRadio() {}
 
   //{{{
   int getBitrate() {
@@ -206,44 +198,12 @@ protected:
       }
     }
   //}}}
-  //{{{
-  virtual void player() {
-
-    playOpen();
-
-    int lastSeqNum = 0;
-    while (true) {
-      int seqNum;
-      int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
-      if (audioSamples && (mTuneVol != 80))
-        for (auto i = 0; i < 4096; i++)
-          audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
-      playSamples ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2);
-      if (mPlaying) {
-        setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
-        update();
-        }
-
-      if (!seqNum || (seqNum != lastSeqNum)) {
-        setBitrateStrategy (seqNum != lastSeqNum+1);
-        lastSeqNum = seqNum;
-        signal();
-        }
-      }
-
-    playClose();
-    }
-  //}}}
-  virtual void playOpen() {};
-  virtual void playSamples (int16_t* samples, int numSamples) {};
-  virtual void playClose() {};
   virtual void signal() {}
   virtual void wait() {};
   virtual void update() {};
   virtual void sleep (int ms) {};
 
 private:
-  const int kFramesPerPlay = 1;
   //{{{
   int getSeqNumFromFrame (int frame) {
   // works for -ve frame
@@ -335,5 +295,4 @@ private:
   bool mJumped;
   std::string mInfoStr;
   cHlsChunk mChunks[3];
-  int16_t* mSilence;
   };

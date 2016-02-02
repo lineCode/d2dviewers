@@ -24,6 +24,8 @@ public:
   cHlsRadioWindow() : mShowChan(false) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
+    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
+    memset (mSilence, 0, getSamplesPerFrame()*2*kFramesPerPlay*2);
     }
   //}}}
   //{{{
@@ -205,23 +207,6 @@ protected:
 
 protected:
   //{{{
-  void playOpen() {
-    CoInitialize (NULL);
-    winAudioOpen (getSampleRate(), 16, 2);
-    };
-  //}}}
-  //{{{
-  void playSamples (int16_t* samples, int numSamples) {
-    winAudioPlay (samples, numSamples, 1);
-    };
-  //}}}
-  //{{{
-  void playClose() {
-    winAudioClose();
-    CoUninitialize();
-    };
-  //}}}
-  //{{{
   void wait() {
     WaitForSingleObject (mSemaphore, 20 * 1000);
     }
@@ -243,8 +228,41 @@ protected:
   //}}}
 
 private:
+  const int kFramesPerPlay = 1;
+  //{{{
+  void player() {
+
+    CoInitialize (NULL);
+    winAudioOpen (getSampleRate(), 16, 2);
+
+    int lastSeqNum = 0;
+    while (true) {
+      int seqNum;
+      int16_t* audioSamples = getAudioSamples (mPlayFrame, seqNum);
+      if (audioSamples && (mTuneVol != 80))
+        for (auto i = 0; i < 4096; i++)
+          audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
+      if (mPlaying) {
+        setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
+        update();
+        }
+
+      if (!seqNum || (seqNum != lastSeqNum)) {
+        setBitrateStrategy (seqNum != lastSeqNum+1);
+        lastSeqNum = seqNum;
+        signal();
+        }
+      }
+
+    winAudioClose();
+    CoUninitialize();
+    }
+  //}}}
+
   bool mShowChan;
   HANDLE mSemaphore;
+  int16_t* mSilence;
   };
 
 //{{{
