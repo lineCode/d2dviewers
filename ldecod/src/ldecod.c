@@ -1069,16 +1069,6 @@ int OpenDecoder (InputParameters* p_Inp)
 
 #if (!MVC_EXTENSION_ENABLE)
   /*{{{*/
-  if((strcasecmp(p_Inp->outfile, "\"\"")!=0) && (strlen(p_Inp->outfile)>0))
-  {
-    if ((pDecoder->p_Vid->p_out = open(p_Inp->outfile, OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1)
-    {
-      snprintf(errortext, ET_SIZE, "Error open file %s ",p_Inp->outfile);
-      error(errortext,500);
-    }
-  }
-  else
-    pDecoder->p_Vid->p_out = -1;
   /*}}}*/
 #else
   /*{{{*/
@@ -1219,16 +1209,9 @@ int CloseDecoder() {
 #if (MVC_EXTENSION_ENABLE)
   /*{{{*/
   for (i=0;i<MAX_VIEW_NUM;i++)
-  {
     if (pDecoder->p_Vid->p_out_mvc[i] != -1)
-    {
       close(pDecoder->p_Vid->p_out_mvc[i]);
-    }
-  }
   /*}}}*/
-#else
-  if(pDecoder->p_Vid->p_out >=0)
-    close(pDecoder->p_Vid->p_out);
 #endif
 
   if (pDecoder->p_Vid->p_ref != -1)
