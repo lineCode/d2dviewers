@@ -48,7 +48,7 @@ void decodeMain() {
 
   InputParameters InputParams;
   memset (&InputParams, 0, sizeof(InputParameters));
-  strcpy (InputParams.infile, "C:/Users/colin/Desktop/h264avc/test.h264"); // set default bitstream name
+  strcpy (InputParams.infile, "C:\\Users\\colin\\Desktop\\d2dviewers\\test.h264"); // set default bitstream name
   strcpy (InputParams.outfile, "nnn.yuv");  // set default output file name
   InputParams.write_uv = 1;                 // Write 4:2:0 chroma components for monochrome streams
   InputParams.FileFormat = 0;               // NAL mode (0=Annex B, 1: RTP packets)
