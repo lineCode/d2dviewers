@@ -35,7 +35,7 @@
 
 // Decoder definition. This should be the only global variable in the entire
 // software. Global variables should be avoided.
-DecoderParams  *p_Dec;
+DecoderParams* p_Dec;
 char errortext[ET_SIZE];
 
 /*{{{*/
@@ -53,7 +53,7 @@ char errortext[ET_SIZE];
  *    None
  ************************************************************************
  */
-static void Report (VideoParameters *p_Vid)
+static void Report (VideoParameters* p_Vid)
 {
   static const char yuv_formats[4][4]= { {"400"}, {"420"}, {"422"}, {"444"} };
   pic_parameter_set_rbsp_t *active_pps = p_Vid->active_pps;
@@ -214,7 +214,7 @@ static void Report (VideoParameters *p_Vid)
  *    Initilize some arrays
  ***********************************************************************
  */
-static void init (VideoParameters *p_Vid)  //!< video parameters
+static void init (VideoParameters* p_Vid)  //!< video parameters
 {
   //int i;
   InputParameters *p_Inp = p_Vid->p_Inp;
@@ -303,7 +303,7 @@ static void init (VideoParameters *p_Vid)  //!< video parameters
  *    Input Parameters Slice *currSlice
  ************************************************************************
  */
-static void free_slice (Slice *currSlice)
+static void free_slice (Slice* currSlice)
 {
   int i;
 
@@ -428,7 +428,7 @@ void init_frext (VideoParameters *p_Vid)  //!< video parameters
  *    Exit code
  ************************************************************************
  */
-void error(char *text, int code)
+void error (char* text, int code)
 {
   fprintf(stderr, "%s\n", text);
   if (p_Dec)
@@ -548,23 +548,13 @@ static int alloc_decoder( DecoderParams **p_Dec)
 /*}}}*/
 
 /*{{{*/
-/*!
- ***********************************************************************
- * \brief
- *    Free the Image structure
- * \par  Input:
- *    Image Parameters VideoParameters *p_Vid
- ***********************************************************************
- */
-static void free_img( VideoParameters *p_Vid)
+static void free_img (VideoParameters *p_Vid)
 {
   int i;
   if (p_Vid != NULL)
   {
     if ( p_Vid->p_Inp->FileFormat == PAR_OF_ANNEXB )
-    {
       free_annex_b (&p_Vid->annex_b);
-    }
 #if (ENABLE_OUTPUT_TONEMAPPING)
     if (p_Vid->seiToneMapping != NULL)
     {
@@ -641,7 +631,7 @@ static void free_img( VideoParameters *p_Vid)
 }
 /*}}}*/
 /*{{{*/
-void FreeDecPicList(DecodedPicList *pDecPicList)
+void FreeDecPicList (DecodedPicList *pDecPicList)
 {
   while(pDecPicList)
   {
@@ -660,21 +650,7 @@ void FreeDecPicList(DecodedPicList *pDecPicList)
 /*}}}*/
 
 /*{{{*/
-/*!
- ************************************************************************
- * \brief
- *    Allocates a stand-alone partition structure.  Structure should
- *    be freed by FreePartition();
- *    data structures
- *
- * \par Input:
- *    n: number of partitions in the array
- * \par return
- *    pointer to DataPartition Structure, zero-initialized
- ************************************************************************
- */
-
-DataPartition *AllocPartition(int n)
+DataPartition* AllocPartition (int n)
 {
   DataPartition *partArr, *dataPart;
   int i;
@@ -706,21 +682,6 @@ DataPartition *AllocPartition(int n)
 }
 /*}}}*/
 /*{{{*/
-/*!
- ************************************************************************
- * \brief
- *    Frees a partition structure (array).
- *
- * \par Input:
- *    Partition to be freed, size of partition Array (Number of Partitions)
- *
- * \par return
- *    None
- *
- * \note
- *    n must be the same as for the corresponding call of AllocPartition
- ************************************************************************
- */
 void FreePartition (DataPartition *dp, int n)
 {
   int i;
@@ -737,17 +698,7 @@ void FreePartition (DataPartition *dp, int n)
 }
 /*}}}*/
 /*{{{*/
-/*!
- ************************************************************************
- * \brief
- *    Allocates the slice structure along with its dependent
- *    data structures
- *
- * \par Input:
- *    Input Parameters InputParameters *p_Inp,  VideoParameters *p_Vid
- ************************************************************************
- */
-Slice *malloc_slice(InputParameters *p_Inp, VideoParameters *p_Vid)
+Slice* malloc_slice (InputParameters* p_Inp, VideoParameters* p_Vid)
 {
   int i, j, memory_size = 0;
   Slice *currSlice;
@@ -767,44 +718,41 @@ Slice *malloc_slice(InputParameters *p_Inp, VideoParameters *p_Vid)
   currSlice->partArr = AllocPartition(currSlice->max_part_nr);
 
   memory_size += get_mem2Dwp (&(currSlice->wp_params), 2, MAX_REFERENCE_PICTURES);
-
   memory_size += get_mem3Dint(&(currSlice->wp_weight), 2, MAX_REFERENCE_PICTURES, 3);
   memory_size += get_mem3Dint(&(currSlice->wp_offset), 6, MAX_REFERENCE_PICTURES, 3);
   memory_size += get_mem4Dint(&(currSlice->wbp_weight), 6, MAX_REFERENCE_PICTURES, MAX_REFERENCE_PICTURES, 3);
-
   memory_size += get_mem3Dpel(&(currSlice->mb_pred), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   memory_size += get_mem3Dpel(&(currSlice->mb_rec ), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   memory_size += get_mem3Dint(&(currSlice->mb_rres), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   memory_size += get_mem3Dint(&(currSlice->cof    ), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   //  memory_size += get_mem3Dint(&(currSlice->fcf    ), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   allocate_pred_mem(currSlice);
+
 #if (MVC_EXTENSION_ENABLE)
+  /*{{{*/
   currSlice->view_id = MVC_INIT_VIEW_ID;
   currSlice->inter_view_flag = 0;
   currSlice->anchor_pic_flag = 0;
+  /*}}}*/
 #endif
+
   // reference flag initialization
-  for(i=0;i<17;++i)
-  {
+  for (i = 0; i<17; ++i)
     currSlice->ref_flag[i] = 1;
-  }
-  for (i = 0; i < 6; i++)
-  {
+
+  for (i = 0; i < 6; i++) {
     currSlice->listX[i] = calloc(MAX_LIST_SIZE, sizeof (StorablePicture*)); // +1 for reordering
     if (NULL==currSlice->listX[i])
       no_mem_exit("malloc_slice: currSlice->listX[i]");
-  }
-  for (j = 0; j < 6; j++)
-  {
-    for (i = 0; i < MAX_LIST_SIZE; i++)
-    {
-      currSlice->listX[j][i] = NULL;
     }
+
+  for (j = 0; j < 6; j++)
+    for (i = 0; i < MAX_LIST_SIZE; i++)
+      currSlice->listX[j][i] = NULL;
     currSlice->listXsize[j]=0;
-  }
 
   return currSlice;
-}
+  }
 /*}}}*/
 
 /*{{{*/
@@ -822,7 +770,7 @@ Slice *malloc_slice(InputParameters *p_Inp, VideoParameters *p_Vid)
  *     Number of allocated bytes
  ***********************************************************************
  */
-int init_global_buffers(VideoParameters *p_Vid, int layer_id)
+int init_global_buffers (VideoParameters* p_Vid, int layer_id)
 {
   int memory_size=0;
   int i;
@@ -940,7 +888,7 @@ int init_global_buffers(VideoParameters *p_Vid, int layer_id)
  *
  ************************************************************************
  */
-void free_layer_buffers(VideoParameters *p_Vid, int layer_id)
+void free_layer_buffers (VideoParameters* p_Vid, int layer_id)
 {
   CodingParameters *cps = p_Vid->p_EncodePar[layer_id];
 
@@ -1016,7 +964,7 @@ void free_layer_buffers(VideoParameters *p_Vid, int layer_id)
 }
 /*}}}*/
 /*{{{*/
-void free_global_buffers(VideoParameters *p_Vid)
+void free_global_buffers (VideoParameters* p_Vid)
 {
   if(p_Vid->dec_picture)
   {
@@ -1031,7 +979,7 @@ void free_global_buffers(VideoParameters *p_Vid)
 
 /*}}}*/
 /*{{{*/
-void report_stats_on_error(void)
+void report_stats_on_error (void)
 {
   //free_encoder_memory(p_Vid);
   exit (-1);
@@ -1039,7 +987,7 @@ void report_stats_on_error(void)
 /*}}}*/
 
 /*{{{*/
-void ClearDecPicList(VideoParameters *p_Vid)
+void ClearDecPicList (VideoParameters* p_Vid)
 {
   DecodedPicList *pPic = p_Vid->pDecOuputPic, *pPrior = NULL;
   //find the head first;
@@ -1063,7 +1011,7 @@ void ClearDecPicList(VideoParameters *p_Vid)
 }
 /*}}}*/
 /*{{{*/
-DecodedPicList *get_one_avail_dec_pic_from_list(DecodedPicList *pDecPicList, int b3D, int view_id)
+DecodedPicList* get_one_avail_dec_pic_from_list (DecodedPicList *pDecPicList, int b3D, int view_id)
 {
   DecodedPicList *pPic = pDecPicList, *pPrior = NULL;
   if(b3D)
@@ -1094,16 +1042,14 @@ DecodedPicList *get_one_avail_dec_pic_from_list(DecodedPicList *pDecPicList, int
 /*}}}*/
 
 /*{{{*/
-int OpenDecoder (InputParameters *p_Inp)
+int OpenDecoder (InputParameters* p_Inp)
 {
   int iRet;
   DecoderParams *pDecoder;
 
   iRet = alloc_decoder(&p_Dec);
   if(iRet)
-  {
     return (iRet|DEC_ERRMASK);
-  }
   init_time();
 
   pDecoder = p_Dec;
@@ -1112,16 +1058,20 @@ int OpenDecoder (InputParameters *p_Inp)
   pDecoder->p_Vid->conceal_mode = p_Inp->conceal_mode;
   pDecoder->p_Vid->ref_poc_gap = p_Inp->ref_poc_gap;
   pDecoder->p_Vid->poc_gap = p_Inp->poc_gap;
+
 #if TRACE
+  /*{{{*/
   if ((pDecoder->p_trace = fopen(TRACEFILE,"w"))==0)             // append new statistic at the end
   {
     snprintf(errortext, ET_SIZE, "Error open file %s!",TRACEFILE);
     //error(errortext,500);
     return -1;
   }
+  /*}}}*/
 #endif
 
 #if (!MVC_EXTENSION_ENABLE)
+  /*{{{*/
   if((strcasecmp(p_Inp->outfile, "\"\"")!=0) && (strlen(p_Inp->outfile)>0))
   {
     if ((pDecoder->p_Vid->p_out = open(p_Inp->outfile, OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1)
@@ -1132,7 +1082,9 @@ int OpenDecoder (InputParameters *p_Inp)
   }
   else
     pDecoder->p_Vid->p_out = -1;
+  /*}}}*/
 #else
+  /*{{{*/
   {
     int i;
     VideoParameters *p_Vid = pDecoder->p_Vid;
@@ -1160,8 +1112,8 @@ int OpenDecoder (InputParameters *p_Inp)
       p_Vid->p_out = p_Vid->p_out_mvc[0];
     }
   }
+  /*}}}*/
 #endif
-
 
   if(strlen(pDecoder->p_Inp->reffile)>0 && strcmp(pDecoder->p_Inp->reffile, "\"\""))
   {
@@ -1174,69 +1126,68 @@ int OpenDecoder (InputParameters *p_Inp)
   else
     pDecoder->p_Vid->p_ref = -1;
 
-  switch( pDecoder->p_Inp->FileFormat )
-  {
-  default:
-  case PAR_OF_ANNEXB:
-    malloc_annex_b(pDecoder->p_Vid, &pDecoder->p_Vid->annex_b);
-    open_annex_b(pDecoder->p_Inp->infile, pDecoder->p_Vid->annex_b);
-    break;
-  case PAR_OF_RTP:
-    OpenRTPFile(pDecoder->p_Inp->infile, &pDecoder->p_Vid->BitStreamFile);
-    break;
-  }
+  switch( pDecoder->p_Inp->FileFormat ) {
+    default:
+    case PAR_OF_ANNEXB:
+      malloc_annex_b(pDecoder->p_Vid, &pDecoder->p_Vid->annex_b);
+      open_annex_b(pDecoder->p_Inp->infile, pDecoder->p_Vid->annex_b);
+      break;
+    case PAR_OF_RTP:
+      OpenRTPFile(pDecoder->p_Inp->infile, &pDecoder->p_Vid->BitStreamFile);
+      break;
+    }
 
   // Allocate Slice data struct
   //pDecoder->p_Vid->currentSlice = NULL; //malloc_slice(pDecoder->p_Inp, pDecoder->p_Vid);
 
   init_old_slice(pDecoder->p_Vid->old_slice);
-
   init(pDecoder->p_Vid);
-
   init_out_buffer(pDecoder->p_Vid);
 
 #if (MVC_EXTENSION_ENABLE)
+  /*{{{*/
   pDecoder->p_Vid->active_sps = NULL;
   pDecoder->p_Vid->active_subset_sps = NULL;
   init_subset_sps_list(pDecoder->p_Vid->SubsetSeqParSet, MAXSPS);
+  /*}}}*/
 #endif
 
-
 #if _FLTDBG_
+  /*{{{*/
   pDecoder->p_Vid->fpDbg = fopen("c:/fltdbg.txt", "a");
   fprintf(pDecoder->p_Vid->fpDbg, "\ndecoder is opened.\n");
+  /*}}}*/
 #endif
 
   return DEC_OPEN_NOERR;
 }
 /*}}}*/
 /*{{{*/
-int DecodeOneFrame (DecodedPicList **ppDecPicList)
+int DecodeOneFrame (DecodedPicList** ppDecPicList)
 {
-  int iRet;
+  DecoderParams* pDecoder = p_Dec;
+  ClearDecPicList (pDecoder->p_Vid);
 
-  DecoderParams *pDecoder = p_Dec;
-  ClearDecPicList(pDecoder->p_Vid);
-
-  iRet = decode_one_frame(pDecoder);
-  if(iRet == SOP)
+  int iRet = decode_one_frame (pDecoder);
+  if (iRet == SOP)
     iRet = DEC_SUCCEED;
-  else if(iRet == EOS)
+  else if (iRet == EOS)
     iRet = DEC_EOS;
   else
     iRet |= DEC_ERRMASK;
 
   *ppDecPicList = pDecoder->p_Vid->pDecOuputPic;
+
   return iRet;
-}
+  }
 /*}}}*/
 /*{{{*/
-int FinitDecoder (DecodedPicList **ppDecPicList)
-{
-  DecoderParams *pDecoder = p_Dec;
-  if(!pDecoder)
+int FinitDecoder (DecodedPicList** ppDecPicList) {
+
+  DecoderParams* pDecoder = p_Dec;
+  if (!pDecoder)
     return DEC_GEN_NOERR;
-  ClearDecPicList(pDecoder->p_Vid);
+  ClearDecPicList (pDecoder->p_Vid);
 
 #if (MVC_EXTENSION_ENABLE)
   flush_dpb(pDecoder->p_Vid->p_Dpb_layer[0]);
@@ -1244,27 +1195,28 @@ int FinitDecoder (DecodedPicList **ppDecPicList)
 #else
   flush_dpb(pDecoder->p_Vid->p_Dpb_layer[0]);
 #endif
+
 #if (PAIR_FIELDS_IN_OUTPUT)
-  flush_pending_output(pDecoder->p_Vid, pDecoder->p_Vid->p_out);
+  flush_pending_output (pDecoder->p_Vid, pDecoder->p_Vid->p_out);
 #endif
 
   if (pDecoder->p_Inp->FileFormat == PAR_OF_ANNEXB)
-    reset_annex_b(pDecoder->p_Vid->annex_b);
+    reset_annex_b (pDecoder->p_Vid->annex_b);
 
   pDecoder->p_Vid->newframe = 0;
   pDecoder->p_Vid->previous_frame_num = 0;
+
   *ppDecPicList = pDecoder->p_Vid->pDecOuputPic;
 
   return DEC_GEN_NOERR;
-}
+  }
 /*}}}*/
 /*{{{*/
-int CloseDecoder()
-{
-  int i;
+int CloseDecoder() {
 
+  int i;
   DecoderParams *pDecoder = p_Dec;
-  if(!pDecoder)
+  if (!pDecoder)
     return DEC_CLOSE_NOERR;
 
   Report  (pDecoder->p_Vid);
@@ -1272,25 +1224,27 @@ int CloseDecoder()
   free_layer_buffers(pDecoder->p_Vid, 0);
   free_layer_buffers(pDecoder->p_Vid, 1);
   free_global_buffers(pDecoder->p_Vid);
-  switch( pDecoder->p_Inp->FileFormat )
-  {
-  default:
-  case PAR_OF_ANNEXB:
-    close_annex_b(pDecoder->p_Vid->annex_b);
-    break;
-  case PAR_OF_RTP:
-    CloseRTPFile(&pDecoder->p_Vid->BitStreamFile);
-    break;
-  }
+
+  switch( pDecoder->p_Inp->FileFormat ) {
+    default:
+    case PAR_OF_ANNEXB:
+      close_annex_b(pDecoder->p_Vid->annex_b);
+      break;
+    case PAR_OF_RTP:
+      CloseRTPFile(&pDecoder->p_Vid->BitStreamFile);
+       break;
+    }
 
 #if (MVC_EXTENSION_ENABLE)
-  for(i=0;i<MAX_VIEW_NUM;i++)
+  /*{{{*/
+  for (i=0;i<MAX_VIEW_NUM;i++)
   {
     if (pDecoder->p_Vid->p_out_mvc[i] != -1)
     {
       close(pDecoder->p_Vid->p_out_mvc[i]);
     }
   }
+  /*}}}*/
 #else
   if(pDecoder->p_Vid->p_out >=0)
     close(pDecoder->p_Vid->p_out);
@@ -1303,14 +1257,15 @@ int CloseDecoder()
   fclose(pDecoder->p_trace);
 #endif
 
-  ercClose(pDecoder->p_Vid, pDecoder->p_Vid->erc_errorVar);
-
-  CleanUpPPS(pDecoder->p_Vid);
+  ercClose (pDecoder->p_Vid, pDecoder->p_Vid->erc_errorVar);
+  CleanUpPPS (pDecoder->p_Vid);
 #if (MVC_EXTENSION_ENABLE)
+  /*{{{*/
   for(i=0; i<MAXSPS; i++)
   {
     reset_subset_sps(pDecoder->p_Vid->SubsetSeqParSet+i);
   }
+  /*}}}*/
 #endif
 
   for(i=0; i<MAX_NUM_DPB_LAYERS; i++)
@@ -1318,12 +1273,14 @@ int CloseDecoder()
 
   uninit_out_buffer(pDecoder->p_Vid);
 #if _FLTDBG_
+  /*{{{*/
   if(pDecoder->p_Vid->fpDbg)
   {
     fprintf(pDecoder->p_Vid->fpDbg, "decoder is closed.\n");
     fclose(pDecoder->p_Vid->fpDbg);
     pDecoder->p_Vid->fpDbg = NULL;
   }
+  /*}}}*/
 #endif
 
   free_img (pDecoder->p_Vid);
@@ -1337,39 +1294,33 @@ int CloseDecoder()
 
 #if (MVC_EXTENSION_ENABLE)
 /*{{{*/
-void OpenOutputFiles(VideoParameters *p_Vid, int view0_id, int view1_id)
-{
+void OpenOutputFiles (VideoParameters* p_Vid, int view0_id, int view1_id) {
+
   InputParameters *p_Inp = p_Vid->p_Inp;
   char out_ViewFileName[2][FILE_NAME_SIZE], chBuf[FILE_NAME_SIZE], *pch;
-  if ((strcasecmp(p_Inp->outfile, "\"\"")!=0) && (strlen(p_Inp->outfile)>0))
-  {
+  if ((strcasecmp(p_Inp->outfile, "\"\"")!=0) && (strlen(p_Inp->outfile)>0)) {
     strcpy(chBuf, p_Inp->outfile);
     pch = strrchr(chBuf, '.');
     if(pch)
       *pch = '\0';
-    if (strcmp("nul", chBuf))
-    {
+    if (strcmp("nul", chBuf)) {
       sprintf(out_ViewFileName[0], "%s_ViewId%04d.yuv", chBuf, view0_id);
       sprintf(out_ViewFileName[1], "%s_ViewId%04d.yuv", chBuf, view1_id);
-      if(p_Vid->p_out_mvc[0] >= 0)
-      {
+      if(p_Vid->p_out_mvc[0] >= 0) {
         close(p_Vid->p_out_mvc[0]);
         p_Vid->p_out_mvc[0] = -1;
       }
-      if ((p_Vid->p_out_mvc[0]=open(out_ViewFileName[0], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1)
-      {
+      if ((p_Vid->p_out_mvc[0]=open(out_ViewFileName[0], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1) {
         snprintf(errortext, ET_SIZE, "Error open file %s ", out_ViewFileName[0]);
         fprintf(stderr, "%s\n", errortext);
         exit(500);
       }
 
-      if(p_Vid->p_out_mvc[1] >= 0)
-      {
+      if(p_Vid->p_out_mvc[1] >= 0) {
         close(p_Vid->p_out_mvc[1]);
         p_Vid->p_out_mvc[1] = -1;
       }
-      if ((p_Vid->p_out_mvc[1]=open(out_ViewFileName[1], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1)
-      {
+      if ((p_Vid->p_out_mvc[1]=open(out_ViewFileName[1], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1) {
         snprintf(errortext, ET_SIZE, "Error open file %s ", out_ViewFileName[1]);
         fprintf(stderr, "%s\n", errortext);
         exit(500);
@@ -1381,7 +1332,7 @@ void OpenOutputFiles(VideoParameters *p_Vid, int view0_id, int view1_id)
 #endif
 
 /*{{{*/
-void set_global_coding_par(VideoParameters *p_Vid, CodingParameters *cps)
+void set_global_coding_par (VideoParameters* p_Vid, CodingParameters *cps)
 {
     p_Vid->bitdepth_chroma = 0;
     p_Vid->width_cr        = 0;

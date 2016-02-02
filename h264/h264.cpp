@@ -3,24 +3,30 @@
 #include "pch.h"
 
 #include "../common/cD2dWindow.h"
-#include "decoder_test.h"
 
 #include "../common/winAudio.h"
 #pragma comment(lib,"libfaad.lib")
 //}}}
-extern void decodeMain();
+#include "decoder_test.h"
 
-int vidPlayFrame = 0;
-int lastVidFrame = -1;
-ID2D1Bitmap* mD2D1Bitmap = NULL;
-int vidFramesLoaded = 0;
-IWICBitmap* vidFrames [100];
+typedef enum {
+  CF_UNKNOWN = -1,     //!< Unknown color format
+  YUV400     =  0,     //!< Monochrome
+  YUV420     =  1,     //!< 4:2:0
+  YUV422     =  2,     //!< 4:2:2
+  YUV444     =  3      //!< 4:4:4
+} ColorFormat;
+
+#define maxFrame 300
 
 class cAppWindow : public cD2dWindow {
 public:
-  cAppWindow() {}
+  cAppWindow() :  mD2D1Bitmap(nullptr), mCurVidFrame(0) {
+    for (auto i = 0; i < maxFrame; i++)
+      vidFrames[i] = nullptr;
+    }
   ~cAppWindow() {}
-
+  //{{{
   void run (wchar_t* title, int width, int height) {
 
     // init window
@@ -34,6 +40,7 @@ public:
     // loop in windows message pump till quit
     messagePump();
     };
+  //}}}
 
 protected:
   //{{{
@@ -85,10 +92,24 @@ protected:
     }
   //}}}
   //{{{
-  void onDraw (ID2D1DeviceContext* dc) {
+  void onDraw(ID2D1DeviceContext* dc) {
 
-    if (mD2D1Bitmap)
-      dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f,0.0f,getClientF().width, getClientF().height));
+  IWICBitmap* vidFrame = vidFrames[mCurVidFrame];
+    if (vidFrame) {
+      // convert to mD2D1Bitmap 32bit BGRA
+      IWICFormatConverter* wicFormatConverter;
+      getWicImagingFactory()->CreateFormatConverter(&wicFormatConverter);
+      wicFormatConverter->Initialize(vidFrame,
+        GUID_WICPixelFormat32bppPBGRA,
+        WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+      if (mD2D1Bitmap)
+        mD2D1Bitmap->Release();
+
+      if (getDeviceContext())
+        getDeviceContext()->CreateBitmapFromWicBitmap(wicFormatConverter, NULL, &mD2D1Bitmap);
+
+      dc->DrawBitmap(mD2D1Bitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+      }
     else
       dc->Clear (D2D1::ColorF(D2D1::ColorF::Black));
 
@@ -102,22 +123,113 @@ protected:
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), rt, getWhiteBrush());
     }
   //}}}
+
 private:
+  //{{{
+  uint8_t limit (double v) {
+
+    if (v <= 0.0)
+      return 0;
+
+    if (v >= 255.0)
+      return 255;
+
+    return (uint8_t)v;
+    }
+  //}}}
+  //{{{
+  void makeVidFrame (int frameIndex, BYTE* yptr, BYTE* uptr, BYTE* vptr, int width, int height) {
+
+    // create vidFrame wicBitmap 24bit BGR
+    int pitch = width;
+    if (width % 32)
+      pitch = ((width + 31) / 32) * 32;
+    int pad = pitch - width;
+
+    getWicImagingFactory()->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+
+    // lock vidFrame wicBitmap
+    WICRect wicRect = { 0, 0, pitch, height };
+    IWICBitmapLock* wicBitmapLock = NULL;
+    vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+
+    // get vidFrame wicBitmap buffer
+    UINT bufferLen = 0;
+    BYTE* buffer = NULL;
+    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+
+    // yuv
+    for (auto y = 0; y < height; y++) {
+      for (auto x = 0; x < width/2; x++) {
+        int y1 = *yptr++;
+        int y2 = *yptr++;
+        int u = (*uptr++) - 128;
+        int v = (*vptr++) - 128;
+
+        *buffer++ = limit (y1 + (1.8556 * u));
+        *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
+        *buffer++ = limit (y1 + (1.5748 * v));
+
+        *buffer++ = limit (y2 + (1.8556 * u));
+        *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
+        *buffer++ = limit (y2 + (1.5748 * v));
+        }
+
+      if (!(y & 2)) {
+        uptr -= width/2;
+        vptr -= width/2;
+        }
+      }
+    // release vidFrame wicBitmap buffer
+    wicBitmapLock->Release();
+    mCurVidFrame = frameIndex;
+    }
+  //}}}
   //{{{
   void player() {
 
-    decodeMain();
+    openDecode();
+
+    for (int frame = 0; frame < maxFrame; frame++) {
+      extDecodedPicList* pic = (extDecodedPicList*)decodeFrame();
+
+      int iWidth = pic->iWidth*((pic->iBitDepth+7)>>3);
+      int iHeight = pic->iHeight;
+      int iStride = pic->iYBufStride;
+
+      int iWidthUV, iHeightUV;
+      if(pic->iYUVFormat != YUV444)
+        iWidthUV = pic->iWidth>>1;
+      else
+        iWidthUV = pic->iWidth;
+
+      if(pic->iYUVFormat == YUV420)
+        iHeightUV = pic->iHeight>>1;
+      else
+        iHeightUV = pic->iHeight;
+      iWidthUV *= ((pic->iBitDepth+7)>>3);
+
+      int iStrideUV = pic->iUVBufStride;
+
+      printf ("frame %d %d- %d %d %d\n", frame, pic->iYUVFormat, iWidth, iHeight, iStride);
+      if (iWidth && iHeight) {
+        makeVidFrame (frame, pic->pY, pic->pU, pic->pV, iWidth, iHeight);
+        changed();
+        }
+      }
+    closeDecode();
     }
   //}}}
-  };
 
-cAppWindow* appWindow = NULL;
+  int mCurVidFrame;
+  ID2D1Bitmap* mD2D1Bitmap;
+  IWICBitmap* vidFrames[maxFrame];
+  };
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
   printf ("Player %d\n", argc);
-
   cAppWindow appWindow;
   appWindow.run (L"appWindow", 480, 272);
   }

@@ -1,30 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
-/*!
- ************************************************************************
- *  \file
- *     global.h
- *  \brief
- *     global definitions for H.264 decoder.
- *  \author
- *     Copyright (C) 1999  Telenor Satellite Services,Norway
- *                         Ericsson Radio Systems, Sweden
- *
- *     Inge Lille-Langoy               <inge.lille-langoy@telenor.com>
- *
- *     Telenor Satellite Services
- *     Keysers gt.13                       tel.:   +47 23 13 86 98
- *     N-0130 Oslo,Norway                  fax.:   +47 22 77 79 80
- *
- *     Rickard Sjoberg                 <rickard.sjoberg@era.ericsson.se>
- *
- *     Ericsson Radio Systems
- *     KI/ERA/T/VV
- *     164 80 Stockholm, Sweden
- *
- ************************************************************************
- */
 #ifndef _GLOBAL_H_
 #define _GLOBAL_H_
+//{{{
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -41,6 +18,7 @@
 #include "frame.h"
 #include "distortion.h"
 #include "io_video.h"
+//}}}
 
 typedef struct bit_stream_dec Bitstream;
 
@@ -50,28 +28,24 @@ extern char errortext[ET_SIZE]; //!< buffer for error message for exit with erro
 struct pic_motion_params_old;
 struct pic_motion_params;
 
-/***********************************************************************
- * T y p e    d e f i n i t i o n s    f o r    J M
- ***********************************************************************
- */
+//{{{
 typedef enum
 {
    DEC_OPENED = 0,
    DEC_STOPPED,
 }DecoderStatus_e;
 
+//}}}
+//{{{
 typedef enum
 {
   LumaComp = 0,
   CrComp = 1,
   CbComp = 2
 } Color_Component;
+//}}}
 
-/***********************************************************************
- * D a t a    t y p e s   f o r  C A B A C
- ***********************************************************************
- */
-
+//{{{
 typedef struct pix_pos
 {
   int   available;
@@ -81,8 +55,8 @@ typedef struct pix_pos
   short pos_x;
   short pos_y;
 } PixelPos;
-
-//! struct to characterize the state of the arithmetic coding engine
+//}}}
+//{{{
 typedef struct
 {
   unsigned int    Drange;
@@ -91,40 +65,36 @@ typedef struct
   byte            *Dcodestrm;
   int             *Dcodestrm_len;
 } DecodingEnvironment;
-
+//}}}
 typedef DecodingEnvironment *DecodingEnvironmentPtr;
 
-// Motion Vector structure
+//{{{
 typedef struct
 {
   short mv_x;
   short mv_y;
 } MotionVector;
-
+//}}}
 static const MotionVector zero_mv = {0, 0};
 
+//{{{
 typedef struct
 {
   short x;
   short y;
 } BlockPos;
-
-//! struct for context management
+//}}}
+//{{{
 typedef struct
 {
   uint16 state;         // index into state-table CP
   unsigned char  MPS;           // Least Probable Symbol 0/1 CP
   unsigned char dummy;          // for alignment
 } BiContextType;
-
+//}}}
 typedef BiContextType *BiContextTypePtr;
 
-
-/**********************************************************************
- * C O N T E X T S   F O R   T M L   S Y N T A X   E L E M E N T S
- **********************************************************************
- */
-
+//{{{  motion context
 #define NUM_MB_TYPE_CTX  11
 #define NUM_B8_TYPE_CTX  9
 #define NUM_MV_RES_CTX   10
@@ -132,12 +102,10 @@ typedef BiContextType *BiContextTypePtr;
 #define NUM_DELTA_QP_CTX 4
 #define NUM_MB_AFF_CTX 4
 #define NUM_TRANSFORM_SIZE_CTX 3
-
-// structures that will be declared somewhere else
 struct storable_picture;
 struct datapartition_dec;
 struct syntaxelement_dec;
-
+//{{{
 typedef struct
 {
   BiContextType mb_type_contexts [3][NUM_MB_TYPE_CTX];
@@ -147,7 +115,9 @@ typedef struct
   BiContextType delta_qp_contexts[NUM_DELTA_QP_CTX];
   BiContextType mb_aff_contexts  [NUM_MB_AFF_CTX];
 } MotionInfoContexts;
-
+//}}}
+//}}}
+//{{{  textureInfo context
 #define NUM_IPR_CTX    2
 #define NUM_CIPR_CTX   4
 #define NUM_CBP_CTX    4
@@ -156,7 +126,7 @@ typedef struct
 #define NUM_LAST_CTX  15
 #define NUM_ONE_CTX    5
 #define NUM_ABS_CTX    5
-
+//{{{
 typedef struct
 {
   BiContextType  transform_size_contexts [NUM_TRANSFORM_SIZE_CTX];
@@ -169,15 +139,10 @@ typedef struct
   BiContextType  one_contexts [NUM_BLOCK_TYPES][NUM_ONE_CTX];
   BiContextType  abs_contexts [NUM_BLOCK_TYPES][NUM_ABS_CTX];
 } TextureInfoContexts;
+//}}}
+//}}}
 
-
-//*********************** end of data type definition for CABAC *******************
-
-/***********************************************************************
- * N e w   D a t a    t y p e s   f o r    T M L
- ***********************************************************************
- */
-
+//{{{
 /*! Buffer structure for decoded referenc picture marking commands */
 typedef struct DecRefPicMarking_s
 {
@@ -188,7 +153,8 @@ typedef struct DecRefPicMarking_s
   int max_long_term_frame_idx_plus1;
   struct DecRefPicMarking_s *Next;
 } DecRefPicMarking_t;
-
+//}}}
+//{{{
 //! cbp structure
 typedef struct cbp_s
 {
@@ -196,7 +162,8 @@ typedef struct cbp_s
   int64         bits    ;
   int64         bits_8x8;
 } CBPStructure;
-
+//}}}
+//{{{
 //! Macroblock
 typedef struct macroblock_dec
 {
@@ -270,7 +237,7 @@ typedef struct macroblock_dec
   void (*itrans_4x4)(struct macroblock_dec *currMB, ColorPlane pl, int ioff, int joff);
   void (*itrans_8x8)(struct macroblock_dec *currMB, ColorPlane pl, int ioff, int joff);
 
-  void (*GetMVPredictor) (struct macroblock_dec *currMB, PixelPos *block, 
+  void (*GetMVPredictor) (struct macroblock_dec *currMB, PixelPos *block,
     MotionVector *pmv, short ref_frame, struct pic_motion_params **mv_info, int list, int mb_x, int mb_y, int blockshape_x, int blockshape_y);
 
   int  (*read_and_store_CBP_block_bit)  (struct macroblock_dec *currMB, DecodingEnvironmentPtr  dep_dp, int type);
@@ -282,7 +249,8 @@ typedef struct macroblock_dec
   void (*read_comp_coeff_4x4_CAVLC)     (struct macroblock_dec *currMB, ColorPlane pl, int (*InvLevelScale4x4)[4], int qp_per, int cbp, byte **nzcoeff);
   void (*read_comp_coeff_8x8_CAVLC)     (struct macroblock_dec *currMB, ColorPlane pl, int (*InvLevelScale8x8)[8], int qp_per, int cbp, byte **nzcoeff);
 } Macroblock;
-
+//}}}
+//{{{
 //! Syntaxelement
 typedef struct syntaxelement_dec
 {
@@ -305,8 +273,8 @@ typedef struct syntaxelement_dec
   //! used for CABAC: refers to actual coding method of each individual syntax element type
   void  (*reading)(struct macroblock_dec *currMB, struct syntaxelement_dec *, DecodingEnvironmentPtr);
 } SyntaxElement;
-
-
+//}}}
+//{{{
 //! Bitstream
 struct bit_stream_dec
 {
@@ -320,7 +288,8 @@ struct bit_stream_dec
   byte          *streamBuffer;      //!< actual codebuffer for read bytes
   int           ei_flag;            //!< error indication, 0: no error, else unspecified error
 };
-
+//}}}
+//{{{
 //! DataPartition
 typedef struct datapartition_dec
 {
@@ -333,14 +302,17 @@ typedef struct datapartition_dec
                actual method depends on chosen data partition and
                entropy coding method  */
 } DataPartition;
-
+//}}}
+//{{{
 typedef struct wp_params
 {
   short weight[3];
   short offset[3];
 } WPParams;
+//}}}
 
 #if (MVC_EXTENSION_ENABLE)
+//{{{
 typedef struct nalunitheadermvcext_tag
 {
    unsigned int non_idr_flag;
@@ -352,8 +324,10 @@ typedef struct nalunitheadermvcext_tag
    unsigned int reserved_one_bit;
    unsigned int iPrefixNALU;
 } NALUnitHeaderMVCExt_t;
+//}}}
 #endif
 
+//{{{
 //! Slice
 typedef struct slice
 {
@@ -442,7 +416,7 @@ typedef struct slice
   //slice header information;
   int colour_plane_id;               //!< colour_plane_id of the current coded slice
   int redundant_pic_cnt;
-  int sp_switch;                              //!< 1 for switching sp, 0 for normal sp  
+  int sp_switch;                              //!< 1 for switching sp, 0 for normal sp
   int slice_group_change_cycle;
   int redundant_slice_ref_idx;     //!< reference index of redundant slice
   int no_output_of_prior_pics_flag;
@@ -495,10 +469,10 @@ typedef struct slice
   int cofu[16];
 
   imgpel **tmp_block_l0;
-  imgpel **tmp_block_l1;  
+  imgpel **tmp_block_l1;
   int    **tmp_res;
   imgpel **tmp_block_l2;
-  imgpel **tmp_block_l3;  
+  imgpel **tmp_block_l3;
 
   // Scaling matrix info
   int  InvLevelScale4x4_Intra[3][6][4][4];
@@ -511,7 +485,7 @@ typedef struct slice
   // Cabac
   int  coeff[64]; // one more for EOB
   int  coeff_ctr;
-  int  pos;  
+  int  pos;
 
 
   //weighted prediction
@@ -520,7 +494,7 @@ typedef struct slice
 
   unsigned short luma_log2_weight_denom;
   unsigned short chroma_log2_weight_denom;
-  
+
   WPParams **wp_params; // wp parameters in [list][index]
 
   int ***wp_weight;  // weight in [list][index][component] order
@@ -550,7 +524,7 @@ typedef struct slice
   char  chroma_vector_adjustment[6][32];
   void (*read_CBP_and_coeffs_from_NAL) (Macroblock *currMB);
   int  (*decode_one_component     )    (Macroblock *currMB, ColorPlane curr_plane, imgpel **currImg, struct storable_picture *dec_picture);
-  int  (*readSlice                )    (struct video_par *, struct inp_par *);  
+  int  (*readSlice                )    (struct video_par *, struct inp_par *);
   int  (*nal_startcode_follows    )    (struct slice*, int );
   void (*read_motion_info_from_NAL)    (Macroblock *currMB);
   void (*read_one_macroblock      )    (Macroblock *currMB);
@@ -563,12 +537,13 @@ typedef struct slice
   int  (*intra_pred_16x16)             (Macroblock *currMB, ColorPlane pl, int predmode);
 
   void (*linfo_cbp_intra          )    (int len, int info, int *cbp, int *dummy);
-  void (*linfo_cbp_inter          )    (int len, int info, int *cbp, int *dummy);    
+  void (*linfo_cbp_inter          )    (int len, int info, int *cbp, int *dummy);
   void (*update_direct_mv_info    )    (Macroblock *currMB);
   void (*read_coeff_4x4_CAVLC     )    (Macroblock *currMB, int block_type, int i, int j, int levarr[16], int runarr[16], int *number_coefficients);
 
 } Slice;
-
+//}}}
+//{{{
 typedef struct decodedpic_t
 {
   int bValid;                 //0: invalid, 1: valid, 3: valid for 3D output;
@@ -580,7 +555,7 @@ typedef struct decodedpic_t
   byte *pY;                   //if iPictureFormat is 1, [0]: top; [1] bottom;
   byte *pU;
   byte *pV;
-  int iWidth;                 //frame width;              
+  int iWidth;                 //frame width;
   int iHeight;                //frame height;
   int iYBufStride;            //stride of pY[0/1] buffer in bytes;
   int iUVBufStride;           //stride of pU[0/1] and pV[0/1] buffer in bytes;
@@ -588,15 +563,15 @@ typedef struct decodedpic_t
   int iBufSize;
   struct decodedpic_t *pNext;
 } DecodedPicList;
-
-//****************************** ~DM ***********************************
+//}}}
+//{{{
 typedef struct coding_par
 {
   int layer_id;
   int profile_idc;
   int width;
   int height;
-  int width_cr;                               //!< width chroma  
+  int width_cr;                               //!< width chroma
   int height_cr;                              //!< height chroma
 
   int pic_unit_bitsize_on_disk;
@@ -619,9 +594,9 @@ typedef struct coding_par
   int mb_cr_size_y_blk;
   int mb_cr_size;
   int mb_size[3][2];                         //!< component macroblock dimensions
-  int mb_size_blk[3][2];                     //!< component macroblock dimensions 
+  int mb_size_blk[3][2];                     //!< component macroblock dimensions
   int mb_size_shift[3][2];
-  
+
   int max_vmv_r;                             //!< maximum vertical motion vector range in luma quarter frame pixel units for the current level_idc
   int separate_colour_plane_flag;
   int ChromaArrayType;
@@ -652,7 +627,7 @@ typedef struct coding_par
   Macroblock *mb_data_JV[MAX_PLANE]; //!< mb_data to be used for 4:4:4 independent mode
   char  *intra_block;
   char  *intra_block_JV[MAX_PLANE];
-  BlockPos *PicPos;  
+  BlockPos *PicPos;
   byte **ipredmode;                  //!< prediction type [90][74]
   byte **ipredmode_JV[MAX_PLANE];
   byte ****nz_coeff;
@@ -661,7 +636,8 @@ typedef struct coding_par
   int *qp_per_matrix;
   int *qp_rem_matrix;
 }CodingParameters;
-
+//}}}
+//{{{
 typedef struct layer_par
 {
   int layer_id;
@@ -698,7 +674,7 @@ typedef struct video_par
   struct old_slice_par *old_slice;
   struct snr_par       *snr;
   int number;                                 //!< frame number
-  
+
   //current picture property;
   unsigned int num_dec_mb;
   int iSliceNumOfCurrPic;
@@ -709,7 +685,7 @@ typedef struct video_par
   char  *intra_block_JV[MAX_PLANE];
   //int qp;                                     //!< quant for the current frame
 
-  //int sp_switch;                              //!< 1 for switching sp, 0 for normal sp  
+  //int sp_switch;                              //!< 1 for switching sp, 0 for normal sp
   int type;                                   //!< image type INTER/INTRA
 
   byte **ipredmode;                  //!< prediction type [90][74]
@@ -805,7 +781,7 @@ typedef struct video_par
   int Is_primary_correct;          //!< if primary frame is correct, 0: incorrect
   int Is_redundant_correct;        //!< if redundant frame is correct, 0:incorrect
 
-  // Time 
+  // Time
   int64 tot_time;
 
   // files
@@ -859,7 +835,7 @@ typedef struct video_par
   int BitStreamFile;
 
   // report
-  char cslice_type[9];  
+  char cslice_type[9];
   // FMO
   int *MbToSliceGroupMap;
   int *MapUnitToSliceGroupMap;
@@ -904,7 +880,7 @@ typedef struct video_par
 /******************* deprecative variables; ***************************************/
   int width;
   int height;
-  int width_cr;                               //!< width chroma  
+  int width_cr;                               //!< width chroma
   int height_cr;                              //!< height chroma
   // Fidelity Range Extensions Stuff
   int pic_unit_bitsize_on_disk;
@@ -931,7 +907,7 @@ typedef struct video_par
   int mb_cr_size_y_blk;
   int mb_cr_size;
   int mb_size[3][2];                         //!< component macroblock dimensions
-  int mb_size_blk[3][2];                     //!< component macroblock dimensions 
+  int mb_size_blk[3][2];                     //!< component macroblock dimensions
   int mb_size_shift[3][2];
   int subpel_x;
   int subpel_y;
@@ -951,8 +927,8 @@ typedef struct video_par
 
   struct dec_stat_parameters *dec_stats;
 } VideoParameters;
-
-
+//}}}
+//{{{
 // signal to noise ratio parameters
 typedef struct snr_par
 {
@@ -960,10 +936,11 @@ typedef struct snr_par
   float snr[3];                                //!< current SNR (component)
   float snr1[3];                               //!< SNR (dB) first frame (component)
   float snra[3];                               //!< Average component SNR (dB) remaining frames
-  float sse[3];                                //!< component SSE 
-  float msse[3];                                //!< Average component SSE 
+  float sse[3];                                //!< component SSE
+  float msse[3];                                //!< Average component SSE
 } SNRParameters;
-
+//}}}
+//{{{
 // input parameters from configuration file
 typedef struct inp_par
 {
@@ -976,7 +953,7 @@ typedef struct inp_par
   int poc_scale;
   int write_uv;
   int silent;
-  int intra_profile_deblocking;               //!< Loop filter usage determined by flags and parameters in bitstream 
+  int intra_profile_deblocking;               //!< Loop filter usage determined by flags and parameters in bitstream
 
   // Input/output sequence format related variables
   FrameFormat source;                   //!< source related information
@@ -1011,7 +988,7 @@ typedef struct inp_par
   int stdRange;                         //!< 1 - standard range, 0 - full range
   int videoCode;                        //!< 1 - 709, 3 - 601:  See VideoCode in io_tiff.
   int export_views;
-  
+
   int iDecFrmNum;
 
   int bDisplayDecParams;
@@ -1020,7 +997,7 @@ typedef struct inp_par
 
 typedef struct old_slice_par
 {
-  unsigned field_pic_flag;   
+  unsigned field_pic_flag;
   unsigned frame_num;
   int      nal_ref_idc;
   unsigned pic_oder_cnt_lsb;
@@ -1047,6 +1024,7 @@ typedef struct decoder_params
   FILE              *p_trace;        //!< Trace file
   int                bitcounter;
 } DecoderParams;
+//}}}
 
 extern DecoderParams  *p_Dec;
 
@@ -1075,7 +1053,7 @@ extern void change_plane_JV      ( VideoParameters *p_Vid, int nplane, Slice *pS
 extern void make_frame_picture_JV( VideoParameters *p_Vid );
 
 #if (MVC_EXTENSION_ENABLE)
-extern void nal_unit_header_mvc_extension(NALUnitHeaderMVCExt_t *NaluHeaderMVCExt, struct bit_stream_dec *bitstream);
+  extern void nal_unit_header_mvc_extension(NALUnitHeaderMVCExt_t *NaluHeaderMVCExt, struct bit_stream_dec *bitstream);
 #endif
 
 extern void FreeDecPicList ( DecodedPicList *pDecPicList );
@@ -1086,26 +1064,33 @@ extern void copy_slice_info ( Slice *currSlice, OldSliceParams *p_old_slice );
 extern void OpenOutputFiles(VideoParameters *p_Vid, int view0_id, int view1_id);
 extern void set_global_coding_par(VideoParameters *p_Vid, CodingParameters *cps);
 
-static inline int is_FREXT_profile(unsigned int profile_idc) 
+//{{{
+static inline int is_FREXT_profile(unsigned int profile_idc)
 {
   // we allow all FRExt tools, when no profile is active
   return ( profile_idc==NO_PROFILE || profile_idc==FREXT_HP || profile_idc==FREXT_Hi10P || profile_idc==FREXT_Hi422 || profile_idc==FREXT_Hi444 || profile_idc == FREXT_CAVLC444 );
 }
-
+//}}}
+//{{{
 static inline int is_HI_intra_only_profile(unsigned int profile_idc, Boolean constrained_set3_flag)
 {
   return ( ( ( (profile_idc == FREXT_Hi10P)||(profile_idc == FREXT_Hi422)|| (profile_idc == FREXT_Hi444)) && constrained_set3_flag) || (profile_idc == FREXT_CAVLC444) );
 }
-static inline int is_BL_profile(unsigned int profile_idc) 
+//}}}
+//{{{
+static inline int is_BL_profile(unsigned int profile_idc)
 {
   return ( profile_idc == FREXT_CAVLC444 || profile_idc == BASELINE || profile_idc == MAIN || profile_idc == EXTENDED ||
            profile_idc == FREXT_HP || profile_idc == FREXT_Hi10P || profile_idc == FREXT_Hi422 || profile_idc == FREXT_Hi444);
 }
-static inline int is_EL_profile(unsigned int profile_idc) 
+//}}}
+//{{{
+static inline int is_EL_profile(unsigned int profile_idc)
 {
   return ( (profile_idc == MVC_HIGH) || (profile_idc == STEREO_HIGH) );
 }
-
+//}}}
+//{{{
 static inline int is_MVC_profile(unsigned int profile_idc)
 {
   return ( (0)
@@ -1114,6 +1099,5 @@ static inline int is_MVC_profile(unsigned int profile_idc)
 #endif
   );
 }
-
+//}}}
 #endif
-
