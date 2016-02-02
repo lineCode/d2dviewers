@@ -20,7 +20,6 @@
 #include "block.h"
 #include "nalu.h"
 #include "loopfilter.h"
-#include "rtp.h"
 #include "output.h"
 #include "h264decoder.h"
 #include "dec_statistics.h"
@@ -1124,16 +1123,8 @@ int OpenDecoder (InputParameters* p_Inp)
   else
     pDecoder->p_Vid->p_ref = -1;
 
-  switch( pDecoder->p_Inp->FileFormat ) {
-    default:
-    case PAR_OF_ANNEXB:
-      malloc_annex_b(pDecoder->p_Vid, &pDecoder->p_Vid->annex_b);
-      open_annex_b(pDecoder->p_Inp->infile, pDecoder->p_Vid->annex_b);
-      break;
-    case PAR_OF_RTP:
-      OpenRTPFile(pDecoder->p_Inp->infile, &pDecoder->p_Vid->BitStreamFile);
-      break;
-    }
+  malloc_annex_b(pDecoder->p_Vid, &pDecoder->p_Vid->annex_b);
+  open_annex_b(pDecoder->p_Inp->infile, pDecoder->p_Vid->annex_b);
 
   // Allocate Slice data struct
   //pDecoder->p_Vid->currentSlice = NULL; //malloc_slice(pDecoder->p_Inp, pDecoder->p_Vid);
@@ -1223,15 +1214,7 @@ int CloseDecoder() {
   free_layer_buffers(pDecoder->p_Vid, 1);
   free_global_buffers(pDecoder->p_Vid);
 
-  switch( pDecoder->p_Inp->FileFormat ) {
-    default:
-    case PAR_OF_ANNEXB:
-      close_annex_b(pDecoder->p_Vid->annex_b);
-      break;
-    case PAR_OF_RTP:
-      CloseRTPFile(&pDecoder->p_Vid->BitStreamFile);
-       break;
-    }
+  close_annex_b(pDecoder->p_Vid->annex_b);
 
 #if (MVC_EXTENSION_ENABLE)
   /*{{{*/

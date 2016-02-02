@@ -175,9 +175,6 @@
     <ClCompile Include="..\ldecod\src\cabac.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\rtp.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\decoder_test.c" />
   </ItemGroup>
   <ItemGroup>
