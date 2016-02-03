@@ -34,9 +34,6 @@
     <ClCompile Include="..\ldecod\src\errorconcealment.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\filehandle.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\fmo.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -186,9 +183,6 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\ldecod\inc\contributors.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\ldecod\inc\ctx_tables.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
@@ -223,9 +217,6 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\fast_memory.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\filehandle.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\fmo.h">

@@ -29,7 +29,6 @@
  ***********************************************************************
  */
 
-#include "contributors.h"
 #include "global.h"
 #include "elements.h"
 
@@ -152,11 +151,6 @@ int get_concealed_element(VideoParameters *p_Vid, SyntaxElement *sym)
 {
   if (p_Vid->ec_flag[sym->type] == NO_EC)
     return NO_EC;
-/*
-#if TRACE
-  printf("TRACE: get concealed element for %s!!!\n", SEtypes[sym->type]);
-#endif
-*/
   switch (sym->type)
   {
   case SE_HEADER :

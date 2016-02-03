@@ -92,12 +92,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\filehandle.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\fmo.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -379,7 +373,6 @@
     <ClInclude Include="..\ldecod\inc\block.h" />
     <ClInclude Include="..\ldecod\inc\cabac.h" />
     <ClInclude Include="..\ldecod\inc\context_ini.h" />
-    <ClInclude Include="..\ldecod\inc\contributors.h" />
     <ClInclude Include="..\ldecod\inc\ctx_tables.h" />
     <ClInclude Include="..\ldecod\inc\decoder_test.h" />
     <ClInclude Include="..\ldecod\inc\dec_statistics.h" />
@@ -392,7 +385,6 @@
     <ClInclude Include="..\ldecod\inc\erc_globals.h" />
     <ClInclude Include="..\ldecod\inc\errorconcealment.h" />
     <ClInclude Include="..\ldecod\inc\fast_memory.h" />
-    <ClInclude Include="..\ldecod\inc\filehandle.h" />
     <ClInclude Include="..\ldecod\inc\fmo.h" />
     <ClInclude Include="..\ldecod\inc\frame.h" />
     <ClInclude Include="..\ldecod\inc\global.h" />

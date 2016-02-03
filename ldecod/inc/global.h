@@ -263,11 +263,6 @@ typedef struct syntaxelement_dec
   int           context;               //!< CABAC context
   int           k;                     //!< CABAC context for coeff_count,uv
 
-#if TRACE
-  #define       TRACESTRING_SIZE 100           //!< size of trace string
-  char          tracestring[TRACESTRING_SIZE]; //!< trace string
-#endif
-
   //! for mapping of CAVLC to syntaxElement
   void  (*mapping)(int len, int info, int *value1, int *value2);
   //! used for CABAC: refers to actual coding method of each individual syntax element type
@@ -868,9 +863,6 @@ typedef struct video_par
   int bDeblockEnable;
   int iPostProcess;
   int bFrameInit;
-#if _FLTDBG_
-  FILE *fpDbg;
-#endif
   pic_parameter_set_rbsp_t *pNextPPS;
   int last_dec_poc;
   int last_dec_view_id;
@@ -1021,7 +1013,6 @@ typedef struct decoder_params
   VideoParameters   *p_Vid;          //!< Image Parameters
   int64              bufferSize;     //!< buffersize for tiff reads (not currently supported)
   int                UsedBits;      // for internal statistics, is adjusted by read_se_v, read_ue_v, read_u_1
-  FILE              *p_trace;        //!< Trace file
   int                bitcounter;
 } DecoderParams;
 //}}}
@@ -1041,9 +1032,6 @@ extern int EBSPtoRBSP(byte *streamBuffer, int end_bytepos, int begin_bytepos);
 
 extern void FreePartition (DataPartition *dp, int n);
 extern DataPartition *AllocPartition(int n);
-
-extern void tracebits (const char *trace_str, int len, int info, int value1);
-extern void tracebits2(const char *trace_str, int len, int info);
 
 extern unsigned CeilLog2   ( unsigned uiVal);
 extern unsigned CeilLog2_sf( unsigned uiVal);

@@ -1,7 +1,4 @@
 /*{{{*/
-#include "contributors.h"
-
-//#include <sys/stat.h>
 
 #include "global.h"
 #include "annexb.h"
@@ -27,7 +24,6 @@
 /*{{{*/
 #define LOGFILE     "log.dec"
 #define DATADECFILE "dataDec.txt"
-#define TRACEFILE   "trace_dec.txt"
 /*}}}*/
 
 // Decoder definition. This should be the only global variable in the entire
@@ -537,7 +533,6 @@ static int alloc_decoder( DecoderParams **p_Dec)
   alloc_video_params(&((*p_Dec)->p_Vid));
   alloc_params(&((*p_Dec)->p_Inp));
   (*p_Dec)->p_Vid->p_Inp = (*p_Dec)->p_Inp;
-  (*p_Dec)->p_trace = NULL;
   (*p_Dec)->bufferSize = 0;
   (*p_Dec)->bitcounter = 0;
   return 0;
@@ -1056,17 +1051,6 @@ int OpenDecoder (InputParameters* p_Inp)
   pDecoder->p_Vid->ref_poc_gap = p_Inp->ref_poc_gap;
   pDecoder->p_Vid->poc_gap = p_Inp->poc_gap;
 
-#if TRACE
-  /*{{{*/
-  if ((pDecoder->p_trace = fopen(TRACEFILE,"w"))==0)             // append new statistic at the end
-  {
-    snprintf(errortext, ET_SIZE, "Error open file %s!",TRACEFILE);
-    //error(errortext,500);
-    return -1;
-  }
-  /*}}}*/
-#endif
-
 #if (!MVC_EXTENSION_ENABLE)
   /*{{{*/
   /*}}}*/
@@ -1102,16 +1086,7 @@ int OpenDecoder (InputParameters* p_Inp)
   /*}}}*/
 #endif
 
-  if(strlen(pDecoder->p_Inp->reffile)>0 && strcmp(pDecoder->p_Inp->reffile, "\"\""))
-  {
-   if ((pDecoder->p_Vid->p_ref = open(pDecoder->p_Inp->reffile, OPENFLAGS_READ))==-1)
-   {
-    fprintf(stdout," Input reference file                   : %s does not exist \n",pDecoder->p_Inp->reffile);
-    fprintf(stdout,"                                          SNR values are not available\n");
-   }
-  }
-  else
-    pDecoder->p_Vid->p_ref = -1;
+  pDecoder->p_Vid->p_ref = -1;
 
   malloc_annex_b(pDecoder->p_Vid, &pDecoder->p_Vid->annex_b);
   open_annex_b(pDecoder->p_Inp->infile, pDecoder->p_Vid->annex_b);
@@ -1128,13 +1103,6 @@ int OpenDecoder (InputParameters* p_Inp)
   pDecoder->p_Vid->active_sps = NULL;
   pDecoder->p_Vid->active_subset_sps = NULL;
   init_subset_sps_list(pDecoder->p_Vid->SubsetSeqParSet, MAXSPS);
-  /*}}}*/
-#endif
-
-#if _FLTDBG_
-  /*{{{*/
-  pDecoder->p_Vid->fpDbg = fopen("c:/fltdbg.txt", "a");
-  fprintf(pDecoder->p_Vid->fpDbg, "\ndecoder is opened.\n");
   /*}}}*/
 #endif
 
@@ -1217,10 +1185,6 @@ int CloseDecoder() {
   if (pDecoder->p_Vid->p_ref != -1)
     close(pDecoder->p_Vid->p_ref);
 
-#if TRACE
-  fclose(pDecoder->p_trace);
-#endif
-
   ercClose (pDecoder->p_Vid, pDecoder->p_Vid->erc_errorVar);
   CleanUpPPS (pDecoder->p_Vid);
 #if (MVC_EXTENSION_ENABLE)
@@ -1236,16 +1200,6 @@ int CloseDecoder() {
    free_dpb(pDecoder->p_Vid->p_Dpb_layer[i]);
 
   uninit_out_buffer(pDecoder->p_Vid);
-#if _FLTDBG_
-  /*{{{*/
-  if(pDecoder->p_Vid->fpDbg)
-  {
-    fprintf(pDecoder->p_Vid->fpDbg, "decoder is closed.\n");
-    fclose(pDecoder->p_Vid->fpDbg);
-    pDecoder->p_Vid->fpDbg = NULL;
-  }
-  /*}}}*/
-#endif
 
   free_img (pDecoder->p_Vid);
   free (pDecoder->p_Inp);

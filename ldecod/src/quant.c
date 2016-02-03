@@ -13,7 +13,6 @@
  ***********************************************************************
  */
 
-#include "contributors.h"
 
 #include "global.h"
 #include "memalloc.h"

@@ -1,7 +1,5 @@
 /*{{{*/
 #define _CRT_SECURE_NO_WARNINGS
-#include "contributors.h"
-
 #include <math.h>
 #include <limits.h>
 
@@ -2454,11 +2452,6 @@ void decode_one_slice (Slice *currSlice)
 
   while (end_of_slice == FALSE) // loop over macroblocks
   {
-
-#if TRACE
-    fprintf(p_Dec->p_trace,"\n*********** POC: %i (I/P) MB: %i Slice: %i Type %d **********\n", currSlice->ThisPOC, currSlice->current_mb_nr, currSlice->current_slice_nr, currSlice->slice_type);
-#endif
-
     // Initializes the current macroblock
     start_macroblock(currSlice, &currMB);
     // Get the syntax elements from the NAL

@@ -1,33 +1,4 @@
-
-/*!
- **************************************************************************
- * \file defines.h
- *
- * \brief
- *    Header file containing some useful global definitions
- *
- * \author
- *    Main contributors (see contributors.h for copyright, address and affiliation details)
- *     - Detlev Marpe
- *     - Karsten Suehring
- *     - Alexis Michael Tourapis         <alexismt@ieee.org> 
- *   
- *
- * \date
- *    21. March 2001
- **************************************************************************
- */
-
-#ifndef _DEFINES_H_
-#define _DEFINES_H_
-#ifdef TRACE
-#undef TRACE
-#endif
-#if defined _DEBUG
-# define TRACE           0     //!< 0:Trace off 1:Trace on 2:detailed CABAC context information
-#else
-# define TRACE           0     //!< 0:Trace off 1:Trace on 2:detailed CABAC context information
-#endif
+#pragma once
 
 #define JM                  "19 (FRExt)"
 #define VERSION             "19.0"
@@ -38,7 +9,7 @@
 #define PAIR_FIELDS_IN_OUTPUT     0    //!< Pair field pictures for output purposes
 #define IMGTYPE                   0    //!< Define imgpel size type. 0 implies byte (cannot handle >8 bit depths) and 1 implies unsigned short
 #define ENABLE_FIELD_CTX          0    //!< Enables Field mode related context types for CABAC
-#define ENABLE_HIGH444_CTX        0    //!< Enables High 444 profile context types for CABAC. 
+#define ENABLE_HIGH444_CTX        0    //!< Enables High 444 profile context types for CABAC.
 #define ZEROSNR                   0    //!< PSNR computation method
 #define ENABLE_OUTPUT_TONEMAPPING 0    //!< enable tone map the output if tone mapping SEI present
 #define JCOST_CALC_SCALEUP        0    //!< 1: J = (D<<LAMBDA_ACCURACY_BITS)+Lambda*R; 0: J = D + ((Lambda*R+Rounding)>>LAMBDA_ACCURACY_BITS)
@@ -50,7 +21,7 @@
 #define ENABLE_DEC_STATS          0    //!< enable decoder statistics collection
 
 #define MVC_INIT_VIEW_ID          -1
-#define MAX_VIEW_NUM              1024   
+#define MAX_VIEW_NUM              1024
 #define BASE_VIEW_IDX             0
 
 #include "typedefs.h"
@@ -88,7 +59,7 @@ typedef enum {
 #define INPUT_TEXT_SIZE 1024
 
 #if (ENABLE_HIGH444_CTX == 1)
-# define NUM_BLOCK_TYPES 22  
+# define NUM_BLOCK_TYPES 22
 #else
 # define NUM_BLOCK_TYPES 10
 #endif
@@ -186,7 +157,7 @@ typedef enum {
 #define Q_BITS          15
 #define DQ_BITS          6
 #define Q_BITS_8        16
-#define DQ_BITS_8        6 
+#define DQ_BITS_8        6
 
 
 #define IS_I16MB(MB)    ((MB)->mb_type==I16MB  || (MB)->mb_type==IPCM)
@@ -199,7 +170,7 @@ typedef enum {
 // Quantization parameter range
 #define MIN_QP          0
 #define MAX_QP          51
-// 4x4 intra prediction modes 
+// 4x4 intra prediction modes
 typedef enum {
   VERT_PRED            = 0,
   HOR_PRED             = 1,
@@ -269,6 +240,3 @@ enum {
 #define ZEROBYTES_SHORTSTARTCODE 2 //indicates the number of zero bytes in the short start-code prefix
 
 #define MAX_PLANE       3
-
-#endif
-
