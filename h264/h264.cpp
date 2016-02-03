@@ -9,15 +9,13 @@
 //}}}
 #include "decoder_test.h"
 
-typedef enum {
-  CF_UNKNOWN = -1,     //!< Unknown color format
-  YUV400     =  0,     //!< Monochrome
-  YUV420     =  1,     //!< 4:2:0
-  YUV422     =  2,     //!< 4:2:2
-  YUV444     =  3      //!< 4:4:4
-} ColorFormat;
+//  YUV400     =  0,     //!< Monochrome
+//  YUV420     =  1,     //!< 4:2:0
+//  YUV422     =  2,     //!< 4:2:2
+//  YUV444     =  3      //!< 4:4:4
 
 #define maxFrame 300
+static char filename[100];
 
 class cAppWindow : public cD2dWindow {
 public:
@@ -188,7 +186,7 @@ private:
   //{{{
   void player() {
 
-    openDecode();
+    openDecode (filename);
 
     for (int frame = 0; frame < maxFrame; frame++) {
       extDecodedPicList* pic = (extDecodedPicList*)decodeFrame();
@@ -197,21 +195,7 @@ private:
       int iHeight = pic->iHeight;
       int iStride = pic->iYBufStride;
 
-      int iWidthUV, iHeightUV;
-      if(pic->iYUVFormat != YUV444)
-        iWidthUV = pic->iWidth>>1;
-      else
-        iWidthUV = pic->iWidth;
-
-      if(pic->iYUVFormat == YUV420)
-        iHeightUV = pic->iHeight>>1;
-      else
-        iHeightUV = pic->iHeight;
-      iWidthUV *= ((pic->iBitDepth+7)>>3);
-
-      int iStrideUV = pic->iUVBufStride;
-
-      printf ("frame %d %d- %d %d %d\n", frame, pic->iYUVFormat, iWidth, iHeight, iStride);
+          //printf ("frame %d %d- %d %d %d\n", frame, pic->iYUVFormat, iWidth, iHeight, iStride);
       if (iWidth && iHeight) {
         makeVidFrame (frame, pic->pY, pic->pU, pic->pV, iWidth, iHeight);
         changed();
@@ -229,8 +213,13 @@ private:
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
-  printf ("Player %d\n", argc);
+  strcpy (filename, "C:\\Users\\colin\\Desktop\\d2dviewers\\test.264");
+  if (argv[1])
+    std::wcstombs (filename, argv[1], wcslen(argv[1])+1);
+
+  printf ("Player %d %s /n", argc, filename);
+
   cAppWindow appWindow;
-  appWindow.run (L"appWindow", 480, 272);
+  appWindow.run (L"appWindow", 1280, 720);
   }
 //}}}

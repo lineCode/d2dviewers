@@ -21,7 +21,7 @@ typedef struct extDecodedpic_t {
   struct extDecodedpic_t *pNext;
   } extDecodedPicList;
 
-  extern void openDecode();
+  extern void openDecode (char* filename);
   extern void* decodeFrame();
   extern void* closeDecode();
 
