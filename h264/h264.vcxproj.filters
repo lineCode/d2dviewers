@@ -115,9 +115,6 @@
     <ClCompile Include="..\ldecod\src\mbuffer_common.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mbuffer_mvc.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\mc_direct.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -292,9 +289,6 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\mbuffer_common.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\mbuffer_mvc.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\mc_prediction.h">

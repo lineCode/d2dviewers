@@ -1,24 +1,10 @@
-
-/*!
- *************************************************************************************
- * \file annexb.c
- *
- * \brief
- *    Annex B Byte Stream format
- *
- * \author
- *    Main contributors (see contributors.h for copyright, address and affiliation details)
- *      - Stephan Wenger                  <stewe@cs.tu-berlin.de>
- *************************************************************************************
- */
-
 #include "global.h"
 #include "annexb.h"
-#include "memalloc.h" 
+#include "memalloc.h"
 #include "fast_memory.h"
 
-static const int IOBUFFERSIZE = 512*1024; //65536;
-
+static const int IOBUFFERSIZE = 8192*1024;
+/*{{{*/
 void malloc_annex_b(VideoParameters *p_Vid, ANNEXB_t **p_annex_b)
 {
   if ( ((*p_annex_b) = (ANNEXB_t *) calloc(1, sizeof(ANNEXB_t))) == NULL)
@@ -31,8 +17,8 @@ void malloc_annex_b(VideoParameters *p_Vid, ANNEXB_t **p_annex_b)
     error("malloc_annex_b: Buf", 101);
   }
 }
-
-
+/*}}}*/
+/*{{{*/
 void init_annex_b(ANNEXB_t *annex_b)
 {
   annex_b->BitStreamFile = -1;
@@ -43,24 +29,21 @@ void init_annex_b(ANNEXB_t *annex_b)
   annex_b->IsFirstByteStreamNALU = 1;
   annex_b->nextstartcodebytes = 0;
 }
-
+/*}}}*/
+/*{{{*/
 void free_annex_b(ANNEXB_t **p_annex_b)
 {
   free((*p_annex_b)->Buf);
   (*p_annex_b)->Buf = NULL;
   free(*p_annex_b);
-  *p_annex_b = NULL;  
+  *p_annex_b = NULL;
 }
+/*}}}*/
 
-/*!
-************************************************************************
-* \brief
-*    fill IO buffer
-************************************************************************
-*/
+/*{{{*/
 static inline int getChunk(ANNEXB_t *annex_b)
 {
-  unsigned int readbytes = read (annex_b->BitStreamFile, annex_b->iobuffer, annex_b->iIOBufferSize); 
+  unsigned int readbytes = read (annex_b->BitStreamFile, annex_b->iobuffer, annex_b->iIOBufferSize);
   if (0==readbytes)
   {
     annex_b->is_eof = TRUE;
@@ -71,13 +54,8 @@ static inline int getChunk(ANNEXB_t *annex_b)
   annex_b->iobufferread = annex_b->iobuffer;
   return readbytes;
 }
-
-/*!
-************************************************************************
-* \brief
-*    returns a byte from IO buffer
-************************************************************************
-*/
+/*}}}*/
+/*{{{*/
 static inline byte getfbyte(ANNEXB_t *annex_b)
 {
   if (0 == annex_b->bytesinbuffer)
@@ -88,23 +66,8 @@ static inline byte getfbyte(ANNEXB_t *annex_b)
   annex_b->bytesinbuffer--;
   return (*annex_b->iobufferread++);
 }
-
-/*!
- ************************************************************************
- * \brief
- *    returns if new start code is found at byte aligned position buf.
- *    new-startcode is of form N 0x00 bytes, followed by a 0x01 byte.
- *
- *  \return
- *     1 if start-code is found or                      \n
- *     0, indicating that there is no start code
- *
- *  \param Buf
- *     pointer to byte-stream
- *  \param zeros_in_startcode
- *     indicates number of 0x00 bytes in start-code.
- ************************************************************************
- */
+/*}}}*/
+/*{{{*/
 static inline int FindStartCode (unsigned char *Buf, int zeros_in_startcode)
 {
   int i;
@@ -122,8 +85,8 @@ static inline int FindStartCode (unsigned char *Buf, int zeros_in_startcode)
 
   return 1;
 }
-
-
+/*}}}*/
+/*{{{*/
 /*!
  ************************************************************************
  * \brief
@@ -181,7 +144,7 @@ int get_annex_b_NALU (VideoParameters *p_Vid, NALU_t *nalu, ANNEXB_t *annex_b)
       printf( "get_annex_b_NALU can't read start code\n");
       return -1;
     }
-  }  
+  }
 
   if(*(pBuf - 1) != 1 || pos < 3)
   {
@@ -238,7 +201,7 @@ int get_annex_b_NALU (VideoParameters *p_Vid, NALU_t *nalu, ANNEXB_t *annex_b)
     }
 
     pos++;
-    *(pBuf ++)  = getfbyte(annex_b);    
+    *(pBuf ++)  = getfbyte(annex_b);
     info3 = FindStartCode(pBuf - 4, 3);
     if(info3 != 1)
     {
@@ -281,7 +244,7 @@ int get_annex_b_NALU (VideoParameters *p_Vid, NALU_t *nalu, ANNEXB_t *annex_b)
   nalu->nal_unit_type     = (NaluType) ((*(nalu->buf)) & 0x1f);
   nalu->lost_packets = 0;
 
-  
+
   //printf ("get_annex_b_NALU, regular case: pos %d nalu->len %d, nalu->reference_idc %d, nal_unit_type %d \n", pos, nalu->len, nalu->nal_reference_idc, nalu->nal_unit_type);
 #if TRACE
   fprintf (p_Dec->p_trace, "\n\nAnnex B NALU w/ %s startcode, len %d, forbidden_bit %d, nal_reference_idc %d, nal_unit_type %d\n\n",
@@ -292,17 +255,9 @@ int get_annex_b_NALU (VideoParameters *p_Vid, NALU_t *nalu, ANNEXB_t *annex_b)
   return (pos);
 
 }
+/*}}}*/
 
-
-
-/*!
- ************************************************************************
- * \brief
- *    Opens the bit stream file named fn
- * \return
- *    none
- ************************************************************************
- */
+/*{{{*/
 void open_annex_b (char *fn, ANNEXB_t *annex_b)
 {
   if (NULL != annex_b->iobuffer)
@@ -324,14 +279,8 @@ void open_annex_b (char *fn, ANNEXB_t *annex_b)
   annex_b->is_eof = FALSE;
   getChunk(annex_b);
 }
-
-
-/*!
- ************************************************************************
- * \brief
- *    Closes the bit stream file
- ************************************************************************
- */
+/*}}}*/
+/*{{{*/
 void close_annex_b(ANNEXB_t *annex_b)
 {
   if (annex_b->BitStreamFile != -1)
@@ -342,11 +291,12 @@ void close_annex_b(ANNEXB_t *annex_b)
   free (annex_b->iobuffer);
   annex_b->iobuffer = NULL;
 }
-
-
+/*}}}*/
+/*{{{*/
 void reset_annex_b(ANNEXB_t *annex_b)
 {
   annex_b->is_eof = FALSE;
   annex_b->bytesinbuffer = 0;
   annex_b->iobufferread = annex_b->iobuffer;
 }
+/*}}}*/

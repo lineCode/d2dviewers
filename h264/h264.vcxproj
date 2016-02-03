@@ -236,12 +236,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mbuffer_mvc.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\mb_access.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -418,7 +412,6 @@
     <ClInclude Include="..\ldecod\inc\macroblock.h" />
     <ClInclude Include="..\ldecod\inc\mbuffer.h" />
     <ClInclude Include="..\ldecod\inc\mbuffer_common.h" />
-    <ClInclude Include="..\ldecod\inc\mbuffer_mvc.h" />
     <ClInclude Include="..\ldecod\inc\mb_access.h" />
     <ClInclude Include="..\ldecod\inc\mb_prediction.h" />
     <ClInclude Include="..\ldecod\inc\mc_prediction.h" />
