@@ -1,23 +1,5 @@
-/*!
- ************************************************************************
- *  \file
- *     types.h
- *
- *  \brief
- *     type definitions.
- *
- *  \author
- *    Main contributors (see contributors.h for copyright, address and affiliation details)
- *
- ************************************************************************
- */
 #ifndef _TYPES_H_
 #define _TYPES_H_
-
-/***********************************************************************
- * T y p e    d e f i n i t i o n s    f o r    T M L
- ***********************************************************************
- */
 
 typedef enum
 {
@@ -181,7 +163,7 @@ typedef enum
 
 typedef enum {
   SSE              = 0,
-  SSE_RGB          = 1,  
+  SSE_RGB          = 1,
   PSNR             = 2,
   PSNR_RGB         = 3,
   SSIM             = 4,

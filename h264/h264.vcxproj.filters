@@ -19,9 +19,6 @@
     <ClCompile Include="..\ldecod\src\dec_statistics.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\decoder_test.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\erc_api.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -80,9 +77,6 @@
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\ldecod.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ldecod\src\leaky_bucket.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\loop_filter_mbaff.c">
@@ -189,9 +183,6 @@
     <ClInclude Include="..\ldecod\inc\dec_statistics.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
-    <ClInclude Include="..\ldecod\inc\decoder_test.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\ldecod\inc\defines.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
@@ -256,9 +247,6 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\lagrangian.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\leaky_bucket.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\loop_filter.h">

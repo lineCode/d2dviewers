@@ -41,7 +41,6 @@
 #include "mv_prediction.h"
 #include "mb_prediction.h"
 #include "fast_memory.h"
-#include "filehandle.h"
 
 extern void set_read_comp_coeff_cabac     (Macroblock *currMB);
 extern void set_read_comp_coeff_cavlc     (Macroblock *currMB);

@@ -836,9 +836,6 @@ typedef struct video_par
   int *MapUnitToSliceGroupMap;
   int  NumberOfSliceGroups;    // the number of slice groups -1 (0 == scan order, 7 == maximum)
 
-#if (ENABLE_OUTPUT_TONEMAPPING)
-  struct tone_mapping_struct_s *seiToneMapping;
-#endif
 
   void (*buf2img)          (imgpel** imgX, unsigned char* buf, int size_x, int size_y, int o_size_x, int o_size_y, int symbol_size_in_bytes, int bitshift);
   void (*getNeighbour)     (Macroblock *currMB, int xN, int yN, int mb_size[2], PixelPos *pix);
@@ -960,12 +957,6 @@ typedef struct inp_par
   int  DecodeAllLayers;
 #endif
 
-#ifdef _LEAKYBUCKET_
-  unsigned long R_decoder;                //!< Decoder Rate in HRD Model
-  unsigned long B_decoder;                //!< Decoder Buffer size in HRD model
-  unsigned long F_decoder;                //!< Decoder Initial buffer fullness in HRD model
-  char LeakyBucketParamFile[FILE_NAME_SIZE];         //!< LeakyBucketParamFile
-#endif
 
   // picture error concealment
   int conceal_mode;

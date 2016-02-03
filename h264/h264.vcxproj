@@ -56,12 +56,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\decoder_test.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\ldecod\src\dec_statistics.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -183,12 +177,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\ldecod.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\ldecod\src\leaky_bucket.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
@@ -374,7 +362,6 @@
     <ClInclude Include="..\ldecod\inc\cabac.h" />
     <ClInclude Include="..\ldecod\inc\context_ini.h" />
     <ClInclude Include="..\ldecod\inc\ctx_tables.h" />
-    <ClInclude Include="..\ldecod\inc\decoder_test.h" />
     <ClInclude Include="..\ldecod\inc\dec_statistics.h" />
     <ClInclude Include="..\ldecod\inc\defines.h" />
     <ClInclude Include="..\ldecod\inc\distortion.h" />
@@ -398,7 +385,6 @@
     <ClInclude Include="..\ldecod\inc\io_image.h" />
     <ClInclude Include="..\ldecod\inc\io_video.h" />
     <ClInclude Include="..\ldecod\inc\lagrangian.h" />
-    <ClInclude Include="..\ldecod\inc\leaky_bucket.h" />
     <ClInclude Include="..\ldecod\inc\loopfilter.h" />
     <ClInclude Include="..\ldecod\inc\loop_filter.h" />
     <ClInclude Include="..\ldecod\inc\macroblock.h" />

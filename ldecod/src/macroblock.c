@@ -41,7 +41,6 @@
 #include "mv_prediction.h"
 #include "mb_prediction.h"
 #include "fast_memory.h"
-#include "filehandle.h"
 
 //! look up tables for FRExt_chroma support
 void dectracebitcnt(int count);

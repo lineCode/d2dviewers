@@ -50,18 +50,6 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
   if (p->non_existing)
     return;
 
-#if (ENABLE_OUTPUT_TONEMAPPING)
-  /*{{{  note: this tone-mapping is working for RGB format only. Sharp*/
-  if (p->seiHasTone_mapping && rgb_output)
-  {
-    //printf("output frame %d with tone model id %d\n",  p->frame_num, p->tone_mapping_model_id);
-    symbol_size_in_bytes = (p->tonemapped_bit_depth>8)? 2 : 1;
-    tone_map(p->imgY, p->tone_mapping_lut, p->size_x, p->size_y);
-    tone_map(p->imgUV[0], p->tone_mapping_lut, p->size_x_cr, p->size_y_cr);
-    tone_map(p->imgUV[1], p->tone_mapping_lut, p->size_x_cr, p->size_y_cr);
-  }
-  /*}}}*/
-#endif
 
   // should this be done only once?
   if (p->frame_cropping_flag) {

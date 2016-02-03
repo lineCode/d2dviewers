@@ -7,12 +7,47 @@
 #include "../common/winAudio.h"
 #pragma comment(lib,"libfaad.lib")
 //}}}
-#include "decoder_test.h"
 
-//  YUV400     =  0,     //!< Monochrome
-//  YUV420     =  1,     //!< 4:2:0
-//  YUV422     =  2,     //!< 4:2:2
-//  YUV444     =  3      //!< 4:4:4
+ //{{{  enum DecErrCode
+ typedef enum
+ {
+   DEC_GEN_NOERR = 0,
+   DEC_OPEN_NOERR = 0,
+   DEC_CLOSE_NOERR = 0,
+   DEC_SUCCEED = 0,
+   DEC_EOS =1,
+   DEC_NEED_DATA = 2,
+   DEC_INVALID_PARAM = 3,
+   DEC_ERRMASK = 0x8000
+ //  DEC_ERRMASK = 0x80000000
+ }DecErrCode;
+ //}}}
+//{{{
+typedef struct Decodedpic_t {
+  int bValid;                 //0: invalid, 1: valid, 3: valid for 3D output;
+  int iViewId;                //-1: single view, >=0 multiview[VIEW1|VIEW0];
+  int iPOC;
+  int iYUVFormat;             //0: 4:0:0, 1: 4:2:0, 2: 4:2:2, 3: 4:4:4
+  int iYUVStorageFormat;      //0: YUV seperate; 1: YUV interleaved; 2: 3D output;
+  int iBitDepth;
+  byte *pY;                   //if iPictureFormat is 1, [0]: top; [1] bottom;
+  byte *pU;
+  byte *pV;
+  int iWidth;                 //frame width;
+  int iHeight;                //frame height;
+  int iYBufStride;            //stride of pY[0/1] buffer in bytes;
+  int iUVBufStride;           //stride of pU[0/1] and pV[0/1] buffer in bytes;
+  int iSkipPicNum;
+  int iBufSize;
+  struct Decodedpic_t *pNext;
+  } DecodedPicList;
+//}}}
+extern "C" {
+  int OpenDecoder (char* filename);
+  int DecodeOneFrame (DecodedPicList** ppDecPic);
+  int FinitDecoder (DecodedPicList** ppDecPicList);
+  int CloseDecoder();
+  }
 
 #define maxFrame 300
 static char filename[100];
@@ -186,28 +221,33 @@ private:
   //{{{
   void player() {
 
-    openDecode (filename);
+    OpenDecoder (filename);
 
     for (int frame = 0; frame < maxFrame; frame++) {
-      extDecodedPicList* pic = (extDecodedPicList*)decodeFrame();
+      int iRet;
+      do {
+        iRet = DecodeOneFrame (&pDecPicList);
+        } while (!(iRet == DEC_EOS || iRet == DEC_SUCCEED));
 
-      int iWidth = pic->iWidth*((pic->iBitDepth+7)>>3);
-      int iHeight = pic->iHeight;
-      int iStride = pic->iYBufStride;
+      int iWidth = pDecPicList->iWidth*((pDecPicList->iBitDepth+7)>>3);
+      int iHeight = pDecPicList->iHeight;
+      int iStride = pDecPicList->iYBufStride;
 
           //printf ("frame %d %d- %d %d %d\n", frame, pic->iYUVFormat, iWidth, iHeight, iStride);
       if (iWidth && iHeight) {
-        makeVidFrame (frame, pic->pY, pic->pU, pic->pV, iWidth, iHeight);
+        makeVidFrame (frame, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight);
         changed();
         }
       }
-    closeDecode();
+    FinitDecoder (&pDecPicList);
+    CloseDecoder();
     }
   //}}}
 
   int mCurVidFrame;
   ID2D1Bitmap* mD2D1Bitmap;
   IWICBitmap* vidFrames[maxFrame];
+  DecodedPicList* pDecPicList;
   };
 
 //{{{

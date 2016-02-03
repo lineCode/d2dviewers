@@ -386,26 +386,6 @@ static void init_picture(VideoParameters *p_Vid, Slice *currSlice, InputParamete
     dec_picture->frame_crop_bottom_offset = active_sps->frame_crop_bottom_offset;
   }
 
-#if (ENABLE_OUTPUT_TONEMAPPING)
-  // store the necessary tone mapping sei into StorablePicture structure
-  if (p_Vid->seiToneMapping->seiHasTone_mapping)
-  {
-    int coded_data_bit_max = (1 << p_Vid->seiToneMapping->coded_data_bit_depth);
-    dec_picture->seiHasTone_mapping    = 1;
-    dec_picture->tone_mapping_model_id = p_Vid->seiToneMapping->model_id;
-    dec_picture->tonemapped_bit_depth  = p_Vid->seiToneMapping->sei_bit_depth;
-    dec_picture->tone_mapping_lut      = malloc(coded_data_bit_max * sizeof(int));
-    if (NULL == dec_picture->tone_mapping_lut)
-    {
-      no_mem_exit("init_picture: tone_mapping_lut");
-    }
-    memcpy(dec_picture->tone_mapping_lut, p_Vid->seiToneMapping->lut, sizeof(imgpel) * coded_data_bit_max);
-    update_tone_mapping_sei(p_Vid->seiToneMapping);
-  }
-  else
-    dec_picture->seiHasTone_mapping = 0;
-#endif
-
   if( (p_Vid->separate_colour_plane_flag != 0) )
   {
     p_Vid->dec_picture_JV[0] = p_Vid->dec_picture;
@@ -2340,24 +2320,6 @@ void copy_dec_picture_JV (VideoParameters *p_Vid, StorablePicture *dst, Storable
   dst->frame_crop_top_offset    = src->frame_crop_top_offset;
   dst->frame_crop_bottom_offset = src->frame_crop_bottom_offset;
 
-#if (ENABLE_OUTPUT_TONEMAPPING)
-  // store the necessary tone mapping sei into StorablePicture structure
-  dst->seiHasTone_mapping = src->seiHasTone_mapping;
-
-  dst->seiHasTone_mapping    = src->seiHasTone_mapping;
-  dst->tone_mapping_model_id = src->tone_mapping_model_id;
-  dst->tonemapped_bit_depth  = src->tonemapped_bit_depth;
-  if( src->tone_mapping_lut )
-  {
-    int coded_data_bit_max = (1 << p_Vid->seiToneMapping->coded_data_bit_depth);
-    dst->tone_mapping_lut      = malloc(sizeof(int) * coded_data_bit_max);
-    if (NULL == dst->tone_mapping_lut)
-    {
-      no_mem_exit("copy_dec_picture_JV: tone_mapping_lut");
-    }
-    memcpy(dst->tone_mapping_lut, src->tone_mapping_lut, sizeof(imgpel) * coded_data_bit_max);
-  }
-#endif
 }
 /*}}}*/
 /*{{{*/
