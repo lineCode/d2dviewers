@@ -50,7 +50,6 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
   if (p->non_existing)
     return;
 
-
   // should this be done only once?
   if (p->frame_cropping_flag) {
     /*{{{*/
@@ -63,7 +62,7 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
   else
     crop_left = crop_right = crop_top = crop_bottom = 0;
 
-  iChromaSizeX =  p->size_x_cr- p->frame_crop_left_offset -p->frame_crop_right_offset;
+  iChromaSizeX = p->size_x_cr- p->frame_crop_left_offset -p->frame_crop_right_offset;
   iChromaSizeY = p->size_y_cr - ( 2 - p->frame_mbs_only_flag ) * p->frame_crop_top_offset -( 2 - p->frame_mbs_only_flag ) * p->frame_crop_bottom_offset;
   iLumaSizeX = p->size_x - crop_left-crop_right;
   iLumaSizeY = p->size_y - crop_top - crop_bottom;
@@ -75,6 +74,7 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
   pDecPic = get_one_avail_dec_pic_from_list (p_Vid->pDecOuputPic, 0, 0);
   if( (pDecPic->pY == NULL) || (pDecPic->iBufSize < iFrameSize) )
     allocate_p_dec_pic(p_Vid, pDecPic, p, iLumaSize, iFrameSize, iLumaSizeX, iLumaSizeY, iChromaSizeX, iChromaSizeY);
+
 #if (MVC_EXTENSION_ENABLE)
   /*{{{*/
   {
@@ -88,7 +88,7 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
 
   pDecPic->iPOC = p->frame_poc;
 
-  if (NULL==pDecPic->pY)
+  if (NULL == pDecPic->pY)
     no_mem_exit("write_out_picture: buf");
 
   if (rgb_output) {
@@ -101,17 +101,15 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
 
     p_Vid->img2buf (p->imgUV[1], buf, p->size_x_cr, p->size_y_cr, symbol_size_in_bytes, crop_left, crop_right, crop_top, crop_bottom, pDecPic->iYBufStride);
 
-    if (p->frame_cropping_flag)
-    {
+    if (p->frame_cropping_flag) {
       crop_left   = SubWidthC[p->chroma_format_idc] * p->frame_crop_left_offset;
       crop_right  = SubWidthC[p->chroma_format_idc] * p->frame_crop_right_offset;
       crop_top    = SubHeightC[p->chroma_format_idc]*( 2 - p->frame_mbs_only_flag ) * p->frame_crop_top_offset;
       crop_bottom = SubHeightC[p->chroma_format_idc]*( 2 - p->frame_mbs_only_flag ) * p->frame_crop_bottom_offset;
-    }
+      }
     else
-    {
       crop_left = crop_right = crop_top = crop_bottom = 0;
-    }
+
     if(buf)
       free(buf);
     }
@@ -144,17 +142,19 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
 
       get_mem3Dpel (&(p->imgUV), 1, p->size_y/2, p->size_x/2);
 
-      for (j=0; j<p->size_y/2; j++)
-        for (i=0; i<p->size_x/2; i++)
-          p->imgUV[0][j][i]=cr_val;
+      for (j = 0; j < p->size_y/2; j++)
+        for (i = 0; i < p->size_x/2; i++)
+          p->imgUV[0][j][i] = cr_val;
 
       // fake out U=V=128 to make a YUV 4:2:0 stream
-      buf = malloc (p->size_x*p->size_y*symbol_size_in_bytes);
-      p_Vid->img2buf (p->imgUV[0], buf, p->size_x/2, p->size_y/2, symbol_size_in_bytes, crop_left/2, crop_right/2, crop_top/2, crop_bottom/2, pDecPic->iYBufStride/2);
+      buf = malloc (p->size_x * p->size_y * symbol_size_in_bytes);
+      p_Vid->img2buf (p->imgUV[0], buf, p->size_x/2, p->size_y/2, symbol_size_in_bytes,
+                      crop_left/2, crop_right/2, crop_top/2, crop_bottom/2, pDecPic->iYBufStride/2);
 
-      free(buf);
-      free_mem3Dpel(p->imgUV);
-      p->imgUV=NULL;
+      free (buf);
+      free_mem3Dpel (p->imgUV);
+
+      p->imgUV = NULL;
       }
       /*}}}*/
     }
@@ -583,8 +583,6 @@ void direct_output (VideoParameters *p_Vid, StorablePicture *p, int p_out)
     flush_direct_output(p_Vid, p_out);
     write_picture (p_Vid, p, p_out, FRAME);
     calculate_frame_no(p_Vid, p);
-    if (-1 != p_Vid->p_ref && !p_Inp->silent)
-      find_snr(p_Vid, p, &p_Vid->p_ref);
     free_storable_picture(p);
     return;
     }
@@ -617,8 +615,6 @@ void direct_output (VideoParameters *p_Vid, StorablePicture *p, int p_out)
     write_picture (p_Vid, p_Vid->out_buffer->frame, p_out, FRAME);
 
     calculate_frame_no(p_Vid, p);
-    if (-1 != p_Vid->p_ref && !p_Inp->silent)
-      find_snr(p_Vid, p_Vid->out_buffer->frame, &p_Vid->p_ref);
     free_storable_picture(p_Vid->out_buffer->frame);
     p_Vid->out_buffer->frame = NULL;
     free_storable_picture(p_Vid->out_buffer->top_field);

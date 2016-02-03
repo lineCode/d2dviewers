@@ -537,12 +537,7 @@ int init_global_buffers (VideoParameters* p_Vid, int layer_id)
   if (p_Vid->global_init_done[layer_id])
     free_layer_buffers(p_Vid, layer_id);
 
-  // allocate memory for reference frame in find_snr
-  memory_size += get_mem2Dpel(&cps->imgY_ref, cps->height, cps->width);
-  if (cps->yuv_format != YUV400)
-    memory_size += get_mem3Dpel(&cps->imgUV_ref, 2, cps->height_cr, cps->width_cr);
-  else
-    cps->imgUV_ref = NULL;
+  cps->imgUV_ref = NULL;
 
   // allocate memory in structure p_Vid
   if( (cps->separate_colour_plane_flag != 0) )
