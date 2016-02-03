@@ -159,7 +159,11 @@ private:
     else if (bitrate == 24000)
       return path + "-pa1=24000";
     else // default
-      return path + "-pa3=96000";
+      //return path + "-pa3=96000";
+      return path + "-pa3=96000-video%3d688000";
+      //return path + "-pa3=96000-video%3d827000";
+      //return path + "-pa3=96000-video%3d5070000";
+      //return path + "-pa3=96000-video%3d1604000";
     }
   //}}}
   //{{{

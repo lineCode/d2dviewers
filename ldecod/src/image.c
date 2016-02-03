@@ -30,7 +30,6 @@
 #include "errorconcealment.h"
 #include "erc_api.h"
 #include "mbuffer_common.h"
-#include "mbuffer_mvc.h"
 #include "fast_memory.h"
 
 #include "mc_prediction.h"

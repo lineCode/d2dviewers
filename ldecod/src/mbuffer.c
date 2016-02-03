@@ -29,7 +29,6 @@
 #include "mbuffer_common.h"
 #include "memalloc.h"
 #include "output.h"
-#include "mbuffer_mvc.h"
 #include "fast_memory.h"
 
 static void insert_picture_in_dpb    (VideoParameters *p_Vid, FrameStore* fs, StorablePicture* p);
