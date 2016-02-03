@@ -4,34 +4,22 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="h264.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\lcommon\src\blk_prediction.c">
+    <ClCompile Include="..\ldecod\src\blk_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lcommon\src\mbuffer_common.c">
+    <ClCompile Include="..\ldecod\src\block.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\lcommon\src\memalloc.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\mv_prediction.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\nalucommon.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\parsetcommon.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\transform.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\lcommon\src\win32.c">
+    <ClCompile Include="..\ldecod\src\cabac.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\context_ini.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\dec_statistics.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ldecod\src\decoder_test.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\erc_api.c">
@@ -124,6 +112,9 @@
     <ClCompile Include="..\ldecod\src\mbuffer.c">
       <Filter>h264lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\ldecod\src\mbuffer_common.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
     <ClCompile Include="..\ldecod\src\mbuffer_mvc.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -133,16 +124,28 @@
     <ClCompile Include="..\ldecod\src\mc_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\ldecod\src\memalloc.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ldecod\src\mv_prediction.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
     <ClCompile Include="..\ldecod\src\nal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\nalu.c">
       <Filter>h264lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\ldecod\src\nalucommon.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
     <ClCompile Include="..\ldecod\src\output.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\parset.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ldecod\src\parsetcommon.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\quant.c">
@@ -157,10 +160,16 @@
     <ClCompile Include="..\ldecod\src\sei.c">
       <Filter>h264lib</Filter>
     </ClCompile>
+    <ClCompile Include="..\ldecod\src\transform.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
     <ClCompile Include="..\ldecod\src\transform8x8.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\vlc.c">
+      <Filter>h264lib</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ldecod\src\win32.c">
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="..\ldecod\src\annexb.c">
@@ -169,13 +178,6 @@
     <ClCompile Include="..\ldecod\src\biaridecod.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\block.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ldecod\src\cabac.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\ldecod\src\decoder_test.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -187,94 +189,28 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\lcommon\inc\input.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\io_video.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\lagrangian.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\mb_access.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\mbuffer_common.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\memalloc.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\mv_prediction.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\nalucommon.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\parsetcommon.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\quant_params.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\report.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\resize.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\transform.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\typedefs.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\types.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\vui_params.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\win32.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\blk_prediction.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\config_common.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\ctx_tables.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\distortion.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\enc_statistics.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\fast_memory.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\frame.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\lcommon\inc\ifunctions.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\context_ini.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\ldecod\inc\contributors.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\ctx_tables.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\dec_statistics.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\decoder_test.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\defines.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\distortion.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\elements.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\enc_statistics.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\erc_api.h">
@@ -289,10 +225,16 @@
     <ClInclude Include="..\ldecod\inc\errorconcealment.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\fast_memory.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\filehandle.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\fmo.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\frame.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\global.h">
@@ -302,6 +244,9 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\header.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\ifunctions.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\image.h">
@@ -316,6 +261,15 @@
     <ClInclude Include="..\ldecod\inc\intra16x16_pred.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\io_image.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\io_video.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\lagrangian.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\leaky_bucket.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
@@ -328,10 +282,16 @@
     <ClInclude Include="..\ldecod\inc\macroblock.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\mb_access.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\mb_prediction.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\mbuffer.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\mbuffer_common.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\mbuffer_mvc.h">
@@ -340,7 +300,16 @@
     <ClInclude Include="..\ldecod\inc\mc_prediction.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\memalloc.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\mv_prediction.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\nalu.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\nalucommon.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\output.h">
@@ -349,19 +318,40 @@
     <ClInclude Include="..\ldecod\inc\parset.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\parsetcommon.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\quant.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
-    <ClInclude Include="..\ldecod\inc\rtp.h">
+    <ClInclude Include="..\ldecod\inc\quant_params.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\report.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\sei.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\transform.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\transform8x8.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\typedefs.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\types.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\vlc.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\vui_params.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\win32.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\annexb.h">
@@ -370,17 +360,17 @@
     <ClInclude Include="..\ldecod\inc\biaridecod.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\ldecod\inc\blk_prediction.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
     <ClInclude Include="..\ldecod\inc\block.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\cabac.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
-    <ClInclude Include="..\ldecod\inc\configfile.h">
+    <ClInclude Include="..\ldecod\inc\context_ini.h">
       <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\decoder_test.h">
-      <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
