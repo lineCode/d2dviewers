@@ -55,7 +55,7 @@ int read_next_nalu(VideoParameters *p_Vid, NALU_t *nalu)
 
   if (ret < 0)
   {
-    snprintf (errortext, ET_SIZE, "Error while getting the NALU in file format %s, exit\n", p_Inp->FileFormat==PAR_OF_ANNEXB?"Annex B":"RTP");
+    snprintf (errortext, ET_SIZE, "Error while getting the NALU in file format %s, exit\n", "Annex B");
     error (errortext, 601);
   }
   if (ret == 0)

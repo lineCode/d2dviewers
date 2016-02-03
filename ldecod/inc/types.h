@@ -48,13 +48,6 @@ typedef enum
 } PAR_DP_TYPE;
 
 
-//! Output File Types
-typedef enum
-{
-  PAR_OF_ANNEXB,    //!< Annex B byte stream format
-  PAR_OF_RTP       //!< RTP packets in outfile
-} PAR_OF_TYPE;
-
 //! Field Coding Types
 typedef enum
 {

@@ -4,166 +4,166 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="h264.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\ldecod\src\blk_prediction.c">
+    <ClCompile Include="..\ldecod\header.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\block.c">
+    <ClCompile Include="..\ldecod\image.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\cabac.c">
+    <ClCompile Include="..\ldecod\intra_chroma_pred.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\context_ini.c">
+    <ClCompile Include="..\ldecod\intra_chroma_pred_mbaff.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\dec_statistics.c">
+    <ClCompile Include="..\ldecod\intra_pred_common.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\erc_api.c">
+    <ClCompile Include="..\ldecod\intra4x4_pred.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\erc_do_i.c">
+    <ClCompile Include="..\ldecod\intra4x4_pred_mbaff.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\erc_do_p.c">
+    <ClCompile Include="..\ldecod\intra4x4_pred_normal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\errorconcealment.c">
+    <ClCompile Include="..\ldecod\intra8x8_pred.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\fmo.c">
+    <ClCompile Include="..\ldecod\intra8x8_pred_mbaff.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\header.c">
+    <ClCompile Include="..\ldecod\intra8x8_pred_normal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\image.c">
+    <ClCompile Include="..\ldecod\intra16x16_pred.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra_chroma_pred.c">
+    <ClCompile Include="..\ldecod\intra16x16_pred_mbaff.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra_chroma_pred_mbaff.c">
+    <ClCompile Include="..\ldecod\intra16x16_pred_normal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra_pred_common.c">
+    <ClCompile Include="..\ldecod\ldecod.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra4x4_pred.c">
+    <ClCompile Include="..\ldecod\loop_filter_mbaff.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra4x4_pred_mbaff.c">
+    <ClCompile Include="..\ldecod\loop_filter_normal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra4x4_pred_normal.c">
+    <ClCompile Include="..\ldecod\loopFilter.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra8x8_pred.c">
+    <ClCompile Include="..\ldecod\macroblock.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra8x8_pred_mbaff.c">
+    <ClCompile Include="..\ldecod\mb_access.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra8x8_pred_normal.c">
+    <ClCompile Include="..\ldecod\mb_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra16x16_pred.c">
+    <ClCompile Include="..\ldecod\mb_read.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra16x16_pred_mbaff.c">
+    <ClCompile Include="..\ldecod\mbuffer.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\intra16x16_pred_normal.c">
+    <ClCompile Include="..\ldecod\mbuffer_common.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\ldecod.c">
+    <ClCompile Include="..\ldecod\mc_direct.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\loop_filter_mbaff.c">
+    <ClCompile Include="..\ldecod\mc_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\loop_filter_normal.c">
+    <ClCompile Include="..\ldecod\memalloc.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\loopFilter.c">
+    <ClCompile Include="..\ldecod\mv_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\macroblock.c">
+    <ClCompile Include="..\ldecod\nal.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mb_access.c">
+    <ClCompile Include="..\ldecod\nalu.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mb_prediction.c">
+    <ClCompile Include="..\ldecod\nalucommon.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mb_read.c">
+    <ClCompile Include="..\ldecod\output.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mbuffer.c">
+    <ClCompile Include="..\ldecod\parset.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mbuffer_common.c">
+    <ClCompile Include="..\ldecod\parsetcommon.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mc_direct.c">
+    <ClCompile Include="..\ldecod\quant.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mc_prediction.c">
+    <ClCompile Include="..\ldecod\read_comp_cabac.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\memalloc.c">
+    <ClCompile Include="..\ldecod\read_comp_cavlc.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\mv_prediction.c">
+    <ClCompile Include="..\ldecod\sei.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\nal.c">
+    <ClCompile Include="..\ldecod\transform.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\nalu.c">
+    <ClCompile Include="..\ldecod\transform8x8.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\nalucommon.c">
+    <ClCompile Include="..\ldecod\vlc.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\output.c">
+    <ClCompile Include="..\ldecod\win32.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\parset.c">
+    <ClCompile Include="..\ldecod\annexb.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\parsetcommon.c">
+    <ClCompile Include="..\ldecod\biaridecod.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\quant.c">
+    <ClCompile Include="..\ldecod\blk_prediction.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\read_comp_cabac.c">
+    <ClCompile Include="..\ldecod\block.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\read_comp_cavlc.c">
+    <ClCompile Include="..\ldecod\cabac.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\sei.c">
+    <ClCompile Include="..\ldecod\context_ini.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\transform.c">
+    <ClCompile Include="..\ldecod\dec_statistics.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\transform8x8.c">
+    <ClCompile Include="..\ldecod\erc_api.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\vlc.c">
+    <ClCompile Include="..\ldecod\erc_do_i.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\win32.c">
+    <ClCompile Include="..\ldecod\erc_do_p.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\annexb.c">
+    <ClCompile Include="..\ldecod\errorconcealment.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\src\biaridecod.c">
+    <ClCompile Include="..\ldecod\fmo.c">
       <Filter>h264lib</Filter>
     </ClCompile>
   </ItemGroup>
@@ -343,6 +343,9 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\context_ini.h">
+      <Filter>h264lib\header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ldecod\inc\ldecod.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
   </ItemGroup>

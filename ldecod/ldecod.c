@@ -323,8 +323,7 @@ static void free_img (VideoParameters *p_Vid)
   int i;
   if (p_Vid != NULL)
   {
-    if ( p_Vid->p_Inp->FileFormat == PAR_OF_ANNEXB )
-      free_annex_b (&p_Vid->annex_b);
+    free_annex_b (&p_Vid->annex_b);
 
 #if (ENABLE_OUTPUT_TONEMAPPING)
     if (p_Vid->seiToneMapping != NULL)
@@ -875,8 +874,7 @@ int FinitDecoder (DecodedPicList** ppDecPicList) {
   flush_pending_output (p_Dec->p_Vid, p_Dec->p_Vid->p_out);
 #endif
 
-  if (p_Dec->p_Inp->FileFormat == PAR_OF_ANNEXB)
-    reset_annex_b (p_Dec->p_Vid->annex_b);
+  reset_annex_b (p_Dec->p_Vid->annex_b);
 
   p_Dec->p_Vid->newframe = 0;
   p_Dec->p_Vid->previous_frame_num = 0;
@@ -942,35 +940,6 @@ void OpenOutputFiles (VideoParameters* p_Vid, int view0_id, int view1_id) {
 
   InputParameters *p_Inp = p_Vid->p_Inp;
   char out_ViewFileName[2][FILE_NAME_SIZE], chBuf[FILE_NAME_SIZE], *pch;
-  if ((strcasecmp(p_Inp->outfile, "\"\"")!=0) && (strlen(p_Inp->outfile)>0)) {
-    strcpy(chBuf, p_Inp->outfile);
-    pch = strrchr(chBuf, '.');
-    if(pch)
-      *pch = '\0';
-    if (strcmp("nul", chBuf)) {
-      sprintf(out_ViewFileName[0], "%s_ViewId%04d.yuv", chBuf, view0_id);
-      sprintf(out_ViewFileName[1], "%s_ViewId%04d.yuv", chBuf, view1_id);
-      if(p_Vid->p_out_mvc[0] >= 0) {
-        close(p_Vid->p_out_mvc[0]);
-        p_Vid->p_out_mvc[0] = -1;
-      }
-      if ((p_Vid->p_out_mvc[0]=open(out_ViewFileName[0], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1) {
-        snprintf(errortext, ET_SIZE, "Error open file %s ", out_ViewFileName[0]);
-        fprintf(stderr, "%s\n", errortext);
-        exit(500);
-      }
-
-      if(p_Vid->p_out_mvc[1] >= 0) {
-        close(p_Vid->p_out_mvc[1]);
-        p_Vid->p_out_mvc[1] = -1;
-      }
-      if ((p_Vid->p_out_mvc[1]=open(out_ViewFileName[1], OPENFLAGS_WRITE, OPEN_PERMISSIONS))==-1) {
-        snprintf(errortext, ET_SIZE, "Error open file %s ", out_ViewFileName[1]);
-        fprintf(stderr, "%s\n", errortext);
-        exit(500);
-      }
-    }
-  }
 }
 /*}}}*/
 #endif
