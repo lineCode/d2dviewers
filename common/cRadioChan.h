@@ -7,7 +7,7 @@
 
 class cRadioChan {
 public:
-  cRadioChan() : mChan(0), mBaseSeqNum(0) {}
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(688000) {}
   ~cRadioChan() {}
 
   // gets
@@ -55,6 +55,11 @@ public:
   //{{{
   int getHighBitrate() {
     return kHighBitrate [mChan];
+    }
+  //}}}
+  //{{{
+  int getVidBitrate() {
+    return mVidBitrate;
     }
   //}}}
 
@@ -160,7 +165,7 @@ private:
       return path + "-pa1=24000";
     else // default
       //return path + "-pa3=96000";
-      return path + "-pa3=96000-video%3d688000";
+      return path + "-pa3=96000-video%3d" + toString (getVidBitrate());
       //return path + "-pa3=96000-video%3d827000";
       //return path + "-pa3=96000-video%3d5070000";
       //return path + "-pa3=96000-video%3d1604000";
@@ -175,6 +180,7 @@ private:
   // vars
   int mChan;
   int mBaseSeqNum;
+  int mVidBitrate;
   std::string mHost;
   std::string mDateTime;
   std::string mChanInfoStr;

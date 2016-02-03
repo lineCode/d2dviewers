@@ -133,7 +133,8 @@ public:
       printf ("vidPes:%d\n", pesVidIndex);
       if (pesVidIndex > 0) {
         char fileName[100];
-        sprintf (fileName, "C:\\Users\\colin\\Desktop\\test264\\%d.264", seqNum);
+        sprintf (fileName, "C:\\Users\\colin\\Desktop\\test264\\%s.%d.%d.264",
+                           radioChan->getChanName (radioChan->getChan()).c_str(), radioChan->getVidBitrate(), seqNum);
         FILE* vidFile = fopen (fileName, "wb");
         fwrite (pesVid, 1, pesVidIndex, vidFile);
         fclose (vidFile);
