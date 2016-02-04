@@ -259,7 +259,7 @@ private:
 
     seqNum = 0;
     chunk = 0;
-    frameInChunk = 0;
+    frameInChunk = -1;
     return false;
     }
   //}}}
@@ -284,7 +284,7 @@ private:
 
     seqNum = 0;
     chunk = 0;
-    frameInChunk = 0;
+    frameInChunk = -1;
     return false;
     }
   //}}}

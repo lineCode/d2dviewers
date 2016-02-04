@@ -179,6 +179,7 @@ public:
           uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
           *powerPtr++ = (272/2) - leftPix;
           *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
+
           mFramesLoaded++;
           }
           //}}}
@@ -366,7 +367,7 @@ private:
         // release vidFrame wicBitmap buffer
         wicBitmapLock->Release();
 
-        mVidFramesLoaded = frameIndex;
+        mVidFramesLoaded++;
         frameIndex++;
         }
         //}}}
