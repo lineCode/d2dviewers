@@ -82,26 +82,33 @@ public:
 
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mBitrate));
     if (response == 200) {
-      // extract video to file
-      std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                             '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
-      extractVideo (fileName, http->getContent(), http->getContentEnd());
+      auto vidPesPtr = (uint8_t*)malloc (http->getContentSize());
+      auto vidLen = pesFromTs (33, 0xE0, http->getContent(), http->getContentEnd(), vidPesPtr);
+      if (vidLen > 0) {
+        printf ("vidPes:%d\n", (int)vidLen);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
+        auto vidFile = fopen (fileName.c_str(), "wb");
+        fwrite (vidPesPtr, 1, vidLen, vidFile);
+        fclose (vidFile);
+        }
+      free (vidPesPtr);
 
       // pack audio down into same buffer
-      auto loadEnd = packTsBuffer (http->getContent(), http->getContentEnd());
+      auto audLen = pesFromTs (34, 0xC0, http->getContent(), http->getContentEnd(), http->getContent());
 
-      auto loadPtr = http->getContent();
       // init decoder
       unsigned long sampleRate;
       uint8_t chans;
-      NeAACDecInit (mDecoder, loadPtr, 2048, &sampleRate, &chans);
+      NeAACDecInit (mDecoder, http->getContent(), 2048, &sampleRate, &chans);
 
       NeAACDecFrameInfo frameInfo;
       int16_t* buffer = mAudio;
-      NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+      NeAACDecDecode2 (mDecoder, &frameInfo, http->getContent(), 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
 
       uint8_t* powerPtr = mPower;
-      while (loadPtr < loadEnd) {
+      auto loadPtr = http->getContent();
+      while (loadPtr < http->getContent() + audLen) {
         NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
         loadPtr += frameInfo.bytesconsumed;
         for (int i = 0; i < framesPerAacFrame; i++) {
@@ -144,80 +151,30 @@ public:
 
 private:
   //{{{
-  void extractVideo (std::string fileName, uint8_t* ptr, uint8_t* endPtr) {
-  // extract video pes
+  size_t pesFromTs (int selectedPid, int selectedPesCode, uint8_t* ptr, uint8_t* endPtr, uint8_t* toPtr) {
+  // extract selected pes from ts, sometimes into same buffer
 
-    int pesVidIndex = 0;
-    int lastVidPidContinuity = -1;
-    unsigned char* pesVid = (unsigned char*)malloc (2000000);
+    auto toEndPtr = toPtr;
 
-    while (ptr < endPtr) {
-      if (*ptr == 0x47) {
-        // tsFrame syncCode found, extract pes from tsFrames
-        bool payStart  =  (*(ptr+1) & 0x40) != 0;
-        int pid        = ((*(ptr+1) & 0x1F) << 8) | *(ptr+2);
-        int continuity =   *(ptr+3) & 0x0F;
-        bool payload   =  (*(ptr+3) & 0x10) != 0;
-        bool adapt     =  (*(ptr+3) & 0x20) != 0;
-        int tsFrameIndex = adapt ? (5 + *(ptr+4)) : 4;
-
-        if (pid == 33) {
-          if (payload && ((lastVidPidContinuity == -1) || (continuity == ((lastVidPidContinuity+1) & 0x0F)))) {
-            // look for video pes startCode
-            if (payStart && (*(ptr+tsFrameIndex) == 0) && (*(ptr+tsFrameIndex+1) == 0) &&
-                            (*(ptr+tsFrameIndex+2) == 1) && (*(ptr+tsFrameIndex+3) == 0xE0)) {
-              // PES start code found
-              int pesHeadLen = *(ptr+tsFrameIndex+8);
-              tsFrameIndex += 9 + pesHeadLen;
-              }
-            while (tsFrameIndex < 188)
-              pesVid[pesVidIndex++] = *(ptr+tsFrameIndex++);
-            }
-          else
-            printf ("- ts vidContinuity break last:%d this:%d\n", lastVidPidContinuity, continuity);
-          lastVidPidContinuity = continuity;
-          }
-        ptr += 188;
-        }
-      else
-        ptr++;
-      }
-
-    // save video pes to file
-    printf ("vidPes:%d\n", pesVidIndex);
-    if (pesVidIndex > 0) {
-      FILE* vidFile = fopen (fileName.c_str(), "wb");
-      fwrite (pesVid, 1, pesVidIndex, vidFile);
-      fclose (vidFile);
-      }
-
-    free (pesVid);
-    }
-  //}}}
-  //{{{
-  uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
-  // pack transportStream down to aac frames in same buffer
-
-    auto toPtr = ptr;
     while ((ptr < endPtr) && (*ptr++ == 0x47)) {
       auto payStart = *ptr & 0x40;
       auto pid = ((*ptr & 0x1F) << 8) | *(ptr+1);
       auto headerBytes = (*(ptr+2) & 0x20) ? (4 + *(ptr+3)) : 3;
       ptr += headerBytes;
       auto tsFrameBytesLeft = 187 - headerBytes;
-      if (pid == 34) {
-        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == 0xC0)) {
+      if (pid == selectedPid) {
+        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == selectedPesCode)) {
           int pesHeaderBytes = 9 + *(ptr+8);
           ptr += pesHeaderBytes;
           tsFrameBytesLeft -= pesHeaderBytes;
           }
-        memcpy (toPtr, ptr, tsFrameBytesLeft);
-        toPtr += tsFrameBytesLeft;
+        memcpy (toEndPtr, ptr, tsFrameBytesLeft);
+        toEndPtr += tsFrameBytesLeft;
         }
       ptr += tsFrameBytesLeft;
       }
 
-    return toPtr;
+    return toEndPtr - toPtr;
     }
   //}}}
 
