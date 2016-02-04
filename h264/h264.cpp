@@ -224,9 +224,6 @@ private:
     sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
     pDecoder->Initialize (&sDecParam);
     //}}}
-
-    int32_t iWidth = 0;
-    int32_t iHeight = 0;
     //{{{  open file, find size, read file and append startCode
     FILE* pH264File = fopen (filename, "rb");
     fseek (pH264File, 0L, SEEK_END);
@@ -242,12 +239,13 @@ private:
     uint8_t uiStartCode[4] = {0, 0, 0, 1};
     memcpy (pBuf + iFileSize, &uiStartCode[0], 4);
     //}}}
-
     //{{{  set conceal option
     int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
     pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
     //}}}
 
+    int32_t iWidth = 0;
+    int32_t iHeight = 0;
     int frameIndex = 0;
     unsigned long long uiTimeStamp = 0;
     int32_t iBufPos = 0;
@@ -274,8 +272,8 @@ private:
       memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
 
       sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
-      pDecoder->DecodeFrame2 (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
-      //pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      //pDecoder->DecodeFrame2 (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
       if (sDstBufInfo.iBufferStatus == 1) {
         makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,

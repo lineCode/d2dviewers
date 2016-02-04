@@ -62,11 +62,11 @@ public:
   //}}}
 
   //{{{
-  bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int bitrate) {
+  bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
     mFramesLoaded = 0;
     mSeqNum = seqNum;
-    mAudBitrate = bitrate;
+    mAudBitrate = audBitrate;
 
     // aacHE has double size frames, treat as two normal frames
     bool aacHE = mAudBitrate <= 48000;
@@ -89,9 +89,25 @@ public:
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
-      // extract vidPes into new buffer
-      auto vidPesPtr = (uint8_t*)malloc (http->getContentSize());
-      auto vidLen = pesFromTs (33, 0xE0, http->getContent(), http->getContentEnd(), vidPesPtr);
+      // extract vidPes into new buffer, audPes into src buffer
+      size_t vidLen = http->getContentSize();
+      auto vidPesPtr = (uint8_t*)malloc (vidLen);
+      auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
+      if (audLen > 0) {
+        //{{{  save audPes to .adts file, should check seqNum
+        printf ("audPes:%d\n", (int)audLen);
+
+        if (changeChan || !audFile) {
+          if (audFile)
+             fclose (audFile);
+          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                                 '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
+          audFile = fopen (fileName.c_str(), "wb");
+          }
+
+        fwrite (http->getContent(), 1, audLen, audFile);
+        }
+        //}}}
       if (vidLen > 0) {
         //{{{  save vidPes to .264 file, should check seqNum
         printf ("vidPes:%d\n", (int)vidLen);
@@ -109,25 +125,7 @@ public:
         //}}}
       free (vidPesPtr);
 
-      // extract audPes into content buffer, a bit smaller
-      auto audLen = pesFromTs (34, 0xC0, http->getContent(), http->getContentEnd(), http->getContent());
-      if (audLen > 0) {
-        //{{{  save audPes to .adts file, should check seqNum
-        printf ("audPes:%d\n", (int)audLen);
-
-        if (changeChan || !audFile) {
-          if (audFile)
-             fclose (audFile);
-          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                                 '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
-          audFile = fopen (fileName.c_str(), "wb");
-          }
-
-        fwrite (http->getContent(), 1, audLen, audFile);
-        }
-        //}}}
-
-      // init decoder
+      // init aacDecoder
       unsigned long sampleRate;
       uint8_t chans;
       NeAACDecInit (mDecoder, http->getContent(), 2048, &sampleRate, &chans);
@@ -161,12 +159,12 @@ public:
         }
 
       http->freeContent();
-      mInfoStr = "ok " + toString (seqNum) + ':' + toString (bitrate/1000) + 'k';
+      mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
     else {
       mSeqNum = 0;
-      mInfoStr = toString(response) + ':' + toString (seqNum) + ':' + toString (bitrate/1000) + "k " + http->getInfoStr();
+      mInfoStr = toString(response) + ':' + toString (seqNum) + ':' + toString (audBitrate /1000) + "k " + http->getInfoStr();
       return false;
       }
     }
@@ -181,10 +179,12 @@ public:
 
 private:
   //{{{
-  size_t pesFromTs (int selectedPid, int selectedPesCode, uint8_t* ptr, uint8_t* endPtr, uint8_t* toPtr) {
-  // extract selected pes from ts, sometimes into same buffer
+  size_t audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes, uint8_t* vidPtr, size_t& vidLen) {
+  // aud and vid pes from ts, return audLen
 
-    auto toEndPtr = toPtr;
+    auto audStartPtr = ptr;
+    auto audPtr = ptr;
+    auto vidStartPtr = vidPtr;
 
     while ((ptr < endPtr) && (*ptr++ == 0x47)) {
       auto payStart = *ptr & 0x40;
@@ -192,19 +192,29 @@ private:
       auto headerBytes = (*(ptr+2) & 0x20) ? (4 + *(ptr+3)) : 3;
       ptr += headerBytes;
       auto tsFrameBytesLeft = 187 - headerBytes;
-      if (pid == selectedPid) {
-        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == selectedPesCode)) {
+      if (pid == audPid) {
+        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == audPes)) {
           int pesHeaderBytes = 9 + *(ptr+8);
           ptr += pesHeaderBytes;
           tsFrameBytesLeft -= pesHeaderBytes;
           }
-        memcpy (toEndPtr, ptr, tsFrameBytesLeft);
-        toEndPtr += tsFrameBytesLeft;
+        memcpy (audPtr, ptr, tsFrameBytesLeft);
+        audPtr += tsFrameBytesLeft;
+        }
+      else if (vidPtr && (pid == vidPid)) {
+        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == vidPes)) {
+          int pesHeaderBytes = 9 + *(ptr+8);
+          ptr += pesHeaderBytes;
+          tsFrameBytesLeft -= pesHeaderBytes;
+          }
+        memcpy (vidPtr, ptr, tsFrameBytesLeft);
+        vidPtr += tsFrameBytesLeft;
         }
       ptr += tsFrameBytesLeft;
       }
 
-    return toEndPtr - toPtr;
+    vidLen = vidPtr - vidStartPtr;
+    return audPtr - audStartPtr;
     }
   //}}}
 

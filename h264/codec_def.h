@@ -1,5 +1,6 @@
 #pragma once
-//{{{
+
+//{{{  enum EVideoFormatType
 typedef enum {
   videoFormatRGB        = 1,             ///< rgb color formats
   videoFormatRGBA       = 2,
@@ -22,8 +23,7 @@ typedef enum {
   videoFormatVFlip      = 0x80000000
 } EVideoFormatType;
 //}}}
-
-//{{{
+//{{{  enum EVideoFrameType
 typedef enum {
   videoFrameTypeInvalid,    ///< encoder not ready or parameters are invalidate
   videoFrameTypeIDR,        ///< IDR frame in H.264
@@ -31,9 +31,9 @@ typedef enum {
   videoFrameTypeP,          ///< P frame type
   videoFrameTypeSkip,       ///< skip the frame based encoder kernel
   videoFrameTypeIPMixed     ///< a frame where I and P slices are mixing, not supported yet
-} EVideoFrameType;
+  } EVideoFrameType;
 //}}}
-//{{{
+//{{{  enum CM_RETURN
 typedef enum {
   cmResultSuccess,          ///< successful
   cmInitParaError,          ///< parameters are invalid
@@ -43,6 +43,7 @@ typedef enum {
   cmUnsupportedData
 } CM_RETURN;
 //}}}
+
 //{{{
 enum ENalUnitType {
   NAL_UNKNOWN     = 0,
@@ -113,9 +114,9 @@ typedef struct SliceInformation {
   unsigned char  uiNalType;          ///< NAL type
   unsigned char
   uiContainingFinalNal;              ///< whether final NAL is involved in buffer of coded slices, flag used in Pause feature in T27
-} SliceInfo, *PSliceInfo;
+  } SliceInfo, *PSliceInfo;
 //}}}
-//{{{
+//{{{  struct SRateThresholds
 typedef struct {
   int   iWidth;                   ///< frame width
   int   iHeight;                  ///< frame height
@@ -125,7 +126,7 @@ typedef struct {
   int   iMinThresholdFrameRate;   ///< min frame rate min
   int   iSkipFrameRate;           ///< skip to frame rate min
   int   iSkipFrameStep;           ///< how many frames to skip
-} SRateThresholds, *PRateThresholds;
+  } SRateThresholds, *PRateThresholds;
 //}}}
 //{{{
 typedef struct TagSysMemBuffer {
@@ -133,17 +134,17 @@ typedef struct TagSysMemBuffer {
   int iHeight;                   ///< height of decoded pic for display
   int iFormat;                   ///< type is "EVideoFormatType"
   int iStride[2];                ///< stride of 2 component
-} SSysMEMBuffer;
+  } SSysMEMBuffer;
 //}}}
 //{{{
 typedef struct TagBufferInfo {
-  int iBufferStatus;             ///< 0: one frame data is not ready; 1: one frame data is ready
-  unsigned long long uiInBsTimeStamp;     ///< input BS timestamp
-  unsigned long long uiOutYuvTimeStamp;     ///< output YUV timestamp, when bufferstatus is 1
+  int iBufferStatus;                      // 0: one frame data is not ready; 1: one frame data is ready
+  unsigned long long uiInBsTimeStamp;     // input BS timestamp
+  unsigned long long uiOutYuvTimeStamp;   // output YUV timestamp, when bufferstatus is 1
   union {
-    SSysMEMBuffer sSystemBuffer; ///<  memory info for one picture
-  } UsrData;                     ///<  output buffer info
-} SBufferInfo;
+    SSysMEMBuffer sSystemBuffer;          //  memory info for one picture
+    } UsrData;                            //  output buffer info
+  } SBufferInfo;
 //}}}
 
 //{{{
