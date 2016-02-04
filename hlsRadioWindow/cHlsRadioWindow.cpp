@@ -15,13 +15,14 @@
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
 #define vPortFree free
+
 #include "../common/cHlsRadio.h"
 //}}}
 
 class cHlsRadioWindow : public cD2dWindow, public cHlsRadio {
 public:
   //{{{
-  cHlsRadioWindow() : mShowChan(false) {
+  cHlsRadioWindow() : mShowChan(false), mVidFrame(nullptr), mD2D1Bitmap(nullptr) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
@@ -147,8 +148,24 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    // clear
-    dc->Clear (ColorF(ColorF::Black));
+    if (mVidFrame) {
+      // convert to mD2D1Bitmap 32bit BGRA
+      IWICFormatConverter* wicFormatConverter;
+      getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
+      wicFormatConverter->Initialize (mVidFrame,
+        GUID_WICPixelFormat32bppPBGRA,
+        WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+      if (mD2D1Bitmap)
+        mD2D1Bitmap->Release();
+
+      if (getDeviceContext())
+        getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
+
+      dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+      }
+    else
+      // clear
+      dc->Clear (ColorF(ColorF::Black));
 
     // grey mid line
     D2D1_RECT_F rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
@@ -242,7 +259,10 @@ private:
       if (audioSamples && (mTuneVol != 80))
         for (auto i = 0; i < 4096; i++)
           audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
+
+      mVidFrame = getVideoFrame(mPlayFrame, seqNum);
       winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
+
       if (mPlaying) {
         setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
         update();
@@ -263,6 +283,9 @@ private:
   bool mShowChan;
   HANDLE mSemaphore;
   int16_t* mSilence;
+
+  IWICBitmap* mVidFrame;
+  ID2D1Bitmap* mD2D1Bitmap;
   };
 
 //{{{

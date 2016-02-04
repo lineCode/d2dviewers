@@ -5,6 +5,12 @@
 #include "cHttp.h"
 #include "cRadioChan.h"
 //}}}
+#ifdef WIN32
+  #include "codec_def.h"
+  #include "codec_app_def.h"
+  #include "codec_api.h"
+  #pragma comment(lib,"welsdec.lib")
+#endif
 
 static int chan = 0;
 static FILE* audFile = nullptr;
@@ -16,6 +22,11 @@ public:
   cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
+
+  #ifdef WIN32
+    for (auto i = 0; i < 200; i++)
+      vidFrames[i] = nullptr;
+  #endif
     }
   //}}}
   //{{{
@@ -60,6 +71,16 @@ public:
     return mAudio ? (mAudio + (frameInChunk * mSamplesPerFrame * 2)) : nullptr;
     }
   //}}}
+#ifdef WIN32
+  //{{{
+  IWICBitmap* getVideoFrame (int videoFrameInChunk) {
+  // return videoFrame for frame in seqNum chunk
+
+    // frame into video frame in chunk, find chunk from seqNum, is it valid
+    return nullptr;
+    }
+  //}}}
+#endif
 
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
@@ -90,8 +111,13 @@ public:
       chan = radioChan->getChan();
 
       // extract vidPes into new buffer, audPes into src buffer
+    #ifdef WIN32
       size_t vidLen = http->getContentSize();
       auto vidPesPtr = (uint8_t*)malloc (vidLen);
+    #else
+      size_t vidLen = 0;
+      auto vidPesPtr = nullptr;
+    #endif
       auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
       if (audLen > 0) {
         //{{{  save audPes to .adts file, should check seqNum
@@ -123,7 +149,11 @@ public:
         fwrite (vidPesPtr, 1, vidLen, vidFile);
         }
         //}}}
+    #ifdef WIN32
+      if (vidLen > 0)
+        makeVidFrames (vidPesPtr, vidLen);
       free (vidPesPtr);
+    #endif
 
       // init aacDecoder
       unsigned long sampleRate;
@@ -218,6 +248,136 @@ private:
     }
   //}}}
 
+#ifdef WIN32
+  //{{{
+  uint8_t limit (double v) {
+
+    if (v <= 0.0)
+      return 0;
+
+    if (v >= 255.0)
+      return 255;
+
+    return (uint8_t)v;
+    }
+  //}}}
+  //{{{
+  void makeVidFrame (int frameIndex, BYTE* ys, BYTE* us, BYTE* vs, int width, int height, int stridey, int strideuv) {
+
+    ComPtr<IWICImagingFactory> wicImagingFactory;
+    // create vidFrame wicBitmap 24bit BGR
+    CoCreateInstance (CLSID_WICImagingFactory, nullptr,
+                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
+
+    int pitch = width;
+    wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+
+    // lock vidFrame wicBitmap
+    WICRect wicRect = { 0, 0, pitch, height };
+    IWICBitmapLock* wicBitmapLock = NULL;
+    vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+
+    // get vidFrame wicBitmap buffer
+    UINT bufferLen = 0;
+    BYTE* buffer = NULL;
+    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+
+    // yuv
+    for (auto y = 0; y < height; y++) {
+      BYTE* yptr = ys + (y*stridey);
+      BYTE* uptr = us + ((y/2)*strideuv);
+      BYTE* vptr = vs + ((y/2)*strideuv);
+
+      for (auto x = 0; x < width/2; x++) {
+        int y1 = *yptr++;
+        int y2 = *yptr++;
+        int u = (*uptr++) - 128;
+        int v = (*vptr++) - 128;
+
+        *buffer++ = limit (y1 + (1.8556 * u));
+        *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
+        *buffer++ = limit (y1 + (1.5748 * v));
+
+        *buffer++ = limit (y2 + (1.8556 * u));
+        *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
+        *buffer++ = limit (y2 + (1.5748 * v));
+        }
+      }
+
+    // release vidFrame wicBitmap buffer
+    wicBitmapLock->Release();
+    }
+  //}}}
+  //{{{
+  void makeVidFrames (uint8_t* ptr, size_t vidLen) {
+
+    ISVCDecoder* pDecoder = NULL;
+    WelsCreateDecoder (&pDecoder);
+
+    int iLevelSetting = (int)WELS_LOG_WARNING;
+    pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+
+    // init decoder params
+    SDecodingParam sDecParam = {0};
+    sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
+    sDecParam.uiTargetDqLayer = (uint8_t) - 1;
+    sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
+    sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
+    pDecoder->Initialize (&sDecParam);
+
+    // set conceal option
+    int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+    pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+    // append slice startCode
+    uint8_t uiStartCode[4] = {0, 0, 0, 1};
+    memcpy (ptr + vidLen, &uiStartCode[0], 4);
+
+    int32_t iWidth = 0;
+    int32_t iHeight = 0;
+    int frameIndex = 0;
+    unsigned long long uiTimeStamp = 0;
+    int32_t iBufPos = 0;
+    while (true) {
+      // process slice
+      int32_t iEndOfStreamFlag = 0;
+      if (iBufPos >= vidLen) {
+        //{{{  end of stream
+        iEndOfStreamFlag = true;
+        pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
+        break;
+        }
+        //}}}
+
+      // find sliceSize by looking for next slice startCode
+      int32_t iSliceSize;
+      for (iSliceSize = 1; iSliceSize < vidLen; iSliceSize++)
+        if ((!ptr[iBufPos+iSliceSize] && !ptr[iBufPos+iSliceSize+1])  &&
+            ((!ptr[iBufPos+iSliceSize+2] && ptr[iBufPos+iSliceSize+3] == 1) || (ptr[iBufPos+iSliceSize+2] == 1)))
+          break;
+
+      uint8_t* pData[3]; // yuv ptrs
+      SBufferInfo sDstBufInfo;
+      memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
+
+      sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
+      //pDecoder->DecodeFrame2 (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+
+      if (sDstBufInfo.iBufferStatus == 1) {
+        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
+                      sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+        iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
+        iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
+        }
+      iBufPos += iSliceSize;
+      }
+
+    pDecoder->Uninitialize();
+    WelsDestroyDecoder (pDecoder);
+    }
+  //}}}
+#endif
+
   // vars
   int mSeqNum;
   int mAudBitrate;
@@ -229,4 +389,8 @@ private:
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;
+
+#ifdef WIN32
+  IWICBitmap* vidFrames[200];
+#endif
   };

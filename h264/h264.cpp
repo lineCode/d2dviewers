@@ -95,7 +95,7 @@ protected:
   //{{{
   void onDraw(ID2D1DeviceContext* dc) {
 
-  IWICBitmap* vidFrame = vidFrames[mCurVidFrame];
+    IWICBitmap* vidFrame = vidFrames[mCurVidFrame];
     if (vidFrame) {
       // convert to mD2D1Bitmap 32bit BGRA
       IWICFormatConverter* wicFormatConverter;
@@ -278,7 +278,6 @@ private:
       if (sDstBufInfo.iBufferStatus == 1) {
         makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
                       sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-        //utils.Process ((void**)pData, &sDstBufInfo, NULL);
         iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
         iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
         }
