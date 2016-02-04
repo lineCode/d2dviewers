@@ -6,10 +6,14 @@
 #include "cRadioChan.h"
 //}}}
 
+static int chan = 0;
+static FILE* audFile = nullptr;
+static FILE* vidFile = nullptr;
+
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
+  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
     }
@@ -30,8 +34,8 @@ public:
     }
   //}}}
   //{{{
-  int getBitrate() {
-    return mBitrate;
+  int getAudBitrate() {
+    return mAudBitrate;
     }
   //}}}
   //{{{
@@ -62,10 +66,10 @@ public:
 
     mFramesLoaded = 0;
     mSeqNum = seqNum;
-    mBitrate = bitrate;
+    mAudBitrate = bitrate;
 
     // aacHE has double size frames, treat as two normal frames
-    bool aacHE = mBitrate <= 48000;
+    bool aacHE = mAudBitrate <= 48000;
     int framesPerAacFrame = aacHE ? 2 : 1;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
     int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
@@ -80,22 +84,48 @@ public:
       mAacHE = aacHE;
       }
 
-    auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mBitrate));
+    auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
+      bool changeChan = chan != radioChan->getChan();
+      chan = radioChan->getChan();
+
       auto vidPesPtr = (uint8_t*)malloc (http->getContentSize());
       auto vidLen = pesFromTs (33, 0xE0, http->getContent(), http->getContentEnd(), vidPesPtr);
       if (vidLen > 0) {
+        //{{{  save vid to .264 file
         printf ("vidPes:%d\n", (int)vidLen);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
-        auto vidFile = fopen (fileName.c_str(), "wb");
+
+        if (changeChan || !vidFile) {
+          if (vidFile)
+            fclose (vidFile);
+          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                                 '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
+          vidFile = fopen (fileName.c_str(), "wb");
+          }
+
         fwrite (vidPesPtr, 1, vidLen, vidFile);
-        fclose (vidFile);
+        //fclose (vidFile);
         }
+        //}}}
       free (vidPesPtr);
 
       // pack audio down into same buffer
       auto audLen = pesFromTs (34, 0xC0, http->getContent(), http->getContentEnd(), http->getContent());
+      if (audLen > 0) {
+        //{{{  save to .adts file
+        printf ("audPes:%d\n", (int)audLen);
+
+        if (changeChan || !audFile) {
+          if (audFile)
+             fclose (audFile);
+          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                                 '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
+          audFile = fopen (fileName.c_str(), "wb");
+          }
+
+        fwrite (http->getContent(), 1, audLen, audFile);
+        }
+        //}}}
 
       // init decoder
       unsigned long sampleRate;
@@ -180,7 +210,7 @@ private:
 
   // vars
   int mSeqNum;
-  int mBitrate;
+  int mAudBitrate;
   int mFramesLoaded;
   int mSamplesPerFrame;
   std::string mInfoStr;

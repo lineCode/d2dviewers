@@ -115,7 +115,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\nnn\Desktop\aac\mp4ff\Win32\Debug;C:\Users\nnn\Desktop\aac\libfaad\libfaad\Win32\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\lib86\libfaad.lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -131,7 +131,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\nnn\Desktop\aac\mp4ff\x64\Debug;C:\Users\nnn\Desktop\aac\libfaad\libfaad\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\lib64\libfaad.lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -151,7 +151,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\nnn\Desktop\aac\mp4ff\Win32\Release;C:\Users\nnn\Desktop\aac\libfaad\libfaad\Win32\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\lib86\libfaad.lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -171,7 +171,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\Users\nnn\Desktop\aac\mp4ff\x64\Release;C:\Users\nnn\Desktop\aac\libfaad\libfaad\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <OutputFile>..\..\lib64\libfaad.lib</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
     </Link>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
