@@ -5,16 +5,12 @@
 #include "cHttp.h"
 #include "cRadioChan.h"
 //}}}
-#ifdef WIN32
-  #include "codec_def.h"
-  #include "codec_app_def.h"
-  #include "codec_api.h"
-  #pragma comment(lib,"welsdec.lib")
-#endif
 
 static int chan = 0;
 static FILE* audFile = nullptr;
 static FILE* vidFile = nullptr;
+static ISVCDecoder* pDecoder = nullptr;
+static ComPtr<IWICImagingFactory> wicImagingFactory;
 
 class cHlsChunk {
 public:
@@ -118,7 +114,7 @@ public:
       auto vidPesPtr = nullptr;
     #endif
       auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
-      if (audLen > 0) {
+      if (false && audLen > 0) {
         //{{{  save audPes to .adts file, should check seqNum
         printf ("audPes:%d\n", (int)audLen);
 
@@ -133,7 +129,7 @@ public:
         fwrite (http->getContent(), 1, audLen, audFile);
         }
         //}}}
-      if (vidLen > 0) {
+      if (false &&vidLen > 0) {
         //{{{  save vidPes to .264 file, should check seqNum
         printf ("vidPes:%d\n", (int)vidLen);
 
@@ -148,11 +144,6 @@ public:
         fwrite (vidPesPtr, 1, vidLen, vidFile);
         }
         //}}}
-    #ifdef WIN32
-      if (vidLen > 0)
-        makeVidFrames (vidPesPtr, vidLen);
-      free (vidPesPtr);
-    #endif
 
       // init aacDecoder
       unsigned long sampleRate;
@@ -186,8 +177,14 @@ public:
           }
           //}}}
         }
-
       http->freeContent();
+
+    #ifdef WIN32
+      if (vidLen > 0)
+        makeVidFrames (vidPesPtr, vidLen);
+      free (vidPesPtr);
+    #endif
+
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
@@ -263,10 +260,10 @@ private:
   //{{{
   void makeVidFrame (int frameIndex, BYTE* ys, BYTE* us, BYTE* vs, int width, int height, int stridey, int strideuv) {
 
-    ComPtr<IWICImagingFactory> wicImagingFactory;
-    // create vidFrame wicBitmap 24bit BGR
-    CoCreateInstance (CLSID_WICImagingFactory, nullptr,
-                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
+    if (!wicImagingFactory)
+      // create vidFrame wicBitmap 24bit BGR
+      CoCreateInstance (CLSID_WICImagingFactory, nullptr,
+                        CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
 
     int pitch = width;
     if (!vidFrames[frameIndex])
@@ -311,29 +308,29 @@ private:
   //{{{
   void makeVidFrames (uint8_t* ptr, size_t vidLen) {
 
-    ISVCDecoder* pDecoder = NULL;
-    WelsCreateDecoder (&pDecoder);
+    if (!pDecoder) {
+      WelsCreateDecoder (&pDecoder);
 
-    int iLevelSetting = (int)WELS_LOG_WARNING;
-    pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+      int iLevelSetting = (int)WELS_LOG_WARNING;
+      pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
 
-    // init decoder params
-    SDecodingParam sDecParam = {0};
-    sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
-    sDecParam.uiTargetDqLayer = (uint8_t) - 1;
-    sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
-    sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
-    pDecoder->Initialize (&sDecParam);
+      // init decoder params
+      SDecodingParam sDecParam = {0};
+      sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
+      sDecParam.uiTargetDqLayer = (uint8_t) - 1;
+      sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
+      sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
+      pDecoder->Initialize (&sDecParam);
 
-    // set conceal option
-    int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
-    pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+      // set conceal option
+      int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+      pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+      }
+
     // append slice startCode
     uint8_t uiStartCode[4] = {0, 0, 0, 1};
     memcpy (ptr + vidLen, &uiStartCode[0], 4);
 
-    int32_t iWidth = 0;
-    int32_t iHeight = 0;
     int frameIndex = 0;
     unsigned long long uiTimeStamp = 0;
     int32_t iBufPos = 0;
@@ -358,22 +355,20 @@ private:
       uint8_t* pData[3]; // yuv ptrs
       SBufferInfo sDstBufInfo;
       memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
-
       sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
-      //pDecoder->DecodeFrame2 (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+
       pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
-      if (sDstBufInfo.iBufferStatus == 1) {
-        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
+      if (sDstBufInfo.iBufferStatus == 1)
+        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2],
+                      sDstBufInfo.UsrData.sSystemBuffer.iWidth, sDstBufInfo.UsrData.sSystemBuffer.iHeight,
                       sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-        iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
-        iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
-        }
+
       iBufPos += iSliceSize;
       }
 
-    pDecoder->Uninitialize();
-    WelsDestroyDecoder (pDecoder);
+    //pDecoder->Uninitialize();
+    //WelsDestroyDecoder (pDecoder);
     }
   //}}}
 #endif

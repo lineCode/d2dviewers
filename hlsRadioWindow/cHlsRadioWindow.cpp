@@ -16,6 +16,11 @@
 #define pvPortMalloc malloc
 #define vPortFree free
 
+#include "codec_def.h"
+#include "codec_app_def.h"
+#include "codec_api.h"
+#pragma comment(lib,"welsdec.lib")
+
 #include "../common/cHlsRadio.h"
 //}}}
 
@@ -155,11 +160,14 @@ protected:
       wicFormatConverter->Initialize (mVidFrame,
         GUID_WICPixelFormat32bppPBGRA,
         WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+
       if (mD2D1Bitmap)
         mD2D1Bitmap->Release();
 
       if (getDeviceContext())
         getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
+
+      wicFormatConverter->Release();
 
       dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
       }
@@ -260,7 +268,7 @@ private:
         for (auto i = 0; i < 4096; i++)
           audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
 
-      mVidFrame = getVideoFrame(mPlayFrame, seqNum);
+      mVidFrame = getVideoFrame (mPlayFrame, seqNum);
       winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
 
       if (mPlaying) {
