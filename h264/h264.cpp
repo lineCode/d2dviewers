@@ -19,11 +19,13 @@ static char filename[100];
 
 class cAppWindow : public cD2dWindow {
 public:
+  //{{{
   cAppWindow() :  mD2D1Bitmap(nullptr), mCurVidFrame(0) {
     for (auto i = 0; i < maxFrame; i++)
       vidFrames[i] = nullptr;
     }
   ~cAppWindow() {}
+  //}}}
   //{{{
   void run (wchar_t* title, int width, int height) {
 
@@ -31,8 +33,8 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    auto playerThread = std::thread ([=]() { playerReference264(); });
-    //auto playerThread = std::thread ([=]() { playerOpenH264(); });
+    //auto playerThread = std::thread ([=]() { playerReference264(); });
+    auto playerThread = std::thread ([=]() { playerOpenH264(); });
     //SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
     playerThread.detach();
 
@@ -137,7 +139,7 @@ private:
     }
   //}}}
   //{{{
-  void makeVidFrame (int frameIndex, BYTE* yptr, BYTE* uptr, BYTE* vptr, int width, int height) {
+  void makeVidFrame (int frameIndex, BYTE* ys, BYTE* us, BYTE* vs, int width, int height, int stridey, int strideuv) {
 
     // create vidFrame wicBitmap 24bit BGR
     int pitch = width;
@@ -158,6 +160,10 @@ private:
 
     // yuv
     for (auto y = 0; y < height; y++) {
+      BYTE* yptr = ys + (y*stridey);
+      BYTE* uptr = us + ((y/2)*strideuv);
+      BYTE* vptr = vs + ((y/2)*strideuv);
+
       for (auto x = 0; x < width/2; x++) {
         int y1 = *yptr++;
         int y2 = *yptr++;
@@ -171,11 +177,6 @@ private:
         *buffer++ = limit (y2 + (1.8556 * u));
         *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
         *buffer++ = limit (y2 + (1.5748 * v));
-        }
-
-      if (!(y & 2)) {
-        uptr -= width/2;
-        vptr -= width/2;
         }
       }
     // release vidFrame wicBitmap buffer
@@ -196,7 +197,7 @@ private:
       int iHeight = pDecPicList->iHeight;
       int iStride = pDecPicList->iYBufStride;
       if (iWidth && iHeight) {
-        makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight);
+        makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight, iWidth, iWidth/2);
         changed();
         }
       } while (iRet == DEC_EOS || iRet == DEC_SUCCEED);
@@ -277,11 +278,11 @@ private:
       //pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
       if (sDstBufInfo.iBufferStatus == 1) {
-        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360);
+        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
+                      sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
         //utils.Process ((void**)pData, &sDstBufInfo, NULL);
         iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
         iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
-        printf ("%d %d\n",  iWidth, iHeight);
         }
       iBufPos += iSliceSize;
       }
