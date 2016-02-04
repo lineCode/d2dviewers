@@ -1,6 +1,5 @@
 #define _CRT_SECURE_NO_WARNINGS
-#ifndef _GLOBAL_H_
-#define _GLOBAL_H_
+#pragma once
 //{{{
 #include <stdlib.h>
 #include <stdarg.h>
@@ -1016,4 +1015,3 @@ static inline int is_MVC_profile(unsigned int profile_idc)
   return ( (0)  );
 }
 //}}}
-#endif

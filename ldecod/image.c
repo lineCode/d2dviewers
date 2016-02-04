@@ -656,8 +656,8 @@ static void CopyPOC(Slice *pSlice0, Slice *currSlice)
 /*}}}*/
 
 /*{{{*/
-int decode_one_frame (DecoderParams *pDecoder)
-{
+int decode_one_frame (DecoderParams *pDecoder) {
+
   VideoParameters *p_Vid = pDecoder->p_Vid;
   InputParameters *p_Inp = p_Vid->p_Inp;
   int current_header, iRet;
@@ -670,39 +670,32 @@ int decode_one_frame (DecoderParams *pDecoder)
   current_header=0;
   p_Vid->iNumOfSlicesDecoded=0;
   p_Vid->num_dec_mb = 0;
-  if(p_Vid->newframe)
-  {
-    if(p_Vid->pNextPPS->Valid)
-    {
+  if (p_Vid->newframe) {
+    if (p_Vid->pNextPPS->Valid) {
       //assert((int) p_Vid->pNextPPS->pic_parameter_set_id == p_Vid->pNextSlice->pic_parameter_set_id);
       MakePPSavailable (p_Vid, p_Vid->pNextPPS->pic_parameter_set_id, p_Vid->pNextPPS);
       p_Vid->pNextPPS->Valid=0;
-    }
+      }
 
-    //get the first slice from currentslice;
+    // get the first slice from currentslice;
     assert(ppSliceList[p_Vid->iSliceNumOfCurrPic]);
     currSlice = ppSliceList[p_Vid->iSliceNumOfCurrPic];
     ppSliceList[p_Vid->iSliceNumOfCurrPic] = p_Vid->pNextSlice;
     p_Vid->pNextSlice = currSlice;
-    assert(ppSliceList[p_Vid->iSliceNumOfCurrPic]->current_slice_nr == 0);
+    assert (ppSliceList[p_Vid->iSliceNumOfCurrPic]->current_slice_nr == 0);
 
     currSlice = ppSliceList[p_Vid->iSliceNumOfCurrPic];
-
     UseParameterSet (currSlice);
-
-    init_picture(p_Vid, currSlice, p_Inp);
-
+    init_picture (p_Vid, currSlice, p_Inp);
     p_Vid->iSliceNumOfCurrPic++;
     current_header = SOS;
-  }
-  while(current_header != SOP && current_header !=EOS)
-  {
+    }
+
+  while (current_header != SOP && current_header != EOS) {
     //no pending slices;
     assert(p_Vid->iSliceNumOfCurrPic < p_Vid->iNumOfSlicesAllocated);
-    if(!ppSliceList[p_Vid->iSliceNumOfCurrPic])
-    {
+    if (!ppSliceList[p_Vid->iSliceNumOfCurrPic])
       ppSliceList[p_Vid->iSliceNumOfCurrPic] = malloc_slice(p_Inp, p_Vid);
-    }
     currSlice = ppSliceList[p_Vid->iSliceNumOfCurrPic];
 
     //p_Vid->currentSlice = currSlice;
@@ -722,37 +715,31 @@ int decode_one_frame (DecoderParams *pDecoder)
 
     // error tracking of primary and redundant slices.
     Error_tracking(p_Vid, currSlice);
+
     // If primary and redundant are received and primary is correct, discard the redundant
     // else, primary slice will be replaced with redundant slice.
     if(currSlice->frame_num == p_Vid->previous_frame_num && currSlice->redundant_pic_cnt !=0
       && p_Vid->Is_primary_correct !=0 && current_header != EOS)
-    {
       continue;
-    }
 
-    if((current_header != SOP && current_header !=EOS) || (p_Vid->iSliceNumOfCurrPic==0 && current_header == SOP))
-    {
+    if((current_header != SOP && current_header !=EOS) || (p_Vid->iSliceNumOfCurrPic==0 && current_header == SOP)) {
        currSlice->current_slice_nr = (short) p_Vid->iSliceNumOfCurrPic;
        p_Vid->dec_picture->max_slice_id = (short) imax(currSlice->current_slice_nr, p_Vid->dec_picture->max_slice_id);
-       if(p_Vid->iSliceNumOfCurrPic >0)
-       {
+       if(p_Vid->iSliceNumOfCurrPic >0) {
          CopyPOC(*ppSliceList, currSlice);
          ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->end_mb_nr_plus1 = currSlice->start_mb_nr;
        }
        p_Vid->iSliceNumOfCurrPic++;
-       if(p_Vid->iSliceNumOfCurrPic >= p_Vid->iNumOfSlicesAllocated)
-       {
+       if(p_Vid->iSliceNumOfCurrPic >= p_Vid->iNumOfSlicesAllocated) {
          Slice **tmpSliceList = (Slice **)realloc(p_Vid->ppSliceList, (p_Vid->iNumOfSlicesAllocated+MAX_NUM_DECSLICES)*sizeof(Slice*));
-         if(!tmpSliceList)
-         {
+         if(!tmpSliceList) {
            tmpSliceList = calloc((p_Vid->iNumOfSlicesAllocated+MAX_NUM_DECSLICES), sizeof(Slice*));
            memcpy(tmpSliceList, p_Vid->ppSliceList, p_Vid->iSliceNumOfCurrPic*sizeof(Slice*));
            //free;
            free(p_Vid->ppSliceList);
            ppSliceList = p_Vid->ppSliceList = tmpSliceList;
          }
-         else
-         {
+         else {
            //assert(tmpSliceList == p_Vid->ppSliceList);
            ppSliceList = p_Vid->ppSliceList = tmpSliceList;
            memset(p_Vid->ppSliceList+p_Vid->iSliceNumOfCurrPic, 0, sizeof(Slice*)*MAX_NUM_DECSLICES);
@@ -761,10 +748,9 @@ int decode_one_frame (DecoderParams *pDecoder)
        }
        current_header = SOS;
     }
-    else
-    {
-      if(ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->mb_aff_frame_flag)
-       ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->end_mb_nr_plus1 = p_Vid->FrameSizeInMbs/2;
+    else {
+      if (ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->mb_aff_frame_flag)
+        ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->end_mb_nr_plus1 = p_Vid->FrameSizeInMbs/2;
       else
        ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->end_mb_nr_plus1 = p_Vid->FrameSizeInMbs/(1+ppSliceList[p_Vid->iSliceNumOfCurrPic-1]->field_pic_flag);
        p_Vid->newframe = 1;
@@ -772,16 +758,15 @@ int decode_one_frame (DecoderParams *pDecoder)
        //keep it in currentslice;
        ppSliceList[p_Vid->iSliceNumOfCurrPic] = p_Vid->pNextSlice;
        p_Vid->pNextSlice = currSlice;
-    }
+      }
 
     copy_slice_info(currSlice, p_Vid->old_slice);
-  }
+    }
   iRet = current_header;
   init_picture_decoding(p_Vid);
 
-  {
-    for(iSliceNo=0; iSliceNo<p_Vid->iSliceNumOfCurrPic; iSliceNo++)
     {
+    for(iSliceNo=0; iSliceNo<p_Vid->iSliceNumOfCurrPic; iSliceNo++) {
       currSlice = ppSliceList[iSliceNo];
       current_header = currSlice->current_header;
       //p_Vid->currentSlice = currSlice;
@@ -795,8 +780,9 @@ int decode_one_frame (DecoderParams *pDecoder)
       p_Vid->iNumOfSlicesDecoded++;
       p_Vid->num_dec_mb += currSlice->num_dec_mb;
       p_Vid->erc_mvperMB += currSlice->erc_mvperMB;
+      }
     }
-  }
+
   if(p_Vid->dec_picture->structure == FRAME)
     p_Vid->last_dec_poc = p_Vid->dec_picture->frame_poc;
   else if(p_Vid->dec_picture->structure == TOP_FIELD)
@@ -808,73 +794,37 @@ int decode_one_frame (DecoderParams *pDecoder)
   p_Vid->previous_frame_num = ppSliceList[0]->frame_num;
 
   return (iRet);
-}
+  }
 /*}}}*/
 
 /*{{{*/
-/*!
- ************************************************************************
- * \brief
- *    Convert file read buffer to source picture structure
- * \param imgX
- *    Pointer to image plane
- * \param buf
- *    Buffer for file output
- * \param size_x
- *    horizontal image size in pixel
- * \param size_y
- *    vertical image size in pixel
- * \param symbol_size_in_bytes
- *    number of bytes used per pel
- ************************************************************************
- */
-void buffer2img (imgpel** imgX, unsigned char* buf, int size_x, int size_y, int symbol_size_in_bytes)
-{
-  int i,j;
+void buffer2img (imgpel** imgX, unsigned char* buf, int size_x, int size_y, int symbol_size_in_bytes) {
 
   if (symbol_size_in_bytes> sizeof(imgpel))
     error ("Source picture has higher bit depth than imgpel data type. \nPlease recompile with larger data type for imgpel.", 500);
 
-  if (( sizeof(char) == sizeof (imgpel)) && ( sizeof(char) == symbol_size_in_bytes))
+  if ((sizeof(char) == sizeof (imgpel)) && ( sizeof(char) == symbol_size_in_bytes))
     // imgpel == pixel_in_file == 1 byte -> simple copy
     fast_memcpy(&imgX[0][0], buf, size_x * size_y);
-  else
-  {
-    // sizeof (imgpel) > sizeof(char)
-    // little endian
-    if (symbol_size_in_bytes == 1)
-    {
-      for (j=0; j < size_y; ++j)
-      {
-        for (i=0; i < size_x; ++i)
-        {
-          imgX[j][i]=*(buf++);
-        }
-      }
-    }
-    else
-    {
-      for (j=0; j < size_y; ++j)
-      {
-        int jpos = j*size_x;
-        for (i=0; i < size_x; ++i)
-        {
-          imgX[j][i]=0;
-          memcpy(&(imgX[j][i]), buf +((i+jpos)*symbol_size_in_bytes), symbol_size_in_bytes);
-        }
-      }
-    }
 
+  else {
+    // sizeof (imgpel) > sizeof(char) little endian
+    if (symbol_size_in_bytes == 1)
+      for (int j=0; j < size_y; ++j)
+        for (int i=0; i < size_x; ++i)
+          imgX[j][i]=*(buf++);
+    else
+      for (int j=0; j < size_y; ++j) {
+        int jpos = j*size_x;
+        for (int i = 0; i < size_x; ++i) {
+          imgX[j][i] = 0;
+          memcpy(&(imgX[j][i]), buf + ((i + jpos)*symbol_size_in_bytes), symbol_size_in_bytes);
+          }
+        }
+    }
   }
-}
 /*}}}*/
 /*{{{*/
-/*!
- ***********************************************************************
- * \brief
- *    compute generic SSE
- ***********************************************************************
- */
 int64 compute_SSE (imgpel **imgRef, imgpel **imgSrc, int xRef, int xSrc, int ySize, int xSize)
 {
   int i, j;
@@ -893,26 +843,19 @@ int64 compute_SSE (imgpel **imgRef, imgpel **imgSrc, int xRef, int xSrc, int ySi
 }
 /*}}}*/
 /*{{{*/
-/*!
- ************************************************************************
- * \brief
- *    Calculate the value of frame_no
- ************************************************************************
-*/
 void calculate_frame_no (VideoParameters *p_Vid, StorablePicture *p)
 {
-  InputParameters *p_Inp = p_Vid->p_Inp;
+  InputParameters* p_Inp = p_Vid->p_Inp;
+
   // calculate frame number
   int  psnrPOC = p_Vid->active_sps->mb_adaptive_frame_field_flag ? p->poc /(p_Inp->poc_scale) : p->poc/(p_Inp->poc_scale);
 
   if (psnrPOC==0)// && p_Vid->psnr_number)
-  {
     p_Vid->idr_psnr_number = p_Vid->g_nFrame * p_Vid->ref_poc_gap/(p_Inp->poc_scale);
-  }
-  p_Vid->psnr_number = imax(p_Vid->psnr_number, p_Vid->idr_psnr_number+psnrPOC);
 
+  p_Vid->psnr_number = imax(p_Vid->psnr_number, p_Vid->idr_psnr_number+psnrPOC);
   p_Vid->frame_no = p_Vid->idr_psnr_number + psnrPOC;
-}
+  }
 /*}}}*/
 
 /*{{{*/
@@ -955,20 +898,6 @@ void reorder_lists (Slice *currSlice)
   }
 
   free_ref_pic_list_reordering_buffer(currSlice);
-
-  if ( currSlice->slice_type == P_SLICE )
-  {
-#if PRINTREFLIST
-    unsigned int i;
-#endif
-  }
-  else if ( currSlice->slice_type == B_SLICE )
-  {
-#if PRINTREFLIST
-    unsigned int i;
-
-#endif
-  }
 }
 /*}}}*/
 

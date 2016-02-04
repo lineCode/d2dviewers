@@ -1,5 +1,4 @@
 #pragma once
-
 #include "win32.h"
 
 typedef unsigned char  byte;     //!< byte type definition
@@ -23,15 +22,7 @@ typedef          int   int32;
   typedef int32  transpel;
 #endif
 
-//! Boolean Type
-#ifdef FALSE
-  #define Boolean int
-#else
-  typedef enum {
-    FALSE,
-    TRUE
-  } Boolean;
-#endif
+#define Boolean int
 
 #ifndef MAXINT64
   #define MAXINT64     0x7fffffffffffffff
