@@ -74,10 +74,8 @@ public:
   // return videoFrame for frame in seqNum chunk
 
     int chunk;
-    int frameInChunk;
-    bool found = findFrame (frame, seqNum, chunk, frameInChunk);
-
-    return found ? mChunks[chunk].getVideoFrame((frameInChunk * 200) / 375) : nullptr;
+    int vidFrameInChunk;
+    return findVidFrame (frame, seqNum, chunk, vidFrameInChunk) ? mChunks[chunk].getVideoFrame (vidFrameInChunk) : nullptr;
     }
   //}}}
 #endif
@@ -254,6 +252,31 @@ private:
           seqNum = findSeqNum;
           chunk = i;
           frameInChunk = findFrameInChunk;
+          return true;
+          }
+        }
+      }
+
+    seqNum = 0;
+    chunk = 0;
+    frameInChunk = 0;
+    return false;
+    }
+  //}}}
+  //{{{
+  bool findVidFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
+  // return true, seqNum, chunk and frameInChunk of loadedChunk from frame
+  // - return false if not found
+
+    auto findSeqNum = getSeqNumFromFrame (frame);
+    for (auto i = 0; i < 3; i++) {
+      if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
+        auto findAudFrameInChunk = getFrameInChunkFromFrame (frame);
+        auto findVidFrameInChunk = (findAudFrameInChunk * 200) / 375;
+        if ((mChunks[i].getVidFramesLoaded() > 0) && (findVidFrameInChunk < mChunks[i].getVidFramesLoaded())) {
+          seqNum = findSeqNum;
+          chunk = i;
+          frameInChunk = findVidFrameInChunk;
           return true;
           }
         }

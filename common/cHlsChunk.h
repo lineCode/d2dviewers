@@ -15,7 +15,7 @@ static ComPtr<IWICImagingFactory> wicImagingFactory;
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
+  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mVidFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
 
@@ -51,6 +51,11 @@ public:
     }
   //}}}
   //{{{
+  int getVidFramesLoaded() {
+    return mVidFramesLoaded;
+    }
+  //}}}
+  //{{{
   std::string getInfoStr() {
     return mInfoStr;
     }
@@ -81,6 +86,7 @@ public:
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
     mFramesLoaded = 0;
+    mVidFramesLoaded = 0;
     mSeqNum = seqNum;
     mAudBitrate = audBitrate;
 
@@ -205,7 +211,8 @@ public:
 
 private:
   //{{{
-  size_t audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes, uint8_t* vidPtr, size_t& vidLen) {
+  size_t audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes,
+                          int vidPid, int vidPes, uint8_t* vidPtr, size_t& vidLen) {
   // aud and vid pes from ts, return audLen
 
     auto audStartPtr = ptr;
@@ -258,57 +265,10 @@ private:
     }
   //}}}
   //{{{
-  void makeVidFrame (int frameIndex, BYTE* ys, BYTE* us, BYTE* vs, int width, int height, int stridey, int strideuv) {
-
-    if (!wicImagingFactory)
-      // create vidFrame wicBitmap 24bit BGR
-      CoCreateInstance (CLSID_WICImagingFactory, nullptr,
-                        CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-
-    int pitch = width;
-    if (!vidFrames[frameIndex])
-      wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
-
-    // lock vidFrame wicBitmap
-    WICRect wicRect = { 0, 0, pitch, height };
-    IWICBitmapLock* wicBitmapLock = NULL;
-    vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
-
-    // get vidFrame wicBitmap buffer
-    UINT bufferLen = 0;
-    BYTE* buffer = NULL;
-    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
-
-    // yuv
-    for (auto y = 0; y < height; y++) {
-      BYTE* yptr = ys + (y*stridey);
-      BYTE* uptr = us + ((y/2)*strideuv);
-      BYTE* vptr = vs + ((y/2)*strideuv);
-
-      for (auto x = 0; x < width/2; x++) {
-        int y1 = *yptr++;
-        int y2 = *yptr++;
-        int u = (*uptr++) - 128;
-        int v = (*vptr++) - 128;
-
-        *buffer++ = limit (y1 + (1.8556 * u));
-        *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
-        *buffer++ = limit (y1 + (1.5748 * v));
-
-        *buffer++ = limit (y2 + (1.8556 * u));
-        *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
-        *buffer++ = limit (y2 + (1.5748 * v));
-        }
-      }
-
-    // release vidFrame wicBitmap buffer
-    wicBitmapLock->Release();
-    }
-  //}}}
-  //{{{
   void makeVidFrames (uint8_t* ptr, size_t vidLen) {
 
     if (!pDecoder) {
+      //{{{  init static decoder
       WelsCreateDecoder (&pDecoder);
 
       int iLevelSetting = (int)WELS_LOG_WARNING;
@@ -325,7 +285,11 @@ private:
       // set conceal option
       int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
       pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+
+      // create vidFrame wicBitmap 24bit BGR
+      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
       }
+      //}}}
 
     // append slice startCode
     uint8_t uiStartCode[4] = {0, 0, 0, 1};
@@ -359,10 +323,53 @@ private:
 
       pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
-      if (sDstBufInfo.iBufferStatus == 1)
-        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2],
-                      sDstBufInfo.UsrData.sSystemBuffer.iWidth, sDstBufInfo.UsrData.sSystemBuffer.iHeight,
-                      sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+      if (sDstBufInfo.iBufferStatus == 1) {
+        //{{{  make frame
+        int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
+        int pitch = width;
+        int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
+
+        if (!vidFrames[frameIndex])
+          wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+
+        WICRect wicRect = { 0, 0, pitch, height };
+        IWICBitmapLock* wicBitmapLock = NULL;
+        vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+
+        // get vidFrame wicBitmap buffer
+        UINT bufferLen = 0;
+        BYTE* buffer = NULL;
+        wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+
+        // yuv
+        for (auto y = 0; y < height; y++) {
+          BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
+          BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+          BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+
+          for (auto x = 0; x < width/2; x++) {
+            int y1 = *yptr++;
+            int y2 = *yptr++;
+            int u = (*uptr++) - 128;
+            int v = (*vptr++) - 128;
+
+            *buffer++ = limit (y1 + (1.8556 * u));
+            *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
+            *buffer++ = limit (y1 + (1.5748 * v));
+
+            *buffer++ = limit (y2 + (1.8556 * u));
+            *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
+            *buffer++ = limit (y2 + (1.5748 * v));
+            }
+          }
+
+        // release vidFrame wicBitmap buffer
+        wicBitmapLock->Release();
+
+        mVidFramesLoaded = frameIndex;
+        frameIndex++;
+        }
+        //}}}
 
       iBufPos += iSliceSize;
       }
@@ -377,6 +384,7 @@ private:
   int mSeqNum;
   int mAudBitrate;
   int mFramesLoaded;
+  int mVidFramesLoaded;
   int mSamplesPerFrame;
   std::string mInfoStr;
 
