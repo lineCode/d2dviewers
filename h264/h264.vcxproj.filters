@@ -148,9 +148,6 @@
     <ClCompile Include="..\ldecod\context_ini.c">
       <Filter>h264lib</Filter>
     </ClCompile>
-    <ClCompile Include="..\ldecod\dec_statistics.c">
-      <Filter>h264lib</Filter>
-    </ClCompile>
     <ClCompile Include="..\ldecod\erc_api.c">
       <Filter>h264lib</Filter>
     </ClCompile>
@@ -180,9 +177,6 @@
     <ClInclude Include="..\ldecod\inc\ctx_tables.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
-    <ClInclude Include="..\ldecod\inc\dec_statistics.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
     <ClInclude Include="..\ldecod\inc\defines.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
@@ -190,9 +184,6 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\elements.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\enc_statistics.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\erc_api.h">
@@ -298,9 +289,6 @@
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\quant_params.h">
-      <Filter>h264lib\header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\ldecod\inc\report.h">
       <Filter>h264lib\header</Filter>
     </ClInclude>
     <ClInclude Include="..\ldecod\inc\sei.h">

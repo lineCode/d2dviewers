@@ -89,10 +89,11 @@ public:
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
+      // extract vidPes into new buffer
       auto vidPesPtr = (uint8_t*)malloc (http->getContentSize());
       auto vidLen = pesFromTs (33, 0xE0, http->getContent(), http->getContentEnd(), vidPesPtr);
       if (vidLen > 0) {
-        //{{{  save vid to .264 file
+        //{{{  save vidPes to .264 file, should check seqNum
         printf ("vidPes:%d\n", (int)vidLen);
 
         if (changeChan || !vidFile) {
@@ -104,15 +105,14 @@ public:
           }
 
         fwrite (vidPesPtr, 1, vidLen, vidFile);
-        //fclose (vidFile);
         }
         //}}}
       free (vidPesPtr);
 
-      // pack audio down into same buffer
+      // extract audPes into content buffer, a bit smaller
       auto audLen = pesFromTs (34, 0xC0, http->getContent(), http->getContentEnd(), http->getContent());
       if (audLen > 0) {
-        //{{{  save to .adts file
+        //{{{  save audPes to .adts file, should check seqNum
         printf ("audPes:%d\n", (int)audLen);
 
         if (changeChan || !audFile) {

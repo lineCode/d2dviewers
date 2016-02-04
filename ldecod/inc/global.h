@@ -785,6 +785,7 @@ typedef struct video_par
 
   // report
   char cslice_type[9];
+
   // FMO
   int *MbToSliceGroupMap;
   int *MapUnitToSliceGroupMap;

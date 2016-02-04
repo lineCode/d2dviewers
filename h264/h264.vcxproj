@@ -56,12 +56,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\ldecod\dec_statistics.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\ldecod\erc_api.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -362,11 +356,9 @@
     <ClInclude Include="..\ldecod\inc\cabac.h" />
     <ClInclude Include="..\ldecod\inc\context_ini.h" />
     <ClInclude Include="..\ldecod\inc\ctx_tables.h" />
-    <ClInclude Include="..\ldecod\inc\dec_statistics.h" />
     <ClInclude Include="..\ldecod\inc\defines.h" />
     <ClInclude Include="..\ldecod\inc\distortion.h" />
     <ClInclude Include="..\ldecod\inc\elements.h" />
-    <ClInclude Include="..\ldecod\inc\enc_statistics.h" />
     <ClInclude Include="..\ldecod\inc\erc_api.h" />
     <ClInclude Include="..\ldecod\inc\erc_do.h" />
     <ClInclude Include="..\ldecod\inc\erc_globals.h" />
@@ -403,7 +395,6 @@
     <ClInclude Include="..\ldecod\inc\parsetcommon.h" />
     <ClInclude Include="..\ldecod\inc\quant.h" />
     <ClInclude Include="..\ldecod\inc\quant_params.h" />
-    <ClInclude Include="..\ldecod\inc\report.h" />
     <ClInclude Include="..\ldecod\inc\sei.h" />
     <ClInclude Include="..\ldecod\inc\transform.h" />
     <ClInclude Include="..\ldecod\inc\transform8x8.h" />
