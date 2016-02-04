@@ -76,8 +76,7 @@ public:
   IWICBitmap* getVideoFrame (int videoFrameInChunk) {
   // return videoFrame for frame in seqNum chunk
 
-    // frame into video frame in chunk, find chunk from seqNum, is it valid
-    return nullptr;
+    return vidFrames [videoFrameInChunk];
     }
   //}}}
 #endif
@@ -270,7 +269,8 @@ private:
                       CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
 
     int pitch = width;
-    wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+    if (!vidFrames[frameIndex])
+      wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
 
     // lock vidFrame wicBitmap
     WICRect wicRect = { 0, 0, pitch, height };

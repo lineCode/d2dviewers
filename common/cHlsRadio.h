@@ -73,9 +73,11 @@ public:
   IWICBitmap* getVideoFrame (int frame, int seqNum) {
   // return videoFrame for frame in seqNum chunk
 
-    // frame into video frame in chunk, find chunk from seqNum, is it valid
-    //return mChunks[chunk].getVideoFrame (int videoFrameInChunk)
-    return nullptr;
+    int chunk;
+    int frameInChunk;
+    bool found = findFrame (frame, seqNum, chunk, frameInChunk);
+
+    return found ? mChunks[chunk].getVideoFrame((frameInChunk * 200) / 375) : nullptr;
     }
   //}}}
 #endif
