@@ -75,16 +75,7 @@ static void write_out_picture(VideoParameters *p_Vid, StorablePicture *p, int p_
   if( (pDecPic->pY == NULL) || (pDecPic->iBufSize < iFrameSize) )
     allocate_p_dec_pic(p_Vid, pDecPic, p, iLumaSize, iFrameSize, iLumaSizeX, iLumaSizeY, iChromaSizeX, iChromaSizeY);
 
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  {
-    pDecPic->bValid = 1;
-    pDecPic->iViewId = p->view_id >=0 ? p->view_id : -1;
-  }
-  /*}}}*/
-#else
   pDecPic->bValid = 1;
-#endif
 
   pDecPic->iPOC = p->frame_poc;
 
@@ -506,9 +497,6 @@ void write_unpaired_field (VideoParameters *p_Vid, FrameStore* fs, int p_out)
     fs->bottom_field->chroma_format_idc = p->chroma_format_idc;
     clear_picture(p_Vid, fs->bottom_field);
     dpb_combine_field_yuv(p_Vid, fs);
-#if (MVC_EXTENSION_ENABLE)
-    fs->frame->view_id = fs->view_id;
-#endif
     write_picture (p_Vid, fs->frame, p_out, TOP_FIELD);
   }
 
@@ -529,9 +517,6 @@ void write_unpaired_field (VideoParameters *p_Vid, FrameStore* fs, int p_out)
       fs ->top_field->frame_crop_right_offset = fs->bottom_field->frame_crop_right_offset;
     }
     dpb_combine_field_yuv(p_Vid, fs);
-#if (MVC_EXTENSION_ENABLE)
-    fs->frame->view_id = fs->view_id;
-#endif
     write_picture (p_Vid, fs->frame, p_out, BOTTOM_FIELD);
   }
 
@@ -609,9 +594,6 @@ void direct_output (VideoParameters *p_Vid, StorablePicture *p, int p_out)
   if (p_Vid->out_buffer->is_used == 3) {
     // we have both fields, so output them
     dpb_combine_field_yuv(p_Vid, p_Vid->out_buffer);
-#if (MVC_EXTENSION_ENABLE)
-    p_Vid->out_buffer->frame->view_id = p_Vid->out_buffer->view_id;
-#endif
     write_picture (p_Vid, p_Vid->out_buffer->frame, p_out, FRAME);
 
     calculate_frame_no(p_Vid, p);

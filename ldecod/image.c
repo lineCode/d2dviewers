@@ -84,66 +84,6 @@ static void setup_buffers(VideoParameters *p_Vid, int layer_id)
 }
 /*}}}*/
 
-#if MVC_EXTENSION_ENABLE
-/*{{{*/
-static void init_mvc_picture(Slice *currSlice)
-{
-  int i;
-  VideoParameters *p_Vid = currSlice->p_Vid;
-  DecodedPictureBuffer *p_Dpb = p_Vid->p_Dpb_layer[0];
-
-  StorablePicture *p_pic = NULL;
-
-  // find BL reconstructed picture
-  if (currSlice->structure  == FRAME)
-  {
-    for (i = 0; i < (int)p_Dpb->used_size/*size*/; i++)
-    {
-      FrameStore *fs = p_Dpb->fs[i];
-      if ((fs->frame->view_id == 0) && (fs->frame->frame_poc == currSlice->framepoc))
-      {
-        p_pic = fs->frame;
-        break;
-      }
-    }
-  }
-  else if (currSlice->structure  == TOP_FIELD)
-  {
-    for (i = 0; i < (int)p_Dpb->used_size/*size*/; i++)
-    {
-      FrameStore *fs = p_Dpb->fs[i];
-      if ((fs->top_field->view_id == 0) && (fs->top_field->top_poc == currSlice->toppoc))
-      {
-        p_pic = fs->top_field;
-        break;
-      }
-    }
-  }
-  else
-  {
-    for (i = 0; i < (int)p_Dpb->used_size/*size*/; i++)
-    {
-      FrameStore *fs = p_Dpb->fs[i];
-      if ((fs->bottom_field->view_id == 0) && (fs->bottom_field->bottom_poc == currSlice->bottompoc))
-      {
-        p_pic = fs->bottom_field;
-        break;
-      }
-    }
-  }
-  if(!p_pic)
-  {
-    p_Vid->bFrameInit = 0;
-  }
-  else
-  {
-    process_picture_in_dpb_s(p_Vid, p_pic);
-    store_proc_picture_in_dpb (currSlice->p_Dpb, clone_storable_picture(p_Vid, p_pic));
-  }
-}
-/*}}}*/
-#endif
-
 /*{{{*/
 /*!
  ************************************************************************
@@ -250,16 +190,6 @@ static void init_picture(VideoParameters *p_Vid, Slice *currSlice, InputParamete
   dec_picture->chroma_qp_offset[1] = p_Vid->active_pps->second_chroma_qp_index_offset;
   dec_picture->iCodingType = currSlice->structure==FRAME? (currSlice->mb_aff_frame_flag? FRAME_MB_PAIR_CODING:FRAME_CODING): FIELD_CODING; //currSlice->slice_type;
   dec_picture->layer_id = currSlice->layer_id;
-#if (MVC_EXTENSION_ENABLE)
-  dec_picture->view_id         = currSlice->view_id;
-  dec_picture->inter_view_flag = currSlice->inter_view_flag;
-  dec_picture->anchor_pic_flag = currSlice->anchor_pic_flag;
-  if (dec_picture->view_id == 1)
-  {
-    if((p_Vid->profile_idc == MVC_HIGH) || (p_Vid->profile_idc == STEREO_HIGH))
-      init_mvc_picture(currSlice);
-  }
-#endif
 
   // reset all variables of the error concealment instance before decoding of every frame.
   // here the third parameter should, if perfectly, be equal to the number of slices per frame.
@@ -602,28 +532,14 @@ static void init_picture_decoding(VideoParameters *p_Vid)
 
   fmo_init (p_Vid, pSlice);
 
-#if (MVC_EXTENSION_ENABLE)
-  if((pSlice->layer_id>0) && (pSlice->svc_extension_flag == 0 && pSlice->NaluHeaderMVCExt.non_idr_flag == 0))
-  {
-   idr_memory_management(p_Vid->p_Dpb_layer[pSlice->layer_id], p_Vid->dec_picture);
-  }
-  update_ref_list(p_Vid->p_Dpb_layer[pSlice->view_id]);
-  update_ltref_list(p_Vid->p_Dpb_layer[pSlice->view_id]);
-  update_pic_num(pSlice);
-  i = pSlice->view_id;
-#else
   update_pic_num(pSlice);
   i = 0;
-#endif
   init_Deblock(p_Vid, pSlice->mb_aff_frame_flag);
   //init mb_data;
   for(j=0; j<p_Vid->iSliceNumOfCurrPic; j++)
   {
     if(p_Vid->ppSliceList[j]->DFDisableIdc != 1)
       iDeblockMode=0;
-#if (MVC_EXTENSION_ENABLE)
-    assert(p_Vid->ppSliceList[j]->view_id == i);
-#endif
   }
   p_Vid->iDeblockMode = iDeblockMode;
 }
@@ -638,25 +554,7 @@ void init_slice(VideoParameters *p_Vid, Slice *currSlice)
 
   currSlice->init_lists (currSlice);
 
-#if (MVC_EXTENSION_ENABLE)
-  if (currSlice->svc_extension_flag == 0 || currSlice->svc_extension_flag == 1)
-    reorder_lists_mvc (currSlice, currSlice->ThisPOC);
-  else
-    reorder_lists (currSlice);
-
-  if (currSlice->fs_listinterview0)
-  {
-    free(currSlice->fs_listinterview0);
-    currSlice->fs_listinterview0 = NULL;
-  }
-  if (currSlice->fs_listinterview1)
-  {
-    free(currSlice->fs_listinterview1);
-    currSlice->fs_listinterview1 = NULL;
-  }
-#else
   reorder_lists (currSlice);
-#endif
 
   if (currSlice->structure==FRAME)
   {
@@ -899,9 +797,6 @@ int decode_one_frame (DecoderParams *pDecoder)
       p_Vid->erc_mvperMB += currSlice->erc_mvperMB;
     }
   }
-#if MVC_EXTENSION_ENABLE
-  p_Vid->last_dec_view_id = p_Vid->dec_picture->view_id;
-#endif
   if(p_Vid->dec_picture->structure == FRAME)
     p_Vid->last_dec_poc = p_Vid->dec_picture->frame_poc;
   else if(p_Vid->dec_picture->structure == TOP_FIELD)
@@ -1065,51 +960,12 @@ void reorder_lists (Slice *currSlice)
   {
 #if PRINTREFLIST
     unsigned int i;
-#if (MVC_EXTENSION_ENABLE)
-    // print out for debug purpose
-    if((p_Vid->profile_idc == MVC_HIGH || p_Vid->profile_idc == STEREO_HIGH) && currSlice->current_slice_nr==0)
-    {
-      if(currSlice->listXsize[0]>0)
-      {
-        printf("\n");
-        printf(" ** (FinalViewID:%d) %s Ref Pic List 0 ****\n", currSlice->view_id, currSlice->structure==FRAME ? "FRM":(currSlice->structure==TOP_FIELD ? "TOP":"BOT"));
-        for(i=0; i<(unsigned int)(currSlice->listXsize[0]); i++)  //ref list 0
-        {
-          printf("   %2d -> POC: %4d PicNum: %4d ViewID: %d\n", i, currSlice->listX[0][i]->poc, currSlice->listX[0][i]->pic_num, currSlice->listX[0][i]->view_id);
-        }
-      }
-    }
-#endif
 #endif
   }
   else if ( currSlice->slice_type == B_SLICE )
   {
 #if PRINTREFLIST
     unsigned int i;
-#if (MVC_EXTENSION_ENABLE)
-    // print out for debug purpose
-    if((p_Vid->profile_idc == MVC_HIGH || p_Vid->profile_idc == STEREO_HIGH) && currSlice->current_slice_nr==0)
-    {
-      if((currSlice->listXsize[0]>0) || (currSlice->listXsize[1]>0))
-        printf("\n");
-      if(currSlice->listXsize[0]>0)
-      {
-        printf(" ** (FinalViewID:%d) %s Ref Pic List 0 ****\n", currSlice->view_id, currSlice->structure==FRAME ? "FRM":(currSlice->structure==TOP_FIELD ? "TOP":"BOT"));
-        for(i=0; i<(unsigned int)(currSlice->listXsize[0]); i++)  //ref list 0
-        {
-          printf("   %2d -> POC: %4d PicNum: %4d ViewID: %d\n", i, currSlice->listX[0][i]->poc, currSlice->listX[0][i]->pic_num, currSlice->listX[0][i]->view_id);
-        }
-      }
-      if(currSlice->listXsize[1]>0)
-      {
-        printf(" ** (FinalViewID:%d) %s Ref Pic List 1 ****\n", currSlice->view_id, currSlice->structure==FRAME ? "FRM":(currSlice->structure==TOP_FIELD ? "TOP":"BOT"));
-        for(i=0; i<(unsigned int)(currSlice->listXsize[1]); i++)  //ref list 1
-        {
-          printf("   %2d -> POC: %4d PicNum: %4d ViewID: %d\n", i, currSlice->listX[1][i]->poc, currSlice->listX[1][i]->pic_num, currSlice->listX[1][i]->view_id);
-        }
-      }
-    }
-#endif
 
 #endif
   }
@@ -1139,9 +995,6 @@ int read_new_slice (Slice *currSlice)
 
   for (;;)
   {
-#if (MVC_EXTENSION_ENABLE)
-    currSlice->svc_extension_flag = -1;
-#endif
     if (!pending_nalu)
     {
       if (0 == read_next_nalu(p_Vid, nalu))
@@ -1152,41 +1005,6 @@ int read_new_slice (Slice *currSlice)
       nalu = pending_nalu;
       pending_nalu = NULL;
     }
-
-#if (MVC_EXTENSION_ENABLE)
-    if(p_Inp->DecodeAllLayers == 1 && (nalu->nal_unit_type == NALU_TYPE_PREFIX || nalu->nal_unit_type == NALU_TYPE_SLC_EXT))
-    {
-      currStream = currSlice->partArr[0].bitstream;
-      currStream->ei_flag = 0;
-      currStream->frame_bitoffset = currStream->read_len = 0;
-      fast_memcpy (currStream->streamBuffer, &nalu->buf[1], nalu->len-1);
-      currStream->code_len = currStream->bitstream_length = RBSPtoSODB(currStream->streamBuffer, nalu->len-1);
-
-      currSlice->svc_extension_flag = read_u_1 ("svc_extension_flag"        , currStream, &p_Dec->UsedBits);
-
-      if(currSlice->svc_extension_flag)
-      {
-        nal_unit_header_svc_extension();
-      }
-      else
-      {
-        nal_unit_header_mvc_extension(&currSlice->NaluHeaderMVCExt, currStream);
-        currSlice->NaluHeaderMVCExt.iPrefixNALU = (nalu->nal_unit_type == NALU_TYPE_PREFIX);
-      }
-
-      if(nalu->nal_unit_type == NALU_TYPE_SLC_EXT)
-      {
-        if(currSlice->svc_extension_flag)
-        {
-          //to be implemented for Annex G;
-        }
-        else
-        {
-          nalu->nal_unit_type = NALU_TYPE_SLICE; //currSlice->NaluHeaderMVCExt.non_idr_flag==0? NALU_TYPE_IDR: NALU_TYPE_SLICE;
-        }
-      }
-    }
-#endif
 
 process_nalu:
     switch (nalu->nal_unit_type)
@@ -1216,70 +1034,11 @@ process_nalu:
       currSlice->nal_reference_idc = nalu->nal_reference_idc;
       currSlice->dp_mode = PAR_DP_1;
       currSlice->max_part_nr = 1;
-#if (MVC_EXTENSION_ENABLE)
-      if (currSlice->svc_extension_flag != 0)
-      {
-        currStream = currSlice->partArr[0].bitstream;
-        currStream->ei_flag = 0;
-        currStream->frame_bitoffset = currStream->read_len = 0;
-        fast_memcpy (currStream->streamBuffer, &nalu->buf[1], nalu->len-1);
-        currStream->code_len = currStream->bitstream_length = RBSPtoSODB(currStream->streamBuffer, nalu->len-1);
-      }
-#else
       currStream = currSlice->partArr[0].bitstream;
       currStream->ei_flag = 0;
       currStream->frame_bitoffset = currStream->read_len = 0;
       memcpy (currStream->streamBuffer, &nalu->buf[1], nalu->len-1);
       currStream->code_len = currStream->bitstream_length = RBSPtoSODB(currStream->streamBuffer, nalu->len-1);
-#endif
-
-#if (MVC_EXTENSION_ENABLE)
-      if(currSlice->svc_extension_flag == 0)
-      {  //MVC
-        //if(is_MVC_profile(p_Vid->active_sps->profile_idc))
-        //{
-          currSlice->view_id = currSlice->NaluHeaderMVCExt.view_id;
-          currSlice->inter_view_flag = currSlice->NaluHeaderMVCExt.inter_view_flag;
-          currSlice->anchor_pic_flag = currSlice->NaluHeaderMVCExt.anchor_pic_flag;
-        //}
-      }
-      else if(currSlice->svc_extension_flag == -1) //SVC and the normal AVC;
-      {
-        if(p_Vid->active_subset_sps == NULL)
-        {
-          currSlice->view_id = GetBaseViewId(p_Vid, &p_Vid->active_subset_sps);
-          if(currSlice->NaluHeaderMVCExt.iPrefixNALU >0)
-          {
-            assert(currSlice->view_id == currSlice->NaluHeaderMVCExt.view_id);
-            currSlice->inter_view_flag = currSlice->NaluHeaderMVCExt.inter_view_flag;
-            currSlice->anchor_pic_flag = currSlice->NaluHeaderMVCExt.anchor_pic_flag;
-          }
-          else
-          {
-            currSlice->inter_view_flag = 1;
-            currSlice->anchor_pic_flag = currSlice->idr_flag;
-          }
-        }
-        else
-        {
-          assert(p_Vid->active_subset_sps->num_views_minus1 >=0);
-          // prefix NALU available
-          if(currSlice->NaluHeaderMVCExt.iPrefixNALU >0)
-          {
-            currSlice->view_id = currSlice->NaluHeaderMVCExt.view_id;
-            currSlice->inter_view_flag = currSlice->NaluHeaderMVCExt.inter_view_flag;
-            currSlice->anchor_pic_flag = currSlice->NaluHeaderMVCExt.anchor_pic_flag;
-          }
-          else
-          { //no prefix NALU;
-            currSlice->view_id = p_Vid->active_subset_sps->view_id[0];
-            currSlice->inter_view_flag = 1;
-            currSlice->anchor_pic_flag = currSlice->idr_flag;
-          }
-        }
-      }
-     currSlice->layer_id = currSlice->view_id = GetVOIdx( p_Vid, currSlice->view_id );
-#endif
 
       // Some syntax of the Slice Header depends on the parameter set, which depends on
       // the parameter set ID of the SLice header.  Hence, read the pic_parameter_set_id
@@ -1293,12 +1052,6 @@ process_nalu:
       currSlice->chroma444_not_separate = (p_Vid->active_sps->chroma_format_idc==YUV444)&&((p_Vid->separate_colour_plane_flag == 0));
 
       BitsUsedByHeader += RestOfSliceHeader (currSlice);
-#if (MVC_EXTENSION_ENABLE)
-      if(currSlice->view_id >=0)
-      {
-        currSlice->p_Dpb = p_Vid->p_Dpb_layer[currSlice->view_id];
-      }
-#endif
 
       assign_quant_params (currSlice);
 
@@ -1355,20 +1108,11 @@ process_nalu:
       currSlice->dp_mode     = PAR_DP_3;
       currSlice->max_part_nr = 3;
       currSlice->ei_flag     = 0;
-#if MVC_EXTENSION_ENABLE
-      currSlice->p_Dpb = p_Vid->p_Dpb_layer[0];
-#endif
       currStream             = currSlice->partArr[0].bitstream;
       currStream->ei_flag    = 0;
       currStream->frame_bitoffset = currStream->read_len = 0;
       memcpy (currStream->streamBuffer, &nalu->buf[1], nalu->len-1);
       currStream->code_len = currStream->bitstream_length = RBSPtoSODB(currStream->streamBuffer, nalu->len-1);
-#if MVC_EXTENSION_ENABLE
-      currSlice->view_id = GetBaseViewId(p_Vid, &p_Vid->active_subset_sps);
-      currSlice->inter_view_flag = 1;
-      currSlice->layer_id = currSlice->view_id = GetVOIdx( p_Vid, currSlice->view_id );
-      currSlice->anchor_pic_flag = currSlice->idr_flag;
-#endif
 
       BitsUsedByHeader = FirstPartOfSliceHeader(currSlice);
       UseParameterSet (currSlice);
@@ -1378,9 +1122,6 @@ process_nalu:
       currSlice->chroma444_not_separate = (p_Vid->active_sps->chroma_format_idc==YUV444)&&((p_Vid->separate_colour_plane_flag == 0));
 
       BitsUsedByHeader += RestOfSliceHeader (currSlice);
-#if MVC_EXTENSION_ENABLE
-      currSlice->p_Dpb = p_Vid->p_Dpb_layer[currSlice->view_id];
-#endif
 
       assign_quant_params (currSlice);
 
@@ -1534,34 +1275,6 @@ process_nalu:
         //printf ("Skipping these filling bits, proceeding w/ next NALU\n");
       }
       break;
-#if (MVC_EXTENSION_ENABLE)
-    case NALU_TYPE_VDRD:
-      //printf ("Found NALU_TYPE_VDRD\n");
-      //        printf ("read_new_slice: Found 'View and Dependency Representation Delimiter' NAL unit, len %d, ignored\n", nalu->len);
-      break;
-    case NALU_TYPE_PREFIX:
-      //printf ("Found NALU_TYPE_PREFIX\n");
-      if(currSlice->svc_extension_flag==1)
-        prefix_nal_unit_svc();
-      break;
-    case NALU_TYPE_SUB_SPS:
-      //printf ("Found NALU_TYPE_SUB_SPS\n");
-      if (p_Inp->DecodeAllLayers== 1)
-      {
-        ProcessSubsetSPS(p_Vid, nalu);
-      }
-      else
-      {
-        if (p_Inp->silent == FALSE)
-          printf ("Found Subsequence SPS NALU. Ignoring.\n");
-      }
-      break;
-    case NALU_TYPE_SLC_EXT:
-      //printf ("Found NALU_TYPE_SLC_EXT\n");
-      if (p_Inp->DecodeAllLayers == 0 &&  (p_Inp->silent == FALSE))
-        printf ("Found SVC extension NALU (%d). Ignoring.\n", (int) nalu->nal_unit_type);
-      break;
-#endif
     default:
       {
         if (p_Inp->silent == FALSE)
@@ -1770,13 +1483,8 @@ void exit_picture (VideoParameters *p_Vid, StorablePicture **dec_picture)
     frame_postprocessing(p_Vid);
   else
     field_postprocessing(p_Vid);   // reset all interlaced variables
-#if (MVC_EXTENSION_ENABLE)
-  if((*dec_picture)->used_for_reference || ((*dec_picture)->inter_view_flag == 1))
-    pad_dec_picture(p_Vid, *dec_picture);
-#else
   if((*dec_picture)->used_for_reference)
     pad_dec_picture(p_Vid, *dec_picture);
-#endif
   structure  = (*dec_picture)->structure;
   slice_type = (*dec_picture)->slice_type;
   frame_poc  = (*dec_picture)->frame_poc;
@@ -1786,11 +1494,7 @@ void exit_picture (VideoParameters *p_Vid, StorablePicture **dec_picture)
   is_idr     = (*dec_picture)->idr_flag;
 
   chroma_format_idc = (*dec_picture)->chroma_format_idc;
-#if MVC_EXTENSION_ENABLE
-  store_picture_in_dpb(p_Vid->p_Dpb_layer[(*dec_picture)->view_id], *dec_picture);
-#else
   store_picture_in_dpb(p_Vid->p_Dpb_layer[0], *dec_picture);
-#endif
 
   *dec_picture=NULL;
 
@@ -1868,18 +1572,12 @@ void exit_picture (VideoParameters *p_Vid, StorablePicture **dec_picture)
 
     if(slice_type == I_SLICE || slice_type == SI_SLICE || slice_type == P_SLICE || refpic)   // I or P pictures
     {
-#if (MVC_EXTENSION_ENABLE)
-      if((p_Vid->ppSliceList[0])->view_id!=0)
-#endif
         ++(p_Vid->number);
     }
     else
       ++(p_Vid->Bframe_ctr);    // B pictures
     ++(snr->frame_ctr);
 
-#if (MVC_EXTENSION_ENABLE)
-    if ((p_Vid->ppSliceList[0])->view_id != 0)
-#endif
       ++(p_Vid->g_nFrame);
   }
 
@@ -2047,11 +1745,6 @@ void copy_slice_info (Slice *currSlice, OldSliceParams *p_old_slice)
     p_old_slice->delta_pic_order_cnt[0] = currSlice->delta_pic_order_cnt[0];
     p_old_slice->delta_pic_order_cnt[1] = currSlice->delta_pic_order_cnt[1];
   }
-#if (MVC_EXTENSION_ENABLE)
-  p_old_slice->view_id = currSlice->view_id;
-  p_old_slice->inter_view_flag = currSlice->inter_view_flag;
-  p_old_slice->anchor_pic_flag = currSlice->anchor_pic_flag;
-#endif
   p_old_slice->layer_id = currSlice->layer_id;
 }
 /*}}}*/
@@ -2111,11 +1804,6 @@ int is_new_picture (StorablePicture *dec_picture, Slice *currSlice, OldSlicePara
     }
   }
 
-#if (MVC_EXTENSION_ENABLE)
-  result |= (currSlice->view_id != p_old_slice->view_id);
-  result |= (currSlice->inter_view_flag != p_old_slice->inter_view_flag);
-  result |= (currSlice->anchor_pic_flag != p_old_slice->anchor_pic_flag);
-#endif
   result |= (currSlice->layer_id != p_old_slice->layer_id);
   return result;
 }
@@ -2307,86 +1995,3 @@ void decode_one_slice (Slice *currSlice)
 }
 /*}}}*/
 
-#if (MVC_EXTENSION_ENABLE)
-/*{{{*/
-int GetVOIdx (VideoParameters *p_Vid, int iViewId)
-{
-  int iVOIdx = -1;
-  int *piViewIdMap;
-  if(p_Vid->active_subset_sps)
-  {
-    piViewIdMap = p_Vid->active_subset_sps->view_id;
-    for(iVOIdx = p_Vid->active_subset_sps->num_views_minus1; iVOIdx>=0; iVOIdx--)
-      if(piViewIdMap[iVOIdx] == iViewId)
-        break;
-  }
-  else
-  {
-    subset_seq_parameter_set_rbsp_t *curr_subset_sps;
-    int i;
-
-    curr_subset_sps = p_Vid->SubsetSeqParSet;
-    for(i=0; i<MAXSPS; i++)
-    {
-      if(curr_subset_sps->num_views_minus1>=0 && curr_subset_sps->sps.Valid)
-      {
-        break;
-      }
-      curr_subset_sps++;
-    }
-
-    if( i < MAXSPS )
-    {
-      p_Vid->active_subset_sps = curr_subset_sps;
-
-      piViewIdMap = p_Vid->active_subset_sps->view_id;
-      for(iVOIdx = p_Vid->active_subset_sps->num_views_minus1; iVOIdx>=0; iVOIdx--)
-        if(piViewIdMap[iVOIdx] == iViewId)
-          break;
-
-      return iVOIdx;
-    }
-    else
-    {
-      iVOIdx = 0;
-    }
-  }
-
-  return iVOIdx;
-}
-/*}}}*/
-/*{{{*/
-int GetViewIdx (VideoParameters *p_Vid, int iVOIdx)
-{
-  int iViewIdx = -1;
-  int *piViewIdMap;
-
-  if( p_Vid->active_subset_sps )
-  {
-    assert( p_Vid->active_subset_sps->num_views_minus1 >= iVOIdx && iVOIdx >= 0 );
-    piViewIdMap = p_Vid->active_subset_sps->view_id;
-    iViewIdx = piViewIdMap[iVOIdx];
-  }
-
-  return iViewIdx;
-}
-/*}}}*/
-/*{{{*/
-int get_maxViewIdx (VideoParameters *p_Vid, int view_id, int anchor_pic_flag, int listidx)
-{
-  int VOIdx;
-  int maxViewIdx = 0;
-
-  VOIdx = view_id;
-  if(VOIdx >= 0)
-  {
-    if(anchor_pic_flag)
-      maxViewIdx = listidx? p_Vid->active_subset_sps->num_anchor_refs_l1[VOIdx] : p_Vid->active_subset_sps->num_anchor_refs_l0[VOIdx];
-    else
-      maxViewIdx = listidx? p_Vid->active_subset_sps->num_non_anchor_refs_l1[VOIdx] : p_Vid->active_subset_sps->num_non_anchor_refs_l0[VOIdx];
-  }
-
-  return maxViewIdx;
-}
-/*}}}*/
-#endif

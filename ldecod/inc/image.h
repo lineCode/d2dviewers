@@ -31,12 +31,6 @@ extern void copy_dec_picture_JV (VideoParameters *p_Vid, StorablePicture *dst, S
 extern void frame_postprocessing(VideoParameters *p_Vid);
 extern void field_postprocessing(VideoParameters *p_Vid);
 
-#if (MVC_EXTENSION_ENABLE)
-extern int GetViewIdx(VideoParameters *p_Vid, int iVOIdx);
-extern int GetVOIdx(VideoParameters *p_Vid, int iViewId);
-extern int get_maxViewIdx(VideoParameters *p_Vid, int view_id, int anchor_pic_flag, int listidx);
-#endif
-
 extern void init_slice(VideoParameters *p_Vid, Slice *currSlice);
 extern void decode_slice(Slice *currSlice, int current_header);
 

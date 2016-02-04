@@ -15,8 +15,6 @@
 #define DISABLE_ERC               0    //!< Disable any error concealment processes
 #define JM_PARALLEL_DEBLOCK       0    //!< Enables Parallel Deblocking
 #define SIMULCAST_ENABLE          0    //!< to test the decoder
-
-#define MVC_EXTENSION_ENABLE      0    //!< enable support for the Multiview High Profile
 #define ENABLE_DEC_STATS          0    //!< enable decoder statistics collection
 
 #define MVC_INIT_VIEW_ID          -1

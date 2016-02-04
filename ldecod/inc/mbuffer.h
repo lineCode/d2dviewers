@@ -10,7 +10,7 @@
  *      Main contributors (see contributors.h for copyright, address and affiliation details)
  *      - Karsten Suehring
  *      - Alexis Michael Tourapis  <alexismt@ieee.org>
- 
+
  *      - Jill Boyce               <jill.boyce@thomson.net>
  *      - Saurav K Bandyopadhyay   <saurav@ieee.org>
  *      - Zhenyu Wu                <Zhenyu.Wu@thomson.net
@@ -34,7 +34,7 @@ typedef struct pic_motion_params_old
 typedef struct pic_motion_params
 {
   struct storable_picture *ref_pic[2];  //!< referrence picture pointer
-  MotionVector             mv[2];       //!< motion vector  
+  MotionVector             mv[2];       //!< motion vector
   char                     ref_idx[2];  //!< reference picture   [list][subblock_y][subblock_x]
   //byte                   mb_field;    //!< field macroblock indicator
   byte                     slice_no;
@@ -80,7 +80,7 @@ typedef struct storable_picture
   struct pic_motion_params **mv_info;          //!< Motion info
   struct pic_motion_params **JVmv_info[MAX_PLANE];          //!< Motion info
 
-  struct pic_motion_params_old  motion;              //!< Motion info  
+  struct pic_motion_params_old  motion;              //!< Motion info
   struct pic_motion_params_old  JVmotion[MAX_PLANE]; //!< Motion info for 4:4:4 independent mode decoding
 
   struct storable_picture *top_field;     // for mb aff, if frame for referencing the top field
@@ -107,19 +107,14 @@ typedef struct storable_picture
 
   // picture error concealment
   int         concealed_pic; //indicates if this is a concealed picture
-  
+
   // variables for tone mapping
   int         seiHasTone_mapping;
   int         tone_mapping_model_id;
-  int         tonemapped_bit_depth;  
+  int         tonemapped_bit_depth;
   imgpel*     tone_mapping_lut;                //!< tone mapping look up table
 
   int         proc_flag;
-#if (MVC_EXTENSION_ENABLE)
-  int         view_id;
-  int         inter_view_flag;
-  int         anchor_pic_flag;
-#endif
   int         iLumaStride;
   int         iChromaStride;
   int         iLumaExpandedHeight;
@@ -160,11 +155,6 @@ typedef struct frame_store
   StorablePicture *top_field;
   StorablePicture *bottom_field;
 
-#if (MVC_EXTENSION_ENABLE)
-  int       view_id;
-  int       inter_view_flag[2];
-  int       anchor_pic_flag[2];
-#endif
   int       layer_id;
 } FrameStore;
 
@@ -183,10 +173,7 @@ typedef struct decoded_picture_buffer
   unsigned      ref_frames_in_buffer;
   unsigned      ltref_frames_in_buffer;
   int           last_output_poc;
-#if (MVC_EXTENSION_ENABLE)
-  int           last_output_view_id;
-#endif
-  int           max_long_term_pic_idx;  
+  int           max_long_term_pic_idx;
 
 
   int           init_done;
@@ -211,15 +198,6 @@ extern void              free_storable_picture (StorablePicture* p);
 extern void              store_picture_in_dpb(DecodedPictureBuffer *p_Dpb, StorablePicture* p);
 extern StorablePicture*  get_short_term_pic (Slice *currSlice, DecodedPictureBuffer *p_Dpb, int picNum);
 
-#if (MVC_EXTENSION_ENABLE)
-extern void             idr_memory_management(DecodedPictureBuffer *p_Dpb, StorablePicture* p);
-extern void             flush_dpbs(DecodedPictureBuffer **p_Dpb, int nLayers);
-extern int              GetMaxDecFrameBuffering(VideoParameters *p_Vid);
-extern void             append_interview_list(DecodedPictureBuffer *p_Dpb, 
-                                              PictureStructure currPicStructure, int list_idx, 
-                                              FrameStore **list, int *listXsize, int currPOC, 
-                                              int curr_view_id, int anchor_pic_flag);
-#endif
 
 extern void unmark_for_reference(FrameStore* fs);
 extern void unmark_for_long_term_reference(FrameStore* fs);

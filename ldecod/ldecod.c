@@ -88,17 +88,6 @@ static void init (VideoParameters* p_Vid)
   p_Vid->pending_output_state = FRAME;
   p_Vid->recovery_flag = 0;
 
-
-#if (ENABLE_OUTPUT_TONEMAPPING)
-  init_tone_mapping_sei(p_Vid->seiToneMapping);
-#endif
-
-#if (MVC_EXTENSION_ENABLE)
-  p_Vid->last_pic_width_in_mbs_minus1 = 0;
-  p_Vid->last_pic_height_in_map_units_minus1 = 0;
-  p_Vid->last_max_dec_frame_buffering = 0;
-#endif
-
   p_Vid->newframe = 0;
   p_Vid->previous_frame_num = 0;
 
@@ -234,9 +223,6 @@ void error (char* text, int code)
   if (p_Dec)
   {
     flush_dpb(p_Dec->p_Vid->p_Dpb_layer[0]);
-#if (MVC_EXTENSION_ENABLE)
-    flush_dpb(p_Dec->p_Vid->p_Dpb_layer[1]);
-#endif
   }
 
   exit(code);
@@ -498,14 +484,6 @@ Slice* malloc_slice (InputParameters* p_Inp, VideoParameters* p_Vid)
   //  memory_size += get_mem3Dint(&(currSlice->fcf    ), MAX_PLANE, MB_BLOCK_SIZE, MB_BLOCK_SIZE);
   allocate_pred_mem(currSlice);
 
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  currSlice->view_id = MVC_INIT_VIEW_ID;
-  currSlice->inter_view_flag = 0;
-  currSlice->anchor_pic_flag = 0;
-  /*}}}*/
-#endif
-
   // reference flag initialization
   for (i = 0; i<17; ++i)
     currSlice->ref_flag[i] = 1;
@@ -702,11 +680,6 @@ void free_global_buffers (VideoParameters* p_Vid)
     free_storable_picture(p_Vid->dec_picture);
     p_Vid->dec_picture = NULL;
   }
-
-#if MVC_EXTENSION_ENABLE
-  if(p_Vid->active_subset_sps && p_Vid->active_subset_sps->sps.Valid && (p_Vid->active_subset_sps->sps.profile_idc==MVC_HIGH||p_Vid->active_subset_sps->sps.profile_idc == STEREO_HIGH))
-    free_img_data( p_Vid, &(p_Vid->tempData3) );
-#endif
 }
 /*}}}*/
 /*{{{*/
@@ -801,21 +774,6 @@ int OpenDecoder (char* filename)
   p_Dec->p_Vid->ref_poc_gap = InputParams.ref_poc_gap;
   p_Dec->p_Vid->poc_gap = InputParams.poc_gap;
 
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  {
-    int i;
-    VideoParameters *p_Vid = p_Dec->p_Vid;
-    // Set defaults
-    p_Vid->p_out = -1;
-    for(i = 0; i < MAX_VIEW_NUM; i++)
-      p_Vid->p_out_mvc[i] = -1;
-
-    p_Vid->p_out = p_Vid->p_out_mvc[0];
-  }
-  /*}}}*/
-#endif
-
   p_Dec->p_Vid->p_ref = -1;
   malloc_annex_b (p_Dec->p_Vid, &p_Dec->p_Vid->annex_b);
   open_annex_b (p_Dec->p_Inp->infile, p_Dec->p_Vid->annex_b);
@@ -825,14 +783,6 @@ int OpenDecoder (char* filename)
   init_old_slice (p_Dec->p_Vid->old_slice);
   init (p_Dec->p_Vid);
   init_out_buffer (p_Dec->p_Vid);
-
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  p_Dec->p_Vid->active_sps = NULL;
-  p_Dec->p_Vid->active_subset_sps = NULL;
-  init_subset_sps_list(p_Dec->p_Vid->SubsetSeqParSet, MAXSPS);
-  /*}}}*/
-#endif
 
   return DEC_OPEN_NOERR;
   }
@@ -863,12 +813,7 @@ int FinitDecoder (DecodedPicList** ppDecPicList) {
 
   ClearDecPicList (p_Dec->p_Vid);
 
-#if (MVC_EXTENSION_ENABLE)
   flush_dpb(p_Dec->p_Vid->p_Dpb_layer[0]);
-  flush_dpb(p_Dec->p_Vid->p_Dpb_layer[1]);
-#else
-  flush_dpb(p_Dec->p_Vid->p_Dpb_layer[0]);
-#endif
 
 #if (PAIR_FIELDS_IN_OUTPUT)
   flush_pending_output (p_Dec->p_Vid, p_Dec->p_Vid->p_out);
@@ -899,26 +844,11 @@ int CloseDecoder() {
 
   close_annex_b (p_Dec->p_Vid->annex_b);
 
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  for (i = 0; i < MAX_VIEW_NUM; i++)
-    if (p_Dec->p_Vid->p_out_mvc[i] != -1)
-      close (p_Dec->p_Vid->p_out_mvc[i]);
-  /*}}}*/
-#endif
-
   if (p_Dec->p_Vid->p_ref != -1)
     close(p_Dec->p_Vid->p_ref);
 
   ercClose (p_Dec->p_Vid, p_Dec->p_Vid->erc_errorVar);
   CleanUpPPS (p_Dec->p_Vid);
-
-#if (MVC_EXTENSION_ENABLE)
-  /*{{{*/
-  for (i = 0; i < MAXSPS; i++)
-    reset_subset_sps(p_Dec->p_Vid->SubsetSeqParSet+i);
-  /*}}}*/
-#endif
 
   for (i = 0; i<MAX_NUM_DPB_LAYERS; i++)
    free_dpb (p_Dec->p_Vid->p_Dpb_layer[i]);
@@ -933,16 +863,6 @@ int CloseDecoder() {
   return DEC_CLOSE_NOERR;
   }
 /*}}}*/
-
-#if (MVC_EXTENSION_ENABLE)
-/*{{{*/
-void OpenOutputFiles (VideoParameters* p_Vid, int view0_id, int view1_id) {
-
-  InputParameters *p_Inp = p_Vid->p_Inp;
-  char out_ViewFileName[2][FILE_NAME_SIZE], chBuf[FILE_NAME_SIZE], *pch;
-}
-/*}}}*/
-#endif
 
 /*{{{*/
 void set_global_coding_par (VideoParameters* p_Vid, CodingParameters *cps)

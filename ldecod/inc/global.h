@@ -306,22 +306,6 @@ typedef struct wp_params
 } WPParams;
 //}}}
 
-#if (MVC_EXTENSION_ENABLE)
-//{{{
-typedef struct nalunitheadermvcext_tag
-{
-   unsigned int non_idr_flag;
-   unsigned int priority_id;
-   unsigned int view_id;
-   unsigned int temporal_id;
-   unsigned int anchor_pic_flag;
-   unsigned int inter_view_flag;
-   unsigned int reserved_one_bit;
-   unsigned int iPrefixNALU;
-} NALUnitHeaderMVCExt_t;
-//}}}
-#endif
-
 //{{{
 //! Slice
 typedef struct slice
@@ -434,15 +418,6 @@ typedef struct slice
   int                 *abs_diff_pic_num_minus1[2];
   int                 *long_term_pic_idx[2];
 
-#if (MVC_EXTENSION_ENABLE)
-  int                 *abs_diff_view_idx_minus1[2];
-
-  int                 view_id;
-  int                 inter_view_flag;
-  int                 anchor_pic_flag;
-
-  NALUnitHeaderMVCExt_t NaluHeaderMVCExt;
-#endif
   int                 layer_id;
   short               DFDisableIdc;     //!< Disable deblocking filter on slice
   short               DFAlphaC0Offset;  //!< Alpha and C0 offset for filtering slice
@@ -497,13 +472,6 @@ typedef struct slice
   int ****wbp_weight; //weight in [list][fw_index][bw_index][component] order
   short wp_round_luma;
   short wp_round_chroma;
-
-#if (MVC_EXTENSION_ENABLE)
-  int listinterviewidx0;
-  int listinterviewidx1;
-  struct frame_store **fs_listinterview0;
-  struct frame_store **fs_listinterview1;
-#endif
 
   // for signalling to the neighbour logic that this is a deblocker call
   //byte mixedModeEdgeFlag;
@@ -654,16 +622,6 @@ typedef struct video_par
   CodingParameters *p_EncodePar[MAX_NUM_DPB_LAYERS];
   LayerParameters *p_LayerPar[MAX_NUM_DPB_LAYERS];
 
-#if (MVC_EXTENSION_ENABLE)
-  subset_seq_parameter_set_rbsp_t *active_subset_sps;
-  //int svc_extension_flag;
-  subset_seq_parameter_set_rbsp_t SubsetSeqParSet[MAXSPS];
-  int last_pic_width_in_mbs_minus1;
-  int last_pic_height_in_map_units_minus1;
-  int last_max_dec_frame_buffering;
-  int last_profile_idc;
-#endif
-
   struct sei_params        *p_SEI;
 
   struct old_slice_par *old_slice;
@@ -781,9 +739,6 @@ typedef struct video_par
 
   // files
   int p_out;                       //!< file descriptor to output YUV file
-#if (MVC_EXTENSION_ENABLE)
-  int p_out_mvc[MAX_VIEW_NUM];     //!< file descriptor to output YUV file for MVC
-#endif
   int p_ref;                       //!< pointer to input original reference YUV file file
 
   //FILE *p_log;                     //!< SNR file
@@ -951,9 +906,6 @@ typedef struct inp_par
   VideoDataFile input_file1;          //!< Input video file1
   VideoDataFile input_file2;          //!< Input video file2
   VideoDataFile input_file3;          //!< Input video file3
-#if (MVC_EXTENSION_ENABLE)
-  int  DecodeAllLayers;
-#endif
 
 
   // picture error concealment
@@ -988,11 +940,6 @@ typedef struct old_slice_par
   byte     idr_flag;
   int      idr_pic_id;
   int      pps_id;
-#if (MVC_EXTENSION_ENABLE)
-  int      view_id;
-  int      inter_view_flag;
-  int      anchor_pic_flag;
-#endif
   int      layer_id;
 } OldSliceParams;
 
@@ -1028,10 +975,6 @@ extern unsigned CeilLog2_sf( unsigned uiVal);
 // For 4:4:4 independent mode
 extern void change_plane_JV      ( VideoParameters *p_Vid, int nplane, Slice *pSlice);
 extern void make_frame_picture_JV( VideoParameters *p_Vid );
-
-#if (MVC_EXTENSION_ENABLE)
-  extern void nal_unit_header_mvc_extension(NALUnitHeaderMVCExt_t *NaluHeaderMVCExt, struct bit_stream_dec *bitstream);
-#endif
 
 extern void FreeDecPicList ( DecodedPicList *pDecPicList );
 extern void ClearDecPicList( VideoParameters *p_Vid );
@@ -1070,11 +1013,7 @@ static inline int is_EL_profile(unsigned int profile_idc)
 //{{{
 static inline int is_MVC_profile(unsigned int profile_idc)
 {
-  return ( (0)
-#if (MVC_EXTENSION_ENABLE)
-  || (profile_idc == MVC_HIGH) || (profile_idc == STEREO_HIGH)
-#endif
-  );
+  return ( (0)  );
 }
 //}}}
 #endif

@@ -34,12 +34,6 @@ typedef enum {
  NALU_TYPE_EOSEQ    = 10,
  NALU_TYPE_EOSTREAM = 11,
  NALU_TYPE_FILL     = 12,
-#if (MVC_EXTENSION_ENABLE)
- NALU_TYPE_PREFIX   = 14,
- NALU_TYPE_SUB_SPS  = 15,
- NALU_TYPE_SLC_EXT  = 20,
- NALU_TYPE_VDRD     = 24  // View and Dependency Representation Delimiter NAL Unit
-#endif
 } NaluType;
 
 //! values for nal_ref_idc
@@ -58,19 +52,9 @@ typedef struct nalu_t
   unsigned  max_size;              //!< NAL Unit Buffer size
   int       forbidden_bit;         //!< should be always FALSE
   NaluType  nal_unit_type;         //!< NALU_TYPE_xxxx
-  NalRefIdc nal_reference_idc;     //!< NALU_PRIORITY_xxxx  
+  NalRefIdc nal_reference_idc;     //!< NALU_PRIORITY_xxxx
   byte     *buf;                   //!< contains the first byte followed by the EBSP
   uint16    lost_packets;          //!< true, if packet loss is detected
-#if (MVC_EXTENSION_ENABLE)
-  int       svc_extension_flag;    //!< should be always 0, for MVC
-  int       non_idr_flag;          //!< 0 = current is IDR
-  int       priority_id;           //!< a lower value of priority_id specifies a higher priority
-  int       view_id;               //!< view identifier for the NAL unit
-  int       temporal_id;           //!< temporal identifier for the NAL unit
-  int       anchor_pic_flag;       //!< anchor access unit
-  int       inter_view_flag;       //!< inter-view prediction enable
-  int       reserved_one_bit;      //!< shall be equal to 1
-#endif
 } NALU_t;
 
 //! allocate one NAL Unit
@@ -79,9 +63,5 @@ extern NALU_t *AllocNALU(int);
 //! free one NAL Unit
 extern void FreeNALU(NALU_t *n);
 
-#if (MVC_EXTENSION_ENABLE)
-extern void nal_unit_header_svc_extension();
-extern void prefix_nal_unit_svc();
-#endif
 
 #endif
