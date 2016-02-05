@@ -31,6 +31,13 @@ public:
       free (mPower);
     if (mAudio)
       vPortFree (mAudio);
+
+  #ifdef WIN32
+    if (pDecoder) {
+      pDecoder->Uninitialize();
+      WelsDestroyDecoder (pDecoder);
+      }
+  #endif
     }
   //}}}
 
@@ -81,7 +88,6 @@ public:
     }
   //}}}
 #endif
-
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
@@ -94,9 +100,9 @@ public:
     bool aacHE = mAudBitrate <= 48000;
     int framesPerAacFrame = aacHE ? 2 : 1;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
-    int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
 
     if ((mDecoder == 0) || (aacHE != mAacHE)) {
+      //{{{  init audDecoder
       if (aacHE != mAacHE)
         NeAACDecClose (mDecoder);
       mDecoder = NeAACDecOpen();
@@ -105,92 +111,30 @@ public:
       NeAACDecSetConfiguration (mDecoder, config);
       mAacHE = aacHE;
       }
+      //}}}
 
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
-      // extract vidPes into new buffer, audPes into src buffer
-    #ifdef WIN32
-      size_t vidLen = http->getContentSize();
-      auto vidPesPtr = (uint8_t*)malloc (vidLen);
-    #else
       size_t vidLen = 0;
-      auto vidPesPtr = nullptr;
+      uint8_t* vidPesPtr = nullptr;
+    #ifdef WIN32
+      vidLen = http->getContentSize();
+      vidPesPtr = (uint8_t*)malloc (vidLen);
     #endif
+
+      // extract vidPes into new buffer, audPes into src buffer
       auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
-      if (false && audLen > 0) {
-        //{{{  save audPes to .adts file, should check seqNum
-        printf ("audPes:%d\n", (int)audLen);
+      //saveToFile (changeChan, radioChan, seqNum, http->getContent(), audLen, vidPesPtr, vidLen);
 
-        if (changeChan || !audFile) {
-          if (audFile)
-             fclose (audFile);
-          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                                 '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
-          audFile = fopen (fileName.c_str(), "wb");
-          }
-
-        fwrite (http->getContent(), 1, audLen, audFile);
-        }
-        //}}}
-      if (false &&vidLen > 0) {
-        //{{{  save vidPes to .264 file, should check seqNum
-        printf ("vidPes:%d\n", (int)vidLen);
-
-        if (changeChan || !vidFile) {
-          if (vidFile)
-            fclose (vidFile);
-          std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                                 '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
-          vidFile = fopen (fileName.c_str(), "wb");
-          }
-
-        fwrite (vidPesPtr, 1, vidLen, vidFile);
-        }
-        //}}}
-
-      // init aacDecoder
-      unsigned long sampleRate;
-      uint8_t chans;
-      NeAACDecInit (mDecoder, http->getContent(), 2048, &sampleRate, &chans);
-
-      NeAACDecFrameInfo frameInfo;
-      int16_t* buffer = mAudio;
-      NeAACDecDecode2 (mDecoder, &frameInfo, http->getContent(), 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
-
-      uint8_t* powerPtr = mPower;
-      auto loadPtr = http->getContent();
-      while (loadPtr < http->getContent() + audLen) {
-        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
-        loadPtr += frameInfo.bytesconsumed;
-        for (int i = 0; i < framesPerAacFrame; i++) {
-          //{{{  calc left, right power
-          int valueL = 0;
-          int valueR = 0;
-          for (int j = 0; j < mSamplesPerFrame; j++) {
-            short sample = (*buffer++) >> 4;
-            valueL += sample * sample;
-            sample = (*buffer++) >> 4;
-            valueR += sample * sample;
-            }
-
-          uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
-          *powerPtr++ = (272/2) - leftPix;
-          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
-
-          mFramesLoaded++;
-          }
-          //}}}
-        }
+      processAudio (http->getContent(), audLen, framesPerAacFrame);
       http->freeContent();
 
-    #ifdef WIN32
-      if (vidLen > 0)
-        makeVidFrames (vidPesPtr, vidLen);
-      free (vidPesPtr);
-    #endif
+      processVideo (vidPesPtr, vidLen);
+      if (vidPesPtr)
+        free (vidPesPtr);
 
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
@@ -251,8 +195,44 @@ private:
     return audPtr - audStartPtr;
     }
   //}}}
+  //{{{
+  void processAudio (uint8_t* audPtr, size_t audLen, int framesPerAacFrame) {
 
-#ifdef WIN32
+    // init aacDecoder
+    unsigned long sampleRate;
+    uint8_t chans;
+    NeAACDecInit (mDecoder, audPtr, 2048, &sampleRate, &chans);
+
+    NeAACDecFrameInfo frameInfo;
+    int16_t* buffer = mAudio;
+    int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
+    NeAACDecDecode2 (mDecoder, &frameInfo, audPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+
+    uint8_t* powerPtr = mPower;
+    auto ptr = audPtr;
+    while (ptr < audPtr + audLen) {
+      NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+      ptr += frameInfo.bytesconsumed;
+      for (int i = 0; i < framesPerAacFrame; i++) {
+        // calc left, right power
+        int valueL = 0;
+        int valueR = 0;
+        for (int j = 0; j < mSamplesPerFrame; j++) {
+          short sample = (*buffer++) >> 4;
+          valueL += sample * sample;
+          sample = (*buffer++) >> 4;
+          valueR += sample * sample;
+          }
+
+        uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
+        *powerPtr++ = (272/2) - leftPix;
+        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
+
+        mFramesLoaded++;
+        }
+      }
+    }
+  //}}}
   //{{{
   uint8_t limit (double v) {
 
@@ -266,120 +246,154 @@ private:
     }
   //}}}
   //{{{
-  void makeVidFrames (uint8_t* ptr, size_t vidLen) {
+  void processVideo (uint8_t* ptr, size_t vidLen) {
 
-    if (!pDecoder) {
-      //{{{  init static decoder
-      WelsCreateDecoder (&pDecoder);
+    if (vidLen > 0) {
+  #ifdef WIN32
+      if (!pDecoder) {
+        //{{{  init static decoder
+        WelsCreateDecoder (&pDecoder);
 
-      int iLevelSetting = (int)WELS_LOG_WARNING;
-      pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+        int iLevelSetting = (int)WELS_LOG_WARNING;
+        pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
 
-      // init decoder params
-      SDecodingParam sDecParam = {0};
-      sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
-      sDecParam.uiTargetDqLayer = (uint8_t) - 1;
-      sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
-      sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
-      pDecoder->Initialize (&sDecParam);
+        // init decoder params
+        SDecodingParam sDecParam = {0};
+        sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
+        sDecParam.uiTargetDqLayer = (uint8_t) - 1;
+        sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
+        sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
+        pDecoder->Initialize (&sDecParam);
 
-      // set conceal option
-      int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
-      pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+        // set conceal option
+        int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+        pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
 
-      // create vidFrame wicBitmap 24bit BGR
-      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-      }
-      //}}}
-
-    // append slice startCode
-    uint8_t uiStartCode[4] = {0, 0, 0, 1};
-    memcpy (ptr + vidLen, &uiStartCode[0], 4);
-
-    int frameIndex = 0;
-    unsigned long long uiTimeStamp = 0;
-    int32_t iBufPos = 0;
-    while (true) {
-      // process slice
-      int32_t iEndOfStreamFlag = 0;
-      if (iBufPos >= vidLen) {
-        //{{{  end of stream
-        iEndOfStreamFlag = true;
-        pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
-        break;
+        // create vidFrame wicBitmap 24bit BGR
+        CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
         }
         //}}}
 
-      // find sliceSize by looking for next slice startCode
-      int32_t iSliceSize;
-      for (iSliceSize = 1; iSliceSize < vidLen; iSliceSize++)
-        if ((!ptr[iBufPos+iSliceSize] && !ptr[iBufPos+iSliceSize+1])  &&
-            ((!ptr[iBufPos+iSliceSize+2] && ptr[iBufPos+iSliceSize+3] == 1) || (ptr[iBufPos+iSliceSize+2] == 1)))
+      // append slice startCode
+      uint8_t uiStartCode[4] = {0, 0, 0, 1};
+      memcpy (ptr + vidLen, &uiStartCode[0], 4);
+
+      int frameIndex = 0;
+      unsigned long long uiTimeStamp = 0;
+      int32_t iBufPos = 0;
+      while (true) {
+        // process slice
+        int32_t iEndOfStreamFlag = 0;
+        if (iBufPos >= vidLen) {
+          //{{{  end of stream
+          iEndOfStreamFlag = true;
+          pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
           break;
-
-      uint8_t* pData[3]; // yuv ptrs
-      SBufferInfo sDstBufInfo;
-      memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
-      sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
-
-      pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
-
-      if (sDstBufInfo.iBufferStatus == 1) {
-        //{{{  make frame
-        int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
-        int pitch = width;
-        int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
-
-        if (!vidFrames[frameIndex])
-          wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
-
-        WICRect wicRect = { 0, 0, pitch, height };
-        IWICBitmapLock* wicBitmapLock = NULL;
-        vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
-
-        // get vidFrame wicBitmap buffer
-        UINT bufferLen = 0;
-        BYTE* buffer = NULL;
-        wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
-
-        // yuv
-        for (auto y = 0; y < height; y++) {
-          BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
-          BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-          BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-
-          for (auto x = 0; x < width/2; x++) {
-            int y1 = *yptr++;
-            int y2 = *yptr++;
-            int u = (*uptr++) - 128;
-            int v = (*vptr++) - 128;
-
-            *buffer++ = limit (y1 + (1.8556 * u));
-            *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
-            *buffer++ = limit (y1 + (1.5748 * v));
-
-            *buffer++ = limit (y2 + (1.8556 * u));
-            *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
-            *buffer++ = limit (y2 + (1.5748 * v));
-            }
           }
+          //}}}
 
-        // release vidFrame wicBitmap buffer
-        wicBitmapLock->Release();
+        // find sliceSize by looking for next slice startCode
+        int32_t iSliceSize;
+        for (iSliceSize = 1; iSliceSize < vidLen; iSliceSize++)
+          if ((!ptr[iBufPos+iSliceSize] && !ptr[iBufPos+iSliceSize+1])  &&
+              ((!ptr[iBufPos+iSliceSize+2] && ptr[iBufPos+iSliceSize+3] == 1) || (ptr[iBufPos+iSliceSize+2] == 1)))
+            break;
 
-        mVidFramesLoaded++;
-        frameIndex++;
+        uint8_t* pData[3]; // yuv ptrs
+        SBufferInfo sDstBufInfo;
+        memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
+        sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
+
+        pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+
+        if (sDstBufInfo.iBufferStatus == 1) {
+          //{{{  make frame
+          int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
+          int pitch = width;
+          int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
+
+          if (!vidFrames[frameIndex])
+            wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+
+          WICRect wicRect = { 0, 0, pitch, height };
+          IWICBitmapLock* wicBitmapLock = NULL;
+          vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+
+          // get vidFrame wicBitmap buffer
+          UINT bufferLen = 0;
+          BYTE* buffer = NULL;
+          wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+
+          // yuv
+          for (auto y = 0; y < height; y++) {
+            BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
+            BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+            BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+
+            for (auto x = 0; x < width/2; x++) {
+              int y1 = *yptr++;
+              int y2 = *yptr++;
+              int u = (*uptr++) - 128;
+              int v = (*vptr++) - 128;
+
+              *buffer++ = limit (y1 + (1.8556 * u));
+              *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = limit (y1 + (1.5748 * v));
+
+              *buffer++ = limit (y2 + (1.8556 * u));
+              *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = limit (y2 + (1.5748 * v));
+              }
+            }
+
+          // release vidFrame wicBitmap buffer
+          wicBitmapLock->Release();
+
+          mVidFramesLoaded++;
+          frameIndex++;
+          }
+          //}}}
+
+        iBufPos += iSliceSize;
         }
-        //}}}
-
-      iBufPos += iSliceSize;
+  #endif
       }
-
-    //pDecoder->Uninitialize();
-    //WelsDestroyDecoder (pDecoder);
     }
   //}}}
-#endif
+  //{{{
+  void saveToFile (bool changeChan, cRadioChan* radioChan, int seqNum, uint8_t* audPtr, size_t audLen, uint8_t* vidPtr, size_t& vidLen) {
+
+    //{{{
+    if (audLen > 0) {
+      // save audPes to .adts file, should check seqNum
+      printf ("audPes:%d\n", (int)audLen);
+
+      if (changeChan || !audFile) {
+        if (audFile)
+           fclose (audFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
+        audFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (audPtr, 1, audLen, audFile);
+      }
+
+    if (vidLen > 0) {
+      // save vidPes to .264 file, should check seqNum
+      printf ("vidPes:%d\n", (int)vidLen);
+
+      if (changeChan || !vidFile) {
+        if (vidFile)
+          fclose (vidFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
+        vidFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (vidPtr, 1, vidLen, vidFile);
+      }
+    //}}}
+    }
+  //}}}
 
   // vars
   int mSeqNum;
