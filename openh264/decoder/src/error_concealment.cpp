@@ -20,7 +20,7 @@ void InitErrorCon (PWelsDecoderContext pCtx) {
     pCtx->sCopyFunc.pCopyLumaFunc = WelsCopy16x16_c;
     pCtx->sCopyFunc.pCopyChromaFunc = WelsCopy8x8_c;
 
-#if defined(X86_ASM)
+//#if defined(X86_ASM)
     if (pCtx->uiCpuFlag & WELS_CPU_MMXEXT) {
       pCtx->sCopyFunc.pCopyChromaFunc = WelsCopy8x8_mmx; //aligned
     }
@@ -28,7 +28,7 @@ void InitErrorCon (PWelsDecoderContext pCtx) {
     if (pCtx->uiCpuFlag & WELS_CPU_SSE2) {
       pCtx->sCopyFunc.pCopyLumaFunc = WelsCopy16x16_sse2; //this is aligned copy;
     }
-#endif //X86_ASM
+//#endif //X86_ASM
 
 #if defined(HAVE_NEON)
     if (pCtx->uiCpuFlag & WELS_CPU_NEON) {

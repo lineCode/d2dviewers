@@ -114,21 +114,6 @@
     <ClInclude Include="decoder\inc\WelsLock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="decoder\inc\WelsTask.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\inc\WelsTaskThread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\inc\WelsThread.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\inc\WelsThreadLib.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="decoder\inc\WelsThreadPool.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="decoder\inc\au_parser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -303,18 +288,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="decoder\src\welsDecoderExt.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="decoder\src\WelsTaskThread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="decoder\src\WelsThread.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="decoder\src\WelsThreadLib.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="decoder\src\WelsThreadPool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

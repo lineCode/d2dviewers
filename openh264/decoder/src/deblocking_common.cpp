@@ -2,6 +2,7 @@
 #include "macros.h"
 
 //  C code only
+//{{{
 void DeblockLumaLt4_c (uint8_t* pPix, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha, int32_t iBeta,
                        int8_t* pTc) {
   for (int32_t i = 0; i < 16; i++) {
@@ -36,6 +37,8 @@ void DeblockLumaLt4_c (uint8_t* pPix, int32_t iStrideX, int32_t iStrideY, int32_
     pPix += iStrideY;
   }
 }
+//}}}
+//{{{
 void DeblockLumaEq4_c (uint8_t* pPix, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha, int32_t iBeta) {
   int32_t p0, p1, p2, q0, q1, q2;
   int32_t iDetaP0Q0;
@@ -78,18 +81,31 @@ void DeblockLumaEq4_c (uint8_t* pPix, int32_t iStrideX, int32_t iStrideY, int32_
     pPix += iStrideY;
   }
 }
+//}}}
+
+//{{{
 void DeblockLumaLt4V_c (uint8_t* pPix, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* tc) {
   DeblockLumaLt4_c (pPix, iStride, 1, iAlpha, iBeta, tc);
 }
+//}}}
+//{{{
 void DeblockLumaLt4H_c (uint8_t* pPix, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* tc) {
   DeblockLumaLt4_c (pPix, 1, iStride, iAlpha, iBeta, tc);
 }
+//}}}
+
+//{{{
 void DeblockLumaEq4V_c (uint8_t* pPix, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockLumaEq4_c (pPix, iStride, 1, iAlpha, iBeta);
 }
+//}}}
+//{{{
 void DeblockLumaEq4H_c (uint8_t* pPix, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockLumaEq4_c (pPix, 1, iStride, iAlpha, iBeta);
 }
+//}}}
+
+//{{{
 void DeblockChromaLt4_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha,
                          int32_t iBeta, int8_t* pTc) {
   int32_t p0, p1, q0, q1, iDeta;
@@ -132,6 +148,8 @@ void DeblockChromaLt4_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStrideX, int
     pPixCr += iStrideY;
   }
 }
+//}}}
+//{{{
 void DeblockChromaEq4_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha,
                          int32_t iBeta) {
   int32_t p0, p1, q0, q1;
@@ -166,21 +184,34 @@ void DeblockChromaEq4_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStrideX, int
     pPixCb += iStrideY;
   }
 }
+//}}}
+
+//{{{
 void DeblockChromaLt4V_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
                           int8_t* tc) {
   DeblockChromaLt4_c (pPixCb, pPixCr, iStride, 1, iAlpha, iBeta, tc);
 }
+//}}}
+//{{{
 void DeblockChromaLt4H_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
                           int8_t* tc) {
   DeblockChromaLt4_c (pPixCb, pPixCr, 1, iStride, iAlpha, iBeta, tc);
 }
+//}}}
+
+//{{{
+
 void DeblockChromaEq4V_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockChromaEq4_c (pPixCb, pPixCr, iStride, 1, iAlpha, iBeta);
 }
+//}}}
+//{{{
 void DeblockChromaEq4H_c (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockChromaEq4_c (pPixCb, pPixCr, 1, iStride, iAlpha, iBeta);
 }
+//}}}
 
+//{{{
 void DeblockChromaLt42_c (uint8_t* pPixCbCr, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha,
                           int32_t iBeta, int8_t* pTc) {
   int32_t p0, p1, q0, q1, iDeta;
@@ -208,6 +239,8 @@ void DeblockChromaLt42_c (uint8_t* pPixCbCr, int32_t iStrideX, int32_t iStrideY,
     pPixCbCr += iStrideY;
   }
 }
+//}}}
+//{{{
 void DeblockChromaEq42_c (uint8_t* pPixCbCr, int32_t iStrideX, int32_t iStrideY, int32_t iAlpha,
                           int32_t iBeta) {
   int32_t p0, p1, q0, q1;
@@ -228,32 +261,44 @@ void DeblockChromaEq42_c (uint8_t* pPixCbCr, int32_t iStrideX, int32_t iStrideY,
     pPixCbCr += iStrideY;
   }
 }
+//}}}
 
+//{{{
 void DeblockChromaLt4V2_c (uint8_t* pPixCbCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
                            int8_t* tc) {
   DeblockChromaLt42_c (pPixCbCr, iStride, 1, iAlpha, iBeta, tc);
 }
+//}}}
+//{{{
 void DeblockChromaLt4H2_c (uint8_t* pPixCbCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
                            int8_t* tc) {
 
   DeblockChromaLt42_c (pPixCbCr, 1, iStride, iAlpha, iBeta, tc);
 }
+//}}}
+
+//{{{
 void DeblockChromaEq4V2_c (uint8_t* pPixCbCr, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockChromaEq42_c (pPixCbCr, iStride, 1, iAlpha, iBeta);
 }
+//}}}
+//{{{
 void DeblockChromaEq4H2_c (uint8_t* pPixCbCr, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
   DeblockChromaEq42_c (pPixCbCr, 1, iStride, iAlpha, iBeta);
 }
+//}}}
 
+//{{{
 void WelsNonZeroCount_c (int8_t* pNonZeroCount) {
   int32_t i;
   for (i = 0; i < 24; i++) {
     pNonZeroCount[i] = !!pNonZeroCount[i];
   }
 }
+//}}}
 
-#ifdef X86_ASM
 extern "C" {
+  //{{{
   void DeblockLumaLt4H_ssse3 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc) {
     ENFORCE_STACK_ALIGN_1D (uint8_t,  uiBuf,   16 * 8, 16);
 
@@ -261,7 +306,8 @@ extern "C" {
     DeblockLumaLt4V_ssse3 (&uiBuf[4 * 16], 16, iAlpha, iBeta, pTc);
     DeblockLumaTransposeV2H_sse2 (pPixY - 4, iStride, &uiBuf[0]);
   }
-
+  //}}}
+  //{{{
   void DeblockLumaEq4H_ssse3 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta) {
     ENFORCE_STACK_ALIGN_1D (uint8_t,  uiBuf,   16 * 8, 16);
 
@@ -269,8 +315,5 @@ extern "C" {
     DeblockLumaEq4V_ssse3 (&uiBuf[4 * 16], 16, iAlpha, iBeta);
     DeblockLumaTransposeV2H_sse2 (pPixY - 4, iStride, &uiBuf[0]);
   }
-
+  //}}}
 }
-
-#endif
-

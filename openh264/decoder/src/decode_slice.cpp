@@ -1982,13 +1982,13 @@ void WelsBlockFuncInit (SBlockFunc*   pFunc,  int32_t iCpu) {
   }
 #endif
 
-#if defined(X86_ASM)
+//#if defined(X86_ASM)
   if (iCpu & WELS_CPU_SSE2) {
     pFunc->pWelsSetNonZeroCountFunc = WelsNonZeroCount_sse2;
     pFunc->pWelsBlockZero16x16Func  = WelsBlockZero16x16_sse2;
     pFunc->pWelsBlockZero8x8Func    = WelsBlockZero8x8_sse2;
   }
-#endif
+//#endif
 
 }
 

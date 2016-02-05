@@ -88,13 +88,13 @@ void InitExpandPictureFunc (SExpandPicFunc* pExpandPicFunc, const uint32_t kuiCP
   pExpandPicFunc->pfExpandChromaPicture[0]   = ExpandPictureChroma_c;
   pExpandPicFunc->pfExpandChromaPicture[1]   = ExpandPictureChroma_c;
 
-#if defined(X86_ASM)
+//#if defined(X86_ASM)
   if ((kuiCPUFlag & WELS_CPU_SSE2) == WELS_CPU_SSE2) {
     pExpandPicFunc->pfExpandLumaPicture      = ExpandPictureLuma_sse2;
     pExpandPicFunc->pfExpandChromaPicture[0] = ExpandPictureChromaUnalign_sse2;
     pExpandPicFunc->pfExpandChromaPicture[1] = ExpandPictureChromaAlign_sse2;
   }
-#endif//X86_ASM
+//#endif//X86_ASM
 #if defined(HAVE_NEON)
   if (kuiCPUFlag & WELS_CPU_NEON) {
     pExpandPicFunc->pfExpandLumaPicture      = ExpandPictureLuma_neon;

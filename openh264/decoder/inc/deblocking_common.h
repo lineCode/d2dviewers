@@ -29,7 +29,7 @@ void WelsNonZeroCount_c (int8_t* pNonZeroCount);
 extern "C" {
 #endif//__cplusplus
 
-#ifdef  X86_ASM
+//#ifdef  X86_ASM
 void DeblockLumaLt4V_ssse3 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);
 void DeblockLumaEq4V_ssse3 (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta);
 void DeblockLumaTransposeH2V_sse2 (uint8_t* pPixY, int32_t iStride, uint8_t* pDst);
@@ -43,7 +43,7 @@ void DeblockChromaEq4H_ssse3 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride,
 void DeblockChromaLt4H_ssse3 (uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride, int32_t iAlpha, int32_t iBeta,
                               int8_t* pTC);
 void WelsNonZeroCount_sse2 (int8_t* pNonZeroCount);
-#endif
+//#endif
 
 #if defined(HAVE_NEON)
 void DeblockLumaLt4V_neon (uint8_t* pPixY, int32_t iStride, int32_t iAlpha, int32_t iBeta, int8_t* pTc);

@@ -1,4 +1,4 @@
-//{{{
+//{{{  includes
 #include "decoder_core.h"
 #include "error_code.h"
 #include "memmgr_nal_unit.h"
@@ -180,7 +180,7 @@ static inline int32_t DecodeFrameConstruction (PWelsDecoderContext pCtx, uint8_t
 }
 //}}}
 //{{{
-inline bool    CheckSliceNeedReconstruct (uint8_t uiLayerDqId, uint8_t uiTargetDqId) {
+inline bool CheckSliceNeedReconstruct (uint8_t uiLayerDqId, uint8_t uiTargetDqId) {
   return (uiLayerDqId == uiTargetDqId); // target layer
 }
 //}}}
@@ -193,7 +193,7 @@ inline uint8_t GetTargetDqId (uint8_t uiTargetDqId,  SDecodingParam* psParam) {
 //}}}
 
 //{{{
-inline void    HandleReferenceLostL0 (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
+inline void HandleReferenceLostL0 (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   if (0 == pCurNal->sNalHeaderExt.uiTemporalId) {
     pCtx->bReferenceLostAtT0Flag = true;
   }
@@ -201,7 +201,7 @@ inline void    HandleReferenceLostL0 (PWelsDecoderContext pCtx, PNalUnit pCurNal
 }
 //}}}
 //{{{
-inline void    HandleReferenceLost (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
+inline void HandleReferenceLost (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   if ((0 == pCurNal->sNalHeaderExt.uiTemporalId) || (1 == pCurNal->sNalHeaderExt.uiTemporalId)) {
     pCtx->bReferenceLostAtT0Flag = true;
   }
@@ -209,7 +209,7 @@ inline void    HandleReferenceLost (PWelsDecoderContext pCtx, PNalUnit pCurNal) 
 }
 //}}}
 //{{{
-inline int32_t  WelsDecodeConstructSlice (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
+inline int32_t WelsDecodeConstructSlice (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   int32_t  iRet = WelsTargetSliceConstruction (pCtx);
 
   if (iRet) {

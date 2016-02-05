@@ -917,7 +917,6 @@ void  DeblockingInit (SDeblockingFunc*  pFunc,  int32_t iCpu) {
   pFunc->pfChromaDeblockingLT4Hor2  = DeblockChromaLt4H2_c;
   pFunc->pfChromaDeblockingEQ4Hor2  = DeblockChromaEq4H2_c;
 
-#ifdef X86_ASM
   if (iCpu & WELS_CPU_SSSE3) {
     pFunc->pfLumaDeblockingLT4Ver   = DeblockLumaLt4V_ssse3;
     pFunc->pfLumaDeblockingEQ4Ver   = DeblockLumaEq4V_ssse3;
@@ -928,7 +927,6 @@ void  DeblockingInit (SDeblockingFunc*  pFunc,  int32_t iCpu) {
     pFunc->pfChromaDeblockingLT4Hor = DeblockChromaLt4H_ssse3;
     pFunc->pfChromaDeblockingEQ4Hor = DeblockChromaEq4H_ssse3;
   }
-#endif
 
 #if defined(HAVE_NEON)
   if (iCpu & WELS_CPU_NEON) {

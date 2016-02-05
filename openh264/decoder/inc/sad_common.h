@@ -59,7 +59,7 @@ void WelsSampleSadFour4x8_c (uint8_t* iSample1, int32_t iStride1, uint8_t* iSamp
 extern "C" {
 #endif//__cplusplus
 
-#if defined (X86_ASM)
+//#if defined (X86_ASM)
 
 int32_t WelsSampleSad4x4_mmx (uint8_t*, int32_t, uint8_t*, int32_t);
 int32_t WelsSampleSad16x16_sse2 (uint8_t*, int32_t, uint8_t*, int32_t);
@@ -73,7 +73,7 @@ void WelsSampleSadFour8x16_sse2 (uint8_t*, int32_t, uint8_t*, int32_t, int32_t*)
 void WelsSampleSadFour8x8_sse2 (uint8_t*, int32_t, uint8_t*, int32_t, int32_t*);
 void WelsSampleSadFour4x4_sse2 (uint8_t*, int32_t, uint8_t*, int32_t, int32_t*);
 
-#endif//X86_ASM
+//#endif//X86_ASM
 
 #if defined (HAVE_NEON)
 

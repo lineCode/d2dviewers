@@ -383,11 +383,6 @@
     <ClInclude Include="decoder\inc\welsDecoderExt.h" />
     <ClInclude Include="decoder\inc\WelsList.h" />
     <ClInclude Include="decoder\inc\WelsLock.h" />
-    <ClInclude Include="decoder\inc\WelsTask.h" />
-    <ClInclude Include="decoder\inc\WelsTaskThread.h" />
-    <ClInclude Include="decoder\inc\WelsThread.h" />
-    <ClInclude Include="decoder\inc\WelsThreadLib.h" />
-    <ClInclude Include="decoder\inc\WelsThreadPool.h" />
     <ClInclude Include="decoder\inc\wels_common_basis.h" />
     <ClInclude Include="decoder\inc\wels_common_defs.h" />
     <ClInclude Include="decoder\inc\wels_const.h" />
@@ -430,10 +425,6 @@
     <ClCompile Include="decoder\src\utils.cpp" />
     <ClCompile Include="decoder\src\welsCodecTrace.cpp" />
     <ClCompile Include="decoder\src\welsDecoderExt.cpp" />
-    <ClCompile Include="decoder\src\WelsTaskThread.cpp" />
-    <ClCompile Include="decoder\src\WelsThread.cpp" />
-    <ClCompile Include="decoder\src\WelsThreadLib.cpp" />
-    <ClCompile Include="decoder\src\WelsThreadPool.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

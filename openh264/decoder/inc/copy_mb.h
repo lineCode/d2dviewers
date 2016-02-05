@@ -50,14 +50,14 @@ void WelsCopy16x16_c (uint8_t* pDst, int32_t iStrideD, uint8_t* pSrc, int32_t iS
 extern "C" {
 #endif//__cplusplus
 
-#if defined (X86_ASM)
+//#if defined (X86_ASM)
 
 void WelsCopy8x8_mmx (uint8_t* pDst, int32_t iStrideD, uint8_t* pSrc, int32_t iStrideS);
 void WelsCopy8x16_mmx (uint8_t* pDst, int32_t iStrideD, uint8_t* pSrc, int32_t iStrideS);
 void WelsCopy16x8NotAligned_sse2 (uint8_t* Dst, int32_t  iStrideD, uint8_t* Src, int32_t  iStrideS);
 void WelsCopy16x16_sse2 (uint8_t* Dst, int32_t  iStrideD, uint8_t* Src, int32_t  iStrideS);
 void WelsCopy16x16NotAligned_sse2 (uint8_t* Dst, int32_t  iStrideD, uint8_t* Src, int32_t  iStrideS);
-#endif//X86_ASM
+//#endif//X86_ASM
 
 #if defined (HAVE_NEON)
 void WelsCopy8x8_neon (uint8_t* pDst, int32_t iStrideD, uint8_t* pSrc, int32_t iStrideS);
