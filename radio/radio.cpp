@@ -13,6 +13,12 @@
 // redefine bigHeap handlers
 #define pvPortMalloc malloc
 #define vPortFree free
+
+#include "codec_def.h"
+#include "codec_app_def.h"
+#include "codec_api.h"
+#pragma comment(lib,"welsdec.lib")
+
 #include "../common/cHlsChunk.h"
 //}}}
 //{{{  typedef
