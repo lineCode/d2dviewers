@@ -1,42 +1,4 @@
-/*!
- * \copy
- *     Copyright (c)  2009-2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *
- * \file    decoder.c
- *
- * \brief   Interfaces implementation introduced in decoder system architecture
- *
- * \date    03/10/2009 Created
- *
- *************************************************************************************
- */
+//{{{
 #include "codec_def.h"
 #include "decoder.h"
 #include "cpu.h"
@@ -52,13 +14,13 @@
 #include "decode_slice.h"
 #include "error_concealment.h"
 #include "memory_align.h"
-
+//}}}
 namespace WelsDec {
 
 extern PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const int32_t kiPicHeight);
-
 extern void FreePicture (PPicture pPic, CMemoryAlign* pMa);
 
+//{{{
 static int32_t CreatePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, const int32_t kiSize,
                               const int32_t kiPicWidth, const int32_t kiPicHeight) {
   PPicBuff pPicBuf = NULL;
@@ -101,7 +63,8 @@ static int32_t CreatePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, cons
 
   return 0;
 }
-
+//}}}
+//{{{
 static int32_t IncreasePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, const int32_t kiOldSize,
                                 const int32_t kiPicWidth, const int32_t kiPicHeight, const int32_t kiNewSize) {
   PPicBuff pPicOldBuf = *ppPicBuf;
@@ -164,7 +127,8 @@ static int32_t IncreasePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, co
   pPicOldBuf = NULL;
   return 0;
 }
-
+//}}}
+//{{{
 static int32_t DecreasePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, const int32_t kiOldSize,
                                 const int32_t kiPicWidth, const int32_t kiPicHeight, const int32_t kiNewSize) {
   PPicBuff pPicOldBuf = *ppPicBuf;
@@ -241,7 +205,9 @@ static int32_t DecreasePicBuff (PWelsDecoderContext pCtx, PPicBuff* ppPicBuf, co
 
   return 0;
 }
+//}}}
 
+//{{{
 void DestroyPicBuff (PPicBuff* ppPicBuf, CMemoryAlign* pMa) {
   PPicBuff pPicBuf = NULL;
 
@@ -272,7 +238,8 @@ void DestroyPicBuff (PPicBuff* ppPicBuf, CMemoryAlign* pMa) {
   pPicBuf = NULL;
   *ppPicBuf = NULL;
 }
-
+//}}}
+//{{{
 /*
  * fill data fields in default for decoder context
  */
@@ -325,12 +292,9 @@ void WelsDecoderDefaults (PWelsDecoderContext pCtx, SLogContext* pLogCtx) {
   pCtx->iSubSPSInvalidNum = 0;
   pCtx->iSubSPSLastInvalidId = -1;
 }
+//}}}
 
-/*
- *  destory_mb_blocks
- */
-
-
+//{{{
 /*
  *  get size of reference picture list in target layer incoming, = (iNumRefFrames
  */
@@ -352,7 +316,9 @@ static inline int32_t GetTargetRefListSize (PWelsDecoderContext pCtx) {
 
   return iNumRefFrames;
 }
+//}}}
 
+//{{{
 /*
  *  request memory blocks for decoder avc part
  */
@@ -438,7 +404,8 @@ int32_t WelsRequestMem (PWelsDecoderContext pCtx, const int32_t kiMbWidth, const
   bReallocFlag              = true;         // memory re-allocation successfully finished
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*
  *  free memory dynamically allocated during decoder
  */
@@ -472,7 +439,9 @@ void WelsFreeDynamicMemory (PWelsDecoderContext pCtx) {
   //free CABAC memory
   pMa->WelsFree (pCtx->pCabacDecEngine, "pCtx->pCabacDecEngine");
 }
+//}}}
 
+//{{{
 /*!
  * \brief   Open decoder
  */
@@ -500,7 +469,8 @@ int32_t WelsOpenDecoder (PWelsDecoderContext pCtx) {
   pCtx->bFrameFinish = true;
   return iRet;
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Close decoder
  */
@@ -517,7 +487,9 @@ void WelsCloseDecoder (PWelsDecoderContext pCtx) {
   pCtx->bNewSeqBegin = false;
   pCtx->bPrintFrameErrorTraceFlag = false;
 }
+//}}}
 
+//{{{
 /*!
  * \brief   configure decoder parameters
  */
@@ -551,7 +523,9 @@ int32_t DecoderConfigParam (PWelsDecoderContext pCtx, const SDecodingParam* kpPa
 
   return 0;
 }
+//}}}
 
+//{{{
 /*!
  *************************************************************************************
  * \brief   Initialize Wels decoder parameters and memory
@@ -572,7 +546,8 @@ int32_t WelsInitDecoder (PWelsDecoderContext pCtx, SLogContext* pLogCtx) {
   // open decoder
   return WelsOpenDecoder (pCtx);
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   Uninitialize Wels decoder parameters and memory
@@ -589,6 +564,9 @@ void WelsEndDecoder (PWelsDecoderContext pCtx) {
   WelsCloseDecoder (pCtx);
 }
 
+//}}}
+
+//{{{
 void GetVclNalTemporalId (PWelsDecoderContext pCtx) {
   PAccessUnit pAccessUnit = pCtx->pAccessUnitList;
   int32_t idx = pAccessUnit->uiStartPos;
@@ -596,7 +574,8 @@ void GetVclNalTemporalId (PWelsDecoderContext pCtx) {
   pCtx->iFeedbackVclNalInAu = FEEDBACK_VCL_NAL;
   pCtx->iFeedbackTidInAu    = pAccessUnit->pNalUnitsList[idx]->sNalHeaderExt.uiTemporalId;
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   First entrance to decoding core interface.
@@ -801,7 +780,9 @@ int32_t WelsDecodeBs (PWelsDecoderContext pCtx, const uint8_t* kpBsBuf, const in
 
   return pCtx->iErrorCode;
 }
+//}}}
 
+//{{{
 /*!
  * \brief   make sure synchonozization picture resolution (get from slice header) among different parts (i.e, memory related and so on)
  *          over decoder internal
@@ -839,7 +820,9 @@ int32_t SyncPictureResolutionExt (PWelsDecoderContext pCtx, const int32_t kiMbWi
 #endif//MEMORY_MONITOR
   return iErr;
 }
+//}}}
 
+//{{{
 void InitDecFuncs (PWelsDecoderContext pCtx, uint32_t uiCpuFlag) {
   WelsBlockFuncInit (&pCtx->sBlockFunc, uiCpuFlag);
   InitPredFunc (pCtx, uiCpuFlag);
@@ -847,7 +830,8 @@ void InitDecFuncs (PWelsDecoderContext pCtx, uint32_t uiCpuFlag) {
   InitExpandPictureFunc (& (pCtx->sExpandPicFunc), uiCpuFlag);
   DeblockingInit (&pCtx->sDeblockingFunc, uiCpuFlag);
 }
-
+//}}}
+//{{{
 void InitPredFunc (PWelsDecoderContext pCtx, uint32_t uiCpuFlag) {
   pCtx->pGetI16x16LumaPredFunc[I16_PRED_V     ] = WelsI16x16LumaPredV_c;
   pCtx->pGetI16x16LumaPredFunc[I16_PRED_H     ] = WelsI16x16LumaPredH_c;
@@ -985,7 +969,9 @@ void InitPredFunc (PWelsDecoderContext pCtx, uint32_t uiCpuFlag) {
   }
 #endif
 }
+//}}}
 
+//{{{
 //reset decoder number related statistics info
 void ResetDecStatNums (SDecoderStatistics* pDecStat) {
   uint32_t uiWidth = pDecStat->uiWidth;
@@ -996,7 +982,8 @@ void ResetDecStatNums (SDecoderStatistics* pDecStat) {
   pDecStat->uiHeight = uiHeight;
   pDecStat->iAvgLumaQp = iAvgLumaQp;
 }
-
+//}}}
+//{{{
 //update information when freezing occurs, including IDR/non-IDR number
 void UpdateDecStatFreezingInfo (const bool kbIdrFlag, SDecoderStatistics* pDecStat) {
   if (kbIdrFlag)
@@ -1004,7 +991,8 @@ void UpdateDecStatFreezingInfo (const bool kbIdrFlag, SDecoderStatistics* pDecSt
   else
     pDecStat->uiFreezingNonIDRNum++;
 }
-
+//}}}
+//{{{
 //update information when no freezing occurs, including QP, correct IDR number, ECed IDR number
 void UpdateDecStatNoFreezingInfo (PWelsDecoderContext pCtx) {
   PDqLayer pCurDq = pCtx->pCurDqLayer;
@@ -1039,7 +1027,8 @@ void UpdateDecStatNoFreezingInfo (PWelsDecoderContext pCtx) {
     pDecStat->uiEcIDRNum += (!pPic->bIsComplete);
   }
 }
-
+//}}}
+//{{{
 //update decoder statistics information
 void UpdateDecStat (PWelsDecoderContext pCtx, const bool kbOutput) {
   if (pCtx->bFreezeOutput)
@@ -1047,6 +1036,5 @@ void UpdateDecStat (PWelsDecoderContext pCtx, const bool kbOutput) {
   else if (kbOutput)
     UpdateDecStatNoFreezingInfo (pCtx);
 }
-
-
+//}}}
 } // namespace WelsDec

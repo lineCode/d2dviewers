@@ -1,47 +1,8 @@
-/*!
- * \copy
- *     Copyright (c)  2008-2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *
- *  manage_dec_ref.cpp
- *
- *  Abstract
- *      Implementation for managing reference picture
- *
- *  History
- *      07/21/2008 Created
- *
- *****************************************************************************/
-
+//{{{
 #include "manage_dec_ref.h"
 #include "error_concealment.h"
 #include "error_code.h"
+//}}}
 
 namespace WelsDec {
 
@@ -58,11 +19,14 @@ static int32_t SlidingWindow (PWelsDecoderContext pCtx);
 static int32_t AddShortTermToList (PRefPic pRefPic, PPicture pPic);
 static int32_t AddLongTermToList (PRefPic pRefPic, PPicture pPic, int32_t iLongTermFrameIdx);
 static int32_t MarkAsLongTerm (PRefPic pRefPic, int32_t iFrameNum, int32_t iLongTermFrameIdx);
+
 #ifdef LONG_TERM_REF
-int32_t GetLTRFrameIndex (PRefPic pRefPic, int32_t iAncLTRFrameNum);
+  int32_t GetLTRFrameIndex (PRefPic pRefPic, int32_t iAncLTRFrameNum);
 #endif
+
 static int32_t RemainOneBufferInDpbForEC (PWelsDecoderContext pCtx);
 
+//{{{
 static void SetUnRef (PPicture pRef) {
   if (NULL != pRef) {
     pRef->bUsedAsRef = false;
@@ -77,7 +41,9 @@ static void SetUnRef (PPicture pRef) {
     pRef->bIsComplete = false;
   }
 }
+//}}}
 
+//{{{
 //reset pRefList when
 // 1.sps arrived that is new sequence starting
 // 2.IDR NAL i.e. 1st layer in IDR AU
@@ -105,7 +71,8 @@ void WelsResetRefPic (PWelsDecoderContext pCtx) {
   }
   pRefPic->uiLongRefCount[LIST_0] = 0;
 }
-
+//}}}
+//{{{
 /**
  * fills the pRefPic.pRefList.
  */
@@ -172,7 +139,8 @@ int32_t WelsInitRefList (PWelsDecoderContext pCtx, int32_t iPoc) {
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsReorderRefList (PWelsDecoderContext pCtx) {
   PRefPicListReorderSyn pRefPicListReorderSyn = pCtx->pCurDqLayer->pRefPicListReordering;
   PNalUnitHeaderExt pNalHeaderExt = &pCtx->pCurDqLayer->sLayerInfo.sNalHeaderExt;
@@ -259,7 +227,8 @@ int32_t WelsReorderRefList (PWelsDecoderContext pCtx) {
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsMarkAsRef (PWelsDecoderContext pCtx) {
   PRefPic pRefPic = &pCtx->sRefPic;
   PRefPicMarking pRefPicMarking = pCtx->pCurDqLayer->pRefPicMarking;
@@ -332,7 +301,9 @@ int32_t WelsMarkAsRef (PWelsDecoderContext pCtx) {
 
   return iRet;
 }
+//}}}
 
+//{{{
 static int32_t MMCO (PWelsDecoderContext pCtx, PRefPicMarking pRefPicMarking) {
   PSps pSps = pCtx->pCurDqLayer->sLayerInfo.pSps;
   int32_t i = 0;
@@ -358,6 +329,8 @@ static int32_t MMCO (PWelsDecoderContext pCtx, PRefPicMarking pRefPicMarking) {
 
   return ERR_NONE;
 }
+//}}}
+//{{{
 static int32_t MMCOProcess (PWelsDecoderContext pCtx, uint32_t uiMmcoType,
                             int32_t iShortFrameNum, uint32_t uiLongTermPicNum , int32_t iLongTermFrameIdx, int32_t iMaxLongTermFrameIdx) {
   PRefPic pRefPic = &pCtx->sRefPic;
@@ -431,7 +404,9 @@ static int32_t MMCOProcess (PWelsDecoderContext pCtx, uint32_t uiMmcoType,
 
   return iRet;
 }
+//}}}
 
+//{{{
 static int32_t SlidingWindow (PWelsDecoderContext pCtx) {
   PRefPic pRefPic = &pCtx->sRefPic;
   PPicture pPic = NULL;
@@ -454,7 +429,9 @@ static int32_t SlidingWindow (PWelsDecoderContext pCtx) {
   }
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 static PPicture WelsDelShortFromList (PRefPic pRefPic, int32_t iFrameNum) {
   int32_t i = 0;
   int32_t iMoveSize = 0;
@@ -478,7 +455,8 @@ static PPicture WelsDelShortFromList (PRefPic pRefPic, int32_t iFrameNum) {
 
   return pPic;
 }
-
+//}}}
+//{{{
 static PPicture WelsDelShortFromListSetUnref (PRefPic pRefPic, int32_t iFrameNum) {
   PPicture pPic = WelsDelShortFromList (pRefPic, iFrameNum);
   if (pPic) {
@@ -486,7 +464,8 @@ static PPicture WelsDelShortFromListSetUnref (PRefPic pRefPic, int32_t iFrameNum
   }
   return pPic;
 }
-
+//}}}
+//{{{
 static PPicture WelsDelLongFromList (PRefPic pRefPic, uint32_t uiLongTermFrameIdx) {
   PPicture pPic = NULL;
   int32_t i = 0;
@@ -507,7 +486,8 @@ static PPicture WelsDelLongFromList (PRefPic pRefPic, uint32_t uiLongTermFrameId
   }
   return NULL;
 }
-
+//}}}
+//{{{
 static PPicture WelsDelLongFromListSetUnref (PRefPic pRefPic, uint32_t uiLongTermFrameIdx) {
   PPicture pPic = WelsDelLongFromList (pRefPic, uiLongTermFrameIdx);
   if (pPic) {
@@ -515,7 +495,9 @@ static PPicture WelsDelLongFromListSetUnref (PRefPic pRefPic, uint32_t uiLongTer
   }
   return pPic;
 }
+//}}}
 
+//{{{
 static int32_t AddShortTermToList (PRefPic pRefPic, PPicture pPic) {
   pPic->bUsedAsRef = true;
   pPic->bIsLongRef = false;
@@ -537,7 +519,8 @@ static int32_t AddShortTermToList (PRefPic pRefPic, PPicture pPic) {
   pRefPic->uiShortRefCount[LIST_0]++;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 static int32_t AddLongTermToList (PRefPic pRefPic, PPicture pPic, int32_t iLongTermFrameIdx) {
   int32_t i = 0;
 
@@ -560,7 +543,8 @@ static int32_t AddLongTermToList (PRefPic pRefPic, PPicture pPic, int32_t iLongT
   pRefPic->uiLongRefCount[LIST_0]++;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 static int32_t MarkAsLongTerm (PRefPic pRefPic, int32_t iFrameNum, int32_t iLongTermFrameIdx) {
   PPicture pPic = NULL;
   int32_t i = 0;
@@ -577,8 +561,10 @@ static int32_t MarkAsLongTerm (PRefPic pRefPic, int32_t iFrameNum, int32_t iLong
 
   return iRet;
 }
+//}}}
 
 #ifdef LONG_TERM_REF
+//{{{
 int32_t GetLTRFrameIndex (PRefPic pRefPic, int32_t iAncLTRFrameNum) {
   int32_t iLTRFrameIndex = -1;
   PPicture pPic;
@@ -590,8 +576,10 @@ int32_t GetLTRFrameIndex (PRefPic pRefPic, int32_t iAncLTRFrameNum) {
   }
   return iLTRFrameIndex;
 }
+//}}}
 #endif
 
+//{{{
 static int32_t RemainOneBufferInDpbForEC (PWelsDecoderContext pCtx) {
   int32_t iRet = ERR_NONE;
   PRefPic pRefPic = &pCtx->sRefPic;
@@ -625,5 +613,5 @@ static int32_t RemainOneBufferInDpbForEC (PWelsDecoderContext pCtx) {
 
   return iRet;
 }
-
+//}}}
 } // namespace WelsDec

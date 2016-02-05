@@ -1,5 +1,4 @@
 #pragma once
-
 //{{{  enum EVideoFormatType
 typedef enum {
   videoFormatRGB        = 1,             ///< rgb color formats
@@ -147,8 +146,4 @@ typedef struct TagBufferInfo {
   } SBufferInfo;
 //}}}
 
-//{{{
-static const char kiKeyNumMultiple[] = {
-  1, 1, 2, 4, 8, 16,
-};
-//}}}
+static const char kiKeyNumMultiple[] = { 1, 1, 2, 4, 8, 16, };

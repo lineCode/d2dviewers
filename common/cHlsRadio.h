@@ -68,7 +68,6 @@ public:
     return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioSamples (frameInChunk) : nullptr;
     }
   //}}}
-#ifdef WIN32
   //{{{
   IWICBitmap* getVideoFrame (int frame, int seqNum) {
   // return videoFrame for frame in seqNum chunk
@@ -78,7 +77,7 @@ public:
     return findVidFrame (frame, seqNum, chunk, vidFrameInChunk) ? mChunks[chunk].getVideoFrame (vidFrameInChunk) : nullptr;
     }
   //}}}
-#endif
+
   //{{{
   int changeChan (cHttp* http, int chan) {
 

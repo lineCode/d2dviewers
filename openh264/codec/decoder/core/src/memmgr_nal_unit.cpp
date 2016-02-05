@@ -1,48 +1,8 @@
-/*!
- * \copy
- *     Copyright (c)  2008-2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *
- *  memmgr_nal_unit.c
- *
- *  Abstract
- *      memory manager utils for NAL Unit list available
- *
- *  History
- *      07/10/2008 Created
- *
- *****************************************************************************/
 #include "memmgr_nal_unit.h"
 #include "memory_align.h"
 
 namespace WelsDec {
-
+//{{{
 int32_t MemInitNalList (PAccessUnit* ppAu, const uint32_t kuiSize, CMemoryAlign* pMa) {
   uint32_t uiIdx = 0;
   uint8_t* pBase = NULL, *pPtr = NULL;
@@ -81,7 +41,8 @@ int32_t MemInitNalList (PAccessUnit* ppAu, const uint32_t kuiSize, CMemoryAlign*
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t MemFreeNalList (PAccessUnit* ppAu, CMemoryAlign* pMa) {
   if (ppAu != NULL) {
     PAccessUnit pAu = *ppAu;
@@ -92,8 +53,8 @@ int32_t MemFreeNalList (PAccessUnit* ppAu, CMemoryAlign* pMa) {
   }
   return 0;
 }
-
-
+//}}}
+//{{{
 int32_t ExpandNalUnitList (PAccessUnit* ppAu, const int32_t kiOrgSize, const int32_t kiExpSize, CMemoryAlign* pMa) {
   if (kiExpSize <= kiOrgSize)
     return 1;
@@ -120,7 +81,8 @@ int32_t ExpandNalUnitList (PAccessUnit* ppAu, const int32_t kiOrgSize, const int
     return 0;
   }
 }
-
+//}}}
+//{{{
 /*
  *  MemGetNextNal
  *  Get next NAL Unit for using.
@@ -143,5 +105,5 @@ PNalUnit MemGetNextNal (PAccessUnit* ppAu, CMemoryAlign* pMa) {
 
   return pNu;
 }
-
+//}}}
 } // namespace WelsDec

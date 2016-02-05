@@ -1,42 +1,4 @@
-/*!
- * \copy
- *     Copyright (c)  2009-2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *
- * \file    au_parser.c
- *
- * \brief   Interfaces introduced in Access Unit level based parser
- *
- * \date    03/10/2009 Created
- *
- *************************************************************************************
- */
+//{{{
 #include "codec_def.h"
 #include "au_parser.h"
 #include "decoder.h"
@@ -45,8 +7,10 @@
 #include "decoder_core.h"
 #include "bit_stream.h"
 #include "memory_align.h"
+//}}}
 
 namespace WelsDec {
+//{{{
 /*!
  *************************************************************************************
  * \brief   Start Code Prefix (0x 00 00 00 01) detection
@@ -85,7 +49,8 @@ uint8_t* DetectStartCodePrefix (const uint8_t* kpBuf, int32_t* pOffset, int32_t 
 
   return NULL;
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   to parse nal unit
@@ -428,8 +393,9 @@ uint8_t* ParseNalHeader (PWelsDecoderContext pCtx, SNalUnitHeader* pNalUnitHeade
 
   return pNal;
 }
+//}}}
 
-
+//{{{
 bool CheckAccessUnitBoundaryExt (PNalUnitHeaderExt pLastNalHdrExt, PNalUnitHeaderExt pCurNalHeaderExt,
                                  PSliceHeader pLastSliceHeader, PSliceHeader pCurSliceHeader) {
   const PSps kpSps = pCurSliceHeader->pSps;
@@ -486,8 +452,8 @@ bool CheckAccessUnitBoundaryExt (PNalUnitHeaderExt pLastNalHdrExt, PNalUnitHeade
   }
   return false;
 }
-
-
+//}}}
+//{{{
 bool CheckAccessUnitBoundary (PWelsDecoderContext pCtx, const PNalUnit kpCurNal, const PNalUnit kpLastNal,
                               const PSps kpSps) {
   const PNalUnitHeaderExt kpLastNalHeaderExt = &kpLastNal->sNalHeaderExt;
@@ -543,7 +509,8 @@ bool CheckAccessUnitBoundary (PWelsDecoderContext pCtx, const PNalUnit kpCurNal,
 
   return false;
 }
-
+//}}}
+//{{{
 bool CheckNextAuNewSeq (PWelsDecoderContext pCtx, const PNalUnit kpCurNal, const PSps kpSps) {
   const PNalUnitHeaderExt kpCurNalHeaderExt = &kpCurNal->sNalHeaderExt;
   if (pCtx->pActiveLayerSps[kpCurNalHeaderExt->uiDependencyId] != NULL
@@ -554,7 +521,9 @@ bool CheckNextAuNewSeq (PWelsDecoderContext pCtx, const PNalUnit kpCurNal, const
 
   return false;
 }
+//}}}
 
+//{{{
 /*!
  *************************************************************************************
  * \brief   to parse NON VCL NAL Units
@@ -649,7 +618,8 @@ int32_t ParseNonVclNal (PWelsDecoderContext pCtx, uint8_t* pRbsp, const int32_t 
 
   return iErr;
 }
-
+//}}}
+//{{{
 int32_t ParseRefBasePicMarking (PBitStringAux pBs, PRefBasePicMarking pRefBasePicMarking) {
   uint32_t uiCode;
   WELS_READ_VERIFY (BsGetOneBit (pBs, &uiCode)); //adaptive_ref_base_pic_marking_mode_flag
@@ -679,7 +649,8 @@ int32_t ParseRefBasePicMarking (PBitStringAux pBs, PRefBasePicMarking pRefBasePi
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ParsePrefixNalUnit (PWelsDecoderContext pCtx, PBitStringAux pBs) {
   PNalUnit pCurNal = &pCtx->sPrefixNal;
   uint32_t uiCode;
@@ -701,6 +672,7 @@ int32_t ParsePrefixNalUnit (PWelsDecoderContext pCtx, PBitStringAux pBs) {
   }
   return ERR_NONE;
 }
+//}}}
 
 #define SUBSET_SPS_SEQ_SCALED_REF_LAYER_LEFT_OFFSET_MIN -32768
 #define SUBSET_SPS_SEQ_SCALED_REF_LAYER_LEFT_OFFSET_MAX 32767
@@ -711,9 +683,7 @@ int32_t ParsePrefixNalUnit (PWelsDecoderContext pCtx, PBitStringAux pBs) {
 #define SUBSET_SPS_SEQ_SCALED_REF_LAYER_BOTTOM_OFFSET_MIN -32768
 #define SUBSET_SPS_SEQ_SCALED_REF_LAYER_BOTTOM_OFFSET_MAX 32767
 
-
-
-
+//{{{
 int32_t DecodeSpsSvcExt (PWelsDecoderContext pCtx, PSubsetSps pSpsExt, PBitStringAux pBs) {
   PSpsSvcExt  pExt = NULL;
   uint32_t uiCode;
@@ -784,7 +754,8 @@ int32_t DecodeSpsSvcExt (PWelsDecoderContext pCtx, PSubsetSps pSpsExt, PBitStrin
 
   return 0;
 }
-
+//}}}
+//{{{
 const SLevelLimits* GetLevelLimits (int32_t iLevelIdx, bool bConstraint3) {
   switch (iLevelIdx) {
   case 9:
@@ -829,7 +800,8 @@ const SLevelLimits* GetLevelLimits (int32_t iLevelIdx, bool bConstraint3) {
   }
   return NULL;
 }
-
+//}}}
+//{{{
 bool CheckSpsActive (PWelsDecoderContext pCtx, PSps pSps, bool bUseSubsetFlag) {
   for (int i = 0; i < MAX_LAYER_NUM; i++) {
     if (pCtx->pActiveLayerSps[i] == pSps)
@@ -875,6 +847,7 @@ bool CheckSpsActive (PWelsDecoderContext pCtx, PSps pSps, bool bUseSubsetFlag) {
   }
   return false;
 }
+//}}}
 
 #define  SPS_LOG2_MAX_FRAME_NUM_MINUS4_MAX 12
 #define  SPS_LOG2_MAX_PIC_ORDER_CNT_LSB_MINUS4_MAX 12
@@ -887,6 +860,7 @@ bool CheckSpsActive (PWelsDecoderContext pCtx, PSps pSps, bool bUseSubsetFlag) {
 #define  SCALING_LIST_DELTA_SCALE_MAX 127
 #define SCALING_LIST_DELTA_SCALE_MIN -128
 
+//{{{
 /*!
  *************************************************************************************
  * \brief   to parse Sequence Parameter Set (SPS)
@@ -1273,7 +1247,8 @@ int32_t ParseSps (PWelsDecoderContext pCtx, PBitStringAux pBsAux, int32_t* pPicW
   }
   return 0;
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   to parse Picture Parameter Set (PPS)
@@ -1445,7 +1420,8 @@ int32_t ParsePps (PWelsDecoderContext pCtx, PPps pPpsList, PBitStringAux pBsAux,
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   to parse SEI message payload
@@ -1464,6 +1440,8 @@ int32_t ParseSei (void* pSei, PBitStringAux pBsAux) { // reserved Sei_Msg type
 
   return ERR_NONE;
 }
+//}}}
+//{{{
 /*
  *************************************************************************************
  * \brief   to parse scalinglist message payload
@@ -1503,7 +1481,8 @@ int32_t SetScalingListValue (uint8_t* pScalingList, int iScalingListNum, bool* b
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ParseScalingList (PSps pSps, PBitStringAux pBs, bool bPPS, bool* pScalingListPresentFlag,
                           uint8_t (*iScalingList4x4)[16], uint8_t (*iScalingList8x8)[64]) {
   uint32_t uiScalingListNum;
@@ -1566,7 +1545,8 @@ int32_t ParseScalingList (PSps pSps, PBitStringAux pBs, bool bPPS, bool* pScalin
   return ERR_NONE;
 
 }
-
+//}}}
+//{{{
 /*!
  *************************************************************************************
  * \brief   reset fmo list due to got Sps now
@@ -1586,5 +1566,5 @@ int32_t ResetFmoList (PWelsDecoderContext pCtx) {
   }
   return iCountNum;
 }
-
+//}}}
 } // namespace WelsDec

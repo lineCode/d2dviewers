@@ -50,49 +50,6 @@ typedef enum {
 //}}}
 //{{{
 typedef enum {
-  ENCODER_OPTION_DATAFORMAT = 0,
-  ENCODER_OPTION_IDR_INTERVAL,               ///< IDR period,0/-1 means no Intra period (only the first frame); lager than 0 means the desired IDR period, must be multiple of (2^temporal_layer)
-  ENCODER_OPTION_SVC_ENCODE_PARAM_BASE,      ///< structure of Base Param
-  ENCODER_OPTION_SVC_ENCODE_PARAM_EXT,       ///< structure of Extension Param
-  ENCODER_OPTION_FRAME_RATE,                 ///< maximal input frame rate, current supported range: MAX_FRAME_RATE = 30,MIN_FRAME_RATE = 1
-  ENCODER_OPTION_BITRATE,
-  ENCODER_OPTION_MAX_BITRATE,
-  ENCODER_OPTION_INTER_SPATIAL_PRED,
-  ENCODER_OPTION_RC_MODE,
-  ENCODER_OPTION_RC_FRAME_SKIP,
-  ENCODER_PADDING_PADDING,                   ///< 0:disable padding;1:padding
-
-  ENCODER_OPTION_PROFILE,                    ///< assgin the profile for each layer
-  ENCODER_OPTION_LEVEL,                      ///< assgin the level for each layer
-  ENCODER_OPTION_NUMBER_REF,                 ///< the number of refererence frame
-  ENCODER_OPTION_DELIVERY_STATUS,            ///< the delivery info which is a feedback from app level
-
-  ENCODER_LTR_RECOVERY_REQUEST,
-  ENCODER_LTR_MARKING_FEEDBACK,
-  ENCODER_LTR_MARKING_PERIOD,
-  ENCODER_OPTION_LTR,                        ///< 0:disable LTR;larger than 0 enable LTR; LTR number is fixed to be 2 in current encoder
-  ENCODER_OPTION_COMPLEXITY,
-
-  ENCODER_OPTION_ENABLE_SSEI,                ///< enable SSEI: true--enable ssei; false--disable ssei
-  ENCODER_OPTION_ENABLE_PREFIX_NAL_ADDING,   ///< enable prefix: true--enable prefix; false--disable prefix
-  ENCODER_OPTION_ENABLE_SPS_PPS_ID_ADDITION, ///< enable pSps/pPps id addition: true--enable pSps/pPps id; false--disable pSps/pPps id addistion
-
-  ENCODER_OPTION_CURRENT_PATH,
-  ENCODER_OPTION_DUMP_FILE,                  ///< dump layer reconstruct frame to a specified file
-  ENCODER_OPTION_TRACE_LEVEL,                ///< trace info based on the trace level
-  ENCODER_OPTION_TRACE_CALLBACK,             ///< a void (*)(void* context, int level, const char* message) function which receives log messages
-  ENCODER_OPTION_TRACE_CALLBACK_CONTEXT,     ///< context info of trace callback
-
-  ENCODER_OPTION_GET_STATISTICS,             ///< read only
-  ENCODER_OPTION_STATISTICS_LOG_INTERVAL,    ///< log interval in millisecond
-
-  ENCODER_OPTION_IS_LOSSLESS_LINK,            ///< advanced algorithmetic settings
-
-  ENCODER_OPTION_BITS_VARY_PERCENTAGE        ///< bit vary percentage
-} ENCODER_OPTION;
-//}}}
-//{{{
-typedef enum {
   DECODER_OPTION_END_OF_STREAM = 1,     ///< end of stream flag
   DECODER_OPTION_VCL_NAL,               ///< feedback whether or not have VCL NAL in current AU for application layer
   DECODER_OPTION_TEMPORAL_ID,           ///< feedback temporal id for application layer
@@ -297,75 +254,6 @@ typedef enum {
 } EParameterSetStrategy;
 //}}}
 //{{{
-typedef struct TagEncParamBase {
-  EUsageType
-  iUsageType;                 ///< application type;1.CAMERA_VIDEO_REAL_TIME:camera video signal; 2.SCREEN_CONTENT_REAL_TIME:screen content signal;
-
-  int       iPicWidth;        ///< width of picture in luminance samples (the maximum of all layers if multiple spatial layers presents)
-  int       iPicHeight;       ///< height of picture in luminance samples((the maximum of all layers if multiple spatial layers presents)
-  int       iTargetBitrate;   ///< target bitrate desired, in unit of bps
-  RC_MODES  iRCMode;          ///< rate control mode
-  float     fMaxFrameRate;    ///< maximal input frame rate
-
-} SEncParamBase, *PEncParamBase;
-//}}}
-//{{{
-typedef struct TagEncParamExt {
-  EUsageType
-  iUsageType;                          ///< application type;1.CAMERA_VIDEO_REAL_TIME:camera video signal;2.SCREEN_CONTENT_REAL_TIME:screen content signal;
-
-  int       iPicWidth;                 ///< width of picture in luminance samples (the maximum of all layers if multiple spatial layers presents)
-  int       iPicHeight;                ///< height of picture in luminance samples((the maximum of all layers if multiple spatial layers presents)
-  int       iTargetBitrate;            ///< target bitrate desired, in unit of bps
-  RC_MODES  iRCMode;                   ///< rate control mode
-  float     fMaxFrameRate;             ///< maximal input frame rate
-
-  int       iTemporalLayerNum;         ///< temporal layer number, max temporal layer = 4
-  int       iSpatialLayerNum;          ///< spatial layer number,1<= iSpatialLayerNum <= MAX_SPATIAL_LAYER_NUM, MAX_SPATIAL_LAYER_NUM = 4
-  SSpatialLayerConfig sSpatialLayers[MAX_SPATIAL_LAYER_NUM];
-
-  ECOMPLEXITY_MODE iComplexityMode;
-  unsigned int      uiIntraPeriod;     ///< period of Intra frame
-  int               iNumRefFrame;      ///< number of reference frame used
-  EParameterSetStrategy
-  eSpsPpsIdStrategy;       ///< different stategy in adjust ID in SPS/PPS: 0- constant ID, 1-additional ID, 6-mapping and additional
-  bool    bPrefixNalAddingCtrl;        ///< false:not use Prefix NAL; true: use Prefix NAL
-  bool    bEnableSSEI;                 ///< false:not use SSEI; true: use SSEI -- TODO: planning to remove the interface of SSEI
-  bool    bSimulcastAVC;               ///< (when encoding more than 1 spatial layer) false: use SVC syntax for higher layers; true: use Simulcast AVC -- coming soon
-  int     iPaddingFlag;                ///< 0:disable padding;1:padding
-  int     iEntropyCodingModeFlag;      ///< 0:CAVLC  1:CABAC.
-
-  /* rc control */
-  bool    bEnableFrameSkip;            ///< False: don't skip frame even if VBV buffer overflow.True: allow skipping frames to keep the bitrate within limits
-  int     iMaxBitrate;                 ///< the maximum bitrate, in unit of bps, set it to UNSPECIFIED_BIT_RATE if not needed
-  int     iMaxQp;                      ///< the maximum QP encoder supports
-  int     iMinQp;                      ///< the minmum QP encoder supports
-  unsigned int uiMaxNalSize;           ///< the maximum NAL size.  This value should be not 0 for dynamic slice mode
-
-  /*LTR settings*/
-  bool     bEnableLongTermReference;   ///< 1: on, 0: off
-  int      iLTRRefNum;                 ///< the number of LTR(long term reference),TODO: not supported to set it arbitrary yet
-  unsigned int      iLtrMarkPeriod;    ///< the LTR marked period that is used in feedback.
-  /* multi-thread settings*/
-  unsigned short
-  iMultipleThreadIdc;                  ///< 1 # 0: auto(dynamic imp. internal encoder); 1: multiple threads imp. disabled; lager than 1: count number of threads;
-  bool  bUseLoadBalancing; ///< only used when uiSliceMode=1 or 3, will change slicing of a picture during the run-time of multi-thread encoding, so the result of each run may be different
-
-  /* Deblocking loop filter */
-  int       iLoopFilterDisableIdc;     ///< 0: on, 1: off, 2: on except for slice boundaries
-  int       iLoopFilterAlphaC0Offset;  ///< AlphaOffset: valid range [-6, 6], default 0
-  int       iLoopFilterBetaOffset;     ///< BetaOffset: valid range [-6, 6], default 0
-  /*pre-processing feature*/
-  bool    bEnableDenoise;              ///< denoise control
-  bool    bEnableBackgroundDetection;  ///< background detection control //VAA_BACKGROUND_DETECTION //BGD cmd
-  bool    bEnableAdaptiveQuant;        ///< adaptive quantization control
-  bool    bEnableFrameCroppingFlag;    ///< enable frame cropping flag: TRUE always in application
-  bool    bEnableSceneChangeDetect;
-
-  bool    bIsLosslessLink;            ///<  LTR advanced setting
-} SEncParamExt;
-//}}}
-//{{{
 typedef struct {
   unsigned int          size;          ///< size of the struct
   VIDEO_BITSTREAM_TYPE  eVideoBsType;  ///< video stream type (AVC/SVC)
@@ -481,48 +369,29 @@ typedef struct TagParserBsInfo {
 } SParserBsInfo, *PParserBsInfo;
 //}}}
 //{{{
-typedef struct TagVideoEncoderStatistics {
-  unsigned int uiWidth;                        ///< the width of encoded frame
-  unsigned int uiHeight;                       ///< the height of encoded frame
-  //following standard, will be 16x aligned, if there are multiple spatial, this is of the highest
-  float fAverageFrameSpeedInMs;                ///< average_Encoding_Time
-
-  // rate control related
-  float fAverageFrameRate;                     ///< the average frame rate in, calculate since encoding starts, supposed that the input timestamp is in unit of ms
-  float fLatestFrameRate;                      ///< the frame rate in, in the last second, supposed that the input timestamp is in unit of ms (? useful for checking BR, but is it easy to calculate?
-  unsigned int uiBitRate;                      ///< sendrate in Bits per second, calculated within the set time-window
-  unsigned int uiAverageFrameQP;                    ///< the average QP of last encoded frame
-
-  unsigned int uiInputFrameCount;              ///< number of frames
-  unsigned int uiSkippedFrameCount;            ///< number of frames
-
-  unsigned int uiResolutionChangeTimes;        ///< uiResolutionChangeTimes
-  unsigned int uiIDRReqNum;                    ///< number of IDR requests
-  unsigned int uiIDRSentNum;                   ///< number of actual IDRs sent
-  unsigned int uiLTRSentNum;                   ///< number of LTR sent/marked
-
-  long long    iStatisticsTs;                  ///< Timestamp of updating the statistics
-} SEncoderStatistics; // in building, coming soon
-//}}}
-//{{{
 typedef struct TagVideoDecoderStatistics {
   unsigned int uiWidth;                        ///< the width of encode/decode frame
   unsigned int uiHeight;                       ///< the height of encode/decode frame
+
   float fAverageFrameSpeedInMs;                ///< average_Decoding_Time
   float fActualAverageFrameSpeedInMs;          ///< actual average_Decoding_Time, including freezing pictures
+
   unsigned int uiDecodedFrameCount;            ///< number of frames
   unsigned int uiResolutionChangeTimes;        ///< uiResolutionChangeTimes
   unsigned int uiIDRCorrectNum;                ///< number of correct IDR received
-  //EC on related
+
+  // EC on related
   unsigned int
   uiAvgEcRatio;                                ///< when EC is on, the average ratio of total EC areas, can be an indicator of reconstruction quality
   unsigned int
   uiAvgEcPropRatio;                            ///< when EC is on, the rough average ratio of propogate EC areas, can be an indicator of reconstruction quality
+
   unsigned int uiEcIDRNum;                     ///< number of actual unintegrity IDR or not received but eced
   unsigned int uiEcFrameNum;                   ///<
   unsigned int uiIDRLostNum;                   ///< number of whole lost IDR
   unsigned int uiFreezingIDRNum;               ///< number of freezing IDR with error (partly received), under resolution change
   unsigned int uiFreezingNonIDRNum;            ///< number of freezing non-IDR with error
+
   int iAvgLumaQp;                              ///< average luma QP. default: -1, no correct frame outputted
   int iSpsReportErrorNum;                      ///< number of Sps Invalid report
   int iSubSpsReportErrorNum;                   ///< number of SubSps Invalid report
@@ -530,5 +399,6 @@ typedef struct TagVideoDecoderStatistics {
   int iSpsNoExistNalNum;                       ///< number of Sps NoExist Nal
   int iSubSpsNoExistNalNum;                    ///< number of SubSps NoExist Nal
   int iPpsNoExistNalNum;                       ///< number of Pps NoExist Nal
-} SDecoderStatistics; // in building, coming soon
+
+  } SDecoderStatistics; // in building, coming soon
 //}}}

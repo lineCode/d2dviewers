@@ -1,36 +1,4 @@
-/*!
- * \copy
- *     Copyright (c)  2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *      decoder_core.c: Wels decoder framework core implementation
- */
-
+//{{{
 #include "decoder_core.h"
 #include "error_code.h"
 #include "memmgr_nal_unit.h"
@@ -42,8 +10,10 @@
 #include "decode_mb_aux.h"
 #include "memory_align.h"
 #include "error_concealment.h"
+//}}}
 
 namespace WelsDec {
+//{{{
 static inline int32_t DecodeFrameConstruction (PWelsDecoderContext pCtx, uint8_t** ppDst, SBufferInfo* pDstInfo) {
   PDqLayer pCurDq = pCtx->pCurDqLayer;
   PPicture pPic = pCtx->pDec;
@@ -208,32 +178,37 @@ static inline int32_t DecodeFrameConstruction (PWelsDecoderContext pCtx, uint8_t
 
   return 0;
 }
-
+//}}}
+//{{{
 inline bool    CheckSliceNeedReconstruct (uint8_t uiLayerDqId, uint8_t uiTargetDqId) {
   return (uiLayerDqId == uiTargetDqId); // target layer
 }
-
+//}}}
+//{{{
 inline uint8_t GetTargetDqId (uint8_t uiTargetDqId,  SDecodingParam* psParam) {
   uint8_t  uiRequiredDqId = psParam ? psParam->uiTargetDqLayer : (uint8_t)255;
 
   return WELS_MIN (uiTargetDqId, uiRequiredDqId);
 }
+//}}}
 
-
+//{{{
 inline void    HandleReferenceLostL0 (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   if (0 == pCurNal->sNalHeaderExt.uiTemporalId) {
     pCtx->bReferenceLostAtT0Flag = true;
   }
   pCtx->iErrorCode |= dsBitstreamError;
 }
-
+//}}}
+//{{{
 inline void    HandleReferenceLost (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   if ((0 == pCurNal->sNalHeaderExt.uiTemporalId) || (1 == pCurNal->sNalHeaderExt.uiTemporalId)) {
     pCtx->bReferenceLostAtT0Flag = true;
   }
   pCtx->iErrorCode |= dsRefLost;
 }
-
+//}}}
+//{{{
 inline int32_t  WelsDecodeConstructSlice (PWelsDecoderContext pCtx, PNalUnit pCurNal) {
   int32_t  iRet = WelsTargetSliceConstruction (pCtx);
 
@@ -243,7 +218,9 @@ inline int32_t  WelsDecodeConstructSlice (PWelsDecoderContext pCtx, PNalUnit pCu
 
   return iRet;
 }
+//}}}
 
+//{{{
 int32_t ParsePredWeightedTable (PBitStringAux pBs, PSliceHeader pSh) {
   uint32_t uiCode;
   int32_t iList = 0;
@@ -315,7 +292,8 @@ int32_t ParsePredWeightedTable (PBitStringAux pBs, PSliceHeader pSh) {
   } while (iList < LIST_1);//TODO: SUPPORT LIST_A
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*
  *  Predeclared function routines ..
  */
@@ -372,7 +350,8 @@ int32_t ParseRefPicListReordering (PBitStringAux pBs, PSliceHeader pSh) {
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ParseDecRefPicMarking (PWelsDecoderContext pCtx, PBitStringAux pBs, PSliceHeader pSh, PSps pSps,
                                const bool kbIdrFlag) {
   PRefPicMarking const kpRefMarking = &pSh->sRefMarking;
@@ -419,7 +398,9 @@ int32_t ParseDecRefPicMarking (PWelsDecoderContext pCtx, PBitStringAux pBs, PSli
 
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 bool FillDefaultSliceHeaderExt (PSliceHeaderExt pShExt, PNalUnitHeaderExt pNalExt) {
   if (pShExt == NULL || pNalExt == NULL)
     return false;
@@ -453,7 +434,8 @@ bool FillDefaultSliceHeaderExt (PSliceHeaderExt pShExt, PNalUnitHeaderExt pNalEx
 
   return true;
 }
-
+//}}}
+//{{{
 int32_t InitBsBuffer (PWelsDecoderContext pCtx) {
   if (pCtx == NULL)
     return ERR_INFO_INVALID_PTR;
@@ -489,7 +471,8 @@ int32_t InitBsBuffer (PWelsDecoderContext pCtx) {
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ExpandBsBuffer (PWelsDecoderContext pCtx, const int kiSrcLen) {
   if (pCtx == NULL)
     return ERR_INFO_INVALID_PTR;
@@ -519,7 +502,8 @@ int32_t ExpandBsBuffer (PWelsDecoderContext pCtx, const int kiSrcLen) {
   pCtx->sRawData.pHead = pNewBsBuff;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t CheckBsBuffer (PWelsDecoderContext pCtx, const int32_t kiSrcLen) {
   if (kiSrcLen > MAX_ACCESS_UNIT_CAPACITY) { //exceeds max allowed data
     WelsLog (& (pCtx->sLogCtx), WELS_LOG_WARNING, "Max AU size exceeded. Allowed size = %d, current size = %d",
@@ -536,7 +520,9 @@ int32_t CheckBsBuffer (PWelsDecoderContext pCtx, const int32_t kiSrcLen) {
 
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 /*
  * WelsInitStaticMemory
  * Memory request for new introduced data
@@ -561,7 +547,8 @@ int32_t WelsInitStaticMemory (PWelsDecoderContext pCtx) {
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*
  * WelsFreeStaticMemory
  * Free memory introduced in WelsInitStaticMemory at destruction of decoder.
@@ -606,6 +593,8 @@ void WelsFreeStaticMemory (PWelsDecoderContext pCtx) {
     pCtx->pParam = NULL;
   }
 }
+//}}}
+//{{{
 /*
  *  DecodeNalHeaderExt
  *  Trigger condition: NAL_UNIT_TYPE = NAL_UNIT_PREFIX or NAL_UNIT_CODED_SLICE_EXT
@@ -632,7 +621,7 @@ void DecodeNalHeaderExt (PNalUnit pNal, uint8_t* pSrc) {
   pHeaderExt->uiReservedThree2Bits  = uiCurByte & 0x03;
   pHeaderExt->uiLayerDqId           = (pHeaderExt->uiDependencyId << 4) | pHeaderExt->uiQualityId;
 }
-
+//}}}
 
 #define SLICE_HEADER_IDR_PIC_ID_MAX 65535
 #define SLICE_HEADER_REDUNDANT_PIC_CNT_MAX 127
@@ -642,6 +631,7 @@ void DecodeNalHeaderExt (PNalUnit pNal, uint8_t* pSrc) {
 #define SLICE_HEADER_INTER_LAYER_ALPHAC0_BETA_OFFSET_MAX 12
 #define MAX_NUM_REF_IDX_L0_ACTIVE_MINUS1 15
 #define SLICE_HEADER_CABAC_INIT_IDC_MAX 2
+//{{{
 /*
  *  decode_slice_header_avc
  *  Parse slice header of bitstream in avc for storing data structure
@@ -1125,7 +1115,8 @@ int32_t ParseSliceHeaderSyntaxs (PWelsDecoderContext pCtx, PBitStringAux pBs, co
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*
  *  Copy relative syntax elements of NALUnitHeaderExt, sRefPicBaseMarking and bStoreRefBasePicFlag in prefix nal unit.
  *  pSrc:   mark as decoded prefix NAL
@@ -1176,9 +1167,8 @@ bool PrefetchNalHeaderExtSyntax (PWelsDecoderContext pCtx, PNalUnit const kppDst
 
   return true;
 }
-
-
-
+//}}}
+//{{{
 int32_t UpdateAccessUnit (PWelsDecoderContext pCtx) {
   PAccessUnit pCurAu   = pCtx->pAccessUnitList;
   int32_t iIdx         = pCurAu->uiEndPos;
@@ -1225,7 +1215,9 @@ int32_t UpdateAccessUnit (PWelsDecoderContext pCtx) {
 
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 int32_t InitialDqLayersContext (PWelsDecoderContext pCtx, const int32_t kiMaxWidth, const int32_t kiMaxHeight) {
   int32_t i = 0;
 
@@ -1345,7 +1337,8 @@ int32_t InitialDqLayersContext (PWelsDecoderContext pCtx, const int32_t kiMaxWid
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 void UninitialDqLayersContext (PWelsDecoderContext pCtx) {
   int32_t i = 0;
   CMemoryAlign* pMa = pCtx->pMemAlign;
@@ -1509,7 +1502,9 @@ void UninitialDqLayersContext (PWelsDecoderContext pCtx) {
   pCtx->iPicHeightReq           = 0;
   pCtx->bInitialDqLayersMem     = false;
 }
+//}}}
 
+//{{{
 void ResetCurrentAccessUnit (PWelsDecoderContext pCtx) {
   PAccessUnit pCurAu = pCtx->pAccessUnitList;
   pCurAu->uiStartPos            = 0;
@@ -1532,7 +1527,8 @@ void ResetCurrentAccessUnit (PWelsDecoderContext pCtx) {
     pCurAu->uiActualUnitsNum = pCurAu->uiAvailUnitsNum = kuiLeftNum;
   }
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Force reset current Acess Unit Nal list in case error parsing/decoding in current AU
  * \author
@@ -1561,13 +1557,15 @@ void ForceResetCurrentAccessUnit (PAccessUnit pAu) {
   pAu->uiEndPos         = 0;
   pAu->bCompletedAuFlag = false;
 }
-
+//}}}
+//{{{
 //clear current corrupted NAL from pNalUnitsList
 void ForceClearCurrentNal (PAccessUnit pAu) {
   if (pAu->uiAvailUnitsNum > 0)
     -- pAu->uiAvailUnitsNum;
 }
-
+//}}}
+//{{{
 void ForceResetParaSetStatusAndAUList (PWelsDecoderContext pCtx) {
   pCtx->bSpsExistAheadFlag = false;
   pCtx->bSubspsExistAheadFlag = false;
@@ -1580,7 +1578,9 @@ void ForceResetParaSetStatusAndAUList (PWelsDecoderContext pCtx) {
   pCtx->pAccessUnitList->uiEndPos               = 0;
   pCtx->pAccessUnitList->bCompletedAuFlag       = false;
 }
+//}}}
 
+//{{{
 void CheckAvailNalUnitsListContinuity (PWelsDecoderContext pCtx, int32_t iStartIdx, int32_t iEndIdx) {
   PAccessUnit pCurAu = pCtx->pAccessUnitList;
 
@@ -1621,7 +1621,8 @@ void CheckAvailNalUnitsListContinuity (PWelsDecoderContext pCtx, int32_t iStartI
   pCurAu->uiEndPos = iCurNalUnitIdx;
   pCtx->uiTargetDqId = pCurAu->pNalUnitsList[iCurNalUnitIdx]->sNalHeaderExt.uiLayerDqId;
 }
-
+//}}}
+//{{{
 //main purpose: to support multi-slice and to include all slice which have the same uiDependencyId, uiQualityId and frame_num
 //for single slice, pIdxNoInterLayerPred SHOULD NOT be modified
 void RefineIdxNoInterLayerPred (PAccessUnit pCurAu, int32_t* pIdxNoInterLayerPred) {
@@ -1671,7 +1672,8 @@ void RefineIdxNoInterLayerPred (PAccessUnit pCurAu, int32_t* pIdxNoInterLayerPre
     *pIdxNoInterLayerPred = iFinalIdxNoInterLayerPred;
   }
 }
-
+//}}}
+//{{{
 bool CheckPocOfCurValidNalUnits (PAccessUnit pCurAu, int32_t pIdxNoInterLayerPred) {
   int32_t iEndIdx    = pCurAu->uiEndPos;
   int32_t iCurAuPoc =
@@ -1686,7 +1688,8 @@ bool CheckPocOfCurValidNalUnits (PAccessUnit pCurAu, int32_t pIdxNoInterLayerPre
 
   return true;
 }
-
+//}}}
+//{{{
 bool CheckIntegrityNalUnitsList (PWelsDecoderContext pCtx) {
   PAccessUnit pCurAu = pCtx->pAccessUnitList;
   const int32_t kiEndPos = pCurAu->uiEndPos;
@@ -1805,7 +1808,9 @@ bool CheckIntegrityNalUnitsList (PWelsDecoderContext pCtx) {
 
   return true;
 }
+//}}}
 
+//{{{
 void CheckOnlyOneLayerInAu (PWelsDecoderContext pCtx) {
   PAccessUnit pCurAu = pCtx->pAccessUnitList;
 
@@ -1837,7 +1842,8 @@ void CheckOnlyOneLayerInAu (PWelsDecoderContext pCtx) {
     ++iCurIdx;
   }
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeAccessUnitStart (PWelsDecoderContext pCtx) {
   // Roll back NAL units not being belong to current access unit list for proceeded access unit
   int32_t iRet = UpdateAccessUnit (pCtx);
@@ -1858,7 +1864,8 @@ int32_t WelsDecodeAccessUnitStart (PWelsDecoderContext pCtx) {
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 void WelsDecodeAccessUnitEnd (PWelsDecoderContext pCtx) {
   //save previous header info
   PAccessUnit pCurAu = pCtx->pAccessUnitList;
@@ -1919,7 +1926,8 @@ static bool CheckNewSeqBeginAndUpdateActiveLayerSps (PWelsDecoderContext pCtx) {
   }
   return bNewSeq;
 }
-
+//}}}
+//{{{
 static void WriteBackActiveParameters (PWelsDecoderContext pCtx) {
   if (pCtx->iOverwriteFlags & OVERWRITE_PPS) {
     memcpy (&pCtx->sPpsBuffer[pCtx->sPpsBuffer[MAX_PPS_COUNT].iPpsId], &pCtx->sPpsBuffer[MAX_PPS_COUNT], sizeof (SPps));
@@ -1935,7 +1943,9 @@ static void WriteBackActiveParameters (PWelsDecoderContext pCtx) {
   }
   pCtx->iOverwriteFlags = OVERWRITE_NONE;
 }
+//}}}
 
+//{{{
 /*
  * DecodeFinishUpdate
  * decoder finish decoding, update active parameter sets and new seq status
@@ -1950,7 +1960,9 @@ void DecodeFinishUpdate (PWelsDecoderContext pCtx) {
   if (pCtx->bNewSeqBegin)
     ResetActiveSPSForEachLayer (pCtx);
 }
+//}}}
 
+//{{{
 /*
  * ConstructAccessUnit
  * construct an access unit for given input bitstream, maybe partial NAL Unit, one or more Units are involved to
@@ -2009,7 +2021,8 @@ int32_t ConstructAccessUnit (PWelsDecoderContext pCtx, uint8_t** ppDst, SBufferI
 
   return 0;
 }
-
+//}}}
+//{{{
 static inline void InitDqLayerInfo (PDqLayer pDqLayer, PLayerInfo pLayerInfo, PNalUnit pNalUnit, PPicture pPicDec) {
   PNalUnitHeaderExt pNalHdrExt    = &pNalUnit->sNalHeaderExt;
   PSliceHeaderExt pShExt          = &pNalUnit->sNalData.sVclNal.sSliceHeaderExt;
@@ -2055,7 +2068,8 @@ static inline void InitDqLayerInfo (PDqLayer pDqLayer, PLayerInfo pLayerInfo, PN
   pDqLayer->uiLayerDqId                 = pNalHdrExt->uiLayerDqId;      // dq_id of current layer
   pDqLayer->bUseRefBasePicFlag          = pNalHdrExt->bUseRefBasePicFlag;
 }
-
+//}}}
+//{{{
 void WelsDqLayerDecodeStart (PWelsDecoderContext pCtx, PNalUnit pCurNal, PSps pSps, PPps pPps) {
   PSliceHeader pSh = &pCurNal->sNalData.sVclNal.sSliceHeaderExt.sSliceHeader;
 
@@ -2064,7 +2078,9 @@ void WelsDqLayerDecodeStart (PWelsDecoderContext pCtx, PNalUnit pCurNal, PSps pS
 
   pCtx->iFrameNum    = pSh->iFrameNum;
 }
+//}}}
 
+//{{{
 int32_t InitRefPicList (PWelsDecoderContext pCtx, const uint8_t kuiNRi, int32_t iPoc) {
   int32_t iRet = ERR_NONE;
   iRet = WelsInitRefList (pCtx, iPoc);
@@ -2074,7 +2090,8 @@ int32_t InitRefPicList (PWelsDecoderContext pCtx, const uint8_t kuiNRi, int32_t 
 
   return iRet;
 }
-
+//}}}
+//{{{
 void InitCurDqLayerData (PWelsDecoderContext pCtx, PDqLayer pCurDq) {
   if (NULL != pCtx && NULL != pCurDq) {
     pCurDq->pMbType         = pCtx->sMb.pMbType[0];
@@ -2102,7 +2119,8 @@ void InitCurDqLayerData (PWelsDecoderContext pCtx, PDqLayer pCurDq) {
     pCurDq->pMbRefConcealedFlag = pCtx->sMb.pMbRefConcealedFlag[0];
   }
 }
-
+//}}}
+//{{{
 /*
  * DecodeCurrentAccessUnit
  * Decode current access unit when current AU is completed.
@@ -2383,7 +2401,9 @@ int32_t DecodeCurrentAccessUnit (PWelsDecoderContext pCtx, uint8_t** ppDst, SBuf
 
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 bool CheckAndFinishLastPic (PWelsDecoderContext pCtx, uint8_t** ppDst, SBufferInfo* pDstInfo) {
   PAccessUnit pAu = pCtx->pAccessUnitList;
   bool bAuBoundaryFlag = false;
@@ -2443,7 +2463,8 @@ bool CheckAndFinishLastPic (PWelsDecoderContext pCtx, uint8_t** ppDst, SBufferIn
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 bool CheckRefPicturesComplete (PWelsDecoderContext pCtx) {
   // Multi Reference, RefIdx may differ
   bool bAllRefComplete = true;
@@ -2482,4 +2503,5 @@ bool CheckRefPicturesComplete (PWelsDecoderContext pCtx) {
   }
   return bAllRefComplete;
 }
+//}}}
 } // namespace WelsDec

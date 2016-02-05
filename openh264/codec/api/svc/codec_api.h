@@ -8,24 +8,13 @@
 //}}}
 #define EXTAPI __cdecl
 //{{{
-/**
-  * @page Overview
-  *   * This page is for openh264 codec API usage.
+/**   * This page is for openh264 codec API usage.
   *   * For how to use the encoder,please refer to page UsageExampleForEncoder
   *   * For how to use the decoder,please refer to page UsageExampleForDecoder
   *   * For more detail about ISVEncoder,please refer to page ISVCEnoder
   *   * For more detail about ISVDecoder,please refer to page ISVCDecoder
-*/
-
-/**
-  * @page DecoderUsageExample
-  *
-  * @brief
-  *   * An example for using the decoder for Decoding only or Parsing only
   *
   * Step 1:decoder declaration
-  * @code
-  *
   *  //decoder declaration
   *  ISVCDecoder *pSvcDecoder;
   *  //input: encoded bitstream start position; should include start code prefix
@@ -42,29 +31,19 @@
   *  memset(&sDstParseInfo, 0, sizeof(SParserBsInfo));
   *  sDstParseInfo.pDstBuff = new unsigned char[PARSE_SIZE]; //In Parsing only, allocate enough buffer to save transcoded bitstream for a frame
   *
-  * @endcode
-  *
   * Step 2:decoder creation
-  * @code
   *  CreateDecoder(pSvcDecoder);
-  * @endcode
   *
   * Step 3:declare required parameter, used to differentiate Decoding only and Parsing only
-  * @code
   *  SDecodingParam sDecParam = {0};
   *  sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_AVC;
   *  //for Parsing only, the assignment is mandatory
   *  sDecParam.bParseOnly = true;
-  * @endcode
   *
   * Step 4:initialize the parameter and decoder context, allocate memory
-  * @code
   *  Initialize(&sDecParam);
-  * @endcode
   *
-  * Step 5:do actual decoding process in slice level;
-  *        this can be done in a loop until data ends
-  * @code
+  * Step 5:do actual decoding process in slice level; this can be done in a loop until data ends
   *  //for Decoding only
   *  iRet = DecodeFrameNoDelay(pBuf, iSize, pData, &sDstBufInfo);
   *  //or
@@ -87,148 +66,15 @@
   *  //no-delay decoding can also be realized by directly calling DecodeFrame2() again with NULL input, as in the following. In this case, decoder would immediately reconstruct the input data. This can also be used similarly for Parsing only. Consequent decoding error and output indication should also be considered as above.
   *  iRet = DecodeFrame2(NULL, 0, pData, &sDstBufInfo);
   *  judge iRet, sDstBufInfo.iBufferStatus ...
-  * @endcode
-  *
+
   * Step 6:uninitialize the decoder and memory free
-  * @code
   *  Uninitialize();
-  * @endcode
   *
   * Step 7:destroy the decoder
-  * @code
   *  DestroyDecoder();
-  * @endcode
-  *
 */
-
-/**
-  * @page EncoderUsageExample1
-  *
-  * @brief
-  *  * An example for using encoder with basic parameter
-  *
-  * Step1:setup encoder
-  * @code
-  *  int rv = WelsCreateSVCEncoder (&encoder_);
-  *  ASSERT_EQ (0, rv);
-  *  ASSERT_TRUE (encoder_ != NULL);
-  * @endcode
-  *
-  * Step2:initilize with basic parameter
-  * @code
-  *  SEncParamBase param;
-  *  memset (&param, 0, sizeof (SEncParamBase));
-  *  param.iUsageType = usageType;
-  *  param.fMaxFrameRate = frameRate;
-  *  param.iPicWidth = width;
-  *  param.iPicHeight = height;
-  *  param.iTargetBitrate = 5000000;
-  *  encoder_->Initialize (&param);
-  * @endcode
-  *
-  * Step3:set option, set option during encoding process
-  * @code
-  *  encoder_->SetOption (ENCODER_OPTION_TRACE_LEVEL, &g_LevelSetting);
-  *  int videoFormat = videoFormatI420;
-  *  encoder_->SetOption (ENCODER_OPTION_DATAFORMAT, &videoFormat);
-  * @endcode
-  *
-  * Step4: encode and  store ouput bistream
-  * @code
-  *  int frameSize = width * height * 3 / 2;
-  *  BufferedData buf;
-  *  buf.SetLength (frameSize);
-  *  ASSERT_TRUE (buf.Length() == (size_t)frameSize);
-  *  SFrameBSInfo info;
-  *  memset (&info, 0, sizeof (SFrameBSInfo));
-  *  SSourcePicture pic;
-  *  memset (&pic, 0, sizeof (SsourcePicture));
-  *  pic.iPicWidth = width;
-  *  pic.iPicHeight = height;
-  *  pic.iColorFormat = videoFormatI420;
-  *  pic.iStride[0] = pic.iPicWidth;
-  *  pic.iStride[1] = pic.iStride[2] = pic.iPicWidth >> 1;
-  *  pic.pData[0] = buf.data();
-  *  pic.pData[1] = pic.pData[0] + width * height;
-  *  pic.pData[2] = pic.pData[1] + (width * height >> 2);
-  *  for(int num = 0;num<total_num;num++) {
-  *     //prepare input data
-  *     rv = encoder_->EncodeFrame (&pic, &info);
-  *     ASSERT_TRUE (rv == cmResultSuccess);
-  *     if (info.eFrameType != videoFrameTypeSkip && cbk != NULL) {
-  *      //output bitstream
-  *     }
-  *  }
-  * @endcode
-  *
-  * Step5:teardown encoder
-  * @code
-  *  if (encoder_) {
-  *      encoder_->Uninitialize();
-  *      WelsDestroySVCEncoder (encoder_);
-  *  }
-  * @endcode
-  *
-  */
-
-/**
-  * @page EncoderUsageExample2
-  *
-  * @brief
-  *     * An example for using the encoder with extension parameter.
-  *     * The same operation on Step 1,3,4,5 with Example-1
-  *
-  * Step 2:initialize with extension parameter
-  * @code
-  *  SEncParamExt param;
-  *  encoder->GetDefaultParams (&param);
-  *  param.iUsageType = usageType;
-  *  param.fMaxFrameRate = frameRate;
-  *  param.iPicWidth = width;
-  *  param.iPicHeight = height;
-  *  param.iTargetBitrate = 5000000;
-  *  param.bEnableDenoise = denoise;
-  *  param.iSpatialLayerNum = layers;
-  *  //SM_DYN_SLICE don't support multi-thread now
-  *  if (sliceMode != SM_SINGLE_SLICE && sliceMode != SM_DYN_SLICE)
-  *      param.iMultipleThreadIdc = 2;
-  *
-  *  for (int i = 0; i < param.iSpatialLayerNum; i++) {
-  *      param.sSpatialLayers[i].iVideoWidth = width >> (param.iSpatialLayerNum - 1 - i);
-  *      param.sSpatialLayers[i].iVideoHeight = height >> (param.iSpatialLayerNum - 1 - i);
-  *      param.sSpatialLayers[i].fFrameRate = frameRate;
-  *      param.sSpatialLayers[i].iSpatialBitrate = param.iTargetBitrate;
-  *
-  *      param.sSpatialLayers[i].sSliceCfg.uiSliceMode = sliceMode;
-  *      if (sliceMode == SM_DYN_SLICE) {
-  *          param.sSpatialLayers[i].sSliceCfg.sSliceArgument.uiSliceSizeConstraint = 600;
-  *          param.uiMaxNalSize = 1500;
-  *      }
-  *  }
-  *  param.iTargetBitrate *= param.iSpatialLayerNum;
-  *  encoder_->InitializeExt (&param);
-  *  int videoFormat = videoFormatI420;
-  *  encoder_->SetOption (ENCODER_OPTION_DATAFORMAT, &videoFormat);
-  *
-  * @endcode
-  */
 //}}}
 #ifdef __cplusplus
-  //{{{
-  class ISVCEncoder {
-   public:
-    virtual int EXTAPI Initialize (const SEncParamBase* pParam) = 0;
-    virtual int EXTAPI InitializeExt (const SEncParamExt* pParam) = 0;
-    virtual int EXTAPI GetDefaultParams (SEncParamExt* pParam) = 0;
-    virtual int EXTAPI Uninitialize() = 0;
-    virtual int EXTAPI EncodeFrame (const SSourcePicture* kpSrcPic, SFrameBSInfo* pBsInfo) = 0;
-    virtual int EXTAPI EncodeParameterSets (SFrameBSInfo* pBsInfo) = 0;
-    virtual int EXTAPI ForceIntraFrame (bool bIDR) = 0;
-    virtual int EXTAPI SetOption (ENCODER_OPTION eOptionId, void* pOption) = 0;
-    virtual int EXTAPI GetOption (ENCODER_OPTION eOptionId, void* pOption) = 0;
-    virtual ~ISVCEncoder() {}
-  };
-  //}}}
   //{{{
   class ISVCDecoder {
    public:
@@ -344,27 +190,11 @@
 
   extern "C" {
 #else
-  typedef struct ISVCEncoderVtbl ISVCEncoderVtbl;
-  typedef const ISVCEncoderVtbl* ISVCEncoder;
-  struct ISVCEncoderVtbl {
-
-  int (*Initialize) (ISVCEncoder*, const SEncParamBase* pParam);
-  int (*InitializeExt) (ISVCEncoder*, const SEncParamExt* pParam);
-  int (*GetDefaultParams) (ISVCEncoder*, SEncParamExt* pParam);
-  int (*Uninitialize) (ISVCEncoder*);
-  int (*EncodeFrame) (ISVCEncoder*, const SSourcePicture* kpSrcPic, SFrameBSInfo* pBsInfo);
-  int (*EncodeParameterSets) (ISVCEncoder*, SFrameBSInfo* pBsInfo);
-  int (*ForceIntraFrame) (ISVCEncoder*, bool bIDR);
-  int (*SetOption) (ISVCEncoder*, ENCODER_OPTION eOptionId, void* pOption);
-  int (*GetOption) (ISVCEncoder*, ENCODER_OPTION eOptionId, void* pOption);
-  };
-
   typedef struct ISVCDecoderVtbl ISVCDecoderVtbl;
   typedef const ISVCDecoderVtbl* ISVCDecoder;
   struct ISVCDecoderVtbl {
   long (*Initialize) (ISVCDecoder*, const SDecodingParam* pParam);
   long (*Uninitialize) (ISVCDecoder*);
-
   //{{{
   DECODING_STATE (*DecodeFrame) (ISVCDecoder*, const unsigned char* pSrc,
                                  const int iSrcLen,
@@ -407,8 +237,6 @@
 
 typedef void (*WelsTraceCallback) (void* ctx, int level, const char* string);
 
-int  WelsCreateSVCEncoder (ISVCEncoder** ppEncoder);
-void WelsDestroySVCEncoder (ISVCEncoder* pEncoder);
 int WelsGetDecoderCapability (SDecoderCapability* pDecCapability);
 long WelsCreateDecoder (ISVCDecoder** ppDecoder);
 void WelsDestroyDecoder (ISVCDecoder* pDecoder);

@@ -1,49 +1,11 @@
-/*!
- * \copy
- *     Copyright (c)  2009-2013, Cisco Systems
- *     All rights reserved.
- *
- *     Redistribution and use in source and binary forms, with or without
- *     modification, are permitted provided that the following conditions
- *     are met:
- *
- *        * Redistributions of source code must retain the above copyright
- *          notice, this list of conditions and the following disclaimer.
- *
- *        * Redistributions in binary form must reproduce the above copyright
- *          notice, this list of conditions and the following disclaimer in
- *          the documentation and/or other materials provided with the
- *          distribution.
- *
- *     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *     FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *     COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *     INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *     BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *     CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *     LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *     ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *     POSSIBILITY OF SUCH DAMAGE.
- *
- *
- * \file    rec_mb.c
- *
- * \brief   implementation for all macroblock decoding process after mb syntax parsing and residual decoding with cavlc.
- *
- * \date    3/18/2009 Created
- *
- *************************************************************************************
- */
-
-
+//{{{
 #include "rec_mb.h"
 #include "decode_slice.h"
+//}}}
 
 namespace WelsDec {
 
+//{{{
 void WelsFillRecNeededMbInfo (PWelsDecoderContext pCtx, bool bOutput, PDqLayer pCurLayer) {
   PPicture pCurPic = pCtx->pDec;
   int32_t iLumaStride   = pCurPic->iLinesize[0];
@@ -60,13 +22,16 @@ void WelsFillRecNeededMbInfo (PWelsDecoderContext pCtx, bool bOutput, PDqLayer p
     pCurLayer->pPred[2] = pCurPic->pData[2] + ((iMbY * iChromaStride + iMbX) << 3);
   }
 }
+//}}}
 
+//{{{
 int32_t RecI8x8Mb (int32_t iMbXy, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   RecI8x8Luma (iMbXy, pCtx, pScoeffLevel, pDqLayer);
   RecI4x4Chroma (iMbXy, pCtx, pScoeffLevel, pDqLayer);
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t RecI8x8Luma (int32_t iMbXy, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   /*****get local variable from outer variable********/
   /*prediction info*/
@@ -113,14 +78,15 @@ int32_t RecI8x8Luma (int32_t iMbXy, PWelsDecoderContext pCtx, int16_t* pScoeffLe
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t RecI4x4Mb (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   RecI4x4Luma (iMBXY, pCtx, pScoeffLevel, pDqLayer);
   RecI4x4Chroma (iMBXY, pCtx, pScoeffLevel, pDqLayer);
   return ERR_NONE;
 }
-
-
+//}}}
+//{{{
 int32_t RecI4x4Luma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   /*****get local variable from outer variable********/
   /*prediction info*/
@@ -155,8 +121,8 @@ int32_t RecI4x4Luma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLe
 
   return ERR_NONE;
 }
-
-
+//}}}
+//{{{
 int32_t RecI4x4Chroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   int32_t iChromaStride = pCtx->pCurDqLayer->pDec->iLinesize[1];
 
@@ -174,8 +140,8 @@ int32_t RecI4x4Chroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeff
 
   return ERR_NONE;
 }
-
-
+//}}}
+//{{{
 int32_t RecI16x16Mb (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   /*decoder use, encoder no use*/
   int8_t iI16x16PredMode = pDqLayer->pIntraPredMode[iMBXY][7];
@@ -217,8 +183,9 @@ int32_t RecI16x16Mb (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLe
 
   return ERR_NONE;
 }
+//}}}
 
-
+//{{{
 //according to current 8*8 block ref_index to gain reference picture
 static inline void GetRefPic (sMCRefMember* pMCRefMem, PWelsDecoderContext pCtx, int8_t* pRefIdxList,
                               int32_t iIndex) {
@@ -234,11 +201,13 @@ static inline void GetRefPic (sMCRefMember* pMCRefMem, PWelsDecoderContext pCtx,
   pMCRefMem->pSrcU = pRefPic->pData[1];
   pMCRefMem->pSrcV = pRefPic->pData[2];
 }
-
+//}}}
 
 #ifndef MC_FLOW_SIMPLE_JUDGE
-#define MC_FLOW_SIMPLE_JUDGE 1
+  #define MC_FLOW_SIMPLE_JUDGE 1
 #endif //MC_FLOW_SIMPLE_JUDGE
+
+//{{{
 void BaseMC (sMCRefMember* pMCRefMem, int32_t iXOffset, int32_t iYOffset, SMcFunc* pMCFunc,
              int32_t iBlkWidth, int32_t iBlkHeight, int16_t iMVs[2]) {
   int32_t iFullMVx = (iXOffset << 2) + iMVs[0]; //quarter pixel
@@ -267,7 +236,8 @@ void BaseMC (sMCRefMember* pMCRefMem, int32_t iXOffset, int32_t iYOffset, SMcFun
                           iBlkWidthChroma, iBlkHeightChroma);
 
 }
-
+//}}}
+//{{{
 void WeightPrediction (PDqLayer pCurDqLayer, sMCRefMember* pMCRefMem, int32_t iRefIdx, int32_t iBlkWidth,
                        int32_t iBlkHeight) {
 
@@ -334,8 +304,8 @@ void WeightPrediction (PDqLayer pCurDqLayer, sMCRefMember* pMCRefMem, int32_t iR
 
   }
 }
-
-
+//}}}
+//{{{
 void GetInterPred (uint8_t* pPredY, uint8_t* pPredCb, uint8_t* pPredCr, PWelsDecoderContext pCtx) {
   sMCRefMember pMCRefMem;
   PDqLayer pCurDqLayer = pCtx->pCurDqLayer;
@@ -538,7 +508,8 @@ void GetInterPred (uint8_t* pPredY, uint8_t* pPredCb, uint8_t* pPredCr, PWelsDec
     break;
   }
 }
-
+//}}}
+//{{{
 int32_t RecChroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLevel, PDqLayer pDqLayer) {
   int32_t iChromaStride = pCtx->pCurDqLayer->pDec->iLinesize[1];
   PIdctResAddPredFunc pIdctResAddPredFunc = pCtx->pIdctResAddPredFunc;
@@ -568,5 +539,5 @@ int32_t RecChroma (int32_t iMBXY, PWelsDecoderContext pCtx, int16_t* pScoeffLeve
 
   return ERR_NONE;
 }
-
+//}}}
 } // namespace WelsDec
