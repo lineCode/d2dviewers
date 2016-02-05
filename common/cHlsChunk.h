@@ -82,8 +82,6 @@ public:
 #ifdef WIN32
   //{{{
   IWICBitmap* getVideoFrame (int videoFrameInChunk) {
-  // return videoFrame for frame in seqNum chunk
-
     return vidFrames [videoFrameInChunk];
     }
   //}}}
@@ -118,14 +116,8 @@ public:
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
-      size_t vidLen = 0;
-      uint8_t* vidPesPtr = nullptr;
-    #ifdef WIN32
-      vidLen = http->getContentSize();
-      vidPesPtr = (uint8_t*)malloc (vidLen);
-    #endif
-
-      // extract vidPes into new buffer, audPes into src buffer
+      size_t vidLen = radioChan->getRadioTv() ? http->getContentSize() : 0; 
+      uint8_t* vidPesPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (vidLen)) : nullptr;
       auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
       //saveToFile (changeChan, radioChan, seqNum, http->getContent(), audLen, vidPesPtr, vidLen);
 
@@ -249,6 +241,7 @@ private:
   void processVideo (uint8_t* ptr, size_t vidLen) {
 
     if (vidLen > 0) {
+
   #ifdef WIN32
       if (!pDecoder) {
         //{{{  init static decoder
@@ -357,13 +350,13 @@ private:
         iBufPos += iSliceSize;
         }
   #endif
+
       }
     }
   //}}}
   //{{{
   void saveToFile (bool changeChan, cRadioChan* radioChan, int seqNum, uint8_t* audPtr, size_t audLen, uint8_t* vidPtr, size_t& vidLen) {
 
-    //{{{
     if (audLen > 0) {
       // save audPes to .adts file, should check seqNum
       printf ("audPes:%d\n", (int)audLen);
@@ -391,7 +384,6 @@ private:
         }
       fwrite (vidPtr, 1, vidLen, vidFile);
       }
-    //}}}
     }
   //}}}
 
