@@ -7,7 +7,12 @@
 
 class cRadioChan {
 public:
-  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(688000) {}
+  //cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(688000) {}
+  //cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(281000) {}
+  //cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(156000) {}
+  //cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(86000) {}
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(156000) {} // high 8000000 5070000 2812000 1570000 929000
+                                                                 // base  688000  281000  156000   86000  31000
   ~cRadioChan() {}
 
   // gets

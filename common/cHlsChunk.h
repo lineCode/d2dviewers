@@ -9,7 +9,7 @@
 static int chan = 0;
 static FILE* audFile = nullptr;
 static FILE* vidFile = nullptr;
-static ISVCDecoder* pDecoder = nullptr;
+static ISVCDecoder* svcDecoder = nullptr;
 static ComPtr<IWICImagingFactory> wicImagingFactory;
 
 class cHlsChunk {
@@ -33,9 +33,9 @@ public:
       vPortFree (mAudio);
 
   #ifdef WIN32
-    if (pDecoder) {
-      pDecoder->Uninitialize();
-      WelsDestroyDecoder (pDecoder);
+    if (svcDecoder) {
+      svcDecoder->Uninitialize();
+      WelsDestroyDecoder (svcDecoder);
       }
   #endif
     }
@@ -116,7 +116,7 @@ public:
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
-      size_t vidLen = radioChan->getRadioTv() ? http->getContentSize() : 0; 
+      size_t vidLen = radioChan->getRadioTv() ? http->getContentSize() : 0;
       uint8_t* vidPesPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (vidLen)) : nullptr;
       auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
       //saveToFile (changeChan, radioChan, seqNum, http->getContent(), audLen, vidPesPtr, vidLen);
@@ -243,12 +243,12 @@ private:
     if (vidLen > 0) {
 
   #ifdef WIN32
-      if (!pDecoder) {
+      if (!svcDecoder) {
         //{{{  init static decoder
-        WelsCreateDecoder (&pDecoder);
+        WelsCreateDecoder (&svcDecoder);
 
         int iLevelSetting = (int)WELS_LOG_WARNING;
-        pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+        svcDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
 
         // init decoder params
         SDecodingParam sDecParam = {0};
@@ -256,22 +256,17 @@ private:
         sDecParam.uiTargetDqLayer = (uint8_t) - 1;
         sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
         sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
-        pDecoder->Initialize (&sDecParam);
+        svcDecoder->Initialize (&sDecParam);
 
         // set conceal option
-        int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
-        pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+        int32_t iErrorConMethod = (int32_t)ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+        svcDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
 
         // create vidFrame wicBitmap 24bit BGR
         CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
         }
         //}}}
 
-      // append slice startCode
-      uint8_t uiStartCode[4] = {0, 0, 0, 1};
-      memcpy (ptr + vidLen, &uiStartCode[0], 4);
-
-      int frameIndex = 0;
       unsigned long long uiTimeStamp = 0;
       int32_t iBufPos = 0;
       while (true) {
@@ -280,14 +275,14 @@ private:
         if (iBufPos >= vidLen) {
           //{{{  end of stream
           iEndOfStreamFlag = true;
-          pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
+          svcDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
           break;
           }
           //}}}
 
-        // find sliceSize by looking for next slice startCode
+        // find sliceSize by looking for next slice startCode, not sure about end of buf test, relies on 4 bytes of anything
         int32_t iSliceSize;
-        for (iSliceSize = 1; iSliceSize < vidLen; iSliceSize++)
+        for (iSliceSize = 1; iSliceSize < vidLen - iBufPos; iSliceSize++)
           if ((!ptr[iBufPos+iSliceSize] && !ptr[iBufPos+iSliceSize+1])  &&
               ((!ptr[iBufPos+iSliceSize+2] && ptr[iBufPos+iSliceSize+3] == 1) || (ptr[iBufPos+iSliceSize+2] == 1)))
             break;
@@ -297,27 +292,27 @@ private:
         memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
         sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
 
-        pDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+        svcDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
         if (sDstBufInfo.iBufferStatus == 1) {
           //{{{  make frame
           int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
-          int pitch = width;
           int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
 
-          if (!vidFrames[frameIndex])
-            wicImagingFactory->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+          // could test for size change
+          if (!vidFrames[mVidFramesLoaded])
+            wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
 
-          WICRect wicRect = { 0, 0, pitch, height };
+          WICRect wicRect = { 0, 0, width, height };
           IWICBitmapLock* wicBitmapLock = NULL;
-          vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+          vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
 
           // get vidFrame wicBitmap buffer
           UINT bufferLen = 0;
           BYTE* buffer = NULL;
           wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
 
-          // yuv
+          // yuv:420 -> BGR:24bit
           for (auto y = 0; y < height; y++) {
             BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
             BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
@@ -343,7 +338,6 @@ private:
           wicBitmapLock->Release();
 
           mVidFramesLoaded++;
-          frameIndex++;
           }
           //}}}
 
