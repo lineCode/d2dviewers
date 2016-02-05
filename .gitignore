@@ -16,7 +16,6 @@
 [Rr]elease/
 [Rr]eleases/
 x64/
-x86/
 bld/
 [Bb]in/
 [Oo]bj/
@@ -43,6 +42,9 @@ dlldata.c
 project.lock.json
 artifacts/
 
+*_i.c
+*_p.c
+*_i.h
 *.ilk
 *.meta
 *.obj
@@ -275,10 +277,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+*.~h
 *.opendb
-*.~*
-libfaad.lib
-lib64/libfaad.lib
-lib64/libfaad.lib
-lib64/mp4ff.lib
-*.yuv
+*.~cpp
