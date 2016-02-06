@@ -271,7 +271,7 @@ private:
     for (auto i = 0; i < 3; i++) {
       if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
         auto findAudFrameInChunk = getFrameInChunkFromFrame (frame);
-        auto findVidFrameInChunk = (findAudFrameInChunk * 200) / 375;
+        auto findVidFrameInChunk = (findAudFrameInChunk * getVidFps() * 8) / 375;
         if ((mChunks[i].getVidFramesLoaded() > 0) && (findVidFrameInChunk < mChunks[i].getVidFramesLoaded())) {
           seqNum = findSeqNum;
           chunk = i;

@@ -4,6 +4,21 @@
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "cRadioChan.h"
+
+#ifdef __cplusplus
+  extern "C" {
+#endif
+  #include <libavcodec/avcodec.h>
+  #include <libavformat/avformat.h>
+  #include <libswscale/swscale.h>
+#ifdef __cplusplus
+  }
+#endif
+
+#pragma comment(lib,"avutil.lib")
+#pragma comment(lib,"avcodec.lib")
+#pragma comment(lib,"avformat.lib")
+#pragma comment(lib,"swscale.lib")
 //}}}
 
 static int chan = 0;
@@ -12,15 +27,24 @@ static FILE* vidFile = nullptr;
 static ISVCDecoder* svcDecoder = nullptr;
 static ComPtr<IWICImagingFactory> wicImagingFactory;
 
+AVCodec* vidCodec = NULL;
+AVCodecContext* vidCodecContext = NULL;
+AVCodecParserContext* vidParser = NULL;
+AVFrame* vidFrame = NULL;
+struct SwsContext* swsContext = NULL;
+
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mVidFramesLoaded(0), mSamplesPerFrame(0), mAacHE(false), mDecoder(0) {
+  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mVidFramesLoaded(0),
+                mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
+                mSamplesPerFrame(0), mFramesPerAacFrame(0), mAacHE(false), mDecoder(0) {
+
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
 
   #ifdef WIN32
-    for (auto i = 0; i < 200; i++)
+    for (auto i = 0; i < 400; i++)
       vidFrames[i] = nullptr;
   #endif
     }
@@ -37,6 +61,9 @@ public:
       svcDecoder->Uninitialize();
       WelsDestroyDecoder (svcDecoder);
       }
+
+  av_free (vidFrame);
+  avcodec_close (vidCodecContext);
   #endif
     }
   //}}}
@@ -96,7 +123,7 @@ public:
 
     // aacHE has double size frames, treat as two normal frames
     bool aacHE = mAudBitrate <= 48000;
-    int framesPerAacFrame = aacHE ? 2 : 1;
+    mFramesPerAacFrame = aacHE ? 2 : 1;
     mSamplesPerFrame = radioChan->getSamplesPerFrame();
 
     if ((mDecoder == 0) || (aacHE != mAacHE)) {
@@ -116,25 +143,28 @@ public:
       bool changeChan = chan != radioChan->getChan();
       chan = radioChan->getChan();
 
-      size_t vidLen = radioChan->getRadioTv() ? http->getContentSize() : 0;
-      uint8_t* vidPesPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (vidLen)) : nullptr;
-      auto audLen = audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0, vidPesPtr, vidLen);
-      //saveToFile (changeChan, radioChan, seqNum, http->getContent(), audLen, vidPesPtr, vidLen);
+      mVidPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (radioChan->getRadioTv() ? http->getContentSize() : 0)) : nullptr;
+      audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
+      mAudPtr = http->getContent();
+      //saveToFile (changeChan, radioChan);
 
-      processAudio (http->getContent(), audLen, framesPerAacFrame);
+      processAudio();
       http->freeContent();
 
-      if (vidLen)
-        processVideo (vidPesPtr, vidLen);
-      if (vidPesPtr)
-        free (vidPesPtr);
+      if (mVidLen)
+        //processVideoOpenH264();
+        processVideoFFmpeg();
+      if (mVidPtr) {
+        free (mVidPtr);
+        mVidPtr = nullptr;
+        }
 
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
     else {
       mSeqNum = 0;
-      mInfoStr = toString(response) + ':' + toString (seqNum) + ':' + toString (audBitrate /1000) + "k " + http->getInfoStr();
+      mInfoStr = toString (response) + ':' + toString (seqNum) + ':' + toString (audBitrate /1000) + "k " + http->getInfoStr();
       return false;
       }
     }
@@ -149,13 +179,13 @@ public:
 
 private:
   //{{{
-  size_t audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes,
-                          int vidPid, int vidPes, uint8_t* vidPtr, size_t& vidLen) {
-  // aud and vid pes from ts, return audLen
+  void audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes) {
+  // aud and vid pes from ts
 
     auto audStartPtr = ptr;
     auto audPtr = ptr;
-    auto vidStartPtr = vidPtr;
+    auto vidStartPtr = mVidPtr;
+    auto vidPtr = mVidPtr;
 
     while ((ptr < endPtr) && (*ptr++ == 0x47)) {
       auto payStart = *ptr & 0x40;
@@ -184,29 +214,61 @@ private:
       ptr += tsFrameBytesLeft;
       }
 
-    vidLen = vidPtr - vidStartPtr;
-    return audPtr - audStartPtr;
+    mVidLen = vidPtr - vidStartPtr;
+    mAudLen = audPtr - audStartPtr;
     }
   //}}}
   //{{{
-  void processAudio (uint8_t* audPtr, size_t audLen, int framesPerAacFrame) {
+  void saveToFile (bool changeChan, cRadioChan* radioChan) { 
+
+    if (mAudLen > 0) {
+      // save audPes to .adts file, should check seqNum
+      printf ("audPes:%d\n", (int)mAudLen);
+
+      if (changeChan || !audFile) {
+        if (audFile)
+           fclose (audFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (getAudBitrate()) + '.' + toString (mSeqNum) + ".adts";
+        audFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (mAudPtr, 1, mAudLen, audFile);
+      }
+
+    if (mVidLen > 0) {
+      // save vidPes to .264 file, should check seqNum
+      printf ("vidPes:%d\n", (int)mVidLen);
+
+      if (changeChan || !vidFile) {
+        if (vidFile)
+          fclose (vidFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (mSeqNum) + ".264";
+        vidFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (mVidPtr, 1, mVidLen, vidFile);
+      }
+    }
+  //}}}
+  //{{{
+  void processAudio() {
 
     // init aacDecoder
     unsigned long sampleRate;
     uint8_t chans;
-    NeAACDecInit (mDecoder, audPtr, 2048, &sampleRate, &chans);
+    NeAACDecInit (mDecoder, mAudPtr, 2048, &sampleRate, &chans);
 
     NeAACDecFrameInfo frameInfo;
     int16_t* buffer = mAudio;
-    int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
-    NeAACDecDecode2 (mDecoder, &frameInfo, audPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+    int samplesPerAacFrame = mSamplesPerFrame * mFramesPerAacFrame;
+    NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
 
     uint8_t* powerPtr = mPower;
-    auto ptr = audPtr;
-    while (ptr < audPtr + audLen) {
+    auto ptr = mAudPtr;
+    while (ptr < mAudPtr + mAudLen) {
       NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
       ptr += frameInfo.bytesconsumed;
-      for (int i = 0; i < framesPerAacFrame; i++) {
+      for (int i = 0; i < mFramesPerAacFrame; i++) {
         // calc left, right power
         int valueL = 0;
         int valueR = 0;
@@ -239,7 +301,7 @@ private:
     }
   //}}}
   //{{{
-  void processVideo (uint8_t* ptr, size_t vidLen) {
+  void processVideoOpenH264() {
 
   #ifdef WIN32
     if (!svcDecoder) {
@@ -271,9 +333,9 @@ private:
     while (true) {
       // calc next sliceSize, look for next sliceStartCode, not sure about end of buf test, relies on 4 trailing bytes of anything
       int32_t iSliceSize;
-      for (iSliceSize = 1; iSliceSize < vidLen - iBufPos; iSliceSize++)
-        if ((!ptr[iBufPos+iSliceSize] && !ptr[iBufPos+iSliceSize+1])  &&
-            ((!ptr[iBufPos+iSliceSize+2] && ptr[iBufPos+iSliceSize+3] == 1) || (ptr[iBufPos+iSliceSize+2] == 1)))
+      for (iSliceSize = 1; iSliceSize < mVidLen - iBufPos; iSliceSize++)
+        if ((!mVidPtr[iBufPos+iSliceSize] && !mVidPtr[iBufPos+iSliceSize+1])  &&
+            ((!mVidPtr[iBufPos+iSliceSize+2] && mVidPtr[iBufPos+iSliceSize+3] == 1) || (mVidPtr[iBufPos+iSliceSize+2] == 1)))
           break;
 
       // process slice
@@ -282,7 +344,7 @@ private:
       memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
       sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
 
-      svcDecoder->DecodeFrameNoDelay (ptr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
       if (sDstBufInfo.iBufferStatus == 1) {
         //{{{  have new frame
@@ -332,7 +394,7 @@ private:
         //}}}
 
       iBufPos += iSliceSize;
-      if (iBufPos >= vidLen) {
+      if (iBufPos >= mVidLen) {
         // end of stream
         int32_t iEndOfStreamFlag = true;
         svcDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
@@ -343,35 +405,70 @@ private:
     }
   //}}}
   //{{{
-  void saveToFile (bool changeChan, cRadioChan* radioChan, int seqNum, uint8_t* audPtr, size_t audLen, uint8_t* vidPtr, size_t& vidLen) {
+  void processVideoFFmpeg() {
 
-    if (audLen > 0) {
-      // save audPes to .adts file, should check seqNum
-      printf ("audPes:%d\n", (int)audLen);
+  #ifdef WIN32
+    if (!vidCodec) {
+      //{{{  init static decoder
+      // init vidCodecContext, vidCodec, vidParser, vidFrame
+      av_register_all();
 
-      if (changeChan || !audFile) {
-        if (audFile)
-           fclose (audFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                               '.' + toString (getAudBitrate()) + '.' + toString (seqNum) + ".adts";
-        audFile = fopen (fileName.c_str(), "wb");
-        }
-      fwrite (audPtr, 1, audLen, audFile);
+      vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);;
+      vidCodecContext = avcodec_alloc_context3 (vidCodec);;
+      avcodec_open2 (vidCodecContext, vidCodec, NULL);
+
+      vidParser = av_parser_init (AV_CODEC_ID_H264);;
+
+      vidFrame = av_frame_alloc();;
+      swsContext = NULL;
+
+      // create vidFrame wicBitmap 24bit BGR
+      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
       }
+      //}}}
 
-    if (vidLen > 0) {
-      // save vidPes to .264 file, should check seqNum
-      printf ("vidPes:%d\n", (int)vidLen);
+    AVPacket vidPacket;
+    av_init_packet (&vidPacket);
+    vidPacket.data = mVidPtr;
+    vidPacket.size = 0;
 
-      if (changeChan || !vidFile) {
-        if (vidFile)
-          fclose (vidFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (seqNum) + ".264";
-        vidFile = fopen (fileName.c_str(), "wb");
-        }
-      fwrite (vidPtr, 1, vidLen, vidFile);
+    auto vidLen = mVidLen;
+    while (vidLen > 0) {
+      uint8_t* data = NULL;
+      av_parser_parse2 (vidParser, vidCodecContext,
+                        &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
+
+      int gotPicture = 0;
+      int len = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
+      vidPacket.data += len;
+      vidLen -= len;
+
+      if (gotPicture != 0) {
+        if (!swsContext)
+          swsContext = sws_getContext (vidCodecContext->width, vidCodecContext->height, vidCodecContext->pix_fmt,
+                                       vidCodecContext->width, vidCodecContext->height, AV_PIX_FMT_BGR24,
+                                       SWS_BICUBIC, NULL, NULL, NULL);
+        if (!vidFrames[mVidFramesLoaded])
+          wicImagingFactory->CreateBitmap (vidCodecContext->width, vidCodecContext->height,
+                                           GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+        //{{{  lock wicBitmap
+        WICRect wicRect = { 0, 0, vidCodecContext->width, vidCodecContext->height };
+        IWICBitmapLock* wicBitmapLock = NULL;
+        vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+        //}}}
+        //{{{  get wicBitmap buffer
+        UINT bufferLen = 0;
+        BYTE* buffer = NULL;
+        wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+        //}}}
+        int linesize = vidCodecContext->width * 3;
+        sws_scale (swsContext, vidFrame->data, vidFrame->linesize, 0, vidCodecContext->height, &buffer, &linesize);
+        wicBitmapLock->Release();
+
+        mVidFramesLoaded++;
+       }
       }
+  #endif
     }
   //}}}
 
@@ -381,7 +478,13 @@ private:
   int mFramesLoaded;
   int mVidFramesLoaded;
   int mSamplesPerFrame;
+  int mFramesPerAacFrame;
   std::string mInfoStr;
+
+  uint8_t* mAudPtr;
+  size_t mAudLen;
+  uint8_t* mVidPtr;
+  size_t mVidLen;
 
   bool mAacHE;
   NeAACDecHandle mDecoder;
@@ -389,6 +492,6 @@ private:
   uint8_t* mPower;
 
 #ifdef WIN32
-  IWICBitmap* vidFrames[200];
+  IWICBitmap* vidFrames[400];
 #endif
   };
