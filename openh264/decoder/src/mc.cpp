@@ -1,7 +1,9 @@
+//{{{
 #include "mc.h"
 #include "cpu_core.h"
 #include "ls_defines.h"
 #include "macros.h"
+//}}}
 
 typedef void (*PMcChromaWidthExtFunc) (const uint8_t* pSrc, int32_t iSrcStride, uint8_t* pDst, int32_t iDstStride,
                                        const uint8_t* kpABCD, int32_t iHeight);

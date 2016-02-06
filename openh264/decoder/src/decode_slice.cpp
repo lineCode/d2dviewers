@@ -1,7 +1,5 @@
-
-
+//{{{
 #include "deblocking.h"
-
 #include "decode_slice.h"
 
 #include "parse_mb_syn_cavlc.h"
@@ -10,9 +8,10 @@
 #include "mv_pred.h"
 
 #include "cpu_core.h"
+//}}}
 
 namespace WelsDec {
-
+//{{{
 int32_t WelsTargetSliceConstruction (PWelsDecoderContext pCtx) {
   PDqLayer pCurLayer = pCtx->pCurDqLayer;
   PSlice pCurSlice = &pCurLayer->sLayerInfo.sSliceInLayer;
@@ -110,7 +109,8 @@ int32_t WelsTargetSliceConstruction (PWelsDecoderContext pCtx) {
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsMbInterSampleConstruction (PWelsDecoderContext pCtx, PDqLayer pCurLayer,
                                        uint8_t* pDstY, uint8_t* pDstU, uint8_t* pDstV, int32_t iStrideL, int32_t iStrideC) {
   int32_t iMbXy = pCurLayer->iMbXyIndex;
@@ -154,6 +154,8 @@ int32_t WelsMbInterSampleConstruction (PWelsDecoderContext pCtx, PDqLayer pCurLa
 
   return 0;
 }
+//}}}
+//{{{
 int32_t WelsMbInterConstruction (PWelsDecoderContext pCtx, PDqLayer pCurLayer) {
   int32_t iMbX = pCurLayer->iMbX;
   int32_t iMbY = pCurLayer->iMbY;
@@ -173,7 +175,9 @@ int32_t WelsMbInterConstruction (PWelsDecoderContext pCtx, PDqLayer pCurLayer) {
     pCurLayer->pNzc[pCurLayer->iMbXyIndex]); // set all none-zero nzc to 1; dbk can be opti!
   return 0;
 }
+//}}}
 
+//{{{
 void WelsLumaDcDequantIdct (int16_t* pBlock, int32_t iQp, PWelsDecoderContext pCtx) {
   const int32_t kiQMul = pCtx->bUseScalingList ? pCtx->pDequant_coeff4x4[0][iQp][0] >> 4 : g_kuiDequantCoeff[iQp][0];
 #define STRIDE 16
@@ -215,7 +219,8 @@ void WelsLumaDcDequantIdct (int16_t* pBlock, int32_t iQp, PWelsDecoderContext pC
   }
 #undef STRIDE
 }
-
+//}}}
+//{{{
 int32_t WelsMbIntraPredictionConstruction (PWelsDecoderContext pCtx, PDqLayer pCurLayer, bool bOutput) {
 //seems IPCM should not enter this path
   int32_t iMbXy = pCurLayer->iMbXyIndex;
@@ -238,7 +243,8 @@ int32_t WelsMbIntraPredictionConstruction (PWelsDecoderContext pCtx, PDqLayer pC
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsMbInterPrediction (PWelsDecoderContext pCtx, PDqLayer pCurLayer) {
   int32_t iMbX = pCurLayer->iMbX;
   int32_t iMbY = pCurLayer->iMbY;
@@ -255,7 +261,8 @@ int32_t WelsMbInterPrediction (PWelsDecoderContext pCtx, PDqLayer pCurLayer) {
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsTargetMbConstruction (PWelsDecoderContext pCtx) {
   PDqLayer pCurLayer = pCtx->pCurDqLayer;
   if (MB_TYPE_INTRA_PCM == pCurLayer->pMbType[pCurLayer->iMbXyIndex]) {
@@ -277,7 +284,9 @@ int32_t WelsTargetMbConstruction (PWelsDecoderContext pCtx) {
 
   return 0;
 }
+//}}}
 
+//{{{
 void WelsChromaDcIdct (int16_t* pBlock) {
   int32_t iStride = 32;
   int32_t iXStride = 16;
@@ -300,7 +309,8 @@ void WelsChromaDcIdct (int16_t* pBlock) {
   pBlk[iStride] = (iA - iC) >> 1;
   pBlk[iStride1] = (iE - iB) >> 1;
 }
-
+//}}}
+//{{{
 void WelsMapNxNNeighToSampleNormal (PWelsNeighAvail pNeighAvail, int32_t* pSampleAvail) {
   if (pNeighAvail->iLeftAvail) {  //left
     pSampleAvail[ 6] =
@@ -321,7 +331,8 @@ void WelsMapNxNNeighToSampleNormal (PWelsNeighAvail pNeighAvail, int32_t* pSampl
     pSampleAvail[5] = 1;
   }
 }
-
+//}}}
+//{{{
 void WelsMapNxNNeighToSampleConstrain1 (PWelsNeighAvail pNeighAvail, int32_t* pSampleAvail) {
   if (pNeighAvail->iLeftAvail && IS_INTRA (pNeighAvail->iLeftType)) {   //left
     pSampleAvail[ 6] =
@@ -342,6 +353,8 @@ void WelsMapNxNNeighToSampleConstrain1 (PWelsNeighAvail pNeighAvail, int32_t* pS
     pSampleAvail[5] = 1;
   }
 }
+//}}}
+//{{{
 void WelsMap16x16NeighToSampleNormal (PWelsNeighAvail pNeighAvail, uint8_t* pSampleAvail) {
   if (pNeighAvail->iLeftAvail) {
     *pSampleAvail = (1 << 2);
@@ -353,7 +366,8 @@ void WelsMap16x16NeighToSampleNormal (PWelsNeighAvail pNeighAvail, uint8_t* pSam
     *pSampleAvail |= 1;
   }
 }
-
+//}}}
+//{{{
 void WelsMap16x16NeighToSampleConstrain1 (PWelsNeighAvail pNeighAvail, uint8_t* pSampleAvail) {
   if (pNeighAvail->iLeftAvail && IS_INTRA (pNeighAvail->iLeftType)) {
     *pSampleAvail = (1 << 2);
@@ -365,7 +379,9 @@ void WelsMap16x16NeighToSampleConstrain1 (PWelsNeighAvail pNeighAvail, uint8_t* 
     *pSampleAvail |= 1;
   }
 }
+//}}}
 
+//{{{
 int32_t ParseIntra4x4Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail, int8_t* pIntraPredMode,
                            PBitStringAux pBs,
                            PDqLayer pCurDqLayer) {
@@ -443,7 +459,8 @@ int32_t ParseIntra4x4Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ParseIntra8x8Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail, int8_t* pIntraPredMode,
                            PBitStringAux pBs,
                            PDqLayer pCurDqLayer) {
@@ -524,7 +541,8 @@ int32_t ParseIntra8x8Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t ParseIntra16x16Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail, PBitStringAux pBs,
                              PDqLayer pCurDqLayer) {
   int32_t iMbXy = pCurDqLayer->iMbXyIndex;
@@ -561,6 +579,9 @@ int32_t ParseIntra16x16Mode (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAva
   return ERR_NONE;
 }
 
+//}}}
+
+//{{{
 int32_t WelsDecodeMbCabacISliceBaseMode0 (PWelsDecoderContext pCtx, uint32_t& uiEosFlag) {
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
   PBitStringAux pBsAux           = pCurLayer->pBitStringAux;
@@ -766,12 +787,14 @@ int32_t WelsDecodeMbCabacISliceBaseMode0 (PWelsDecoderContext pCtx, uint32_t& ui
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeMbCabacISlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uint32_t& uiEosFlag) {
   WELS_READ_VERIFY (WelsDecodeMbCabacISliceBaseMode0 (pCtx, uiEosFlag));
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeMbCabacPSliceBaseMode0 (PWelsDecoderContext pCtx, PWelsNeighAvail pNeighAvail, uint32_t& uiEosFlag) {
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
   PBitStringAux pBsAux           = pCurLayer->pBitStringAux;
@@ -1007,7 +1030,8 @@ int32_t WelsDecodeMbCabacPSliceBaseMode0 (PWelsDecoderContext pCtx, PWelsNeighAv
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeMbCabacPSlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uint32_t& uiEosFlag) {
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
   PSlice pSlice                  = &pCurLayer->sLayerInfo.sSliceInLayer;
@@ -1069,8 +1093,10 @@ int32_t WelsDecodeMbCabacPSlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uin
   WELS_READ_VERIFY (WelsDecodeMbCabacPSliceBaseMode0 (pCtx, &uiNeighAvail, uiEosFlag));
   return ERR_NONE;
 }
+//}}}
+//{{{
 // Calculate deqaunt coeff scaling list value
-int32_t  WelsCalcDeqCoeffScalingList (PWelsDecoderContext pCtx) {
+int32_t WelsCalcDeqCoeffScalingList (PWelsDecoderContext pCtx) {
   if (pCtx->pSps->bSeqScalingMatrixPresentFlag || pCtx->pPps->bPicScalingMatrixPresentFlag) {
     pCtx->bUseScalingList = true;
 
@@ -1117,7 +1143,8 @@ int32_t  WelsCalcDeqCoeffScalingList (PWelsDecoderContext pCtx) {
     pCtx->bUseScalingList = false;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeSlice (PWelsDecoderContext pCtx, bool bFirstSliceInLayer, PNalUnit pNalCur) {
   PDqLayer pCurLayer = pCtx->pCurDqLayer;
   PFmo pFmo = pCtx->pFmo;
@@ -1218,7 +1245,8 @@ int32_t WelsDecodeSlice (PWelsDecoderContext pCtx, bool bFirstSliceInLayer, PNal
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t WelsActualDecodeMbCavlcISlice (PWelsDecoderContext pCtx) {
   SVlcTable* pVlcTable     = &pCtx->sVlcTable;
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
@@ -1496,7 +1524,8 @@ int32_t WelsActualDecodeMbCavlcISlice (PWelsDecoderContext pCtx) {
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeMbCavlcISlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uint32_t& uiEosFlag) {
   PDqLayer pCurLayer = pCtx->pCurDqLayer;
   PBitStringAux pBs = pCurLayer->pBitStringAux;
@@ -1537,7 +1566,8 @@ int32_t WelsDecodeMbCavlcISlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uin
   }
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsActualDecodeMbCavlcPSlice (PWelsDecoderContext pCtx) {
   SVlcTable* pVlcTable     = &pCtx->sVlcTable;
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
@@ -1868,7 +1898,8 @@ int32_t WelsActualDecodeMbCavlcPSlice (PWelsDecoderContext pCtx) {
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsDecodeMbCavlcPSlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uint32_t& uiEosFlag) {
   PDqLayer pCurLayer             = pCtx->pCurDqLayer;
   PBitStringAux pBs              = pCurLayer->pBitStringAux;
@@ -1960,7 +1991,9 @@ int32_t WelsDecodeMbCavlcPSlice (PWelsDecoderContext pCtx, PNalUnit pNalCur, uin
   }
   return 0;
 }
+//}}}
 
+//{{{
 void WelsBlockFuncInit (SBlockFunc*   pFunc,  int32_t iCpu) {
   pFunc->pWelsSetNonZeroCountFunc   = WelsNonZeroCount_c;
   pFunc->pWelsBlockZero16x16Func    = WelsBlockZero16x16_c;
@@ -1991,7 +2024,8 @@ void WelsBlockFuncInit (SBlockFunc*   pFunc,  int32_t iCpu) {
 //#endif
 
 }
-
+//}}}
+//{{{
 void WelsBlockInit (int16_t* pBlock, int iW, int iH, int iStride, uint8_t uiVal) {
   int32_t i;
   int16_t* pDst = pBlock;
@@ -2001,12 +2035,16 @@ void WelsBlockInit (int16_t* pBlock, int iW, int iH, int iStride, uint8_t uiVal)
     pDst += iStride;
   }
 }
+//}}}
+//{{{
 void WelsBlockZero16x16_c (int16_t* pBlock, int32_t iStride) {
   WelsBlockInit (pBlock, 16, 16, iStride, 0);
 }
-
+//}}}
+//{{{
 void WelsBlockZero8x8_c (int16_t* pBlock, int32_t iStride) {
   WelsBlockInit (pBlock, 8, 8, iStride, 0);
 }
+//}}}
 
 } // namespace WelsDec

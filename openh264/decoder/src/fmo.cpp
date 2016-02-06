@@ -1,9 +1,11 @@
-
+//{{{
 #include "fmo.h"
 #include "memory_align.h"
+//}}}
 
 namespace WelsDec {
 
+//{{{
 /*!
  * \brief   Generate MB allocated map for interleaved slice group (TYPE 0)
  *
@@ -38,7 +40,8 @@ static inline int32_t FmoGenerateMbAllocMapType0 (PFmo pFmo, PPps pPps) {
 
   return 0; // well here
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Generate MB allocated map for dispersed slice group (TYPE 1)
  *
@@ -65,7 +68,8 @@ static inline int32_t FmoGenerateMbAllocMapType1 (PFmo pFmo, PPps pPps, const in
 
   return 0; // well here
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Generate MB allocated map for various type of slice group cases (TYPE 0, .., 6)
  *
@@ -135,7 +139,9 @@ static inline int32_t FmoGenerateSliceGroup (PFmo pFmo, const PPps kpPps, const 
 
   return iErr;
 }
+//}}}
 
+//{{{
 /*!
  * \brief   Initialize Wels Flexible Macroblock Ordering (FMO)
  *
@@ -149,8 +155,8 @@ static inline int32_t FmoGenerateSliceGroup (PFmo pFmo, const PPps kpPps, const 
 int32_t InitFmo (PFmo pFmo, PPps pPps, const int32_t kiMbWidth, const int32_t kiMbHeight, CMemoryAlign* pMa) {
   return FmoGenerateSliceGroup (pFmo, pPps, kiMbWidth, kiMbHeight, pMa);
 }
-
-
+//}}}
+//{{{
 /*!
  * \brief   Uninitialize Wels Flexible Macroblock Ordering (FMO) list
  *
@@ -187,7 +193,9 @@ void UninitFmoList (PFmo pFmo, const int32_t kiCnt, const int32_t kiAvail, CMemo
     ++ i;
   }
 }
+//}}}
 
+//{{{
 /*!
  * \brief   detect parameter sets are changed or not
  *
@@ -207,7 +215,8 @@ bool FmoParamSetsChanged (PFmo pFmo, const int32_t kiCountNumMb, const int32_t k
           || (kiSliceGroupType != pFmo->iSliceGroupType)
           || (kiSliceGroupCount != pFmo->iSliceGroupCount));
 }
-
+//}}}
+//{{{
 /*!
  * \brief   update/insert FMO parameter unit
  *
@@ -239,7 +248,8 @@ bool FmoParamUpdate (PFmo pFmo, PSps pSps, PPps pPps, int32_t* pActiveFmoNum, CM
 
   return true;
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Convert kMbXy to slice group idc correspondingly
  *
@@ -257,7 +267,8 @@ int32_t FmoMbToSliceGroup (PFmo pFmo, const MB_XY_T kiMbXy) {
 
   return kpMbMap[ kiMbXy ];
 }
-
+//}}}
+//{{{
 /*!
  * \brief   Get successive mb to be processed with given current kMbXy
  *
@@ -289,5 +300,5 @@ MB_XY_T FmoNextMb (PFmo pFmo, const MB_XY_T kiMbXy) {
   // -1: No further MB in this slice (could be end of picture)
   return iNextMb;
 }
-
+//}}}
 } // namespace WelsDec

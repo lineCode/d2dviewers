@@ -1,10 +1,11 @@
-
+//{{{
 #include "deblocking.h"
 #include "deblocking_common.h"
 #include "cpu_core.h"
+//}}}
 
 namespace WelsDec {
-
+//{{{
 #define NO_SUPPORTED_FILTER_IDX     (-1)
 #define LEFT_FLAG_BIT 0
 #define TOP_FLAG_BIT 1
@@ -46,7 +47,9 @@ namespace WelsDec {
   iAlpha = g_kuiAlphaTable(iIndex);\
   iBeta  = g_kiBetaTable((iQp + iBetaOffset));\
 }
+//}}}
 
+//{{{
 static const uint8_t g_kuiAlphaTable[52 + 24] = { //this table refers to Table 8-16 in H.264/AVC standard
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -57,7 +60,8 @@ static const uint8_t g_kuiAlphaTable[52 + 24] = { //this table refers to Table 8
   255, 255
   , 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255, 255
 };
-
+//}}}
+//{{{
 static const int8_t g_kiBetaTable[52 + 24] = { //this table refers to Table 8-16 in H.264/AVC standard
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 0,  0,
   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -68,7 +72,8 @@ static const int8_t g_kiBetaTable[52 + 24] = { //this table refers to Table 8-16
   18, 18
   , 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18
 };
-
+//}}}
+//{{{
 static const int8_t g_kiTc0Table[52 + 24][4] = { //this table refers Table 8-17 in H.264/AVC standard
   { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 },
   { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 }, { -1, 0, 0, 0 },
@@ -84,7 +89,8 @@ static const int8_t g_kiTc0Table[52 + 24][4] = { //this table refers Table 8-17 
   , { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }
   , { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }, { -1, 13, 17, 25 }
 };
-
+//}}}
+//{{{
 static const uint8_t g_kuiTableBIdx[2][8] = {
   {
     0,  4,  8,  12,
@@ -97,6 +103,8 @@ static const uint8_t g_kuiTableBIdx[2][8] = {
   },
 };
 
+//}}}
+//{{{
 static const uint8_t g_kuiTableB8x8Idx[2][16] = {
   {
     0,  1,  4,  5,  8,  9,  12, 13,   // 0   1 |  2  3
@@ -109,7 +117,9 @@ static const uint8_t g_kuiTableB8x8Idx[2][16] = {
     8,  9,  12, 13, 10, 11, 14, 15
   },
 };
+//}}}
 
+//{{{
 #define TC0_TBL_LOOKUP(tc, iIndexA, pBS, bChroma) \
 {\
   tc[0] = g_kiTc0Table(iIndexA)[pBS[0]] + bChroma;\
@@ -117,7 +127,9 @@ static const uint8_t g_kuiTableB8x8Idx[2][16] = {
   tc[2] = g_kiTc0Table(iIndexA)[pBS[2]] + bChroma;\
   tc[3] = g_kiTc0Table(iIndexA)[pBS[3]] + bChroma;\
 }
+//}}}
 
+//{{{
 void inline DeblockingBSInsideMBAvsbase (int8_t* pNnzTab, uint8_t nBS[2][4][4], int32_t iLShiftFactor) {
   uint32_t uiNnz32b0, uiNnz32b1, uiNnz32b2, uiNnz32b3;
 
@@ -145,7 +157,8 @@ void inline DeblockingBSInsideMBAvsbase (int8_t* pNnzTab, uint8_t nBS[2][4][4], 
   nBS[0][3][3] = (pNnzTab[14] | pNnzTab[15]) << iLShiftFactor;
   * (uint32_t*)nBS[1][3] = (uiNnz32b2 | uiNnz32b3) << iLShiftFactor;
 }
-
+//}}}
+//{{{
 void inline DeblockingBSInsideMBAvsbase8x8 (int8_t* pNnzTab, uint8_t nBS[2][4][4], int32_t iLShiftFactor) {
   int8_t i8x8NnzTab[4];
   for (int32_t i = 0; i < 4; i++) {
@@ -161,7 +174,8 @@ void inline DeblockingBSInsideMBAvsbase8x8 (int8_t* pNnzTab, uint8_t nBS[2][4][4
   nBS[1][2][0] = nBS[1][2][1] = (i8x8NnzTab[0] | i8x8NnzTab[2]) << iLShiftFactor;
   nBS[1][2][2] = nBS[1][2][3] = (i8x8NnzTab[1] | i8x8NnzTab[3]) << iLShiftFactor;
 }
-
+//}}}
+//{{{
 void static inline DeblockingBSInsideMBNormal (PDqLayer pCurDqLayer, uint8_t nBS[2][4][4], int8_t* pNnzTab,
     int32_t iMbXy) {
   uint32_t uiNnz32b0, uiNnz32b1, uiNnz32b2, uiNnz32b3;
@@ -237,7 +251,8 @@ void static inline DeblockingBSInsideMBNormal (PDqLayer pCurDqLayer, uint8_t nBS
     nBS[1][3][3] = BS_EDGE (uiBsx4[3], iRefIndex, pCurDqLayer->pMv[LIST_0][iMbXy], 15, 11);
   }
 }
-
+//}}}
+//{{{
 uint32_t DeblockingBsMarginalMBAvcbase (PDqLayer pCurDqLayer, int32_t iEdge, int32_t iNeighMb, int32_t iMbXy) {
   int32_t i, j;
   uint32_t uiBSx4;
@@ -312,6 +327,8 @@ uint32_t DeblockingBsMarginalMBAvcbase (PDqLayer pCurDqLayer, int32_t iEdge, int
 
   return uiBSx4;
 }
+//}}}
+//{{{
 int32_t DeblockingAvailableNoInterlayer (PDqLayer pCurDqLayer, int32_t iFilterIdc) {
   int32_t iMbY = pCurDqLayer->iMbY;
   int32_t iMbX = pCurDqLayer->iMbX;
@@ -328,7 +345,9 @@ int32_t DeblockingAvailableNoInterlayer (PDqLayer pCurDqLayer, int32_t iFilterId
   }
   return (bLeftFlag << LEFT_FLAG_BIT) | (bTopFlag << TOP_FLAG_BIT);
 }
+//}}}
 
+//{{{
 void FilteringEdgeLumaH (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStride, uint8_t* pBS) {
   int32_t iIndexA;
   int32_t iAlpha;
@@ -344,8 +363,8 @@ void FilteringEdgeLumaH (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStr
   }
   return;
 }
-
-
+//}}}
+//{{{
 void FilteringEdgeLumaV (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStride, uint8_t* pBS) {
   int32_t  iIndexA;
   int32_t  iAlpha;
@@ -361,8 +380,8 @@ void FilteringEdgeLumaV (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStr
   }
   return;
 }
-
-
+//}}}
+//{{{
 void FilteringEdgeLumaIntraH (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStride, uint8_t* pBS) {
   int32_t iIndexA;
   int32_t iAlpha;
@@ -376,7 +395,8 @@ void FilteringEdgeLumaIntraH (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t
   }
   return;
 }
-
+//}}}
+//{{{
 void FilteringEdgeLumaIntraV (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t iStride, uint8_t* pBS) {
   int32_t iIndexA;
   int32_t iAlpha;
@@ -390,6 +410,8 @@ void FilteringEdgeLumaIntraV (SDeblockingFilter* pFilter, uint8_t* pPix, int32_t
   }
   return;
 }
+//}}}
+//{{{
 void FilteringEdgeChromaH (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride,
                            uint8_t* pBS) {
   int32_t iIndexA;
@@ -426,6 +448,8 @@ void FilteringEdgeChromaH (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t*
   }
   return;
 }
+//}}}
+//{{{
 void FilteringEdgeChromaV (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride,
                            uint8_t* pBS) {
   int32_t iIndexA;
@@ -462,7 +486,8 @@ void FilteringEdgeChromaV (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t*
   }
   return;
 }
-
+//}}}
+//{{{
 void FilteringEdgeChromaIntraH (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride,
                                 uint8_t* pBS) {
   int32_t iIndexA;
@@ -492,7 +517,8 @@ void FilteringEdgeChromaIntraH (SDeblockingFilter* pFilter, uint8_t* pPixCb, uin
   }
   return;
 }
-
+//}}}
+//{{{
 void FilteringEdgeChromaIntraV (SDeblockingFilter* pFilter, uint8_t* pPixCb, uint8_t* pPixCr, int32_t iStride,
                                 uint8_t* pBS) {
   int32_t iIndexA;
@@ -524,8 +550,8 @@ void FilteringEdgeChromaIntraV (SDeblockingFilter* pFilter, uint8_t* pPixCb, uin
   }
   return;
 }
-
-
+//}}}
+//{{{
 void DeblockingInterMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, uint8_t nBS[2][4][4],
                         int32_t iBoundryFlag) {
   int32_t iMbXyIndex = pCurDqLayer->iMbXyIndex;
@@ -614,7 +640,9 @@ void DeblockingInterMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, uint8_
     FilteringEdgeLumaH (pFilter, &pDestY[ (3 << 2)*iLineSize], iLineSize, nBS[1][3]);
   }
 }
+//}}}
 
+//{{{
 void FilteringEdgeLumaHV (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag) {
   int32_t iMbXyIndex = pCurDqLayer->iMbXyIndex;
   int32_t iMbX      = pCurDqLayer->iMbX;
@@ -676,6 +704,8 @@ void FilteringEdgeLumaHV (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int3
     }
   }
 }
+//}}}
+//{{{
 void FilteringEdgeChromaHV (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag) {
   int32_t iMbXyIndex     = pCurDqLayer->iMbXyIndex;
   int32_t iMbX      = pCurDqLayer->iMbX;
@@ -766,13 +796,17 @@ void FilteringEdgeChromaHV (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, in
 
   }
 }
+//}}}
 
+//{{{
 // merge h&v lookup table operation to save performance
 void DeblockingIntraMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag) {
   FilteringEdgeLumaHV (pCurDqLayer, pFilter, iBoundryFlag);
   FilteringEdgeChromaHV (pCurDqLayer, pFilter, iBoundryFlag);
 }
+//}}}
 
+//{{{
 void WelsDeblockingMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t iBoundryFlag) {
   uint8_t nBS[2][4][4] = {{{ 0 }}};
 
@@ -822,7 +856,8 @@ void WelsDeblockingMb (PDqLayer pCurDqLayer, PDeblockingFilter  pFilter, int32_t
     break;
   }
 }
-
+//}}}
+//{{{
 /*!
  * \brief   AVC slice deblocking filtering target layer
  *
@@ -892,6 +927,9 @@ void WelsDeblockingFilterSlice (PWelsDecoderContext pCtx, PDeblockingFilterMbFun
     } while (1);
   }
 }
+//}}}
+
+//{{{
 /*!
  * \brief   deblocking module initialize
  *
@@ -956,5 +994,5 @@ void  DeblockingInit (SDeblockingFunc*  pFunc,  int32_t iCpu) {
   }
 #endif
 }
-
+//}}}
 } // namespace WelsDec

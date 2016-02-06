@@ -1,13 +1,14 @@
-
+//{{{
 #include <string.h>
 
 #include "decode_mb_aux.h"
 #include "wels_common_basis.h"
+//}}}
 
 namespace WelsDec {
-
 //NOTE::: p_RS should NOT be modified and it will lead to mismatch with JSVM.
 //        so should allocate kA array to store the temporary value (idct).
+//{{{
 void IdctResAddPred_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
   int16_t iSrc[16];
 
@@ -44,7 +45,8 @@ void IdctResAddPred_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
     pDst[i + kiStride2] = WelsClip1 (((32 + kT1 - kT2) >> 6) + pDst[i + kiStride2]);
   }
 }
-
+//}}}
+//{{{
 void IdctResAddPred8x8_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) {
   // To make the ASM code easy to write, should using one funciton to apply hor and ver together, such as we did on HEVC
   // Ugly code, just for easy debug, the final version need optimization
@@ -134,7 +136,8 @@ void IdctResAddPred8x8_c (uint8_t* pPred, const int32_t kiStride, int16_t* pRs) 
   }
 
 }
-
+//}}}
+//{{{
 void GetI4LumaIChromaAddrTable (int32_t* pBlockOffset, const int32_t kiYStride, const int32_t kiUVStride) {
   int32_t* pOffset = pBlockOffset;
   int32_t i;
@@ -155,5 +158,5 @@ void GetI4LumaIChromaAddrTable (int32_t* pBlockOffset, const int32_t kiYStride, 
       pOffset[20 + i] = ((kuiA & 0x07) + (kiUVStride/*>>1*/) * (kuiA >> 3)) << 2;
   }
 }
-
+//}}}
 } // namespace WelsDec

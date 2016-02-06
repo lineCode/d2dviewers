@@ -1,9 +1,8 @@
-
 #include "wels_common_defs.h"
 
 namespace WelsCommon {
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//{{{
 //////pNonZeroCount[16+8] mapping scan index
 const uint8_t g_kuiMbCountScan4Idx[24] = {
                    //  0   1 | 4  5      luma 8*8 block           pNonZeroCount[16+8]
@@ -14,7 +13,8 @@ const uint8_t g_kuiMbCountScan4Idx[24] = {
   16, 17, 20, 21,  //----------------    chroma 8*8 block          16  17  18  19
   18, 19, 22, 23   // 16  17 | 20 21        0    1                 20  21  22  23
 };
-
+//}}}
+//{{{
 const uint8_t g_kuiCache48CountScan4Idx[24] = {
   /* Luma */
   9, 10, 17, 18,        // 1+1*8, 2+1*8, 1+2*8, 2+2*8,
@@ -29,7 +29,8 @@ const uint8_t g_kuiCache48CountScan4Idx[24] = {
   38, 39,               // 6+4*8, 7+4*8,
   46, 47,               // 6+5*8, 7+5*8,
 };
-
+//}}}
+//{{{
 const uint8_t g_kuiMatrixV[6][8][8] = { // generated from equation 8-317, 8-318
   {
     {20, 19, 25, 19, 20, 19, 25, 19},
@@ -92,7 +93,8 @@ const uint8_t g_kuiMatrixV[6][8][8] = { // generated from equation 8-317, 8-318
     {34, 32, 43, 32, 34, 32, 43, 32}
   }
 };
-
+//}}}
+//{{{
 //cache element equal to 30
 const uint8_t g_kuiCache30ScanIdx[16] = { //mv or uiRefIndex cache scan index, 4*4 block as basic unit
   7,  8, 13, 14,
@@ -100,23 +102,17 @@ const uint8_t g_kuiCache30ScanIdx[16] = { //mv or uiRefIndex cache scan index, 4
   19, 20, 25, 26,
   21, 22, 27, 28
 };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-// extern at wels_common_defs.h
+//}}}
+//{{{
 const uint8_t g_kuiChromaQpTable[52] = {
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
   12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27,
   28, 29, 29, 30, 31, 32, 32, 33, 34, 34, 35, 35, 36, 36, 37, 37,
   37, 38, 38, 38, 39, 39, 39, 39
 };
+//}}}
 
-/*
- *  vcl type map for given NAL unit type and corresponding H264 type (0: AVC; 1: SVC).
- */
+//{{{
 const EVclType g_keTypeMap[32][2] = {
   { NON_VCL,    NON_VCL },      // 0: NAL_UNIT_UNSPEC_0
   { VCL,        VCL,    },      // 1: NAL_UNIT_CODED_SLICE
@@ -151,11 +147,15 @@ const EVclType g_keTypeMap[32][2] = {
   { NON_VCL,    NON_VCL },      // 30: NAL_UNIT_UNSPEC_30
   { NON_VCL,    NON_VCL }       // 31: NAL_UNIT_UNSPEC_31
 };
+//}}}
+//{{{
 //default scaling list matrix value of 4x4
 const uint8_t g_kuiDequantScaling4x4Default[2][16]={
   {  6, 13, 20, 28, 13, 20, 28, 32, 20, 28, 32, 37, 28, 32, 37, 42 },
   { 10, 14, 20, 24, 14, 20, 24, 27, 20, 24, 27, 30, 24, 27, 30, 34 }
 };
+//}}}
+//{{{
 //default scaling list matrix value of 8x8
 const uint8_t g_kuiDequantScaling8x8Default[2][64]={
   {  6, 10, 13, 16, 18, 23, 25, 27, 10, 11, 16, 18, 23, 25, 27, 29,
@@ -174,6 +174,9 @@ const uint8_t g_kuiDequantScaling8x8Default[2][64]={
       22, 24, 25, 27, 28, 30, 32, 33,
       24, 25, 27, 28, 30, 32, 33, 35 }
 };
+//}}}
+
+//{{{
 ALIGNED_DECLARE (const uint16_t, g_kuiDequantCoeff[52][8], 16) = {
   /* 0*/{   10,   13,   10,   13,   13,   16,   13,   16 },     /* 1*/{   11,   14,   11,   14,   14,   18,   14,   18 },
   /* 2*/{   13,   16,   13,   16,   16,   20,   16,   20 },     /* 3*/{   14,   18,   14,   18,   18,   23,   18,   23 },
@@ -202,7 +205,8 @@ ALIGNED_DECLARE (const uint16_t, g_kuiDequantCoeff[52][8], 16) = {
   /*48*/{ 2560, 3328, 2560, 3328, 3328, 4096, 3328, 4096 },     /*49*/{ 2816, 3584, 2816, 3584, 3584, 4608, 3584, 4608 },
   /*50*/{ 3328, 4096, 3328, 4096, 4096, 5120, 4096, 5120 },     /*51*/{ 3584, 4608, 3584, 4608, 4608, 5888, 4608, 5888 },
 };
-
+//}}}
+//{{{
 ALIGNED_DECLARE (const uint16_t, g_kuiDequantCoeff8x8[52][64], 16) = {
 /* QP ==  0 */
 { 320,  304,  400,  304,  320,  304,  400,  304,  304,  288,  384,  288,  304,  288,  384,  288,  400,  384,  512,  384,  400,  384,  512,  384,  304,  288,  384,  288,  304,  288,  384,  288,  320,  304,  400,  304,  320,  304,  400,  304,  304,  288,  384,  288,  304,  288,  384,  288,  400,  384,  512,  384,  400,  384,  512,  384,  304,  288,  384,  288,  304,  288,  384,  288 },
@@ -309,7 +313,9 @@ ALIGNED_DECLARE (const uint16_t, g_kuiDequantCoeff8x8[52][64], 16) = {
 /* QP == 51 */
 { 448,  416,  560,  416,  448,  416,  560,  416,  416,  400,  528,  400,  416,  400,  528,  400,  560,  528,  720,  528,  560,  528,  720,  528,  416,  400,  528,  400,  416,  400,  528,  400,  448,  416,  560,  416,  448,  416,  560,  416,  416,  400,  528,  400,  416,  400,  528,  400,  560,  528,  720,  528,  560,  528,  720,  528,  416,  400,  528,  400,  416,  400,  528,  400 },
 };
+//}}}
 
+//{{{
 // table A-1 - Level limits
 const SLevelLimits g_ksLevelLimits[LEVEL_NUMBER] = {
   {LEVEL_1_0, 1485, 99, 396, 64, 175, -256, 255, 2, 0x7fff}, /* level 1 */
@@ -334,9 +340,13 @@ const SLevelLimits g_ksLevelLimits[LEVEL_NUMBER] = {
   {LEVEL_5_1, 983040, 36864, 184320, 240000, 240000, -2048, 2047, 2, 16}, /* level 5.1 */
   {LEVEL_5_2, 2073600, 36864, 184320, 240000, 240000, -2048, 2047, 2, 16} /* level 5.2 */
 };
+//}}}
+//{{{
 const uint32_t g_kuiLevelMaps[LEVEL_NUMBER] = {
   10, 9, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52
 };
+//}}}
+//{{{
 //for cabac
 /* this table is from Table9-12 to Table 9-24 */
 
@@ -816,7 +826,9 @@ const int8_t g_kiCabacGlobalContextIdx[WELS_CONTEXT_COUNT][4][2] = {
   {{29, 36}, {55, 34}, {66, 27}, {31, 38}},
   {{14, 67}, {42, 62}, {47, 57}, {20, 64}},
 };
+//}}}
 
+//{{{
 /*Table 9-44 – Specification of rangeTabLPS depending on pStateIdx and qCodIRangeIdx */
 
 const uint8_t g_kuiCabacRangeLps[64][4] = {
@@ -829,7 +841,8 @@ const uint8_t g_kuiCabacRangeLps[64][4] = {
   {  12,  14,  17,  20}, {  11,  14,  16,  19}, {  11,  13,  15,  18}, {  10,  12,  15,  17}, {  10,  12,  14,  16}, {   9,  11,  13,  15}, {   9,  11,  12,  14}, {   8,  10,  12,  14},
   {   8,   9,  11,  13}, {   7,   9,  11,  12}, {   7,   9,  10,  12}, {   7,   8,  10,  11}, {   6,   8,   9,  11}, {   6,   7,   9,  10}, {   6,   7,   8,   9}, {   2,   2,   2,   2}
 };
-
+//}}}
+//{{{
 /*Table 9-45 – State transition table*/
 
 const uint8_t g_kuiStateTransTable[64][2] = {
@@ -849,9 +862,8 @@ const uint8_t g_kuiStateTransTable[64][2] = {
   {37, 61}, {38, 62}, {38, 62}, {63, 63}
 
 };
-
-// extern at svc_enc_golomb.h, golomb_common.h
-
+//}}}
+//{{{
 const uint32_t g_kuiGolombUELength[256] = {
   1,  3,  3,  5,  5,  5,  5,  7,  7,  7,  7,  7,  7,  7,  7,     //14
   9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9, //30
@@ -871,5 +883,5 @@ const uint32_t g_kuiGolombUELength[256] = {
   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
   17
 };
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//}}}
 }

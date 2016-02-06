@@ -1,18 +1,19 @@
-
+//{{{
 #include <stdlib.h>
 #include <string.h>
 #include "memory_align.h"
 #include "macros.h"
+//}}}
 
 namespace WelsCommon {
 
 #ifdef MEMORY_CHECK
-static FILE*    fpMemChkPoint;
-static uint32_t nCountRequestNum;
-static int32_t  g_iMemoryLength;
+  static FILE*    fpMemChkPoint;
+  static uint32_t nCountRequestNum;
+  static int32_t  g_iMemoryLength;
 #endif
 
-
+//{{{
 CMemoryAlign::CMemoryAlign (const uint32_t kuiCacheLineSize)
 #ifdef MEMORY_MONITOR
   : m_nMemoryUsageInBytes (0)
@@ -23,7 +24,8 @@ CMemoryAlign::CMemoryAlign (const uint32_t kuiCacheLineSize)
   else
     m_nCacheLineSize = kuiCacheLineSize;
 }
-
+//}}}
+//{{{
 CMemoryAlign::~CMemoryAlign() {
 #ifdef MEMORY_MONITOR
   assert (m_nMemoryUsageInBytes == 0);
@@ -67,7 +69,9 @@ void* WelsMalloc (const uint32_t kuiSize, const char* kpTag, const uint32_t kiAl
 
   return pAlignedBuffer;
 }
+//}}}
 
+//{{{
 void WelsFree (void* pPointer, const char* kpTag) {
   if (pPointer) {
 #ifdef MEMORY_CHECK
@@ -83,7 +87,8 @@ void WelsFree (void* pPointer, const char* kpTag) {
     free (* (((void**) pPointer) - 1));
   }
 }
-
+//}}}
+//{{{
 void* CMemoryAlign::WelsMallocz (const uint32_t kuiSize, const char* kpTag) {
   void* pPointer = WelsMalloc (kuiSize, kpTag);
   if (NULL == pPointer) {
@@ -94,7 +99,8 @@ void* CMemoryAlign::WelsMallocz (const uint32_t kuiSize, const char* kpTag) {
 
   return pPointer;
 }
-
+//}}}
+//{{{
 void* CMemoryAlign::WelsMalloc (const uint32_t kuiSize, const char* kpTag) {
   void* pPointer = WelsCommon::WelsMalloc (kuiSize, kpTag, m_nCacheLineSize);
 #ifdef MEMORY_MONITOR
@@ -109,7 +115,8 @@ void* CMemoryAlign::WelsMalloc (const uint32_t kuiSize, const char* kpTag) {
 #endif//MEMORY_MONITOR
   return pPointer;
 }
-
+//}}}
+//{{{
 void CMemoryAlign::WelsFree (void* pPointer, const char* kpTag) {
 #ifdef MEMORY_MONITOR
   if (pPointer) {
@@ -123,7 +130,9 @@ void CMemoryAlign::WelsFree (void* pPointer, const char* kpTag) {
 #endif//MEMORY_MONITOR
   WelsCommon::WelsFree (pPointer, kpTag);
 }
+//}}}
 
+//{{{
 void* WelsMallocz (const uint32_t kuiSize, const char* kpTag) {
   void* pPointer = WelsMalloc (kuiSize, kpTag, 16);
   if (NULL == pPointer) {
@@ -132,13 +141,16 @@ void* WelsMallocz (const uint32_t kuiSize, const char* kpTag) {
   memset (pPointer, 0, kuiSize);
   return pPointer;
 }
+//}}}
 
+//{{{
 const uint32_t CMemoryAlign::WelsGetCacheLineSize() const {
   return m_nCacheLineSize;
 }
-
+//}}}
+//{{{
 const uint32_t CMemoryAlign::WelsGetMemoryUsage() const {
   return m_nMemoryUsageInBytes;
 }
-
+//}}}
 } // end of namespace WelsCommon

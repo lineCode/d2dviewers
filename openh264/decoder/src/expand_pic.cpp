@@ -1,7 +1,10 @@
+//{{{
 #include <string.h>
 #include "expand_pic.h"
 #include "cpu_core.h"
+//}}}
 
+//{{{
 // rewrite it (split into luma & chroma) that is helpful for mmx/sse2 optimization perform, 9/27/2009
 static inline void ExpandPictureLuma_c (uint8_t* pDst, const int32_t kiStride, const int32_t kiPicW,
                                         const int32_t kiPicH) {
@@ -42,9 +45,10 @@ static inline void ExpandPictureLuma_c (uint8_t* pDst, const int32_t kiStride, c
     ++ i;
   } while (i < kiPicH);
 }
+//}}}
+//{{{
+static inline void ExpandPictureChroma_c (uint8_t* pDst, const int32_t kiStride, const int32_t kiPicW, const int32_t kiPicH) {
 
-static inline void ExpandPictureChroma_c (uint8_t* pDst, const int32_t kiStride, const int32_t kiPicW,
-    const int32_t kiPicH) {
   uint8_t* pTmp                 = pDst;
   uint8_t* pDstLastLine         = pTmp + (kiPicH - 1) * kiStride;
   const int32_t kiPaddingLen    = (PADDING_LENGTH >> 1);
@@ -82,7 +86,9 @@ static inline void ExpandPictureChroma_c (uint8_t* pDst, const int32_t kiStride,
     ++ i;
   } while (i < kiPicH);
 }
+//}}}
 
+//{{{
 void InitExpandPictureFunc (SExpandPicFunc* pExpandPicFunc, const uint32_t kuiCPUFlag) {
   pExpandPicFunc->pfExpandLumaPicture        = ExpandPictureLuma_c;
   pExpandPicFunc->pfExpandChromaPicture[0]   = ExpandPictureChroma_c;
@@ -110,8 +116,8 @@ void InitExpandPictureFunc (SExpandPicFunc* pExpandPicFunc, const uint32_t kuiCP
   }
 #endif//HAVE_NEON_AARCH64
 }
-
-
+//}}}
+//{{{
 //void ExpandReferencingPicture (SPicture* pPic, PExpandPictureFunc pExpLuma, PExpandPictureFunc pExpChrom[2]) {
 void ExpandReferencingPicture (uint8_t* pData[3], int32_t iWidth, int32_t iHeight, int32_t iStride[3],
                                PExpandPictureFunc pExpLuma, PExpandPictureFunc pExpChrom[2]) {
@@ -124,8 +130,6 @@ void ExpandReferencingPicture (uint8_t* pData[3], int32_t iWidth, int32_t iHeigh
   const int32_t kiWidthUV   = kiWidthY >> 1;
   const int32_t kiHeightUV  = kiHeightY >> 1;
 
-
-
   pExpLuma (pPicY, iStride[0], kiWidthY, kiHeightY);
   if (kiWidthUV >= 16) {
     // fix coding picture size as 16x16
@@ -137,7 +141,5 @@ void ExpandReferencingPicture (uint8_t* pData[3], int32_t iWidth, int32_t iHeigh
     ExpandPictureChroma_c (pPicCb, iStride[1], kiWidthUV, kiHeightUV);
     ExpandPictureChroma_c (pPicCr, iStride[2], kiWidthUV, kiHeightUV);
   }
-
-
-
 }
+//}}}

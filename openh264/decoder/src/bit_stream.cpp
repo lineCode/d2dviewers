@@ -1,14 +1,17 @@
+//{{{
 #include "bit_stream.h"
 #include "error_code.h"
+//}}}
 
 namespace WelsDec {
-
+//{{{
 inline uint32_t GetValue4Bytes (uint8_t* pDstNal) {
   uint32_t uiValue = 0;
   uiValue = (pDstNal[0] << 24) | (pDstNal[1] << 16) | (pDstNal[2] << 8) | (pDstNal[3]);
   return uiValue;
 }
-
+//}}}
+//{{{
 int32_t InitReadBits (PBitStringAux pBitString, intX_t iEndOffset) {
   if (pBitString->pCurBuf >= (pBitString->pEndBuf - iEndOffset)) {
     return ERR_INFO_INVALID_ACCESS;
@@ -18,7 +21,8 @@ int32_t InitReadBits (PBitStringAux pBitString, intX_t iEndOffset) {
   pBitString->iLeftBits = -16;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 /*!
  * \brief   input bits for decoder or initialize bitstream writing in encoder
  *
@@ -45,7 +49,8 @@ int32_t DecInitBits (PBitStringAux pBitString, const uint8_t* kpBuf, const int32
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 void RBSP2EBSP (uint8_t* pDstBuf, uint8_t* pSrcBuf, const int32_t kiSize) {
   uint8_t* pSrcPointer = pSrcBuf;
   uint8_t* pDstPointer = pDstBuf;
@@ -66,6 +71,5 @@ void RBSP2EBSP (uint8_t* pDstBuf, uint8_t* pSrcBuf, const int32_t kiSize) {
     *pDstPointer++ = *pSrcPointer++;
   }
 }
-
+//}}}
 } // namespace WelsDec
-

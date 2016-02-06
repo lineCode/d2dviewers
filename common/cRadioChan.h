@@ -7,7 +7,7 @@
 
 class cRadioChan {
 public:                                                                         // base  688000  281000  156000   86000  31000
-  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(1604000), mVidFps(25) {} // high 8000000 5070000 2812000 1604000 929000
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(688000), mVidFps(25) {} // high 8000000 5070000 2812000 1604000 929000
   ~cRadioChan() {}
 
   // gets

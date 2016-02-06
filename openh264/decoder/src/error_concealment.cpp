@@ -1,13 +1,14 @@
-
+//{{{
 #include "error_code.h"
 #include "expand_pic.h"
 #include "manage_dec_ref.h"
 #include "copy_mb.h"
 #include "error_concealment.h"
 #include "cpu_core.h"
+//}}}
 
 namespace WelsDec {
-//Init
+//{{{
 void InitErrorCon (PWelsDecoderContext pCtx) {
   if ((pCtx->eErrorConMethod == ERROR_CON_SLICE_COPY) || (pCtx->eErrorConMethod == ERROR_CON_SLICE_COPY_CROSS_IDR)
       || (pCtx->eErrorConMethod == ERROR_CON_SLICE_MV_COPY_CROSS_IDR)
@@ -46,7 +47,9 @@ void InitErrorCon (PWelsDecoderContext pCtx) {
   } //TODO add more methods here
   return;
 }
+//}}}
 
+//{{{
 //Do error concealment using frame copy method
 void DoErrorConFrameCopy (PWelsDecoderContext pCtx) {
   PPicture pDstPic = pCtx->pDec;
@@ -69,8 +72,8 @@ void DoErrorConFrameCopy (PWelsDecoderContext pCtx) {
     memcpy (pDstPic->pData[2], pSrcPic->pData[2], (uiHeightInPixelY >> 1) * iStrideUV);
   }
 }
-
-
+//}}}
+//{{{
 //Do error concealment using slice copy method
 void DoErrorConSliceCopy (PWelsDecoderContext pCtx) {
   int32_t iMbWidth = (int32_t) pCtx->pSps->iMbWidth;
@@ -134,7 +137,8 @@ void DoErrorConSliceCopy (PWelsDecoderContext pCtx) {
     } //iMbX
   } //iMbY
 }
-
+//}}}
+//{{{
 //Do error concealment using slice MV copy method
 void DoMbECMvCopy (PWelsDecoderContext pCtx, PPicture pDec, PPicture pRef, int32_t iMbXy, int32_t iMbX, int32_t iMbY,
                    sMCRefMember* pMCRefMem) {
@@ -216,7 +220,8 @@ void DoMbECMvCopy (PWelsDecoderContext pCtx, PPicture pDec, PPicture pRef, int32
   }
   return ;
 }
-
+//}}}
+//{{{
 void GetAvilInfoFromCorrectMb (PWelsDecoderContext pCtx) {
   int32_t iMbWidth = (int32_t) pCtx->pSps->iMbWidth;
   int32_t iMbHeight = (int32_t) pCtx->pSps->iMbHeight;
@@ -334,7 +339,8 @@ void GetAvilInfoFromCorrectMb (PWelsDecoderContext pCtx) {
     }
   }
 }
-
+//}}}
+//{{{
 void DoErrorConSliceMVCopy (PWelsDecoderContext pCtx) {
   int32_t iMbWidth = (int32_t) pCtx->pSps->iMbWidth;
   int32_t iMbHeight = (int32_t) pCtx->pSps->iMbHeight;
@@ -395,7 +401,9 @@ void DoErrorConSliceMVCopy (PWelsDecoderContext pCtx) {
     } //iMbX
   } //iMbY
 }
+//}}}
 
+//{{{
 //Mark erroneous frame as Ref Pic into DPB
 int32_t MarkECFrameAsRef (PWelsDecoderContext pCtx) {
   int32_t iRet = WelsMarkAsRef (pCtx);
@@ -409,7 +417,8 @@ int32_t MarkECFrameAsRef (PWelsDecoderContext pCtx) {
 
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 bool NeedErrorCon (PWelsDecoderContext pCtx) {
   bool bNeedEC = false;
   int32_t iMbNum = pCtx->pSps->iMbWidth * pCtx->pSps->iMbHeight;
@@ -421,7 +430,8 @@ bool NeedErrorCon (PWelsDecoderContext pCtx) {
   }
   return bNeedEC;
 }
-
+//}}}
+//{{{
 // ImplementErrorConceal
 // Do actual error concealment
 void ImplementErrorCon (PWelsDecoderContext pCtx) {
@@ -443,5 +453,5 @@ void ImplementErrorCon (PWelsDecoderContext pCtx) {
   pCtx->iErrorCode |= dsDataErrorConcealed;
   pCtx->pDec->bIsComplete = false; // Set complete flag to false after do EC.
 }
-
+//}}}
 } // namespace WelsDec

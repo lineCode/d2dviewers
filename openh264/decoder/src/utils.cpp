@@ -1,6 +1,8 @@
+//{{{
 #include "utils.h"
 #include "crt_util_safe_x.h" // Safe CRT routines like utils for cross platforms
 #include "codec_app_def.h"
+//}}}
 float WelsCalcPsnr (const void* kpTarPic,
                     const int32_t kiTarStride,
                     const void* kpRefPic,
@@ -9,6 +11,7 @@ float WelsCalcPsnr (const void* kpTarPic,
                     const int32_t kiHeight);
 
 
+//{{{
 void WelsLog (SLogContext* logCtx, int32_t iLevel, const char* kpFmt, ...) {
   va_list vl;
   char pTraceTag[MAX_LOG_SIZE] = {0};
@@ -34,12 +37,14 @@ void WelsLog (SLogContext* logCtx, int32_t iLevel, const char* kpFmt, ...) {
   logCtx->pfLog (logCtx->pLogCtx, iLevel, pTraceTag, vl);
   va_end (vl);
 }
+//}}}
 
 #ifndef CALC_PSNR
 #define CONST_FACTOR_PSNR       (10.0 / log(10.0))      // for good computation
 #define CALC_PSNR(w, h, s)      ((float)(CONST_FACTOR_PSNR * log( 65025.0 * w * h / iSqe )))
 #endif//CALC_PSNR
 
+//{{{
 /*
  *  PSNR calculation routines
  */
@@ -84,4 +89,4 @@ float WelsCalcPsnr (const void* kpTarPic,
   }
   return CALC_PSNR (kiWidth, kiHeight, iSqe);
 }
-
+//}}}

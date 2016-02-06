@@ -1,7 +1,9 @@
 #include "cabac_decoder.h"
+
 namespace WelsDec {
 static const int16_t g_kMvdBinPos2Ctx [8] = {0, 1, 2, 3, 3, 3, 3, 3};
 
+//{{{
 void WelsCabacGlobalInit (PWelsDecoderContext pCtx) {
   for (int32_t iModel = 0; iModel < 4; iModel++) {
     for (int32_t iQp = 0; iQp <= WELS_QP_MAX; iQp++)
@@ -24,7 +26,8 @@ void WelsCabacGlobalInit (PWelsDecoderContext pCtx) {
   }
   pCtx->bCabacInited = true;
 }
-
+//}}}
+//{{{
 // ------------------- 1. context initialization
 void WelsCabacContextInit (PWelsDecoderContext  pCtx, uint8_t eSliceType, int32_t iCabacInitIdc, int32_t iQp) {
   int32_t iIdx =  pCtx->eSliceType == WelsCommon::I_SLICE ? 0 : iCabacInitIdc + 1;
@@ -34,7 +37,8 @@ void WelsCabacContextInit (PWelsDecoderContext  pCtx, uint8_t eSliceType, int32_
   memcpy (pCtx->pCabacCtx, pCtx->sWelsCabacContexts[iIdx][iQp],
           WELS_CONTEXT_COUNT * sizeof (SWelsCabacCtx));
 }
-
+//}}}
+//{{{
 // ------------------- 2. decoding Engine initialization
 int32_t InitCabacDecEngineFromBS (PWelsCabacDecEngine pDecEngine, PBitStringAux pBsAux) {
   int32_t iRemainingBits = - pBsAux->iLeftBits; //pBsAux->iLeftBits < 0
@@ -68,7 +72,9 @@ void RestoreCabacDecEngineToBS (PWelsCabacDecEngine pDecEngine, PBitStringAux pB
   pBsAux->uiCurBits = 0;
   pBsAux->iIndex = 0;
 }
+//}}}
 
+//{{{
 // ------------------- 3. actual decoding
 int32_t Read32BitsCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiValue, int32_t& iNumBitsRead) {
   intX_t iLeftBytes = pDecEngine->pBuffEnd - pDecEngine->pBuffCurr;
@@ -102,7 +108,9 @@ int32_t Read32BitsCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiValue, int3
   }
   return ERR_NONE;
 }
+//}}}
 
+//{{{
 int32_t DecodeBinCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx, uint32_t& uiBinVal) {
   int32_t iErrorInfo = ERR_NONE;
   uint32_t uiState = pBinCtx->uiState;
@@ -147,7 +155,8 @@ int32_t DecodeBinCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx, u
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t DecodeBypassCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiBinVal) {
   int32_t iErrorInfo = ERR_NONE;
   int32_t iBitsLeft = pDecEngine->iBitsLeft;
@@ -178,7 +187,8 @@ int32_t DecodeBypassCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiBinVal) {
   uiBinVal = 0;
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t DecodeTerminateCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiBinVal) {
   int32_t iErrorInfo = ERR_NONE;
   uint64_t uiRange = pDecEngine->uiRange - 2;
@@ -211,7 +221,8 @@ int32_t DecodeTerminateCabac (PWelsCabacDecEngine pDecEngine, uint32_t& uiBinVal
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t DecodeUnaryBinCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx, int32_t iCtxOffset,
                              uint32_t& uiSymVal) {
   uiSymVal = 0;
@@ -229,7 +240,8 @@ int32_t DecodeUnaryBinCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinC
     return ERR_NONE;
   }
 }
-
+//}}}
+//{{{
 int32_t DecodeExpBypassCabac (PWelsCabacDecEngine pDecEngine, int32_t iCount, uint32_t& uiSymVal) {
   uint32_t uiCode;
   int32_t iSymTmp = 0;
@@ -255,7 +267,8 @@ int32_t DecodeExpBypassCabac (PWelsCabacDecEngine pDecEngine, int32_t iCount, ui
   uiSymVal = (uint32_t) (iSymTmp + iSymTmp2);
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 uint32_t DecodeUEGLevelCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx, uint32_t& uiCode) {
   uiCode = 0;
   WELS_READ_VERIFY (DecodeBinCabac (pDecEngine, pBinCtx, uiCode));
@@ -278,7 +291,8 @@ uint32_t DecodeUEGLevelCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBin
   }
   return ERR_NONE;
 }
-
+//}}}
+//{{{
 int32_t DecodeUEGMvCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx, uint32_t iMaxBin,  uint32_t& uiCode) {
   WELS_READ_VERIFY (DecodeBinCabac (pDecEngine, pBinCtx + g_kMvdBinPos2Ctx[0], uiCode));
   if (uiCode == 0)
@@ -298,4 +312,5 @@ int32_t DecodeUEGMvCabac (PWelsCabacDecEngine pDecEngine, PWelsCabacCtx pBinCtx,
     return ERR_NONE;
   }
 }
+//}}}
 }

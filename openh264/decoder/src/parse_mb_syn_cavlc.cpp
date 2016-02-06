@@ -1,18 +1,19 @@
-
-
+//{{{
 #include "parse_mb_syn_cavlc.h"
 #include "error_code.h"
 #include "mv_pred.h"
-
+//}}}
 namespace WelsDec {
 #define MAX_LEVEL_PREFIX 15
-
+//{{{
 typedef struct TagReadBitsCache {
   uint32_t uiCache32Bit;
   uint8_t  uiRemainBits;
   uint8_t*  pBuf;
 } SReadBitsCache;
+//}}}
 
+//{{{
 void GetNeighborAvailMbType (PWelsNeighAvail pNeighAvail, PDqLayer pCurLayer) {
   int32_t iCurSliceIdc, iTopSliceIdc, iLeftTopSliceIdc, iRightTopSliceIdc, iLeftSliceIdc;
   int32_t iCurXy, iTopXy = 0, iLeftXy = 0, iLeftTopXy = 0, iRightTopXy = 0;
@@ -64,6 +65,8 @@ void GetNeighborAvailMbType (PWelsNeighAvail pNeighAvail, PDqLayer pCurLayer) {
   pNeighAvail->iLeftTopType  = (pNeighAvail->iLeftTopAvail  ? pCurLayer->pMbType[iLeftTopXy]  : 0);
   pNeighAvail->iRightTopType = (pNeighAvail->iRightTopAvail ? pCurLayer->pMbType[iRightTopXy] : 0);
 }
+//}}}
+//{{{
 void WelsFillCacheNonZeroCount (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCount,
                                 PDqLayer pCurLayer) { //no matter slice type, intra_pred_constrained_flag
   int32_t iCurXy  = pCurLayer->iMbXyIndex;
@@ -112,6 +115,8 @@ void WelsFillCacheNonZeroCount (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCo
       pNonZeroCount[5 + 8 * 5] = -1;//unavailable
   }
 }
+//}}}
+//{{{
 void WelsFillCacheConstrain1IntraNxN (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCount, int8_t* pIntraPredMode,
                                       PDqLayer pCurLayer) { //no matter slice type
   int32_t iCurXy  = pCurLayer->iMbXyIndex;
@@ -157,7 +162,8 @@ void WelsFillCacheConstrain1IntraNxN (PWelsNeighAvail pNeighAvail, uint8_t* pNon
           pIntraPredMode[ 0 + 8 * 4] = iPred;
   }
 }
-
+//}}}
+//{{{
 void WelsFillCacheConstrain0IntraNxN (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCount, int8_t* pIntraPredMode,
                                       PDqLayer pCurLayer) { //no matter slice type
   int32_t iCurXy  = pCurLayer->iMbXyIndex;
@@ -203,7 +209,8 @@ void WelsFillCacheConstrain0IntraNxN (PWelsNeighAvail pNeighAvail, uint8_t* pNon
           pIntraPredMode[ 0 + 8 * 4] = iPred;
   }
 }
-
+//}}}
+//{{{
 void WelsFillCacheInterCabac (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCount, int16_t iMvArray[LIST_A][30][MV_A],
                               int16_t iMvdCache[LIST_A][30][MV_A], int8_t iRefIdxArray[LIST_A][30], PDqLayer pCurLayer) {
   int32_t iCurXy      = pCurLayer->iMbXyIndex;
@@ -336,7 +343,8 @@ void WelsFillCacheInterCabac (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCoun
         iRefIdxArray[0][17] =
           iRefIdxArray[0][23] = REF_NOT_AVAIL;
 }
-
+//}}}
+//{{{
 void WelsFillCacheInter (PWelsNeighAvail pNeighAvail, uint8_t* pNonZeroCount,
                          int16_t iMvArray[LIST_A][30][MV_A], int8_t iRefIdxArray[LIST_A][30], PDqLayer pCurLayer) {
   int32_t iCurXy      = pCurLayer->iMbXyIndex;
@@ -455,6 +463,7 @@ int32_t PredIntra4x4Mode (int8_t* pIntraPredMode, int32_t iIdx4) {
   }
   return iBestMode;
 }
+//}}}
 
 #define CHECK_I16_MODE(a, b, c, d)                           \
                       ((a == g_ksI16PredInfo[a].iPredMode) &&  \
@@ -471,8 +480,7 @@ int32_t PredIntra4x4Mode (int8_t* pIntraPredMode, int32_t iIdx4) {
                       (b >= g_ksI4PredInfo[a].iLeftAvail) &&     \
                       (c >= g_ksI4PredInfo[a].iTopAvail) &&      \
                       (d >= g_ksI4PredInfo[a].iLeftTopAvail));
-
-
+//{{{
 int32_t CheckIntra16x16PredMode (uint8_t uiSampleAvail, int8_t* pMode) {
   int32_t iLeftAvail     = uiSampleAvail & 0x04;
   int32_t bLeftTopAvail  = uiSampleAvail & 0x02;
@@ -500,8 +508,8 @@ int32_t CheckIntra16x16PredMode (uint8_t uiSampleAvail, int8_t* pMode) {
   }
   return 0;
 }
-
-
+//}}}
+//{{{
 int32_t CheckIntraChromaPredMode (uint8_t uiSampleAvail, int8_t* pMode) {
   int32_t iLeftAvail     = uiSampleAvail & 0x04;
   int32_t bLeftTopAvail  = uiSampleAvail & 0x02;
@@ -525,7 +533,8 @@ int32_t CheckIntraChromaPredMode (uint8_t uiSampleAvail, int8_t* pMode) {
   }
   return 0;
 }
-
+//}}}
+//{{{
 int32_t CheckIntraNxNPredMode (int32_t* pSampleAvail, int8_t* pMode, int32_t iIndex, bool b8x8) {
   int8_t iIdx = g_kuiCache30ScanIdx[iIndex];
 
@@ -567,10 +576,14 @@ int32_t CheckIntraNxNPredMode (int32_t* pSampleAvail, int8_t* pMode, int32_t iIn
   }
   return iFinalMode;
 }
+//}}}
 
+//{{{
 void BsStartCavlc (PBitStringAux pBs) {
   pBs->iIndex = ((pBs->pCurBuf - pBs->pStartBuf) << 3) - (16 - pBs->iLeftBits);
 }
+//}}}
+//{{{
 void BsEndCavlc (PBitStringAux pBs) {
   pBs->pCurBuf   = pBs->pStartBuf + (pBs->iIndex >> 3);
   uint32_t uiCache32Bit = (uint32_t) ((((pBs->pCurBuf[0] << 8) | pBs->pCurBuf[1]) << 16) |
@@ -579,8 +592,9 @@ void BsEndCavlc (PBitStringAux pBs) {
   pBs->pCurBuf  += 4;
   pBs->iLeftBits = -16 + (pBs->iIndex & 0x07);
 }
+//}}}
 
-
+//{{{
 // return: used bits
 static int32_t CavlcGetTrailingOnesAndTotalCoeff (uint8_t& uiTotalCoeff, uint8_t& uiTrailingOnes,
     SReadBitsCache* pBitsCache, SVlcTable* pVlcTable, bool bChromaDc, int8_t nC) {
@@ -629,7 +643,8 @@ static int32_t CavlcGetTrailingOnesAndTotalCoeff (uint8_t& uiTotalCoeff, uint8_t
 
   return iUsedBits;
 }
-
+//}}}
+//{{{
 static int32_t CavlcGetLevelVal (int32_t iLevel[16], SReadBitsCache* pBitsCache, uint8_t uiTotalCoeff,
                                  uint8_t uiTrailingOnes) {
   int32_t i, iUsedBits = 0;
@@ -682,7 +697,8 @@ static int32_t CavlcGetLevelVal (int32_t iLevel[16], SReadBitsCache* pBitsCache,
 
   return iUsedBits;
 }
-
+//}}}
+//{{{
 static int32_t CavlcGetTotalZeros (int32_t& iZerosLeft, SReadBitsCache* pBitsCache, uint8_t uiTotalCoeff,
                                    SVlcTable* pVlcTable, bool bChromaDc) {
   int32_t iCount, iUsedBits = 0;
@@ -714,6 +730,8 @@ static int32_t CavlcGetTotalZeros (int32_t& iZerosLeft, SReadBitsCache* pBitsCac
 
   return iUsedBits;
 }
+//}}}
+//{{{
 static int32_t CavlcGetRunBefore (int32_t iRun[16], SReadBitsCache* pBitsCache, uint8_t uiTotalCoeff,
                                   SVlcTable* pVlcTable, int32_t iZerosLeft) {
   int32_t i, iUsedBits = 0;
@@ -758,7 +776,9 @@ static int32_t CavlcGetRunBefore (int32_t iRun[16], SReadBitsCache* pBitsCache, 
 
   return iUsedBits;
 }
+//}}}
 
+//{{{
 int32_t WelsResidualBlockCavlc (SVlcTable* pVlcTable, uint8_t* pNonZeroCountCache, PBitStringAux pBs, int32_t iIndex,
                                 int32_t iMaxNumCoeff,
                                 const uint8_t* kpZigzagTable, int32_t iResidualProperty, int16_t* pTCoeff, uint8_t uiQp,
@@ -861,7 +881,8 @@ int32_t WelsResidualBlockCavlc (SVlcTable* pVlcTable, uint8_t* pNonZeroCountCach
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t WelsResidualBlockCavlc8x8 (SVlcTable* pVlcTable, uint8_t* pNonZeroCountCache, PBitStringAux pBs, int32_t iIndex,
                                    int32_t iMaxNumCoeff, const uint8_t* kpZigzagTable, int32_t iResidualProperty,
                                    int16_t* pTCoeff, int32_t  iIdx4x4, uint8_t uiQp,
@@ -948,7 +969,8 @@ int32_t WelsResidualBlockCavlc8x8 (SVlcTable* pVlcTable, uint8_t* pNonZeroCountC
 
   return 0;
 }
-
+//}}}
+//{{{
 int32_t ParseInterInfo (PWelsDecoderContext pCtx, int16_t iMvArray[LIST_A][30][MV_A], int8_t iRefIdxArray[LIST_A][30],
                         PBitStringAux pBs) {
   PSlice pSlice                 = &pCtx->pCurDqLayer->sLayerInfo.sSliceInLayer;
@@ -1208,5 +1230,5 @@ int32_t ParseInterInfo (PWelsDecoderContext pCtx, int16_t iMvArray[LIST_A][30][M
 
   return 0;
 }
-
+//}}}
 } // namespace WelsDec

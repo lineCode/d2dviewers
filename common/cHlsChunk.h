@@ -20,18 +20,19 @@
 #pragma comment(lib,"avformat.lib")
 #pragma comment(lib,"swscale.lib")
 //}}}
-
+//{{{  static vars
 static int chan = 0;
 static FILE* audFile = nullptr;
 static FILE* vidFile = nullptr;
 static ISVCDecoder* svcDecoder = nullptr;
 static ComPtr<IWICImagingFactory> wicImagingFactory;
 
-AVCodec* vidCodec = NULL;
-AVCodecContext* vidCodecContext = NULL;
-AVCodecParserContext* vidParser = NULL;
-AVFrame* vidFrame = NULL;
-struct SwsContext* swsContext = NULL;
+static AVCodec* vidCodec = NULL;
+static AVCodecContext* vidCodecContext = NULL;
+static AVCodecParserContext* vidParser = NULL;
+static AVFrame* vidFrame = NULL;
+static struct SwsContext* swsContext = NULL;
+//}}}
 
 class cHlsChunk {
 public:
@@ -94,6 +95,7 @@ public:
     return mInfoStr;
     }
   //}}}
+
   //{{{
   uint8_t* getAudioPower (int frameInChunk, int& frames) {
 
@@ -113,6 +115,7 @@ public:
     }
   //}}}
 #endif
+
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
@@ -140,24 +143,17 @@ public:
 
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
-      bool changeChan = chan != radioChan->getChan();
-      chan = radioChan->getChan();
-
       mVidPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (radioChan->getRadioTv() ? http->getContentSize() : 0)) : nullptr;
       audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
       mAudPtr = http->getContent();
-      //saveToFile (changeChan, radioChan);
-
-      processAudio();
-      http->freeContent();
-
-      if (mVidLen)
-        //processVideoOpenH264();
+      processAudioFaad();
+      if (radioChan->getVidBitrate() <= 688000)
+        processVideoOpenH264();
+      else
         processVideoFFmpeg();
-      if (mVidPtr) {
-        free (mVidPtr);
-        mVidPtr = nullptr;
-        }
+      //saveToFile (changeChan, radioChan);
+      if (mVidPtr) free (mVidPtr);
+      http->freeContent();
 
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
@@ -219,7 +215,10 @@ private:
     }
   //}}}
   //{{{
-  void saveToFile (bool changeChan, cRadioChan* radioChan) { 
+  void saveToFile (cRadioChan* radioChan) {
+
+    bool changeChan = chan != radioChan->getChan();
+    chan = radioChan->getChan();
 
     if (mAudLen > 0) {
       // save audPes to .adts file, should check seqNum
@@ -251,7 +250,7 @@ private:
     }
   //}}}
   //{{{
-  void processAudio() {
+  void processAudioFaad() {
 
     // init aacDecoder
     unsigned long sampleRate;
@@ -303,102 +302,104 @@ private:
   //{{{
   void processVideoOpenH264() {
 
+    if (mVidLen) {
   #ifdef WIN32
-    if (!svcDecoder) {
-      //{{{  init static decoder
-      WelsCreateDecoder (&svcDecoder);
+      if (!svcDecoder) {
+        //{{{  init static decoder
+        WelsCreateDecoder (&svcDecoder);
 
-      int iLevelSetting = (int)WELS_LOG_WARNING;
-      svcDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+        int iLevelSetting = (int)WELS_LOG_WARNING;
+        svcDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
 
-      // init decoder params
-      SDecodingParam sDecParam = {0};
-      sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
-      sDecParam.uiTargetDqLayer = (uint8_t) - 1;
-      sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
-      sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
-      svcDecoder->Initialize (&sDecParam);
+        // init decoder params
+        SDecodingParam sDecParam = {0};
+        sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
+        sDecParam.uiTargetDqLayer = (uint8_t) - 1;
+        sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
+        sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
+        svcDecoder->Initialize (&sDecParam);
 
-      // set conceal option
-      int32_t iErrorConMethod = (int32_t)ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
-      svcDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+        // set conceal option
+        int32_t iErrorConMethod = (int32_t)ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+        svcDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
 
-      // create vidFrame wicBitmap 24bit BGR
-      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-      }
-      //}}}
-
-    unsigned long long uiTimeStamp = 0;
-    int32_t iBufPos = 0;
-    while (true) {
-      // calc next sliceSize, look for next sliceStartCode, not sure about end of buf test, relies on 4 trailing bytes of anything
-      int32_t iSliceSize;
-      for (iSliceSize = 1; iSliceSize < mVidLen - iBufPos; iSliceSize++)
-        if ((!mVidPtr[iBufPos+iSliceSize] && !mVidPtr[iBufPos+iSliceSize+1])  &&
-            ((!mVidPtr[iBufPos+iSliceSize+2] && mVidPtr[iBufPos+iSliceSize+3] == 1) || (mVidPtr[iBufPos+iSliceSize+2] == 1)))
-          break;
-
-      // process slice
-      uint8_t* pData[3]; // yuv ptrs
-      SBufferInfo sDstBufInfo;
-      memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
-      sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
-
-      svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, pData, &sDstBufInfo);
-
-      if (sDstBufInfo.iBufferStatus == 1) {
-        //{{{  have new frame
-        int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
-        int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
-
-        // could test for size change
-        if (!vidFrames[mVidFramesLoaded])
-          wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
-
-        WICRect wicRect = { 0, 0, width, height };
-        IWICBitmapLock* wicBitmapLock = NULL;
-        vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
-
-        // get vidFrame wicBitmap buffer
-        UINT bufferLen = 0;
-        BYTE* buffer = NULL;
-        wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
-
-        // yuv:420 -> BGR:24bit
-        for (auto y = 0; y < height; y++) {
-          BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
-          BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-          BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-
-          for (auto x = 0; x < width/2; x++) {
-            int y1 = *yptr++;
-            int y2 = *yptr++;
-            int u = (*uptr++) - 128;
-            int v = (*vptr++) - 128;
-
-            *buffer++ = limit (y1 + (1.8556 * u));
-            *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
-            *buffer++ = limit (y1 + (1.5748 * v));
-
-            *buffer++ = limit (y2 + (1.8556 * u));
-            *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
-            *buffer++ = limit (y2 + (1.5748 * v));
-            }
-          }
-
-        // release vidFrame wicBitmap buffer
-        wicBitmapLock->Release();
-
-        mVidFramesLoaded++;
+        // create vidFrame wicBitmap 24bit BGR
+        CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
         }
         //}}}
 
-      iBufPos += iSliceSize;
-      if (iBufPos >= mVidLen) {
-        // end of stream
-        int32_t iEndOfStreamFlag = true;
-        svcDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
-        break;
+      unsigned long long uiTimeStamp = 0;
+      int32_t iBufPos = 0;
+      while (true) {
+        // calc next sliceSize, look for next sliceStartCode, not sure about end of buf test, relies on 4 trailing bytes of anything
+        int32_t iSliceSize;
+        for (iSliceSize = 1; iSliceSize < mVidLen - iBufPos; iSliceSize++)
+          if ((!mVidPtr[iBufPos+iSliceSize] && !mVidPtr[iBufPos+iSliceSize+1])  &&
+              ((!mVidPtr[iBufPos+iSliceSize+2] && mVidPtr[iBufPos+iSliceSize+3] == 1) || (mVidPtr[iBufPos+iSliceSize+2] == 1)))
+            break;
+
+        // process slice
+        uint8_t* pData[3]; // yuv ptrs
+        SBufferInfo sDstBufInfo;
+        memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
+        sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
+
+        svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+
+        if (sDstBufInfo.iBufferStatus == 1) {
+          //{{{  have new frame
+          int width = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
+          int height = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
+
+          // could test for size change
+          if (!vidFrames[mVidFramesLoaded])
+            wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+
+          WICRect wicRect = { 0, 0, width, height };
+          IWICBitmapLock* wicBitmapLock = NULL;
+          vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+
+          // get vidFrame wicBitmap buffer
+          UINT bufferLen = 0;
+          BYTE* buffer = NULL;
+          wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+
+          // yuv:420 -> BGR:24bit
+          for (auto y = 0; y < height; y++) {
+            BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
+            BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+            BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+
+            for (auto x = 0; x < width/2; x++) {
+              int y1 = *yptr++;
+              int y2 = *yptr++;
+              int u = (*uptr++) - 128;
+              int v = (*vptr++) - 128;
+
+              *buffer++ = limit (y1 + (1.8556 * u));
+              *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = limit (y1 + (1.5748 * v));
+
+              *buffer++ = limit (y2 + (1.8556 * u));
+              *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = limit (y2 + (1.5748 * v));
+              }
+            }
+
+          // release vidFrame wicBitmap buffer
+          wicBitmapLock->Release();
+
+          mVidFramesLoaded++;
+          }
+          //}}}
+
+        iBufPos += iSliceSize;
+        if (iBufPos >= mVidLen) {
+          // end of stream
+          int32_t iEndOfStreamFlag = true;
+          svcDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
+          break;
+          }
         }
       }
   #endif
@@ -407,72 +408,73 @@ private:
   //{{{
   void processVideoFFmpeg() {
 
+    if (mVidLen) {
   #ifdef WIN32
-    if (!vidCodec) {
-      //{{{  init static decoder
-      // init vidCodecContext, vidCodec, vidParser, vidFrame
-      av_register_all();
+      if (!vidCodec) {
+        //{{{  init static decoder
+        // init vidCodecContext, vidCodec, vidParser, vidFrame
+        av_register_all();
 
-      vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);;
-      vidCodecContext = avcodec_alloc_context3 (vidCodec);;
-      avcodec_open2 (vidCodecContext, vidCodec, NULL);
+        vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);;
+        vidCodecContext = avcodec_alloc_context3 (vidCodec);;
+        avcodec_open2 (vidCodecContext, vidCodec, NULL);
 
-      vidParser = av_parser_init (AV_CODEC_ID_H264);;
+        vidParser = av_parser_init (AV_CODEC_ID_H264);;
 
-      vidFrame = av_frame_alloc();;
-      swsContext = NULL;
+        vidFrame = av_frame_alloc();;
+        swsContext = NULL;
 
-      // create vidFrame wicBitmap 24bit BGR
-      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-      }
-      //}}}
-
-    AVPacket vidPacket;
-    av_init_packet (&vidPacket);
-    vidPacket.data = mVidPtr;
-    vidPacket.size = 0;
-
-    auto vidLen = mVidLen;
-    while (vidLen > 0) {
-      uint8_t* data = NULL;
-      av_parser_parse2 (vidParser, vidCodecContext,
-                        &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
-
-      int gotPicture = 0;
-      int len = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
-      vidPacket.data += len;
-      vidLen -= len;
-
-      if (gotPicture != 0) {
-        if (!swsContext)
-          swsContext = sws_getContext (vidCodecContext->width, vidCodecContext->height, vidCodecContext->pix_fmt,
-                                       vidCodecContext->width, vidCodecContext->height, AV_PIX_FMT_BGR24,
-                                       SWS_BICUBIC, NULL, NULL, NULL);
-        if (!vidFrames[mVidFramesLoaded])
-          wicImagingFactory->CreateBitmap (vidCodecContext->width, vidCodecContext->height,
-                                           GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
-        //{{{  lock wicBitmap
-        WICRect wicRect = { 0, 0, vidCodecContext->width, vidCodecContext->height };
-        IWICBitmapLock* wicBitmapLock = NULL;
-        vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+        // create vidFrame wicBitmap 24bit BGR
+        CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
+        }
         //}}}
-        //{{{  get wicBitmap buffer
-        UINT bufferLen = 0;
-        BYTE* buffer = NULL;
-        wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
-        //}}}
-        int linesize = vidCodecContext->width * 3;
-        sws_scale (swsContext, vidFrame->data, vidFrame->linesize, 0, vidCodecContext->height, &buffer, &linesize);
-        wicBitmapLock->Release();
 
-        mVidFramesLoaded++;
-       }
+      AVPacket vidPacket;
+      av_init_packet (&vidPacket);
+      vidPacket.data = mVidPtr;
+      vidPacket.size = 0;
+
+      int vidLen = (int)mVidLen;
+      while (vidLen > 0) {
+        uint8_t* data = NULL;
+        av_parser_parse2 (vidParser, vidCodecContext, &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
+
+        int gotPicture = 0;
+        int len = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
+        vidPacket.data += len;
+        vidLen -= len;
+
+        if (gotPicture != 0) {
+          if (!swsContext)
+            swsContext = sws_getContext (vidCodecContext->width, vidCodecContext->height, vidCodecContext->pix_fmt,
+                                         vidCodecContext->width, vidCodecContext->height, AV_PIX_FMT_BGR24,
+                                         SWS_BICUBIC, NULL, NULL, NULL);
+          if (!vidFrames[mVidFramesLoaded])
+            wicImagingFactory->CreateBitmap (vidCodecContext->width, vidCodecContext->height,
+                                             GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+          //{{{  lock wicBitmap
+          WICRect wicRect = { 0, 0, vidCodecContext->width, vidCodecContext->height };
+          IWICBitmapLock* wicBitmapLock = NULL;
+          vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+          //}}}
+          //{{{  get wicBitmap buffer
+          UINT bufferLen = 0;
+          BYTE* buffer = NULL;
+          wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+          //}}}
+          int linesize = vidCodecContext->width * 3;
+          sws_scale (swsContext, vidFrame->data, vidFrame->linesize, 0, vidCodecContext->height, &buffer, &linesize);
+          wicBitmapLock->Release();
+
+          mVidFramesLoaded++;
+         }
+        }
+    #endif
       }
-  #endif
     }
   //}}}
 
-  // vars
+  //{{{  private vars
   int mSeqNum;
   int mAudBitrate;
   int mFramesLoaded;
@@ -491,7 +493,8 @@ private:
   int16_t* mAudio;
   uint8_t* mPower;
 
-#ifdef WIN32
-  IWICBitmap* vidFrames[400];
-#endif
+  #ifdef WIN32
+    IWICBitmap* vidFrames[400];
+  #endif
+  //}}}
   };
