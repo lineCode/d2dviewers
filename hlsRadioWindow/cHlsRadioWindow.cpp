@@ -128,7 +128,7 @@ protected:
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
       int chan = y / 20;
-      if ((chan >= 1) && (chan <= 8)) {
+      if ((chan >= 1) && (chan <= 10)) {
         mTuneChan = chan;
         signal();
         changed();
@@ -206,7 +206,7 @@ protected:
 
     if (mShowChan) {
       //{{{  show chan and debug info
-      for (auto i = 1; i <= 8; i++) {
+      for (auto i = 1; i <= 10; i++) {
         swprintf (wStr, 200, L"%hs", cRadioChan::getChanName(i).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
         }

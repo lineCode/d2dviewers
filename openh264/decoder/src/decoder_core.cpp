@@ -552,7 +552,6 @@ int32_t WelsInitStaticMemory (PWelsDecoderContext pCtx) {
 /*
  * WelsFreeStaticMemory
  * Free memory introduced in WelsInitStaticMemory at destruction of decoder.
- *
  */
 void WelsFreeStaticMemory (PWelsDecoderContext pCtx) {
   if (pCtx == NULL)
@@ -613,6 +612,7 @@ void DecodeNalHeaderExt (PNalUnit pNal, uint8_t* pSrc) {
   pHeaderExt->iNoInterLayerPredFlag = uiCurByte >> 7;
   pHeaderExt->uiDependencyId        = (uiCurByte & 0x70) >> 4;
   pHeaderExt->uiQualityId           = uiCurByte & 0x0F;
+
   uiCurByte = * (++pSrc);
   pHeaderExt->uiTemporalId          = uiCurByte >> 5;
   pHeaderExt->bUseRefBasePicFlag    = !! (uiCurByte & 0x10);
@@ -1949,9 +1949,7 @@ static void WriteBackActiveParameters (PWelsDecoderContext pCtx) {
 /*
  * DecodeFinishUpdate
  * decoder finish decoding, update active parameter sets and new seq status
- *
  */
-
 void DecodeFinishUpdate (PWelsDecoderContext pCtx) {
   pCtx->bNewSeqBegin = false;
   WriteBackActiveParameters (pCtx);

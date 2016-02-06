@@ -38,12 +38,6 @@ void InitErrorCon (PWelsDecoderContext pCtx) {
     }
 #endif //HAVE_NEON
 
-#if defined(HAVE_NEON_AARCH64)
-    if (pCtx->uiCpuFlag & WELS_CPU_NEON) {
-      pCtx->sCopyFunc.pCopyLumaFunc     = WelsCopy16x16_AArch64_neon; //aligned
-      pCtx->sCopyFunc.pCopyChromaFunc   = WelsCopy8x8_AArch64_neon; //aligned
-    }
-#endif //HAVE_NEON_AARCH64
   } //TODO add more methods here
   return;
 }

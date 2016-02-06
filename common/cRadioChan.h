@@ -6,8 +6,11 @@
 //}}}
 
 class cRadioChan {
-public:                                                                         // base  688000  281000  156000   86000  31000
-  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(688000), mVidFps(25) {} // high 8000000 5070000 2812000 1604000 929000
+public:
+// base:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
+// main:1   437000:25:512x288
+// high:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(437000), mVidFps(25), mVidProfile(1) {}
   ~cRadioChan() {}
 
   // gets
@@ -65,6 +68,11 @@ public:                                                                         
   //{{{
   int getVidFps() {
     return mVidFps;
+    }
+  //}}}
+  //{{{
+  int getVidProfile() {
+    return mVidProfile;
     }
   //}}}
 
@@ -144,14 +152,15 @@ private:
   const int kMaxFramesPerChunk = 375;
   const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
 
-  const bool kRadioTv    [9] = { false,   false,  false,  false,  false,  false,  false,   true,   true };
-  const int kPool        [9] = {      0,      7,      7,      7,      6,      6,      6,      4,      5 };
-  const int kLowBitrate  [9] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000 };
-  const int kMidBitrate  [9] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000,  96000,  96000 };
-  const int kHighBitrate [9] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000,  96000 };
-  const char* kChanNames [9] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2" };
-  const char* kPathNames [9] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
-                                         "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",       "bbc_two_hd" };
+  const bool kRadioTv    [11] = { false,   false,  false,  false,  false,  false,  false,   true,   true,   true,   true };
+  const int kPool        [11] = {      0,      7,      7,      7,      6,      6,      6,      4,      5,      2,      3 };
+  const int kLowBitrate  [11] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000,  96000,  96000 };
+  const int kMidBitrate  [11] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000,  96000,  96000,  96000,  96000 };
+  const int kHighBitrate [11] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000,  96000,  96000,  96000 };
+  const char* kChanNames [11] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2", "bbc4", "bbcNews" };
+  const char* kPathNames [11] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
+                                         "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",        "bbc_two_hd",
+                                                 "bbc_four_hd",   "bbc_news_channel_hd" };
   //}}}
   //{{{
   std::string getPathRoot (int bitrate) {
@@ -187,6 +196,7 @@ private:
   int mBaseSeqNum;
   int mVidBitrate;
   int mVidFps;
+  int mVidProfile;
   std::string mHost;
   std::string mDateTime;
   std::string mChanInfoStr;

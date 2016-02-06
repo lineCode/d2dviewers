@@ -5,33 +5,38 @@
 #include "cHttp.h"
 #include "cRadioChan.h"
 
-#ifdef __cplusplus
-  extern "C" {
-#endif
-  #include <libavcodec/avcodec.h>
-  #include <libavformat/avformat.h>
-  #include <libswscale/swscale.h>
-#ifdef __cplusplus
-  }
-#endif
+#ifdef WIN32
+  #ifdef __cplusplus
+    extern "C" {
+  #endif
+    #include <libavcodec/avcodec.h>
+    #include <libavformat/avformat.h>
+    #include <libswscale/swscale.h>
+  #ifdef __cplusplus
+    }
+  #endif
 
-#pragma comment(lib,"avutil.lib")
-#pragma comment(lib,"avcodec.lib")
-#pragma comment(lib,"avformat.lib")
-#pragma comment(lib,"swscale.lib")
+  #pragma comment(lib,"avutil.lib")
+  #pragma comment(lib,"avcodec.lib")
+  #pragma comment(lib,"avformat.lib")
+  #pragma comment(lib,"swscale.lib")
+#endif
 //}}}
 //{{{  static vars
 static int chan = 0;
-static FILE* audFile = nullptr;
-static FILE* vidFile = nullptr;
-static ISVCDecoder* svcDecoder = nullptr;
-static ComPtr<IWICImagingFactory> wicImagingFactory;
 
-static AVCodec* vidCodec = NULL;
-static AVCodecContext* vidCodecContext = NULL;
-static AVCodecParserContext* vidParser = NULL;
-static AVFrame* vidFrame = NULL;
-static struct SwsContext* swsContext = NULL;
+#ifdef WIN32
+  static FILE* audFile = nullptr;
+  static FILE* vidFile = nullptr;
+  static ISVCDecoder* svcDecoder = nullptr;
+  static ComPtr<IWICImagingFactory> wicImagingFactory;
+
+  static AVCodec* vidCodec = NULL;
+  static AVCodecContext* vidCodecContext = NULL;
+  static AVCodecParserContext* vidParser = NULL;
+  static AVFrame* vidFrame = NULL;
+  static struct SwsContext* swsContext = NULL;
+#endif
 //}}}
 
 class cHlsChunk {
@@ -115,7 +120,6 @@ public:
     }
   //}}}
 #endif
-
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
@@ -147,10 +151,7 @@ public:
       audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
       mAudPtr = http->getContent();
       processAudioFaad();
-      if (radioChan->getVidBitrate() <= 688000)
-        processVideoOpenH264();
-      else
-        processVideoFFmpeg();
+      radioChan->getVidProfile() ? processVideoFFmpeg() : processVideoOpenH264();
       //saveToFile (changeChan, radioChan);
       if (mVidPtr) free (mVidPtr);
       http->freeContent();
@@ -215,41 +216,6 @@ private:
     }
   //}}}
   //{{{
-  void saveToFile (cRadioChan* radioChan) {
-
-    bool changeChan = chan != radioChan->getChan();
-    chan = radioChan->getChan();
-
-    if (mAudLen > 0) {
-      // save audPes to .adts file, should check seqNum
-      printf ("audPes:%d\n", (int)mAudLen);
-
-      if (changeChan || !audFile) {
-        if (audFile)
-           fclose (audFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                               '.' + toString (getAudBitrate()) + '.' + toString (mSeqNum) + ".adts";
-        audFile = fopen (fileName.c_str(), "wb");
-        }
-      fwrite (mAudPtr, 1, mAudLen, audFile);
-      }
-
-    if (mVidLen > 0) {
-      // save vidPes to .264 file, should check seqNum
-      printf ("vidPes:%d\n", (int)mVidLen);
-
-      if (changeChan || !vidFile) {
-        if (vidFile)
-          fclose (vidFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
-                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (mSeqNum) + ".264";
-        vidFile = fopen (fileName.c_str(), "wb");
-        }
-      fwrite (mVidPtr, 1, mVidLen, vidFile);
-      }
-    }
-  //}}}
-  //{{{
   void processAudioFaad() {
 
     // init aacDecoder
@@ -287,6 +253,42 @@ private:
       }
     }
   //}}}
+#ifdef WIN32
+  //{{{
+  void saveToFile (cRadioChan* radioChan) {
+
+    bool changeChan = chan != radioChan->getChan();
+    chan = radioChan->getChan();
+
+    if (mAudLen > 0) {
+      // save audPes to .adts file, should check seqNum
+      printf ("audPes:%d\n", (int)mAudLen);
+
+      if (changeChan || !audFile) {
+        if (audFile)
+           fclose (audFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (getAudBitrate()) + '.' + toString (mSeqNum) + ".adts";
+        audFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (mAudPtr, 1, mAudLen, audFile);
+      }
+
+    if (mVidLen > 0) {
+      // save vidPes to .264 file, should check seqNum
+      printf ("vidPes:%d\n", (int)mVidLen);
+
+      if (changeChan || !vidFile) {
+        if (vidFile)
+          fclose (vidFile);
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+                               '.' + toString (radioChan->getVidBitrate()) + '.' + toString (mSeqNum) + ".264";
+        vidFile = fopen (fileName.c_str(), "wb");
+        }
+      fwrite (mVidPtr, 1, mVidLen, vidFile);
+      }
+    }
+  //}}}
   //{{{
   uint8_t limit (double v) {
 
@@ -303,7 +305,6 @@ private:
   void processVideoOpenH264() {
 
     if (mVidLen) {
-  #ifdef WIN32
       if (!svcDecoder) {
         //{{{  init static decoder
         WelsCreateDecoder (&svcDecoder);
@@ -402,14 +403,12 @@ private:
           }
         }
       }
-  #endif
     }
   //}}}
   //{{{
   void processVideoFFmpeg() {
 
     if (mVidLen) {
-  #ifdef WIN32
       if (!vidCodec) {
         //{{{  init static decoder
         // init vidCodecContext, vidCodec, vidParser, vidFrame
@@ -469,10 +468,10 @@ private:
           mVidFramesLoaded++;
          }
         }
-    #endif
       }
     }
   //}}}
+#endif
 
   //{{{  private vars
   int mSeqNum;

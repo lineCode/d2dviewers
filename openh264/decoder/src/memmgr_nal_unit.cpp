@@ -6,6 +6,7 @@
 namespace WelsDec {
 //{{{
 int32_t MemInitNalList (PAccessUnit* ppAu, const uint32_t kuiSize, CMemoryAlign* pMa) {
+
   uint32_t uiIdx = 0;
   uint8_t* pBase = NULL, *pPtr = NULL;
   const uint32_t kuiSizeAu = sizeof (SAccessUnit);
@@ -46,6 +47,7 @@ int32_t MemInitNalList (PAccessUnit* ppAu, const uint32_t kuiSize, CMemoryAlign*
 //}}}
 //{{{
 int32_t MemFreeNalList (PAccessUnit* ppAu, CMemoryAlign* pMa) {
+
   if (ppAu != NULL) {
     PAccessUnit pAu = *ppAu;
     if (pAu != NULL) {
@@ -58,6 +60,7 @@ int32_t MemFreeNalList (PAccessUnit* ppAu, CMemoryAlign* pMa) {
 //}}}
 //{{{
 int32_t ExpandNalUnitList (PAccessUnit* ppAu, const int32_t kiOrgSize, const int32_t kiExpSize, CMemoryAlign* pMa) {
+
   if (kiExpSize <= kiOrgSize)
     return 1;
   else {
@@ -91,6 +94,7 @@ int32_t ExpandNalUnitList (PAccessUnit* ppAu, const int32_t kiOrgSize, const int
  *  Need expand NAL Unit list if exceeding count number of available NAL Units withing an Access Unit
  */
 PNalUnit MemGetNextNal (PAccessUnit* ppAu, CMemoryAlign* pMa) {
+
   PAccessUnit pAu = *ppAu;
   PNalUnit pNu = NULL;
 
