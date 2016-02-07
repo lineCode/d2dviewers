@@ -12,12 +12,17 @@ public:
   // mainProfile:1   437000:25:512x288
   // highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
   cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(281000), mVidFramesPerChunk(200), mVidProfile(1) {}
-  ~cRadioChan() {}
+  virtual ~cRadioChan() {}
 
   // gets
   //{{{
   int getChan() {
     return mChan;
+    }
+  //}}}
+  //{{{
+  int getRadioTv() {
+    return kRadioTv[mChan];
     }
   //}}}
   //{{{
@@ -77,11 +82,6 @@ public:
     }
   //}}}
 
-  //{{{
-  int getRadioTv() {
-    return kRadioTv[mChan];
-    }
-  //}}}
   //{{{
   int getBaseSeqNum() {
     return mBaseSeqNum;
@@ -198,6 +198,7 @@ private:
   int mVidBitrate;
   int mVidFramesPerChunk;
   int mVidProfile;
+
   std::string mHost;
   std::string mDateTime;
   std::string mChanInfoStr;

@@ -51,11 +51,11 @@ public:
     return mContent;
     }
   //}}}
-   //{{{
-   int getContentSize() {
-     return mContentSize;
-     }
-   //}}}
+  //{{{
+  int getContentSize() {
+    return mContentSize;
+    }
+  //}}}
   //{{{
   uint8_t* getContentEnd() {
     return mContent + mContentSize;
@@ -84,9 +84,11 @@ public:
     mKeyStrLen = 0;
     mValueStrLen = 0;
     mContentSize = 0;
+
     if (mContent)
       vPortFree (mContent);
     mContent = nullptr;
+
     std::string sendStr = "GET /" + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
 
   #ifdef WIN32
@@ -133,7 +135,7 @@ public:
         //}}}
 
       // win32 connect webSocket
-      if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr)) != 0) {
+      if (connect (mWebSocket, (SOCKADDR*)&sockAddr, sizeof(sockAddr))) {
         //{{{  error
         mInfoStr = "Could not connect";
         closesocket (mWebSocket);

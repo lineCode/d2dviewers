@@ -8,17 +8,14 @@
 namespace WelsDec {
 //{{{
 void FreePicture (PPicture pPic, CMemoryAlign* pMa) {
+
   if (NULL != pPic) {
-
-    if (pPic->pBuffer[0]) {
+    if (pPic->pBuffer[0])
       pMa->WelsFree (pPic->pBuffer[0], "pPic->pBuffer[0]");
-    }
-
     pMa->WelsFree (pPic, "pPic");
-
     pPic = NULL;
+    }
   }
-}
 //}}}
 //{{{
 ///////////////////////////////////Recycled queue management for pictures///////////////////////////////////
@@ -29,6 +26,7 @@ void FreePicture (PPicture pPic, CMemoryAlign* pMa) {
  *  node <- next; ++ next;
 */
 PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const int32_t kiPicHeight) {
+
   PPicture pPic = NULL;
   int32_t iPicWidth = 0;
   int32_t iPicHeight = 0;
@@ -41,7 +39,6 @@ PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const
 
   pPic = (PPicture) pMa->WelsMallocz (sizeof (SPicture), "PPicture");
   WELS_VERIFY_RETURN_IF (NULL, NULL == pPic);
-
   memset (pPic, 0, sizeof (SPicture));
 
   iPicWidth = WELS_ALIGN (kiPicWidth + (PADDING_LENGTH << 1), PICTURE_RESOLUTION_ALIGNMENT);
@@ -57,7 +54,8 @@ PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const
     pPic->pData[0] = pPic->pData[1] = pPic->pData[2] = NULL;
     pPic->iLinesize[0] = iPicWidth;
     pPic->iLinesize[1] = pPic->iLinesize[2] = iPicChromaWidth;
-  } else {
+    } 
+  else {
     pPic->pBuffer[0] = static_cast<uint8_t*> (pMa->WelsMallocz (iLumaSize /* luma */
                        + (iChromaSize << 1) /* Cb,Cr */, "_pic->buffer[0]"));
     WELS_VERIFY_RETURN_PROC_IF (NULL, NULL == pPic->pBuffer[0], FreePicture (pPic, pMa));
@@ -70,46 +68,48 @@ PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const
     pPic->pData[0]     = pPic->pBuffer[0] + (1 + pPic->iLinesize[0]) * PADDING_LENGTH;
     pPic->pData[1]     = pPic->pBuffer[1] + /*WELS_ALIGN*/ (((1 + pPic->iLinesize[1]) * PADDING_LENGTH) >> 1);
     pPic->pData[2]     = pPic->pBuffer[2] + /*WELS_ALIGN*/ (((1 + pPic->iLinesize[2]) * PADDING_LENGTH) >> 1);
-  }
+    }
+
   pPic->iPlanes        = 3;    // yv12 in default
   pPic->iWidthInPixel  = kiPicWidth;
   pPic->iHeightInPixel = kiPicHeight;
   pPic->iFrameNum      = -1;
   pPic->bAvailableFlag = true;
-
   return pPic;
-}
+  }
 //}}}
 //{{{
 PPicture PrefetchPic (PPicBuff pPicBuf) {
+
   int32_t iPicIdx = 0;
   PPicture pPic  = NULL;
 
-  if (pPicBuf->iCapacity == 0) {
+  if (pPicBuf->iCapacity == 0) 
     return NULL;
-  }
 
   for (iPicIdx = pPicBuf->iCurrentIdx + 1; iPicIdx < pPicBuf->iCapacity ; ++iPicIdx) {
     if (pPicBuf->ppPic[iPicIdx] != NULL && pPicBuf->ppPic[iPicIdx]->bAvailableFlag
         && !pPicBuf->ppPic[iPicIdx]->bUsedAsRef) {
       pPic = pPicBuf->ppPic[iPicIdx];
       break;
+      }
     }
-  }
+
   if (pPic != NULL) {
     pPicBuf->iCurrentIdx = iPicIdx;
     return pPic;
-  }
+    }
+
   for (iPicIdx = 0 ; iPicIdx <= pPicBuf->iCurrentIdx ; ++iPicIdx) {
     if (pPicBuf->ppPic[iPicIdx] != NULL && pPicBuf->ppPic[iPicIdx]->bAvailableFlag
         && !pPicBuf->ppPic[iPicIdx]->bUsedAsRef) {
       pPic = pPicBuf->ppPic[iPicIdx];
       break;
+      }
     }
-  }
 
   pPicBuf->iCurrentIdx = iPicIdx;
   return pPic;
-}
+  }
 //}}}
 } // namespace WelsDec

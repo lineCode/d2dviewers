@@ -7,13 +7,13 @@
 namespace WelsDec {
 #define IDX_UNUSED -1
 
-static const int16_t g_kMaxPos       [] = {IDX_UNUSED, 15, 14, 15, 3, 14, 63, 3, 3, 14, 14};
-static const int16_t g_kMaxC2       [] = {IDX_UNUSED, 4, 4, 4, 3, 4, 4, 3, 3, 4, 4};
+static const int16_t g_kMaxPos[] = {IDX_UNUSED, 15, 14, 15, 3, 14, 63, 3, 3, 14, 14};
+static const int16_t g_kMaxC2[] = {IDX_UNUSED, 4, 4, 4, 3, 4, 4, 3, 3, 4, 4};
 static const int16_t g_kBlockCat2CtxOffsetCBF[] = {IDX_UNUSED, 0, 4, 8, 12, 16, 0, 12, 12, 16, 16};
-static const int16_t g_kBlockCat2CtxOffsetMap [] = {IDX_UNUSED, 0, 15, 29, 44, 47, 0, 44, 44, 47, 47};
+static const int16_t g_kBlockCat2CtxOffsetMap[] = {IDX_UNUSED, 0, 15, 29, 44, 47, 0, 44, 44, 47, 47};
 static const int16_t g_kBlockCat2CtxOffsetLast[] = {IDX_UNUSED, 0, 15, 29, 44, 47, 0, 44, 44, 47, 47};
-static const int16_t g_kBlockCat2CtxOffsetOne [] = {IDX_UNUSED, 0 , 10, 20, 30, 39, 0, 30, 30, 39, 39};
-static const int16_t g_kBlockCat2CtxOffsetAbs [] = {IDX_UNUSED, 0 , 10, 20, 30, 39, 0, 30, 30, 39, 39};
+static const int16_t g_kBlockCat2CtxOffsetOne[] = {IDX_UNUSED, 0 , 10, 20, 30, 39, 0, 30, 30, 39, 39};
+static const int16_t g_kBlockCat2CtxOffsetAbs[] = {IDX_UNUSED, 0 , 10, 20, 30, 39, 0, 30, 30, 39, 39};
 
 //{{{
 const uint8_t g_kTopBlkInsideMb[24] = { //for index with z-order 0~23

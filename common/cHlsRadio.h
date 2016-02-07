@@ -12,7 +12,7 @@ public:
   cHlsRadio() : mTuneVol(80), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
                 mBaseFrame(0), mAudBitrate(0), mLoading(0), mJumped(false) {}
   //}}}
-  ~cHlsRadio() {}
+  virtual ~cHlsRadio() {}
 
   //{{{
   int getAudBitrate() {
