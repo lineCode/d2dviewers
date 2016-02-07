@@ -79,17 +79,17 @@ protected:
 
       case 0x20 : mPlayer->togglePlaying(); break;  // space
 
-      case 0x21 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-5*60)); break; // page up
-      case 0x22 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+5*60)); break; // page down
+      case 0x21 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-5*60)); update(); break; // page up
+      case 0x22 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+5*60)); update(); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-keyInc())); break;  // left arrow
-      case 0x27 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+keyInc())); break;  // right arrow
+      case 0x25 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-keyInc())); update(); break;  // left arrow
+      case 0x27 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+keyInc())); update(); break;  // right arrow
 
-      case 0x26 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (-keyInc()); changed(); break; // up arrow
-      case 0x28 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (+keyInc()); changed(); break; // down arrow
+      case 0x26 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (-keyInc()); changed(); update(); break; // up arrow
+      case 0x28 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (+keyInc()); changed(); update(); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -124,6 +124,7 @@ protected:
   //}}}
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
+
     bool showChan = mShowChan;
     mShowChan = inClient && (x < 80);
     if (showChan != mShowChan)
@@ -144,6 +145,7 @@ protected:
   //}}}
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
+
     if (x > int(getClientF().width-20))
       setVolume (int(y * 100 / getClientF().height));
     else
@@ -152,6 +154,7 @@ protected:
   //}}}
   //{{{
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
+
     if (!mouseMoved) {
       }
     }
@@ -221,7 +224,7 @@ protected:
 
     cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
     if (hlsRadio) {
-      //{{{  show hlsRadio info
+      //{{{  has hlsRadio interface, show hlsRadioInfo
       if (mShowChan) {
         if (false) {
           // show chunk debug
@@ -247,7 +250,6 @@ protected:
   //}}}
 
 private:
-  const int kAacFramesPerPlay = 1;
   //{{{
   void loader() {
   // loader task, handles all http gets, sleep 1s if no load suceeded
@@ -286,11 +288,10 @@ private:
           audioSamples[i] = (audioSamples[i] * getVolume()) / 80;
 
       mVidFrame = mPlayer->getVideoFrame (mPlayer->getPlayFrame(), seqNum);
-      winAudioPlay ((mPlayer->getPlaying() && audioSamples) ?
-        audioSamples : mSilence, (dynamic_cast<cHlsRadio*>(mPlayer))->getAudSamplesPerAacFrame()*2*kAacFramesPerPlay*2, 1);
+      winAudioPlay ((mPlayer->getPlaying() && audioSamples) ? audioSamples : mSilence, 4096, 1);
 
       if (mPlayer->getPlaying()) {
-        mPlayer->setPlayFrame ((mPlayer->getPlayFrame() & ~(kAacFramesPerPlay >> 1)) + kAacFramesPerPlay);
+        mPlayer->incPlayFrame (1);
         update();
         }
 

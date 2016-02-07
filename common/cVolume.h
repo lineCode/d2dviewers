@@ -1,4 +1,4 @@
-// iPlayer.h
+// cPlayer.h
 #pragma once
 
 class cVolume {
@@ -13,7 +13,12 @@ public:
   //}}}
   //{{{
   void setVolume (int volume) {
-    mVolume = volume;
+    if (volume < 0)
+      mVolume = 0;
+    else if (volume > 100)
+      mVolume = 100;
+    else
+      mVolume = volume;
     }
   //}}}
 
