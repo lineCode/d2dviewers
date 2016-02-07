@@ -42,6 +42,7 @@ public:
     return toString (hours) + ':' + toString (mins) + ':' + toString (secs);
     }
   //}}}
+
   //{{{
   int getPlayFrame() {
     return mPlayFrame;
@@ -52,6 +53,7 @@ public:
     return mPlaying;
     }
   //}}}
+
   //{{{
   int getSource() {
     return getChannel();

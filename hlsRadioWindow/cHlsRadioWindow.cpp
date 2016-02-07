@@ -28,7 +28,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
-  cHlsRadioWindow() : mPlayer(nullptr), mChangeToChan(0),
+  cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
                       mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mD2D1Bitmap(nullptr) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
@@ -42,7 +42,7 @@ public:
   //{{{
   void run (wchar_t* title, int width, int height, int channel) {
 
-    mChangeToChan = channel-1;
+    mChangeToChannel = channel-1;
     mSilence = (int16_t*)pvPortMalloc (4096);
     memset (mSilence, 0, 4096);
 
@@ -79,17 +79,17 @@ protected:
 
       case 0x20 : mPlayer->togglePlaying(); break;  // space
 
-      case 0x21 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-5*60)); update(); break; // page up
-      case 0x22 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+5*60)); update(); break; // page down
+      case 0x21 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-5*60)); changed(); break; // page up
+      case 0x22 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+5*60)); changed(); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-keyInc())); update(); break;  // left arrow
-      case 0x27 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+keyInc())); update(); break;  // right arrow
+      case 0x25 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-keyInc())); changed(); break;  // left arrow
+      case 0x27 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+keyInc())); changed(); break;  // right arrow
 
-      case 0x26 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (-keyInc()); changed(); update(); break; // up arrow
-      case 0x28 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (+keyInc()); changed(); update(); break; // down arrow
+      case 0x26 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (-keyInc()); changed(); break; // up arrow
+      case 0x28 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (+keyInc()); changed(); break; // down arrow
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -101,8 +101,8 @@ protected:
       case 0x36 :
       case 0x37 :
       case 0x38 :
-      case 0x39 : mChangeToChan = key - '0' - 1; signal(); break;
-      case 0x30 : mChangeToChan = 10 - 1; signal(); break;
+      case 0x39 : mChangeToChannel = key - '0' - 1; signal(); break;
+      case 0x30 : mChangeToChannel = 10 - 1; signal(); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -129,14 +129,18 @@ protected:
     mShowChan = inClient && (x < 80);
     if (showChan != mShowChan)
       changed();
+
+    if (x < 80) {
+      int channel = (y / 20) - 1;
+      }
     }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
-      int chan = (y / 20) - 1;
+      int channel = (y / 20) - 1;
       if ((chan >= 0) && (chan < mPlayer->getNumSource())) {
-        mChangeToChan = chan;
+        mChangeToChannel = channel;
         signal();
         changed();
         }
@@ -258,9 +262,9 @@ private:
 
     cHttp http;
     while (true) {
-      if (mPlayer->getSource() != mChangeToChan) {
-        mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChan) - mPlayer->getAudFramesFromSec(6));
-        update();
+      if (mPlayer->getSource() != mChangeToChanel) {
+        mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChanel) - mPlayer->getAudFramesFromSec(6));
+        changed();
         }
       if (!mPlayer->load (&http, mPlayer->getPlayFrame())) {
         printf ("sleep frame:%d\n", mPlayer->getPlayFrame());
@@ -292,7 +296,7 @@ private:
 
       if (mPlayer->getPlaying()) {
         mPlayer->incPlayFrame (1);
-        update();
+        changed();
         }
 
       if (!seqNum || (seqNum != lastSeqNum)) {
@@ -318,11 +322,6 @@ private:
     }
   //}}}
   //{{{
-  void update() {
-    changed();
-    }
-  //}}}
-  //{{{
   void sleep (int ms) {
     Sleep (ms);
     }
@@ -331,7 +330,7 @@ private:
   // private vars
   iPlayer* mPlayer;
 
-  int mChangeToChan;
+  int mChangeToChanel;
   int mHttpRxBytes;
 
   bool mShowChan;
