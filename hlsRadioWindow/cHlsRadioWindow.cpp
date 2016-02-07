@@ -30,8 +30,8 @@ public:
   cHlsRadioWindow() : mShowChan(false), mVidFrame(nullptr), mD2D1Bitmap(nullptr) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
-    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2*kFramesPerPlay*2);
-    memset (mSilence, 0, getSamplesPerFrame()*2*kFramesPerPlay*2);
+    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2* kAacFramesPerPlay *2);
+    memset (mSilence, 0, getSamplesPerFrame()*2* kAacFramesPerPlay *2);
     }
   //}}}
   //{{{
@@ -128,7 +128,7 @@ protected:
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
       int chan = y / 20;
-      if ((chan >= 1) && (chan <= 10)) {
+      if ((chan >= 1) && (chan <= kMaxChans-1)) {
         mTuneChan = chan;
         signal();
         changed();
@@ -154,9 +154,10 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     if (mVidFrame) {
-      // convert to mD2D1Bitmap 32bit BGRA
+      //{{{  convert to mD2D1Bitmap 32bit BGRA
       IWICFormatConverter* wicFormatConverter;
       getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
+
       wicFormatConverter->Initialize (mVidFrame,
         GUID_WICPixelFormat32bppPBGRA,
         WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
@@ -171,6 +172,7 @@ protected:
 
       dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
       }
+      //}}}
     else
       // clear
       dc->Clear (ColorF(ColorF::Black));
@@ -206,7 +208,7 @@ protected:
 
     if (mShowChan) {
       //{{{  show chan and debug info
-      for (auto i = 1; i <= 10; i++) {
+      for (auto i = 1; i <= kMaxChans-1; i++) {
         swprintf (wStr, 200, L"%hs", cRadioChan::getChanName(i).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
         }
@@ -253,7 +255,7 @@ protected:
   //}}}
 
 private:
-  const int kFramesPerPlay = 1;
+  const int kAacFramesPerPlay = 1;
   //{{{
   void player() {
 
@@ -269,10 +271,10 @@ private:
           audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
 
       mVidFrame = getVideoFrame (mPlayFrame, seqNum);
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kFramesPerPlay*2, 1);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kAacFramesPerPlay*2, 1);
 
       if (mPlaying) {
-        setPlayFrame ((mPlayFrame & ~(kFramesPerPlay >> 1)) + kFramesPerPlay);
+        setPlayFrame ((mPlayFrame & ~(kAacFramesPerPlay >> 1)) + kAacFramesPerPlay);
         update();
         }
 
@@ -284,6 +286,14 @@ private:
       }
 
     winAudioClose();
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void loader() {
+
+    CoInitialize (NULL);
+    cHlsRadio::loader();
     CoUninitialize();
     }
   //}}}

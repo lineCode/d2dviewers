@@ -4,7 +4,6 @@
 //}}}
 
 namespace WelsDec {
-
 //{{{
 /*!
  * \brief   Generate MB allocated map for interleaved slice group (TYPE 0)

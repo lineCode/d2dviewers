@@ -15,8 +15,8 @@
 #include "error_concealment.h"
 #include "memory_align.h"
 //}}}
-namespace WelsDec {
 
+namespace WelsDec {
 extern PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const int32_t kiPicHeight);
 extern void FreePicture (PPicture pPic, CMemoryAlign* pMa);
 

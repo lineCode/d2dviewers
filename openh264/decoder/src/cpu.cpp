@@ -1,8 +1,10 @@
+//{{{  includes
 #include <string.h>
 #include <stdio.h>
 
 #include "cpu.h"
 #include "cpu_core.h"
+//}}}
 
 #define CPU_Vendor_AMD    "AuthenticAMD"
 #define CPU_Vendor_INTEL  "GenuineIntel"

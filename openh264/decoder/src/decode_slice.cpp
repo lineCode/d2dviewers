@@ -2038,5 +2038,4 @@ void WelsBlockZero8x8_c (int16_t* pBlock, int32_t iStride) {
   WelsBlockInit (pBlock, 8, 8, iStride, 0);
 }
 //}}}
-
 } // namespace WelsDec

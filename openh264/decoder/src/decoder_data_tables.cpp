@@ -1,4 +1,3 @@
-// exp_data.c // export date cross various modules (.c)
 //{{{
 #include "wels_common_basis.h"
 #include "mb_cache.h"

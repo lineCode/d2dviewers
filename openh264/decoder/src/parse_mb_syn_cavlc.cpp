@@ -3,6 +3,7 @@
 #include "error_code.h"
 #include "mv_pred.h"
 //}}}
+
 namespace WelsDec {
 #define MAX_LEVEL_PREFIX 15
 //{{{

@@ -6,7 +6,6 @@
 //}}}
 
 namespace WelsCommon {
-
 #ifdef MEMORY_CHECK
   static FILE*    fpMemChkPoint;
   static uint32_t nCountRequestNum;

@@ -4,7 +4,6 @@
 //}}}
 
 namespace WelsDec {
-
 //{{{
 void WelsFillRecNeededMbInfo (PWelsDecoderContext pCtx, bool bOutput, PDqLayer pCurLayer) {
   PPicture pCurPic = pCtx->pDec;

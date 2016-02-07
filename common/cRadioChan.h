@@ -4,6 +4,7 @@
 #include "cParsedUrl.h"
 #include "cHttp.h"
 //}}}
+#define kMaxChans 11
 
 class cRadioChan {
 public:
@@ -152,13 +153,13 @@ private:
   const int kMaxFramesPerChunk = 375;
   const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
 
-  const bool kRadioTv    [11] = { false,   false,  false,  false,  false,  false,  false,   true,   true,   true,   true };
-  const int kPool        [11] = {      0,      7,      7,      7,      6,      6,      6,      4,      5,      2,      3 };
-  const int kLowBitrate  [11] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000,  96000,  96000 };
-  const int kMidBitrate  [11] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000,  96000,  96000,  96000,  96000 };
-  const int kHighBitrate [11] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000,  96000,  96000,  96000 };
-  const char* kChanNames [11] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2", "bbc4", "bbcNews" };
-  const char* kPathNames [11] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
+  const bool kRadioTv    [kMaxChans] = { false,   false,  false,  false,  false,  false,  false,   true,   true,   true,   true };
+  const int kPool        [kMaxChans] = {      0,      7,      7,      7,      6,      6,      6,      4,      5,      2,      3 };
+  const int kLowBitrate  [kMaxChans] = {  48000,  48000,  48000,  48000,  48000,  48000,  48000,  96000,  96000,  96000,  96000 };
+  const int kMidBitrate  [kMaxChans] = { 128000, 128000, 128000, 128000, 128000, 128000, 128000,  96000,  96000,  96000,  96000 };
+  const int kHighBitrate [kMaxChans] = { 320000, 320000, 320000, 320000, 320000, 320000, 320000,  96000,  96000,  96000,  96000 };
+  const char* kChanNames [kMaxChans] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6", "bbc1", "bbc2", "bbc4", "bbcNews" };
+  const char* kPathNames [kMaxChans] = { "none", "bbc_radio_one",    "bbc_radio_two", "bbc_radio_three", "bbc_radio_fourfm",
                                          "bbc_radio_five_live", "bbc_6music",      "bbc_one_hd",        "bbc_two_hd",
                                                  "bbc_four_hd",   "bbc_news_channel_hd" };
   //}}}

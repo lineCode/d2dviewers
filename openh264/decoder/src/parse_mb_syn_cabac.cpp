@@ -3,6 +3,7 @@
 #include "mv_pred.h"
 #include "error_code.h"
 //}}}
+
 namespace WelsDec {
 #define IDX_UNUSED -1
 

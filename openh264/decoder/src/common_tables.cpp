@@ -1,7 +1,6 @@
 #include "wels_common_defs.h"
 
 namespace WelsCommon {
-
 //{{{
 //////pNonZeroCount[16+8] mapping scan index
 const uint8_t g_kuiMbCountScan4Idx[24] = {

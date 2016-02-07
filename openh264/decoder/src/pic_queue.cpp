@@ -6,8 +6,20 @@
 //}}}
 
 namespace WelsDec {
+//{{{
+void FreePicture (PPicture pPic, CMemoryAlign* pMa) {
+  if (NULL != pPic) {
 
-void FreePicture (PPicture pPic, CMemoryAlign* pMa);
+    if (pPic->pBuffer[0]) {
+      pMa->WelsFree (pPic->pBuffer[0], "pPic->pBuffer[0]");
+    }
+
+    pMa->WelsFree (pPic, "pPic");
+
+    pPic = NULL;
+  }
+}
+//}}}
 //{{{
 ///////////////////////////////////Recycled queue management for pictures///////////////////////////////////
 /*   ______________________________________
@@ -66,20 +78,6 @@ PPicture AllocPicture (PWelsDecoderContext pCtx, const int32_t kiPicWidth, const
   pPic->bAvailableFlag = true;
 
   return pPic;
-}
-//}}}
-//{{{
-void FreePicture (PPicture pPic, CMemoryAlign* pMa) {
-  if (NULL != pPic) {
-
-    if (pPic->pBuffer[0]) {
-      pMa->WelsFree (pPic->pBuffer[0], "pPic->pBuffer[0]");
-    }
-
-    pMa->WelsFree (pPic, "pPic");
-
-    pPic = NULL;
-  }
 }
 //}}}
 //{{{

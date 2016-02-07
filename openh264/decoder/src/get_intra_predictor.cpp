@@ -5,8 +5,8 @@
 #include "ls_defines.h"
 #include "get_intra_predictor.h"
 //}}}
-namespace WelsDec {
 
+namespace WelsDec {
 #define I4x4_COUNT 4
 #define I8x8_COUNT 8
 #define I16x16_COUNT 16
