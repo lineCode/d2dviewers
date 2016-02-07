@@ -398,6 +398,7 @@
     <ClInclude Include="..\common\cHttp.h" />
     <ClInclude Include="..\common\cParsedUrl.h" />
     <ClInclude Include="..\common\cRadioChan.h" />
+    <ClInclude Include="..\common\iPlayer.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

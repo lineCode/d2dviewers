@@ -1,33 +1,38 @@
 // cHlsRadio.h
 #pragma once
 //{{{  includes
-#include "cParsedUrl.h"
-#include "cHttp.h"
 #include "cRadioChan.h"
 #include "cHlsChunk.h"
+#include "iPlayer.h"
 //}}}
-class cHlsRadio : public cRadioChan {
+class cHlsRadio : public cRadioChan, public iPlayer {
 public:
   //{{{
-  cHlsRadio() : mBaseFrame(0), mAudBitrate(0), mJumped(false) {}
+  cHlsRadio() : mPlayFrame(0), mPlaying(true), mBaseFrame(0), mAudBitrate(0), mJumped(false) {}
   //}}}
   virtual ~cHlsRadio() {}
 
+  // iPlayer interface
   //{{{
-  int getAudBitrate() {
-    return mAudBitrate;
+  int getAudSampleRate() {
+    return cRadioChan::getAudSampleRate();
+    }
+  //}}}
+  //{{{
+  int getAudFramesFromSec (int sec) {
+    return cRadioChan::getAudFramesFromSec(sec);
     }
   //}}}
   //{{{
   std::string getInfoStr (int frame) {
-    return getChanName (getChan()) +
-           (getRadioTv() ? ':' + toString (getVidBitrate()/1000) + "k" : "") +
+    return getChannelName (getChannel()) +
+           (isTvChannel() ? ':' + toString (getVidBitrate()/1000) + "k" : "") +
            ':' + toString (getAudBitrate()/1000) + "k " +
-           getFrameInfo (frame);
+           getFrameStr (frame);
     }
   //}}}
   //{{{
-  std::string getFrameInfo (int frame) {
+  std::string getFrameStr (int frame) {
 
     int secsSinceMidnight = int (frame / getAudFramesPerSecond());
     int secs = secsSinceMidnight % 60;
@@ -38,10 +43,102 @@ public:
     }
   //}}}
   //{{{
-  std::string getChunkInfoStr (int chunk) {
-    return getChunkNumStr (chunk) + ':' + mChunks[chunk].getInfoStr();
+  int getPlayFrame() {
+    return mPlayFrame;
     }
   //}}}
+  //{{{
+  bool getPlaying() {
+    return mPlaying;
+    }
+  //}}}
+  //{{{
+  int getSource() {
+    return getChannel();
+    }
+  //}}}
+  //{{{
+  int getNumSource() {
+    return getNumChannels();
+    }
+  //}}}
+  //{{{
+  std::string getSourceStr (int index) {
+    return getChannelName (index);
+    }
+  //}}}
+
+  //{{{
+  void setPlayFrame (int frame) {
+    mPlayFrame = frame;
+    }
+  //}}}
+  //{{{
+  void incPlayFrame (int inc) {
+    setPlayFrame (mPlayFrame + inc);
+    }
+  //}}}
+  //{{{
+  void incAlignPlayFrame (int inc) {
+    setPlayFrame (mPlayFrame + inc);
+    }
+  //}}}
+
+  //{{{
+  void setPlaying (bool playing) {
+    mPlaying = playing;
+    }
+  //}}}
+  //{{{
+  void togglePlaying() {
+    mPlaying = !mPlaying;
+    }
+  //}}}
+
+  //{{{
+  int changeSource (cHttp* http, int source) {
+
+    printf ("cHlsChunks::setChan %d\n", source);
+    setChannel (http, source);
+    mAudBitrate = getAudMidBitrate();
+
+    int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
+    int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
+    int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
+    int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
+    mBaseFrame = getAudFramesFromSec (secsSinceMidnight);
+    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
+            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseFrame);
+
+    invalidateChunks();
+    return mBaseFrame;
+    }
+  //}}}
+  //{{{
+  bool load (cHttp* http, int frame) {
+  // return false if any load failed
+
+    bool ok = true;
+
+    int chunk;
+    int seqNum = getSeqNumFromFrame (frame);
+
+    if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk))
+      ok &= mChunks[chunk].load (http, this, seqNum, mAudBitrate);
+
+    if (!mJumped) {
+      if (!findSeqNumChunk (seqNum, mAudBitrate, 1, chunk))  // load chunk after
+        ok &= mChunks[chunk].load (http, this, seqNum+1, mAudBitrate);
+
+      if (!findSeqNumChunk (seqNum, mAudBitrate, -1, chunk)) // load chunk before
+        ok &= mChunks[chunk].load (http, this, seqNum-1, mAudBitrate);
+      }
+    mJumped = false;
+
+    return ok;
+    }
+  //}}}
+
   //{{{
   uint8_t* getPower (int frame, int& frames) {
   // return pointer to frame power org,len uint8_t pairs
@@ -73,29 +170,10 @@ public:
     }
   //}}}
 
+  // cHlsRadio specific interface
   //{{{
-  int changeChan (cHttp* http, int chan) {
-
-    printf ("cHlsChunks::setChan %d\n", chan);
-    setChan (http, chan);
-    mAudBitrate = getAudMidBitrate();
-
-    int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
-    int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
-    int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
-    mBaseFrame = getAudFramesFromSec (secsSinceMidnight);
-    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
-            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseFrame);
-
-    invalidateChunks();
-    return mBaseFrame;
-    }
-  //}}}
-  //{{{
-  void setBitrate (int bitrate) {
-
-    mAudBitrate = bitrate;
+  std::string getChunkInfoStr (int chunk) {
+    return getChunkNumStr (chunk) + ':' + mChunks[chunk].getInfoStr();
     }
   //}}}
   //{{{
@@ -124,32 +202,19 @@ public:
     }
   //}}}
 
+private:
   //{{{
-  bool load (cHttp* http, int frame) {
-  // return false if any load failed
+  int getAudBitrate() {
+    return mAudBitrate;
+    }
+  //}}}
+  //{{{
+  void setBitrate (int bitrate) {
 
-    bool ok = true;
-
-    int chunk;
-    int seqNum = getSeqNumFromFrame (frame);
-
-    if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk))
-      ok &= mChunks[chunk].load (http, this, seqNum, mAudBitrate);
-
-    if (!mJumped) {
-      if (!findSeqNumChunk (seqNum, mAudBitrate, 1, chunk))  // load chunk after
-        ok &= mChunks[chunk].load (http, this, seqNum+1, mAudBitrate);
-
-      if (!findSeqNumChunk (seqNum, mAudBitrate, -1, chunk)) // load chunk before
-        ok &= mChunks[chunk].load (http, this, seqNum-1, mAudBitrate);
-      }
-    mJumped = false;
-
-    return ok;
+    mAudBitrate = bitrate;
     }
   //}}}
 
-private:
   //{{{
   int getSeqNumFromFrame (int frame) {
   // works for -ve frame
@@ -245,6 +310,9 @@ private:
   //}}}
 
   // private vars
+  int mPlayFrame;
+  bool mPlaying;
+
   int mBaseFrame;
   int mAudBitrate;
   bool mJumped;

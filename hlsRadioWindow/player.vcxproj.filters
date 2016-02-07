@@ -547,6 +547,9 @@
     <ClInclude Include="..\agg\include\agg_vpgen_segmentator.h">
       <Filter>agg\header</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\iPlayer.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

@@ -137,7 +137,7 @@ public:
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
       // allocate vidPes buffer
-      mVidPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (radioChan->getRadioTv() ? http->getContentSize() : 0)) : nullptr;
+      mVidPtr = radioChan->isTvChannel() ? ((uint8_t*)malloc (radioChan->isTvChannel() ? http->getContentSize() : 0)) : nullptr;
       pesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
       mAudPtr = http->getContent();
       decodeAudFaad (aacHE);
@@ -261,8 +261,8 @@ private:
   //{{{
   void saveToFile (cRadioChan* radioChan) {
 
-    bool changeChan = chan != radioChan->getChan();
-    chan = radioChan->getChan();
+    bool changeChan = chan != radioChan->getChannel();
+    chan = radioChan->getChannel();
 
     if (mAudLen > 0) {
       // save audPes to .adts file, should check seqNum
@@ -271,7 +271,7 @@ private:
       if (changeChan || !audFile) {
         if (audFile)
            fclose (audFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChannelName (radioChan->getChannel()) +
                                '.' + toString (getAudBitrate()) + '.' + toString (mSeqNum) + ".adts";
         audFile = fopen (fileName.c_str(), "wb");
         }
@@ -285,7 +285,7 @@ private:
       if (changeChan || !vidFile) {
         if (vidFile)
           fclose (vidFile);
-        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChanName (radioChan->getChan()) +
+        std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChannelName (radioChan->getChannel()) +
                                '.' + toString (radioChan->getVidBitrate()) + '.' + toString (mSeqNum) + ".264";
         vidFile = fopen (fileName.c_str(), "wb");
         }
