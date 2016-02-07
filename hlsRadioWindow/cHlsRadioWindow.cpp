@@ -243,6 +243,29 @@ protected:
 private:
   const int kAacFramesPerPlay = 1;
   //{{{
+  void loader() {
+  // loader task, handles all http gets, sleep 1s if no load suceeded
+
+    CoInitialize (NULL);
+
+    cHttp http;
+    while (true) {
+      if (mHlsRadio->getChan() != mTuneChan) {
+        setPlayFrame (mHlsRadio->changeChan (&http, mTuneChan) - mHlsRadio->getAudFramesFromSec(6));
+        update();
+        }
+      if (!mHlsRadio->load (&http, mPlayFrame)) {
+        printf ("sleep frame:%d\n", mPlayFrame);
+        sleep (1000);
+        }
+      mRxBytes = http.getRxBytes();
+      wait();
+      }
+
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
   void player() {
 
     CoInitialize (NULL);
@@ -272,29 +295,6 @@ private:
       }
 
     winAudioClose();
-    CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void loader() {
-  // loader task, handles all http gets, sleep 1s if no load suceeded
-
-    CoInitialize (NULL);
-
-    cHttp http;
-    while (true) {
-      if (mHlsRadio->getChan() != mTuneChan) {
-        setPlayFrame (mHlsRadio->changeChan (&http, mTuneChan) - mHlsRadio->getAudFramesFromSec(6));
-        update();
-        }
-      if (!mHlsRadio->load (&http, mPlayFrame)) {
-        printf ("sleep frame:%d\n", mPlayFrame);
-        sleep (1000);
-        }
-      mRxBytes = http.getRxBytes();
-      wait();
-      }
-
     CoUninitialize();
     }
   //}}}

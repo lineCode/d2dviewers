@@ -9,18 +9,13 @@
 class cHlsRadio : public cRadioChan {
 public:
   //{{{
-  cHlsRadio() : mBaseFrame(0), mAudBitrate(0), mLoading(0), mJumped(false) {}
+  cHlsRadio() : mBaseFrame(0), mAudBitrate(0), mJumped(false) {}
   //}}}
   virtual ~cHlsRadio() {}
 
   //{{{
   int getAudBitrate() {
     return mAudBitrate;
-    }
-  //}}}
-  //{{{
-  int getLoading() {
-    return mLoading;
     }
   //}}}
   //{{{
@@ -135,31 +130,20 @@ public:
 
     bool ok = true;
 
-    mLoading = 0;
     int chunk;
     int seqNum = getSeqNumFromFrame (frame);
 
-    if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk)) {
-      // load required chunk
-      mLoading++;
+    if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk))
       ok &= mChunks[chunk].load (http, this, seqNum, mAudBitrate);
-      }
 
     if (!mJumped) {
-      if (!findSeqNumChunk (seqNum, mAudBitrate, 1, chunk)) {
-        // load chunk before
-        mLoading++;
+      if (!findSeqNumChunk (seqNum, mAudBitrate, 1, chunk))  // load chunk after
         ok &= mChunks[chunk].load (http, this, seqNum+1, mAudBitrate);
-        }
 
-      if (!findSeqNumChunk (seqNum, mAudBitrate, -1, chunk)) {
-        // load chunk after
-        mLoading++;
+      if (!findSeqNumChunk (seqNum, mAudBitrate, -1, chunk)) // load chunk before
         ok &= mChunks[chunk].load (http, this, seqNum-1, mAudBitrate);
-        }
       }
     mJumped = false;
-    mLoading = 0;
 
     return ok;
     }
@@ -263,7 +247,6 @@ private:
   // private vars
   int mBaseFrame;
   int mAudBitrate;
-  int mLoading;
   bool mJumped;
   std::string mInfoStr;
   cHlsChunk mChunks[3];
