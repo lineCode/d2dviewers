@@ -30,8 +30,8 @@ public:
   cHlsRadioWindow() : mShowChan(false), mVidFrame(nullptr), mD2D1Bitmap(nullptr) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
-    mSilence = (int16_t*)pvPortMalloc (getSamplesPerFrame()*2* kAacFramesPerPlay *2);
-    memset (mSilence, 0, getSamplesPerFrame()*2* kAacFramesPerPlay *2);
+    mSilence = (int16_t*)pvPortMalloc (getAudSamplesPerAacFrame()*2* kAacFramesPerPlay *2);
+    memset (mSilence, 0, getAudSamplesPerAacFrame()*2* kAacFramesPerPlay *2);
     }
   //}}}
   //{{{
@@ -74,14 +74,14 @@ protected:
 
       case 0x20 : mPlaying = !mPlaying; break;  // space
 
-      case 0x21 : incPlayFrame (getFramesFromSec (-5*60)); break; // page up
-      case 0x22 : incPlayFrame (getFramesFromSec (+5*60)); break; // page down
+      case 0x21 : incPlayFrame (getAudFramesFromSec (-5*60)); break; // page up
+      case 0x22 : incPlayFrame (getAudFramesFromSec(+5*60)); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : incPlayFrame (getFramesFromSec (-keyInc())); break;  // left arrow
-      case 0x27 : incPlayFrame (getFramesFromSec (+keyInc())); break;  // right arrow
+      case 0x25 : incPlayFrame (getAudFramesFromSec(-keyInc())); break;  // left arrow
+      case 0x27 : incPlayFrame (getAudFramesFromSec(+keyInc())); break;  // right arrow
 
       case 0x26 : mPlaying = false; incPlayFrame (-keyInc()); changed(); break; // up arrow
       case 0x28 : mPlaying = false; incPlayFrame (+keyInc()); changed(); break; // down arrow
@@ -206,13 +206,8 @@ protected:
     swprintf (wStr, 200, L"%hs %4.3fm", getInfoStr (mPlayFrame).c_str(), mRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
-    if (mShowChan) {
-      //{{{  show chan and debug info
-      for (auto i = 1; i <= kMaxChans-1; i++) {
-        swprintf (wStr, 200, L"%hs", cRadioChan::getChanName(i).c_str());
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
-        }
-
+    if (false && mShowChan) {
+      //{{{  show chunk debug
       swprintf (wStr, 200, L"%hs", getChunkInfoStr (0).c_str());
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
@@ -222,6 +217,14 @@ protected:
       swprintf (wStr, 200, L"%hs", getChunkInfoStr (2).c_str());
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
+      }
+      //}}}
+    if (mShowChan) {
+      //{{{  show chan and debug info
+      for (auto i = 1; i <= kMaxChans-1; i++) {
+        swprintf (wStr, 200, L"%hs", cRadioChan::getChanName(i).c_str());
+        dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0, i*20.0f, getClientF().width, (i+1)*20.0f), getWhiteBrush());
+        }
 
       // botLine radioChan info str
       swprintf (wStr, 200, L"%hs", getChanInfoStr().c_str());
@@ -260,7 +263,7 @@ private:
   void player() {
 
     CoInitialize (NULL);
-    winAudioOpen (getSampleRate(), 16, 2);
+    winAudioOpen (getAudSampleRate(), 16, 2);
 
     int lastSeqNum = 0;
     while (true) {
@@ -271,7 +274,7 @@ private:
           audioSamples[i] = (audioSamples[i] * mTuneVol) / 80;
 
       mVidFrame = getVideoFrame (mPlayFrame, seqNum);
-      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getSamplesPerFrame()*2*kAacFramesPerPlay*2, 1);
+      winAudioPlay ((mPlaying && audioSamples) ? audioSamples : mSilence, getAudSamplesPerAacFrame()*2*kAacFramesPerPlay*2, 1);
 
       if (mPlaying) {
         setPlayFrame ((mPlayFrame & ~(kAacFramesPerPlay >> 1)) + kAacFramesPerPlay);

@@ -8,9 +8,9 @@
 
 class cRadioChan {
 public:
-// base:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
-// main:1   437000:25:512x288
-// high:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
+// baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
+// mainProfile:1   437000:25:512x288
+// highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
   cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(437000), mVidFps(25), mVidProfile(1) {}
   ~cRadioChan() {}
 
@@ -21,43 +21,43 @@ public:
     }
   //}}}
   //{{{
-  int getSampleRate() {
-    return kSampleRate;
+  int getAudSampleRate() {
+    return kAudSampleRate;
     }
   //}}}
   //{{{
-  int getSamplesPerFrame() {
-    return kSamplesPerFrame;
+  int getAudSamplesPerAacFrame() {
+    return kAudSamplesPerAacFrame;
     }
   //}}}
   //{{{
-  int getFramesPerChunk() {
+  int getAudFramesPerChunk() {
     return kFramesPerChunk[getRadioTv()];
     }
   //}}}
   //{{{
-  float getFramesPerSecond() {
-    return (float)kSampleRate / (float)kSamplesPerFrame;
+  float getAudFramesPerSecond() {
+    return (float)kAudSampleRate / (float)kAudSamplesPerAacFrame;
     }
   //}}}
   //{{{
-  int getFramesFromSec (int sec) {
-    return int (sec * getFramesPerSecond());
+  int getAudFramesFromSec (int sec) {
+    return int (sec * getAudFramesPerSecond());
     }
   //}}}
 
   //{{{
-  int getLowBitrate() {
+  int getAudLowBitrate() {
     return kLowBitrate [mChan];
     }
   //}}}
   //{{{
-  int getMidBitrate() {
+  int getAudMidBitrate() {
     return kMidBitrate [mChan];
     }
   //}}}
   //{{{
-  int getHighBitrate() {
+  int getAudHighBitrate() {
     return kHighBitrate [mChan];
     }
   //}}}
@@ -148,8 +148,8 @@ public:
 
 private:
   //{{{  const
-  const int kSampleRate = 48000;
-  const int kSamplesPerFrame = 1024;
+  const int kAudSampleRate = 48000;
+  const int kAudSamplesPerAacFrame = 1024;
   const int kMaxFramesPerChunk = 375;
   const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
 
@@ -188,7 +188,7 @@ private:
   //}}}
   //{{{
   std::string getM3u8path () {
-    return getPathRoot (getMidBitrate()) + ".norewind.m3u8";
+    return getPathRoot (getAudMidBitrate()) + ".norewind.m3u8";
     }
   //}}}
 

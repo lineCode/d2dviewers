@@ -30,9 +30,7 @@ extern "C" {
 
 namespace WelsDec {
 //{{{
-CWelsDecoder::CWelsDecoder (void)
-  : m_pDecContext (NULL),
-    m_pWelsTrace (NULL) {
+CWelsDecoder::CWelsDecoder (void) : m_pDecContext (NULL), m_pWelsTrace (NULL) {
 
   m_pWelsTrace = new welsCodecTrace();
   if (m_pWelsTrace != NULL) {
@@ -60,15 +58,16 @@ CWelsDecoder::~CWelsDecoder() {
 
 //{{{
 long CWelsDecoder::Initialize (const SDecodingParam* pParam) {
+
   int iRet = ERR_NONE;
   if (m_pWelsTrace == NULL) {
     return cmMallocMemeError;
-  }
+    }
 
   if (pParam == NULL) {
     WelsLog (&m_pWelsTrace->m_sLogCtx, WELS_LOG_ERROR, "CWelsDecoder::Initialize(), invalid input argument.");
     return cmInitParaError;
-  }
+    }
 
   // H.264 decoder initialization,including memory allocation,then open it ready to decode
   iRet = InitDecoder (pParam);
@@ -76,17 +75,18 @@ long CWelsDecoder::Initialize (const SDecodingParam* pParam) {
     return iRet;
 
   return cmResultSuccess;
-}
+  }
 //}}}
 //{{{
 long CWelsDecoder::Uninitialize() {
-  UninitDecoder();
 
+  UninitDecoder();
   return ERR_NONE;
-}
+  }
 //}}}
 //{{{
 void CWelsDecoder::UninitDecoder (void) {
+
   if (NULL == m_pDecContext)
     return;
 
@@ -145,8 +145,8 @@ int32_t CWelsDecoder::InitDecoder (const SDecodingParam* pParam) {
 }
 //}}}
 //{{{
-
 int32_t CWelsDecoder::ResetDecoder() {
+
   // TBC: need to be modified when context and trace point are null
   if (m_pDecContext != NULL && m_pWelsTrace != NULL) {
     WelsLog (&m_pWelsTrace->m_sLogCtx, WELS_LOG_INFO, "ResetDecoder(), context error code is %d",
@@ -164,6 +164,7 @@ int32_t CWelsDecoder::ResetDecoder() {
 
 //{{{
 long CWelsDecoder::SetOption (DECODER_OPTION eOptID, void* pOption) {
+
   int iVal = 0;
 
   if (m_pDecContext == NULL && eOptID != DECODER_OPTION_TRACE_LEVEL &&
@@ -228,6 +229,7 @@ long CWelsDecoder::SetOption (DECODER_OPTION eOptID, void* pOption) {
 //}}}
 //{{{
 long CWelsDecoder::GetOption (DECODER_OPTION eOptID, void* pOption) {
+
   int iVal = 0;
 
   if (m_pDecContext == NULL)
@@ -292,10 +294,9 @@ long CWelsDecoder::GetOption (DECODER_OPTION eOptID, void* pOption) {
 //}}}
 
 //{{{
-DECODING_STATE CWelsDecoder::DecodeFrameNoDelay (const unsigned char* kpSrc,
-    const int kiSrcLen,
-    unsigned char** ppDst,
-    SBufferInfo* pDstInfo) {
+DECODING_STATE CWelsDecoder::DecodeFrameNoDelay (const unsigned char* kpSrc, const int kiSrcLen, unsigned char** ppDst,
+                                                 SBufferInfo* pDstInfo) {
+
   int iRet;
   //SBufferInfo sTmpBufferInfo;
   //unsigned char* ppTmpDst[3] = {NULL, NULL, NULL};
@@ -317,10 +318,9 @@ DECODING_STATE CWelsDecoder::DecodeFrameNoDelay (const unsigned char* kpSrc,
 }
 //}}}
 //{{{
-DECODING_STATE CWelsDecoder::DecodeFrame2 (const unsigned char* kpSrc,
-    const int kiSrcLen,
-    unsigned char** ppDst,
-    SBufferInfo* pDstInfo) {
+DECODING_STATE CWelsDecoder::DecodeFrame2 (const unsigned char* kpSrc, const int kiSrcLen, 
+                                           unsigned char** ppDst, SBufferInfo* pDstInfo) {
+
   if (m_pDecContext == NULL || m_pDecContext->pParam == NULL) {
     if (m_pWelsTrace != NULL) {
       WelsLog (&m_pWelsTrace->m_sLogCtx, WELS_LOG_ERROR, "Call DecodeFrame2 without Initialize.\n");
@@ -462,9 +462,8 @@ DECODING_STATE CWelsDecoder::DecodeFrame2 (const unsigned char* kpSrc,
 }
 //}}}
 //{{{
-DECODING_STATE CWelsDecoder::DecodeParser (const unsigned char* kpSrc,
-    const int kiSrcLen,
-    SParserBsInfo* pDstInfo) {
+DECODING_STATE CWelsDecoder::DecodeParser (const unsigned char* kpSrc, const int kiSrcLen, SParserBsInfo* pDstInfo) {
+
   if (m_pDecContext == NULL || m_pDecContext->pParam == NULL) {
     if (m_pWelsTrace != NULL) {
       WelsLog (&m_pWelsTrace->m_sLogCtx, WELS_LOG_ERROR, "Call DecodeParser without Initialize.\n");
@@ -514,12 +513,9 @@ DECODING_STATE CWelsDecoder::DecodeParser (const unsigned char* kpSrc,
 }
 //}}}
 //{{{
-DECODING_STATE CWelsDecoder::DecodeFrame (const unsigned char* kpSrc,
-    const int kiSrcLen,
-    unsigned char** ppDst,
-    int* pStride,
-    int& iWidth,
-    int& iHeight) {
+DECODING_STATE CWelsDecoder::DecodeFrame (const unsigned char* kpSrc, const int kiSrcLen, unsigned char** ppDst,
+    int* pStride, int& iWidth, int& iHeight) {
+
   DECODING_STATE eDecState = dsErrorFree;
   SBufferInfo    DstInfo;
 
@@ -535,70 +531,57 @@ DECODING_STATE CWelsDecoder::DecodeFrame (const unsigned char* kpSrc,
     pStride[1] = DstInfo.UsrData.sSystemBuffer.iStride[1];
     iWidth     = DstInfo.UsrData.sSystemBuffer.iWidth;
     iHeight    = DstInfo.UsrData.sSystemBuffer.iHeight;
-  }
+   }
 
   return eDecState;
-}
+  }
 //}}}
 //{{{
-DECODING_STATE CWelsDecoder::DecodeFrameEx (const unsigned char* kpSrc,
-    const int kiSrcLen,
-    unsigned char* pDst,
-    int iDstStride,
-    int& iDstLen,
-    int& iWidth,
-    int& iHeight,
-    int& iColorFormat) {
-  DECODING_STATE state = dsErrorFree;
+DECODING_STATE CWelsDecoder::DecodeFrameEx (const unsigned char* kpSrc, const int kiSrcLen, unsigned char* pDst,
+    int iDstStride, int& iDstLen, int& iWidth, int& iHeight, int& iColorFormat) {
 
+  DECODING_STATE state = dsErrorFree;
   return state;
-}
+  }
 //}}}
 } // namespace WelsDec
 
 using namespace WelsDec;
 //{{{
 int WelsGetDecoderCapability (SDecoderCapability* pDecCapability) {
+
   memset (pDecCapability, 0, sizeof (SDecoderCapability));
-  pDecCapability->iProfileIdc = 66; //Baseline
-  pDecCapability->iProfileIop = 0xE0; //11100000b
-  pDecCapability->iLevelIdc = 32; //level_idc = 3.2
-  pDecCapability->iMaxMbps = 216000; //from level_idc = 3.2
-  pDecCapability->iMaxFs = 5120; //from level_idc = 3.2
-  pDecCapability->iMaxCpb = 20000; //from level_idc = 3.2
-  pDecCapability->iMaxDpb = 20480; //from level_idc = 3.2
-  pDecCapability->iMaxBr = 20000; //from level_idc = 3.2
-  pDecCapability->bRedPicCap = 0; //not support redundant pic
+  pDecCapability->iProfileIdc = 66;   // Baseline
+  pDecCapability->iProfileIop = 0xE0; // 11100000b
+  pDecCapability->iLevelIdc = 32;     // level_idc = 3.2
+  pDecCapability->iMaxMbps = 216000;  // from level_idc = 3.2
+  pDecCapability->iMaxFs = 5120;      // from level_idc = 3.2
+  pDecCapability->iMaxCpb = 20000;    // from level_idc = 3.2
+  pDecCapability->iMaxDpb = 20480;    // from level_idc = 3.2
+  pDecCapability->iMaxBr = 20000;     // from level_idc = 3.2
+  pDecCapability->bRedPicCap = 0;     // not support redundant pic
 
   return ERR_NONE;
-}
+  }
 //}}}
 //{{{
-/* WINAPI is indeed in prefix due to sync to application layer callings!! */
-
-/*
-*   WelsCreateDecoder
-*   @return:    success in return 0, otherwise failed.
-*/
 long WelsCreateDecoder (ISVCDecoder** ppDecoder) {
 
-  if (NULL == ppDecoder) {
+  if (NULL == ppDecoder) 
     return ERR_INVALID_PARAMETERS;
-  }
 
   *ppDecoder = new CWelsDecoder();
 
-  if (NULL == *ppDecoder) {
+  if (NULL == *ppDecoder)
     return ERR_MALLOC_FAILED;
-  }
 
   return ERR_NONE;
-}
+  }
 //}}}
 //{{{
 void WelsDestroyDecoder (ISVCDecoder* pDecoder) {
-  if (NULL != pDecoder) {
+
+  if (pDecoder)
     delete (CWelsDecoder*)pDecoder;
   }
 //}}}
-}

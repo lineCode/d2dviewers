@@ -42,9 +42,9 @@ static int chan = 0;
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mFramesLoaded(0), mVidFramesLoaded(0),
+  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudFramesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
-                mSamplesPerFrame(0), mFramesPerAacFrame(0), mAacHE(false), mDecoder(0) {
+                mAudSamplesPerAacFrame(0), mFramesPerAacFrame(0), mAacHE(false), mDecoder(0) {
 
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
@@ -86,8 +86,8 @@ public:
     }
   //}}}
   //{{{
-  int getFramesLoaded() {
-    return mFramesLoaded;
+  int getAudFramesLoaded() {
+    return mAudFramesLoaded;
     }
   //}}}
   //{{{
@@ -104,13 +104,13 @@ public:
   //{{{
   uint8_t* getAudioPower (int frameInChunk, int& frames) {
 
-    frames = getFramesLoaded() - frameInChunk;
+    frames = getAudFramesLoaded() - frameInChunk;
     return mPower ? mPower + (frameInChunk * 2) : nullptr;
     }
   //}}}
   //{{{
   int16_t* getAudioSamples (int frameInChunk) {
-    return mAudio ? (mAudio + (frameInChunk * mSamplesPerFrame * 2)) : nullptr;
+    return mAudio ? (mAudio + (frameInChunk * mAudSamplesPerAacFrame * 2)) : nullptr;
     }
   //}}}
 #ifdef WIN32
@@ -123,7 +123,7 @@ public:
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
-    mFramesLoaded = 0;
+    mAudFramesLoaded = 0;
     mVidFramesLoaded = 0;
     mSeqNum = seqNum;
     mAudBitrate = audBitrate;
@@ -131,29 +131,19 @@ public:
     // aacHE has double size frames, treat as two normal frames
     bool aacHE = mAudBitrate <= 48000;
     mFramesPerAacFrame = aacHE ? 2 : 1;
-    mSamplesPerFrame = radioChan->getSamplesPerFrame();
+    mAudSamplesPerAacFrame = radioChan->getAudSamplesPerAacFrame();
 
-    if ((mDecoder == 0) || (aacHE != mAacHE)) {
-      //{{{  init audDecoder
-      if (aacHE != mAacHE)
-        NeAACDecClose (mDecoder);
-      mDecoder = NeAACDecOpen();
-      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
-      config->outputFormat = FAAD_FMT_16BIT;
-      NeAACDecSetConfiguration (mDecoder, config);
-      mAacHE = aacHE;
-      }
-      //}}}
-
+    // hhtp get chunk
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
+      // allocate vidPes buffer
       mVidPtr = radioChan->getRadioTv() ? ((uint8_t*)malloc (radioChan->getRadioTv() ? http->getContentSize() : 0)) : nullptr;
-      audVidPesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
+      pesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
       mAudPtr = http->getContent();
-      processAudioFaad();
-      radioChan->getVidProfile() ? processVideoFFmpeg() : processVideoOpenH264();
+      decodeAudFaad (aacHE);
+      radioChan->getVidProfile() ? decodeVidFFmpeg() : decodeVidOpenH264();
       //saveToFile (changeChan, radioChan);
-      if (mVidPtr) free (mVidPtr);
+      if (mVidPtr) { free (mVidPtr); mVidPtr = nullptr; }
       http->freeContent();
 
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
@@ -170,13 +160,13 @@ public:
   void invalidate() {
 
     mSeqNum = 0;
-    mFramesLoaded = 0;
+    mAudFramesLoaded = 0;
     }
   //}}}
 
 private:
   //{{{
-  void audVidPesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes) {
+  void pesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes) {
   // aud and vid pes from ts
 
     auto audStartPtr = ptr;
@@ -216,7 +206,21 @@ private:
     }
   //}}}
   //{{{
-  void processAudioFaad() {
+  void decodeAudFaad (bool aacHE) {
+
+    if (!mDecoder || (aacHE != mAacHE)) {
+      //{{{  init audDecoder
+      if (aacHE != mAacHE)
+        NeAACDecClose (mDecoder);
+
+      mDecoder = NeAACDecOpen();
+      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
+      config->outputFormat = FAAD_FMT_16BIT;
+      NeAACDecSetConfiguration (mDecoder, config);
+
+      mAacHE = aacHE;
+      }
+      //}}}
 
     // init aacDecoder
     unsigned long sampleRate;
@@ -225,7 +229,7 @@ private:
 
     NeAACDecFrameInfo frameInfo;
     int16_t* buffer = mAudio;
-    int samplesPerAacFrame = mSamplesPerFrame * mFramesPerAacFrame;
+    int samplesPerAacFrame = mAudSamplesPerAacFrame * mFramesPerAacFrame;
     NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
 
     uint8_t* powerPtr = mPower;
@@ -237,18 +241,18 @@ private:
         // calc left, right power
         int valueL = 0;
         int valueR = 0;
-        for (int j = 0; j < mSamplesPerFrame; j++) {
+        for (int j = 0; j < mAudSamplesPerAacFrame; j++) {
           short sample = (*buffer++) >> 4;
           valueL += sample * sample;
           sample = (*buffer++) >> 4;
           valueR += sample * sample;
           }
 
-        uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
+        uint8_t leftPix = (uint8_t)sqrt(valueL / (mAudSamplesPerAacFrame * 32.0f));
         *powerPtr++ = (272/2) - leftPix;
-        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
+        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mAudSamplesPerAacFrame * 32.0f));
 
-        mFramesLoaded++;
+        mAudFramesLoaded++;
         }
       }
     }
@@ -302,7 +306,7 @@ private:
     }
   //}}}
   //{{{
-  void processVideoOpenH264() {
+  void decodeVidOpenH264() {
 
     if (mVidLen) {
       if (!svcDecoder) {
@@ -406,7 +410,7 @@ private:
     }
   //}}}
   //{{{
-  void processVideoFFmpeg() {
+  void decodeVidFFmpeg() {
 
     if (mVidLen) {
       if (!vidCodec) {
@@ -476,9 +480,9 @@ private:
   //{{{  private vars
   int mSeqNum;
   int mAudBitrate;
-  int mFramesLoaded;
+  int mAudFramesLoaded;
   int mVidFramesLoaded;
-  int mSamplesPerFrame;
+  int mAudSamplesPerAacFrame;
   int mFramesPerAacFrame;
   std::string mInfoStr;
 

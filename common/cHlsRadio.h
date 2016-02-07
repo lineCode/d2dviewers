@@ -11,13 +11,13 @@ class cHlsRadio : public cRadioChan {
 public:
   //{{{
   cHlsRadio() : mTuneVol(80), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
-                mBaseFrame(0), mLoading(0), mJumped(false) {}
+                mBaseFrame(0), mAudBitrate(0), mLoading(0), mJumped(false) {}
   //}}}
   ~cHlsRadio() {}
 
   //{{{
-  int getBitrate() {
-    return mBitrate;
+  int getAudBitrate() {
+    return mAudBitrate;
     }
   //}}}
   //{{{
@@ -27,14 +27,14 @@ public:
   //}}}
   //{{{
   std::string getInfoStr (int frame) {
-    return getChanName (getChan()) + ':' + toString (getBitrate()/1000) + "k " + getFrameInfo (frame);
+    return getChanName (getChan()) + ':' + toString (getAudBitrate()/1000) + "k " + getFrameInfo (frame);
            //+ getChunkNumStr (0) + ':' + getChunkNumStr (1) + ':' + getChunkNumStr (2);
     }
   //}}}
   //{{{
   std::string getFrameInfo (int frame) {
 
-    int secsSinceMidnight = int (frame / getFramesPerSecond());
+    int secsSinceMidnight = int (frame / getAudFramesPerSecond());
     int secs = secsSinceMidnight % 60;
     int mins = (secsSinceMidnight / 60) % 60;
     int hours = secsSinceMidnight / (60*60);
@@ -56,7 +56,7 @@ public:
     int chunk = 0;
     int frameInChunk;
     frames = 0;
-    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioPower (frameInChunk, frames) : nullptr;
+    return findAudFrame(frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioPower (frameInChunk, frames) : nullptr;
     }
   //}}}
   //{{{
@@ -65,7 +65,7 @@ public:
 
     int chunk;
     int frameInChunk;
-    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioSamples (frameInChunk) : nullptr;
+    return findAudFrame(frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioSamples (frameInChunk) : nullptr;
     }
   //}}}
   //{{{
@@ -83,13 +83,13 @@ public:
 
     printf ("cHlsChunks::setChan %d\n", chan);
     setChan (http, chan);
-    mBitrate = getMidBitrate();
+    mAudBitrate = getAudMidBitrate();
 
     int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
     int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
     int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
-    mBaseFrame = getFramesFromSec (secsSinceMidnight);
+    mBaseFrame = getAudFramesFromSec (secsSinceMidnight);
     printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
             getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseFrame);
 
@@ -115,7 +115,7 @@ public:
   //{{{
   void setBitrate (int bitrate) {
 
-    mBitrate = bitrate;
+    mAudBitrate = bitrate;
     }
   //}}}
   //{{{
@@ -124,13 +124,13 @@ public:
     mJumped = jumped;
     if (jumped)
       // jumping around, low quality
-      setBitrate (getLowBitrate());
-    else if (getBitrate() == getLowBitrate())
+      setBitrate (getAudLowBitrate());
+    else if (getAudBitrate() == getAudLowBitrate())
       // normal play, better quality
-      setBitrate (getMidBitrate());
-    else if (getBitrate() == getMidBitrate())
+      setBitrate (getAudMidBitrate());
+    else if (getAudBitrate() == getAudMidBitrate())
       // normal play, much better quality
-      setBitrate (getHighBitrate());
+      setBitrate (getAudHighBitrate());
     }
   //}}}
   //{{{
@@ -138,9 +138,9 @@ public:
 
     mJumped = false;
     if (jumped)
-      setBitrate (getMidBitrate());
-    else if (getBitrate() == getMidBitrate())
-      setBitrate (getHighBitrate());
+      setBitrate (getAudMidBitrate());
+    else if (getAudBitrate() == getAudMidBitrate())
+      setBitrate (getAudHighBitrate());
     }
   //}}}
 
@@ -154,23 +154,23 @@ public:
     int chunk;
     int seqNum = getSeqNumFromFrame (frame);
 
-    if (!findSeqNumChunk (seqNum, mBitrate, 0, chunk)) {
+    if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk)) {
       // load required chunk
       mLoading++;
-      ok &= mChunks[chunk].load (http, this, seqNum, mBitrate);
+      ok &= mChunks[chunk].load (http, this, seqNum, mAudBitrate);
       }
 
     if (!mJumped) {
-      if (!findSeqNumChunk (seqNum, mBitrate, 1, chunk)) {
+      if (!findSeqNumChunk (seqNum, mAudBitrate, 1, chunk)) {
         // load chunk before
         mLoading++;
-        ok &= mChunks[chunk].load (http, this, seqNum+1, mBitrate);
+        ok &= mChunks[chunk].load (http, this, seqNum+1, mAudBitrate);
         }
 
-      if (!findSeqNumChunk (seqNum, mBitrate, -1, chunk)) {
+      if (!findSeqNumChunk (seqNum, mAudBitrate, -1, chunk)) {
         // load chunk after
         mLoading++;
-        ok &= mChunks[chunk].load (http, this, seqNum-1, mBitrate);
+        ok &= mChunks[chunk].load (http, this, seqNum-1, mAudBitrate);
         }
       }
     mJumped = false;
@@ -195,7 +195,7 @@ protected:
     cHttp http;
     while (true) {
       if (getChan() != mTuneChan) {
-        setPlayFrame (changeChan (&http, mTuneChan) - getFramesFromSec(6));
+        setPlayFrame (changeChan (&http, mTuneChan) - getAudFramesFromSec(6));
         update();
         }
       if (!load (&http, mPlayFrame)) {
@@ -219,75 +219,65 @@ private:
 
     int r = frame - mBaseFrame;
     if (r >= 0)
-      return getBaseSeqNum() + (r / getFramesPerChunk());
+      return getBaseSeqNum() + (r / getAudFramesPerChunk());
     else
-      return getBaseSeqNum() - 1 - ((-r-1)/ getFramesPerChunk());
+      return getBaseSeqNum() - 1 - ((-r-1)/ getAudFramesPerChunk());
     }
   //}}}
   //{{{
-  int getFrameInChunkFromFrame (int frame) {
+  int getAacFrameInChunkFromFrame (int frame) {
   // works for -ve frame
 
-    int r = (frame - mBaseFrame) % getFramesPerChunk();
-    return r < 0 ? r + getFramesPerChunk() : r;
+    int r = (frame - mBaseFrame) % getAudFramesPerChunk();
+    return r < 0 ? r + getAudFramesPerChunk() : r;
     }
   //}}}
   //{{{
-  std::string getChunkNumStr (int chunk) {
-    return mChunks[chunk].getSeqNum() ? toString (mChunks[chunk].getSeqNum() - getBaseSeqNum()) : "*";
-    }
-  //}}}
-
-  //{{{
-  bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
-  // return true, seqNum, chunk and frameInChunk of loadedChunk from frame
+  bool findAudFrame (int frame, int& seqNum, int& chunk, int& audFrameInChunk) {
+  // return true, seqNum, chunk and audFrameInChunk of loadedChunk from frame
   // - return false if not found
 
-    auto findSeqNum = getSeqNumFromFrame (frame);
-    for (auto i = 0; i < 3; i++) {
-      if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
-        auto findFrameInChunk = getFrameInChunkFromFrame (frame);
-        if ((mChunks[i].getFramesLoaded() > 0) && (findFrameInChunk < mChunks[i].getFramesLoaded())) {
-          seqNum = findSeqNum;
-          chunk = i;
-          frameInChunk = findFrameInChunk;
+    seqNum = getSeqNumFromFrame (frame);
+    for (chunk = 0; chunk < 3; chunk++)
+      if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
+        audFrameInChunk = getAacFrameInChunkFromFrame(frame);
+        if ((mChunks[chunk].getAudFramesLoaded() > 0) && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
           return true;
-          }
         }
-      }
 
     seqNum = 0;
     chunk = 0;
-    frameInChunk = -1;
+    audFrameInChunk = -1;
     return false;
     }
   //}}}
   //{{{
-  bool findVidFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
-  // return true, seqNum, chunk and frameInChunk of loadedChunk from frame
+  int getVidFrameInChunkFromFrame (int frame) {
+  // dodgy vidframe from aacFrame in chunk
+
+    return (getAacFrameInChunkFromFrame(frame) * getVidFps() * 8) / 375;
+    }
+  //}}}
+  //{{{
+  bool findVidFrame (int frame, int& seqNum, int& chunk, int& vidFrameInChunk) {
+  // return true, seqNum, chunk and vidFrameInChunk of loadedChunk from frame
   // - return false if not found
 
-    auto findSeqNum = getSeqNumFromFrame (frame);
-    for (auto i = 0; i < 3; i++) {
-      if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
-        // should writethis a vide0FrameInChunk
-        auto findAudFrameInChunk = getFrameInChunkFromFrame (frame);
-        auto findVidFrameInChunk = (findAudFrameInChunk * getVidFps() * 8) / 375;
-        if ((mChunks[i].getVidFramesLoaded() > 0) && (findVidFrameInChunk < mChunks[i].getVidFramesLoaded())) {
-          seqNum = findSeqNum;
-          chunk = i;
-          frameInChunk = findVidFrameInChunk;
+    seqNum = getSeqNumFromFrame (frame);
+    for (chunk = 0; chunk < 3; chunk++)
+      if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
+        vidFrameInChunk = getVidFrameInChunkFromFrame (frame);
+        if ((mChunks[chunk].getVidFramesLoaded() > 0) && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
           return true;
-          }
         }
-      }
 
     seqNum = 0;
     chunk = 0;
-    frameInChunk = -1;
+    vidFrameInChunk = -1;
     return false;
     }
   //}}}
+
   //{{{
   bool findSeqNumChunk (int seqNum, int bitrate, int offset, int& chunk) {
   // return true if match found
@@ -317,6 +307,11 @@ private:
     }
   //}}}
   //{{{
+  std::string getChunkNumStr (int chunk) {
+    return mChunks[chunk].getSeqNum() ? toString (mChunks[chunk].getSeqNum() - getBaseSeqNum()) : "*";
+    }
+  //}}}
+  //{{{
   void invalidateChunks() {
     for (auto i = 0; i < 3; i++)
       mChunks[i].invalidate();
@@ -325,7 +320,7 @@ private:
 
   // private vars
   int mBaseFrame;
-  int mBitrate;
+  int mAudBitrate;
   int mLoading;
   bool mJumped;
   std::string mInfoStr;
