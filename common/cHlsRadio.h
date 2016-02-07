@@ -9,8 +9,7 @@
 class cHlsRadio : public cRadioChan {
 public:
   //{{{
-  cHlsRadio() : mTuneVol(80), mTuneChan(4), mPlayFrame(0), mPlaying(true), mRxBytes(0),
-                mBaseFrame(0), mAudBitrate(0), mLoading(0), mJumped(false) {}
+  cHlsRadio() : mBaseFrame(0), mAudBitrate(0), mLoading(0), mJumped(false) {}
   //}}}
   virtual ~cHlsRadio() {}
 
@@ -99,21 +98,6 @@ public:
     }
   //}}}
   //{{{
-  void setPlayFrame (int frame) {
-    mPlayFrame = frame;
-    }
-  //}}}
-  //{{{
-  void incPlayFrame (int inc) {
-    setPlayFrame (mPlayFrame + inc);
-    }
-  //}}}
-  //{{{
-  void incAlignPlayFrame (int inc) {
-    setPlayFrame (mPlayFrame + inc);
-    }
-  //}}}
-  //{{{
   void setBitrate (int bitrate) {
 
     mAudBitrate = bitrate;
@@ -179,14 +163,6 @@ public:
 
     return ok;
     }
-  //}}}
-
-  //{{{  public vars for quick and dirty hacks
-  int mTuneVol;
-  int mTuneChan;
-  int mPlayFrame;
-  bool mPlaying;
-  int mRxBytes;
   //}}}
 
 private:
