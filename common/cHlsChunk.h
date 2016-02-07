@@ -381,13 +381,13 @@ private:
               int u = (*uptr++) - 128;
               int v = (*vptr++) - 128;
 
-              *buffer++ = limit (y1 + (1.8556 * u));
-              *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
-              *buffer++ = limit (y1 + (1.5748 * v));
+              *buffer++ = (uint8_t) (y1 + (1.8556 * u));
+              *buffer++ = (uint8_t) (y1 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = (uint8_t) (y1 + (1.5748 * v));
 
-              *buffer++ = limit (y2 + (1.8556 * u));
-              *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
-              *buffer++ = limit (y2 + (1.5748 * v));
+              *buffer++ = (uint8_t) (y2 + (1.8556 * u));
+              *buffer++ = (uint8_t) (y2 - (0.1873 * u) - (0.4681 * v));
+              *buffer++ = (uint8_t) (y2 + (1.5748 * v));
               }
             }
 

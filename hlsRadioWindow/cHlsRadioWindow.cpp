@@ -262,8 +262,8 @@ private:
 
     cHttp http;
     while (true) {
-      if (mPlayer->getSource() != mChangeToChanel) {
-        mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChanel) - mPlayer->getAudFramesFromSec(6));
+      if (mPlayer->getSource() != mChangeToChannel) {
+        mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChannel) - mPlayer->getAudFramesFromSec(6));
         changed();
         }
       if (!mPlayer->load (&http, mPlayer->getPlayFrame())) {
@@ -330,7 +330,7 @@ private:
   // private vars
   iPlayer* mPlayer;
 
-  int mChangeToChanel;
+  int mChangeToChannel;
   int mHttpRxBytes;
 
   bool mShowChan;
