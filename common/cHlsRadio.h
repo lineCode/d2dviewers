@@ -189,31 +189,6 @@ public:
   int mRxBytes;
   //}}}
 
-protected:
-  //{{{
-  virtual void loader() {
-  // loader task, handles all http gets, sleep 1s if no load suceeded
-
-    cHttp http;
-    while (true) {
-      if (getChan() != mTuneChan) {
-        setPlayFrame (changeChan (&http, mTuneChan) - getAudFramesFromSec(6));
-        update();
-        }
-      if (!load (&http, mPlayFrame)) {
-        printf ("sleep frame:%d\n", mPlayFrame);
-        sleep (1000);
-        }
-      mRxBytes = http.getRxBytes();
-      wait();
-      }
-    }
-  //}}}
-  virtual void signal() {}
-  virtual void wait() {};
-  virtual void update() {};
-  virtual void sleep (int ms) {};
-
 private:
   //{{{
   int getSeqNumFromFrame (int frame) {
