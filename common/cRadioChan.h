@@ -11,7 +11,7 @@ public:
   // baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
   // mainProfile:1   437000:25:512x288
   // highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
-  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(437000), mVidFramesPerChunk(200), mVidProfile(1) {}
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(281000), mVidFramesPerChunk(200), mVidProfile(1) {}
   ~cRadioChan() {}
 
   // gets
@@ -167,7 +167,7 @@ private:
 
     std::string path = "pool_" + toString (kPool[mChan]) + "/live/" +
                        kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
-    if (getRadioTv()) { // tv 
+    if (getRadioTv()) { // tv
       if (audBitrate == 96000)       // aac HE
         path += "-pa3=";
       else if (audBitrate == 128000) // aac HE

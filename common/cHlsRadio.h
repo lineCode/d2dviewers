@@ -26,8 +26,10 @@ public:
   //}}}
   //{{{
   std::string getInfoStr (int frame) {
-    return getChanName (getChan()) + ':' + toString (getAudBitrate()/1000) + "k " + getFrameInfo (frame);
-           //+ getChunkNumStr (0) + ':' + getChunkNumStr (1) + ':' + getChunkNumStr (2);
+    return getChanName (getChan()) +
+           (getRadioTv() ? ':' + toString (getVidBitrate()/1000) + "k" : "") +
+           ':' + toString (getAudBitrate()/1000) + "k " +
+           getFrameInfo (frame);
     }
   //}}}
   //{{{
