@@ -180,12 +180,13 @@ public:
     }
   //}}}
 
-  // public vars for quick and dirty hacks
+  //{{{  public vars for quick and dirty hacks
   int mTuneVol;
   int mTuneChan;
   int mPlayFrame;
   bool mPlaying;
   int mRxBytes;
+  //}}}
 
 protected:
   //{{{
@@ -224,6 +225,7 @@ private:
       return getBaseSeqNum() - 1 - ((-r-1)/ getAudFramesPerChunk());
     }
   //}}}
+
   //{{{
   int getAacFrameInChunkFromFrame (int frame) {
   // works for -ve frame
@@ -240,7 +242,9 @@ private:
     seqNum = getSeqNumFromFrame (frame);
     for (chunk = 0; chunk < 3; chunk++)
       if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
-        audFrameInChunk = getAacFrameInChunkFromFrame(frame);
+        audFrameInChunk = (frame - mBaseFrame) % getAudFramesPerChunk();
+        if (audFrameInChunk < 0)
+          audFrameInChunk += getAudFramesPerChunk();
         if ((mChunks[chunk].getAudFramesLoaded() > 0) && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
           return true;
         }
@@ -252,13 +256,6 @@ private:
     }
   //}}}
   //{{{
-  int getVidFrameInChunkFromFrame (int frame) {
-  // dodgy vidframe from aacFrame in chunk
-
-    return (getAacFrameInChunkFromFrame(frame) * getVidFps() * 8) / 375;
-    }
-  //}}}
-  //{{{
   bool findVidFrame (int frame, int& seqNum, int& chunk, int& vidFrameInChunk) {
   // return true, seqNum, chunk and vidFrameInChunk of loadedChunk from frame
   // - return false if not found
@@ -266,7 +263,9 @@ private:
     seqNum = getSeqNumFromFrame (frame);
     for (chunk = 0; chunk < 3; chunk++)
       if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
-        vidFrameInChunk = getVidFrameInChunkFromFrame (frame);
+        vidFrameInChunk = (((frame - mBaseFrame) * getVidFramesPerChunk()) / getAudFramesPerChunk()) % getVidFramesPerChunk();
+        if (vidFrameInChunk < 0)
+          vidFrameInChunk += getVidFramesPerChunk();
         if ((mChunks[chunk].getVidFramesLoaded() > 0) && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
           return true;
         }

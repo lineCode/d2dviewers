@@ -8,10 +8,10 @@
 
 class cRadioChan {
 public:
-// baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
-// mainProfile:1   437000:25:512x288
-// highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
-  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(437000), mVidFps(25), mVidProfile(1) {}
+  // baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
+  // mainProfile:1   437000:25:512x288
+  // highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
+  cRadioChan() : mChan(0), mBaseSeqNum(0), mVidBitrate(437000), mVidFramesPerChunk(200), mVidProfile(1) {}
   ~cRadioChan() {}
 
   // gets
@@ -32,7 +32,12 @@ public:
   //}}}
   //{{{
   int getAudFramesPerChunk() {
-    return kFramesPerChunk[getRadioTv()];
+    return kAudFramesPerChunk[getRadioTv()];
+    }
+  //}}}
+  //{{{
+  int getVidFramesPerChunk() {
+    return mVidFramesPerChunk;
     }
   //}}}
   //{{{
@@ -64,11 +69,6 @@ public:
   //{{{
   int getVidBitrate() {
     return mVidBitrate;
-    }
-  //}}}
-  //{{{
-  int getVidFps() {
-    return mVidFps;
     }
   //}}}
   //{{{
@@ -150,8 +150,7 @@ private:
   //{{{  const
   const int kAudSampleRate = 48000;
   const int kAudSamplesPerAacFrame = 1024;
-  const int kMaxFramesPerChunk = 375;
-  const int kFramesPerChunk[2] = { 300, 375 }; // 6.4s, 8s
+  const int kAudFramesPerChunk[2] = { 300, 375 };  // 6.4s, 8s
 
   const bool kRadioTv    [kMaxChans] = { false,   false,  false,  false,  false,  false,  false,   true,   true,   true,   true };
   const int kPool        [kMaxChans] = {      0,      7,      7,      7,      6,      6,      6,      4,      5,      2,      3 };
@@ -196,7 +195,7 @@ private:
   int mChan;
   int mBaseSeqNum;
   int mVidBitrate;
-  int mVidFps;
+  int mVidFramesPerChunk;
   int mVidProfile;
   std::string mHost;
   std::string mDateTime;
