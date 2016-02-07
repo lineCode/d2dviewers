@@ -6,7 +6,6 @@
 #include "cRadioChan.h"
 #include "cHlsChunk.h"
 //}}}
-
 class cHlsRadio : public cRadioChan {
 public:
   //{{{
@@ -225,15 +224,6 @@ private:
       return getBaseSeqNum() - 1 - ((-r-1)/ getAudFramesPerChunk());
     }
   //}}}
-
-  //{{{
-  int getAacFrameInChunkFromFrame (int frame) {
-  // works for -ve frame
-
-    int r = (frame - mBaseFrame) % getAudFramesPerChunk();
-    return r < 0 ? r + getAudFramesPerChunk() : r;
-    }
-  //}}}
   //{{{
   bool findAudFrame (int frame, int& seqNum, int& chunk, int& audFrameInChunk) {
   // return true, seqNum, chunk and audFrameInChunk of loadedChunk from frame
@@ -245,7 +235,7 @@ private:
         audFrameInChunk = (frame - mBaseFrame) % getAudFramesPerChunk();
         if (audFrameInChunk < 0)
           audFrameInChunk += getAudFramesPerChunk();
-        if ((mChunks[chunk].getAudFramesLoaded() > 0) && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
+        if (mChunks[chunk].getAudFramesLoaded() && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
           return true;
         }
 
@@ -266,7 +256,7 @@ private:
         vidFrameInChunk = (((frame - mBaseFrame) * getVidFramesPerChunk()) / getAudFramesPerChunk()) % getVidFramesPerChunk();
         if (vidFrameInChunk < 0)
           vidFrameInChunk += getVidFramesPerChunk();
-        if ((mChunks[chunk].getVidFramesLoaded() > 0) && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
+        if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
           return true;
         }
 

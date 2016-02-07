@@ -150,7 +150,7 @@ private:
   //{{{  const
   const int kAudSampleRate = 48000;
   const int kAudSamplesPerAacFrame = 1024;
-  const int kAudFramesPerChunk[2] = { 300, 375 };  // 6.4s, 8s
+  const int kAudFramesPerChunk[2] = { 300, 375 };  // radio:6.4s, tv:8s
 
   const bool kRadioTv    [kMaxChans] = { false,   false,  false,  false,  false,  false,  false,   true,   true,   true,   true };
   const int kPool        [kMaxChans] = {      0,      7,      7,      7,      6,      6,      6,      4,      5,      2,      3 };
@@ -163,26 +163,27 @@ private:
                                                  "bbc_four_hd",   "bbc_news_channel_hd" };
   //}}}
   //{{{
-  std::string getPathRoot (int bitrate) {
+  std::string getPathRoot (int audBitrate) {
 
-    std::string path = "pool_" + toString (kPool[mChan]) + "/live/" + kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
-
-    if (!getRadioTv()) // radio
-      return path + "-audio=" + toString (bitrate);
-    else if (bitrate == 128000)
-      return path + "-pa4=128000";
-    else if (bitrate == 320000)
-      return path + "-pa5=320000";
-    else if (bitrate == 64000)
-      return path + "-pa2=64000";
-    else if (bitrate == 24000)
-      return path + "-pa1=24000";
-    else // default
-      //return path + "-pa3=96000";
-      return path + "-pa3=96000-video%3d" + toString (getVidBitrate());
-      //return path + "-pa3=96000-video%3d827000";
-      //return path + "-pa3=96000-video%3d5070000";
-      //return path + "-pa3=96000-video%3d1604000";
+    std::string path = "pool_" + toString (kPool[mChan]) + "/live/" +
+                       kPathNames[mChan] + '/' + kPathNames[mChan] + ".isml/" + kPathNames[mChan];
+    if (getRadioTv()) { // tv 
+      if (audBitrate == 96000)       // aac HE
+        path += "-pa3=";
+      else if (audBitrate == 128000) // aac HE
+        path += "-pa4=";
+      else if (audBitrate == 320000) // aac LC
+        path += "-pa5=";
+      else if (audBitrate == 64000)  // aac HE
+        path += "-pa2=";
+      else if (audBitrate == 24000)  // aac HE
+        path += "-pa1=";
+      else if (audBitrate == 384000) // dolby ac-3
+        path += "-pa6=";
+      return path + toString (audBitrate) + "-video=" + toString (getVidBitrate());
+      }
+   else // radio - aac HE <= 48000, LC above
+     return path + "-audio=" + toString (audBitrate);
     }
   //}}}
   //{{{
