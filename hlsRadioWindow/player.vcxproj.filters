@@ -116,7 +116,6 @@
     <ClCompile Include="..\agg\parse_lion.cpp">
       <Filter>agg</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\timer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\winAudio.h">

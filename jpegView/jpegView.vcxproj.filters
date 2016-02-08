@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="..\jpegView\jpegView.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="..\common\timer.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
   </ItemGroup>
   <ItemGroup>

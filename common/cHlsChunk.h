@@ -6,6 +6,9 @@
 #include "cRadioChan.h"
 
 #ifdef WIN32
+  #include "../common/timer.h"
+  #include "../common/yuv2rgb.h"
+
   #ifdef __cplusplus
     extern "C" {
   #endif
@@ -22,8 +25,6 @@
   #pragma comment(lib,"swscale.lib")
 #endif
 //}}}
-#include "../common/timer.h"
-#include "../common/yuv2rgb.h"
 //{{{  static vars
 static int chan = 0;
 
@@ -137,7 +138,7 @@ public:
 
     // hhtp get chunk
     startTimer();
-    auto time1 = getTimer();
+    auto time1 = startTimer();
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
       // allocate vidPes buffer
@@ -154,7 +155,8 @@ public:
       if (mVidPtr) { free (mVidPtr); mVidPtr = nullptr; }
       http->freeContent();
 
-      printf ("get:%7.6f pes:%7.6f aac:%7.6f vid:%7.6f tot:%7.6f\n", time2-time1, time3-time2, time4-time3, time5-time4, time5-time1);
+      printf ("get:%7.6f pes:%7.6f aac:%7.6f vid:%7.6f tot:%7.6f size:%d\n",
+              time2-time1, time3-time2, time4-time3, time5-time4, time5-time1, http->getContentSize());
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
