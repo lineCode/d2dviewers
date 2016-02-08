@@ -22,6 +22,8 @@
   #pragma comment(lib,"swscale.lib")
 #endif
 //}}}
+#include "../common/timer.h"
+#include "../common/yuv2rgb.h"
 //{{{  static vars
 static int chan = 0;
 
@@ -134,18 +136,25 @@ public:
     mAudSamplesPerAacFrame = radioChan->getAudSamplesPerAacFrame();
 
     // hhtp get chunk
+    startTimer();
+    auto time1 = getTimer();
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
     if (response == 200) {
       // allocate vidPes buffer
+    auto time2 = getTimer();
       mVidPtr = radioChan->isTvChannel() ? ((uint8_t*)malloc (radioChan->isTvChannel() ? http->getContentSize() : 0)) : nullptr;
       pesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
+    auto time3 = getTimer();
       mAudPtr = http->getContent();
       decodeAudFaad (aacHE);
+    auto time4 = getTimer();
       radioChan->getVidProfile() ? decodeVidFFmpeg() : decodeVidOpenH264();
       //saveToFile (changeChan, radioChan);
+    auto time5 = getTimer();
       if (mVidPtr) { free (mVidPtr); mVidPtr = nullptr; }
       http->freeContent();
 
+      printf ("get:%7.6f pes:%7.6f aac:%7.6f vid:%7.6f tot:%7.6f\n", time2-time1, time3-time2, time4-time3, time5-time4, time5-time1);
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
@@ -294,18 +303,6 @@ private:
     }
   //}}}
   //{{{
-  uint8_t limit (double v) {
-
-    if (v <= 0.0)
-      return 0;
-
-    if (v >= 255.0)
-      return 255;
-
-    return (uint8_t)v;
-    }
-  //}}}
-  //{{{
   void decodeVidOpenH264() {
 
     if (mVidLen) {
@@ -344,12 +341,12 @@ private:
             break;
 
         // process slice
-        uint8_t* pData[3]; // yuv ptrs
+        uint8_t* yuvPtrs[3];
         SBufferInfo sDstBufInfo;
         memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
         sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
 
-        svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, pData, &sDstBufInfo);
+        svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, yuvPtrs, &sDstBufInfo);
 
         if (sDstBufInfo.iBufferStatus == 1) {
           //{{{  have new frame
@@ -369,27 +366,10 @@ private:
           BYTE* buffer = NULL;
           wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
 
-          // yuv:420 -> BGR:24bit
-          for (auto y = 0; y < height; y++) {
-            BYTE* yptr = pData[0] + (y*sDstBufInfo.UsrData.sSystemBuffer.iStride[0]);
-            BYTE* uptr = pData[1] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-            BYTE* vptr = pData[2] + ((y/2)*sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-
-            for (auto x = 0; x < width/2; x++) {
-              int y1 = *yptr++;
-              int y2 = *yptr++;
-              int u = (*uptr++) - 128;
-              int v = (*vptr++) - 128;
-
-              *buffer++ = (uint8_t) (y1 + (1.8556 * u));
-              *buffer++ = (uint8_t) (y1 - (0.1873 * u) - (0.4681 * v));
-              *buffer++ = (uint8_t) (y1 + (1.5748 * v));
-
-              *buffer++ = (uint8_t) (y2 + (1.8556 * u));
-              *buffer++ = (uint8_t) (y2 - (0.1873 * u) - (0.4681 * v));
-              *buffer++ = (uint8_t) (y2 + (1.5748 * v));
-              }
-            }
+          yuv420toRgb888 (buffer, yuvPtrs[0], yuvPtrs[1], yuvPtrs[2], width, height,
+                          sDstBufInfo.UsrData.sSystemBuffer.iStride[0],
+                          sDstBufInfo.UsrData.sSystemBuffer.iStride[1],
+                          width*3);
 
           // release vidFrame wicBitmap buffer
           wicBitmapLock->Release();

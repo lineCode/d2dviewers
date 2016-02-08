@@ -242,6 +242,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
+    <ClCompile Include="..\common\timer.cpp" />
     <ClCompile Include="..\common\Xaudio2.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -401,6 +402,7 @@
     <ClInclude Include="..\common\iPlayer.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="yuv2rgb.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E532C54A-C565-43A2-BDA2-30750BCD0946}</ProjectGuid>

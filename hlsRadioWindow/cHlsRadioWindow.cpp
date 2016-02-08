@@ -353,7 +353,7 @@ int wmain (int argc, wchar_t* argv[]) {
     //}}}
 
 #ifndef _DEBUG
-  FreeConsole();
+  //FreeConsole();
 #endif
 
   cHlsRadioWindow hlsRadioWindow;
