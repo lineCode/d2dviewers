@@ -855,6 +855,7 @@ void yuv420toRgb888 (uint8_t* dstPtr, uint8_t* yPtr, uint8_t* uPtr, uint8_t* vPt
       *dstPtr++ = yuv;
       *dstPtr++ = yuv >> 22;
       *dstPtr++ = yuv >> 11;
+      *dstPtr++ = 255;
 
       yuv = yTable[*yPtr++] + uv;
       //{{{  fixup yuv
@@ -869,6 +870,7 @@ void yuv420toRgb888 (uint8_t* dstPtr, uint8_t* yPtr, uint8_t* uPtr, uint8_t* vPt
       *dstPtr++ = yuv;
       *dstPtr++ = yuv >> 22;
       *dstPtr++ = yuv >> 11;
+      *dstPtr++ = 255;
 
       yuv = yTable[*yPtr2++] + uv;
       //{{{  fixup yuv
@@ -883,6 +885,7 @@ void yuv420toRgb888 (uint8_t* dstPtr, uint8_t* yPtr, uint8_t* uPtr, uint8_t* vPt
       *dstPtr2++ = yuv;
       *dstPtr2++ = yuv >> 22;
       *dstPtr2++ = yuv >> 11;
+      *dstPtr2++ = 255;
 
       yuv = yTable[*yPtr2++] + uv;
       //{{{  fixup yuv
@@ -897,13 +900,14 @@ void yuv420toRgb888 (uint8_t* dstPtr, uint8_t* yPtr, uint8_t* uPtr, uint8_t* vPt
       *dstPtr2++ = yuv;
       *dstPtr2++ = yuv >> 22;
       *dstPtr2++ = yuv >> 11;
+      *dstPtr2++ = 255;
 
       height += 2 << 16;
       }
       //}}}
 
-    dstPtr += dstSpan*2 - width*3;
-    dstPtr2 += dstSpan*2 - width*3;
+    dstPtr += dstSpan*2 - width*4;
+    dstPtr2 += dstSpan*2 - width*4;
 
     yPtr += ySpan*2 - width;
     yPtr2 += ySpan*2 - width;

@@ -260,7 +260,7 @@ private:
         vidFrameInChunk = (((frame - mBaseFrame) * getVidFramesPerChunk()) / getAudFramesPerChunk()) % getVidFramesPerChunk();
         if (vidFrameInChunk < 0)
           vidFrameInChunk += getVidFramesPerChunk();
-        if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
+        if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded())) 
           return true;
         }
 

@@ -550,9 +550,7 @@
     <ClInclude Include="..\common\iPlayer.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="yuv2rgb.h">
-      <Filter>header</Filter>
-    </ClInclude>
+    <ClInclude Include="yuv2rgb.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
@@ -566,5 +564,8 @@
       <UniqueIdentifier>{868a143c-99a1-4030-9f94-b1aa8444a32c}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>

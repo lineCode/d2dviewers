@@ -8,6 +8,7 @@
 #ifdef WIN32
   #include "../common/timer.h"
   #include "../common/yuv2rgb.h"
+  #include "yuv2rgbsse2.h"
 
   #ifdef __cplusplus
     extern "C" {
@@ -155,8 +156,9 @@ public:
       if (mVidPtr) { free (mVidPtr); mVidPtr = nullptr; }
       http->freeContent();
 
-      printf ("get:%7.6f pes:%7.6f aac:%7.6f vid:%7.6f tot:%7.6f size:%d\n",
-              time2-time1, time3-time2, time4-time3, time5-time4, time5-time1, http->getContentSize());
+      printf ("get:%7.6f pes:%7.6f aac:%7.6f vid:%7.6f tot:%7.6f - aud:%d vid:%d get:%d\n",
+              time2-time1, time3-time2, time4-time3, time5-time4, time5-time1,
+              (int)mAudLen, (int)mVidLen, http->getContentSize());
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
@@ -357,7 +359,8 @@ private:
 
           // could test for size change
           if (!vidFrames[mVidFramesLoaded])
-            wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+            wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat32bppPBGRA, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+            //wicImagingFactory->CreateBitmap (width, height, GUID_WICPixelFormat32bppPBGRA, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
 
           WICRect wicRect = { 0, 0, width, height };
           IWICBitmapLock* wicBitmapLock = NULL;
@@ -368,10 +371,18 @@ private:
           BYTE* buffer = NULL;
           wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
 
-          yuv420toRgb888 (buffer, yuvPtrs[0], yuvPtrs[1], yuvPtrs[2], width, height,
-                          sDstBufInfo.UsrData.sSystemBuffer.iStride[0],
-                          sDstBufInfo.UsrData.sSystemBuffer.iStride[1],
-                          width*3);
+          //yuv420toRgb888 (buffer, yuvPtrs[0], yuvPtrs[1], yuvPtrs[2], width, height,
+          //                sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1],
+          //                width*4);
+          for (int i = 0; i < height; i++) {
+            yuv420_rgba32_sse2 (yuvPtrs[0], yuvPtrs[1], yuvPtrs[2], buffer, width);
+            yuvPtrs[0] += sDstBufInfo.UsrData.sSystemBuffer.iStride[0];
+            if (i % 2) {
+              yuvPtrs[1] += sDstBufInfo.UsrData.sSystemBuffer.iStride[1];
+              yuvPtrs[2] += sDstBufInfo.UsrData.sSystemBuffer.iStride[1];
+              }
+            buffer += width * 4;
+            }
 
           // release vidFrame wicBitmap buffer
           wicBitmapLock->Release();

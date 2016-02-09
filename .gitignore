@@ -280,3 +280,4 @@ $RECYCLE.BIN/
 *.~h
 *.opendb
 *.~cpp
+*.~asm
