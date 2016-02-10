@@ -168,46 +168,8 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    if (mVidFrame) {
-      if (!mBitmap) {
-        //{{{  create bitmap, should check size
-        D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
-        d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-        d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
-        d2d1_bitmapProperties.dpiX = 96.0f;
-        d2d1_bitmapProperties.dpiY = 96.0f;
-        dc->CreateBitmap (SizeU (mVidFrame->mWidth, mVidFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
-        }
-        //}}}
-      if (mVidFrame->mId != mVidId) {
-        //{{{  yuv420 -> bitmap bgra
-        uint8_t* bgraBuf = (uint8_t*)malloc (mVidFrame->mWidth * mVidFrame->mHeight * 4);
-
-        uint8_t* yPtr = mVidFrame->mYbuf;
-        uint8_t* uPtr = mVidFrame->mUbuf;
-        uint8_t* vPtr = mVidFrame->mVbuf;
-        uint8_t* bgraPtr = bgraBuf;
-        for (int i = 0; i < mVidFrame->mHeight/2; i++) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraPtr, mVidFrame->mWidth);
-          yPtr += mVidFrame->mYStride;
-          bgraPtr += mVidFrame->mWidth * 4;
-
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraPtr, mVidFrame->mWidth);
-          yPtr += mVidFrame->mYStride;
-          uPtr += mVidFrame->mUVStride;
-          vPtr += mVidFrame->mUVStride;
-          bgraPtr += mVidFrame->mWidth * 4;
-          }
-
-        D2D1_RECT_U r(RectU (0, 0, mVidFrame->mWidth, mVidFrame->mHeight));
-        mBitmap->CopyFromMemory (&r, bgraBuf, mVidFrame->mWidth * 4);
-
-        free (bgraBuf);
-        }
-        //}}}
-      mVidId = mVidFrame->mId;
+    if (makeBitmap())
       dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
-      }
     else
       dc->Clear (ColorF(ColorF::Black));
 
@@ -275,6 +237,50 @@ protected:
   //}}}
 
 private:
+  //{{{
+  bool makeBitmap() {
+
+    if (mVidFrame) {
+      if (mVidFrame->mId != mVidId) {
+        mVidId = mVidFrame->mId;
+        if (!mBitmap) {
+          // create bitmap, should check size
+          D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
+          d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+          d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
+          d2d1_bitmapProperties.dpiX = 96.0f;
+          d2d1_bitmapProperties.dpiY = 96.0f;
+          getDeviceContext()->CreateBitmap (SizeU (mVidFrame->mWidth, mVidFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
+          }
+
+        // vidFrame yuv420 -> bitmap bgra
+        uint8_t* bgraBuf = (uint8_t*)malloc (2*mVidFrame->mWidth * 4);
+
+        uint8_t* yPtr = mVidFrame->mYbuf;
+        uint8_t* uPtr = mVidFrame->mUbuf;
+        uint8_t* vPtr = mVidFrame->mVbuf;
+        D2D1_RECT_U r(RectU (0, 0, mVidFrame->mWidth, 2));
+        for (int i = 0; i < mVidFrame->mHeight/2; i++) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, mVidFrame->mWidth);
+          yPtr += mVidFrame->mYStride;
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (mVidFrame->mWidth * 4), mVidFrame->mWidth);
+          yPtr += mVidFrame->mYStride;
+          uPtr += mVidFrame->mUVStride;
+          vPtr += mVidFrame->mUVStride;
+          mBitmap->CopyFromMemory (&r, bgraBuf, mVidFrame->mWidth * 4);
+          r.top += 2;
+          r.bottom = r.top + 2;
+          }
+
+        free (bgraBuf);
+        }
+      return true;
+      }
+    else
+      return false;
+    }
+  //}}}
+
   //{{{
   void loader() {
   // loader task, handles all http gets, sleep 1s if no load suceeded
@@ -358,9 +364,9 @@ private:
   HANDLE mSemaphore;
   int16_t* mSilence;
 
+  int mVidId;
   cVidFrame* mVidFrame;
   ID2D1Bitmap* mBitmap;
-  int mVidId;
   };
 
 //{{{
