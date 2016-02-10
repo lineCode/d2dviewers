@@ -3,7 +3,11 @@
   extern "C" {
 #endif
 
-void yuv420_rgba32_sse2 (void* fromYPtr, void* fromUPtr, void* fromVPtr, void* toPtr, _int64 width);
+#ifdef _M_X64
+  void yuv420_rgba32_sse2 (void* fromYPtr, void* fromUPtr, void* fromVPtr, void* toPtr, _int64 width);
+#else
+  void yuv420_rgba32_sse2 (void* fromYPtr, void* fromUPtr, void* fromVPtr, void* toPtr, int width);
+#endif
 
 #ifdef __cplusplus
   }

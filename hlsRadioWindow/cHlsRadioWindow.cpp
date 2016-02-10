@@ -255,22 +255,23 @@ private:
           }
 
         // vidFrame yuv420 -> bitmap bgra
-        auto bgraBuf = (uint8_t*)malloc (2*yuvFrame->mWidth * 4);
+        void* bgraBuf = malloc ((2*yuvFrame->mWidth * 4) + 15);
+        uint8_t* alignedBgraBuf = (uint8_t*)(((size_t)(bgraBuf)+15) & ~0xf);
 
         auto yPtr = yuvFrame->mYbuf;
         auto uPtr = yuvFrame->mUbuf;
         auto vPtr = yuvFrame->mVbuf;
         for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, alignedBgraBuf, yuvFrame->mWidth);
           yPtr += yuvFrame->mYStride;
 
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, alignedBgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
           yPtr += yuvFrame->mYStride;
           uPtr += yuvFrame->mUVStride;
           vPtr += yuvFrame->mUVStride;
 
           D2D1_RECT_U r(RectU (0, i, yuvFrame->mWidth, i+2));
-          mBitmap->CopyFromMemory (&r, bgraBuf, yuvFrame->mWidth * 4);
+          mBitmap->CopyFromMemory (&r, alignedBgraBuf, yuvFrame->mWidth * 4);
           }
 
         free (bgraBuf);
