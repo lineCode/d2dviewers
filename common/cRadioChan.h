@@ -11,7 +11,7 @@ public:
   // baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
   // mainProfile:1   437000:25:512x288
   // highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
-  cRadioChan() : mChannel(0), mBaseSeqNum(0), mVidBitrate(688000), mVidFramesPerChunk(200), mVidProfile(0) {}
+  cRadioChan() : mChannel(0), mBaseSeqNum(0), mVidBitrate(1604000), mVidFramesPerChunk(200), mVidProfile(2) {}
   virtual ~cRadioChan() {}
 
   // gets

@@ -23,13 +23,15 @@
 
 #include "../common/cVolume.h"
 #include "../common/cHlsRadio.h"
+
+#include "yuvrgb_sse2.h"
 //}}}
 
 class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
   cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
-                      mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mD2D1Bitmap(nullptr) {
+                      mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
@@ -167,26 +169,46 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     if (mVidFrame) {
-      //{{{  convert IWICBitmap to mD2D1Bitmap 32bit BGRA
-      IWICFormatConverter* wicFormatConverter;
-      getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
+      if (!mBitmap) {
+        //{{{  create bitmap, should check size
+        D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
+        d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
+        d2d1_bitmapProperties.dpiX = 96.0f;
+        d2d1_bitmapProperties.dpiY = 96.0f;
+        dc->CreateBitmap (SizeU (mVidFrame->mWidth, mVidFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
+        }
+        //}}}
+      if (mVidFrame->mId != mVidId) {
+        //{{{  yuv420 -> bitmap bgra
+        uint8_t* bgraBuf = (uint8_t*)malloc (mVidFrame->mWidth * mVidFrame->mHeight * 4);
 
-      wicFormatConverter->Initialize (mVidFrame,
-        GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+        uint8_t* yPtr = mVidFrame->mYbuf;
+        uint8_t* uPtr = mVidFrame->mUbuf;
+        uint8_t* vPtr = mVidFrame->mVbuf;
+        uint8_t* bgraPtr = bgraBuf;
+        for (int i = 0; i < mVidFrame->mHeight/2; i++) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraPtr, mVidFrame->mWidth);
+          yPtr += mVidFrame->mYStride;
+          bgraPtr += mVidFrame->mWidth * 4;
 
-      if (mD2D1Bitmap)
-        mD2D1Bitmap->Release();
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraPtr, mVidFrame->mWidth);
+          yPtr += mVidFrame->mYStride;
+          uPtr += mVidFrame->mUVStride;
+          vPtr += mVidFrame->mUVStride;
+          bgraPtr += mVidFrame->mWidth * 4;
+          }
 
-      if (getDeviceContext())
-        getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
+        D2D1_RECT_U r(RectU (0, 0, mVidFrame->mWidth, mVidFrame->mHeight));
+        mBitmap->CopyFromMemory (&r, bgraBuf, mVidFrame->mWidth * 4);
 
-      wicFormatConverter->Release();
-
-      dc->DrawBitmap (mD2D1Bitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+        free (bgraBuf);
+        }
+        //}}}
+      mVidId = mVidFrame->mId;
+      dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
       }
-      //}}}
     else
-      // clear
       dc->Clear (ColorF(ColorF::Black));
 
     // grey mid line
@@ -265,7 +287,7 @@ private:
         mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChannel) - mPlayer->getAudFramesFromSec(6));
         changed();
         }
-      if (!mPlayer->load (&http, mPlayer->getPlayFrame())) {
+      if (!mPlayer->load (getDeviceContext(), &http, mPlayer->getPlayFrame())) {
         printf ("sleep frame:%d\n", mPlayer->getPlayFrame());
         sleep (1000);
         }
@@ -336,8 +358,9 @@ private:
   HANDLE mSemaphore;
   int16_t* mSilence;
 
-  IWICBitmap* mVidFrame;
-  ID2D1Bitmap* mD2D1Bitmap;
+  cVidFrame* mVidFrame;
+  ID2D1Bitmap* mBitmap;
+  int mVidId;
   };
 
 //{{{

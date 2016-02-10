@@ -3,12 +3,11 @@
 //{{{  includes
 #include "cParsedUrl.h"
 #include "cHttp.h"
+#include "iPlayer.h"
 #include "cRadioChan.h"
 
 #ifdef WIN32
   #include "../common/timer.h"
-  #include "../common/yuv2rgb.h"
-  #include "yuvrgb_sse2.h"
 
   #ifdef __cplusplus
     extern "C" {
@@ -29,8 +28,9 @@ static int chan = 0;
 
 #ifdef WIN32
   static bool avRegistered = false;
+  static int videoId = 0;
   static ISVCDecoder* svcDecoder = nullptr;
-  static ComPtr<IWICImagingFactory> wicImagingFactory = nullptr;
+
   static FILE* audFile = nullptr;
   static FILE* vidFile = nullptr;
 #endif
@@ -45,11 +45,6 @@ public:
 
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
-
-  #ifdef WIN32
-    for (auto i = 0; i < 400; i++)
-      vidFrames[i] = nullptr;
-  #endif
     }
   //}}}
   //{{{
@@ -111,8 +106,8 @@ public:
   //}}}
 #ifdef WIN32
   //{{{
-  IWICBitmap* getVideoFrame (int videoFrameInChunk) {
-    return vidFrames [videoFrameInChunk];
+  cVidFrame* getVideoFrame (int videoFrameInChunk) {
+    return &vidFrames [videoFrameInChunk];
     }
   //}}}
 #endif
@@ -269,37 +264,27 @@ private:
   //{{{
   void saveYuvFrame (uint8_t** yuv, int* strides, int width, int height) {
 
-    if (!wicImagingFactory)
-      CoCreateInstance (CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-    if (!vidFrames[mVidFramesLoaded])
-      wicImagingFactory->CreateBitmap (
-        width, height, GUID_WICPixelFormat32bppPBGRA, WICBitmapCacheOnDemand, &vidFrames[mVidFramesLoaded]);
+    vidFrames[mVidFramesLoaded].mYStride = strides[0];
+    vidFrames[mVidFramesLoaded].mUVStride = strides[1];
+    vidFrames[mVidFramesLoaded].mWidth = width;
+    vidFrames[mVidFramesLoaded].mHeight = height;
+    vidFrames[mVidFramesLoaded].mId = videoId++;
 
-    // lock wicBitmap
-    WICRect wicRect = { 0, 0, width, height };
-    IWICBitmapLock* wicBitmapLock = NULL;
-    vidFrames[mVidFramesLoaded]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
+    if (vidFrames[mVidFramesLoaded].mYbuf)
+      free (vidFrames[mVidFramesLoaded].mYbuf);
+    vidFrames[mVidFramesLoaded].mYbuf = (uint8_t*)malloc (vidFrames[mVidFramesLoaded].mHeight * vidFrames[mVidFramesLoaded].mYStride);
+    memcpy (vidFrames[mVidFramesLoaded].mYbuf, yuv[0], vidFrames[mVidFramesLoaded].mHeight * vidFrames[mVidFramesLoaded].mYStride);
 
-    // get wicBitmap buffer
-    UINT bufferLen = 0;
-    BYTE* buffer = NULL;
-    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+    if (vidFrames[mVidFramesLoaded].mUbuf)
+      free (vidFrames[mVidFramesLoaded].mUbuf);
+    vidFrames[mVidFramesLoaded].mUbuf = (uint8_t*)malloc ((vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
+    memcpy (vidFrames[mVidFramesLoaded].mUbuf, yuv[1], (vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
 
-    for (int i = 0; i < height/2; i++) {
-      yuv420_rgba32_sse2 (yuv[0], yuv[1], yuv[2], buffer, width);
-      yuv[0] += strides[0];
-      buffer += width * 4;
+    if (vidFrames[mVidFramesLoaded].mVbuf)
+      free (vidFrames[mVidFramesLoaded].mVbuf);
+    vidFrames[mVidFramesLoaded].mVbuf = (uint8_t*)malloc ((vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
+    memcpy (vidFrames[mVidFramesLoaded].mVbuf, yuv[2], (vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
 
-      yuv420_rgba32_sse2 (yuv[0], yuv[1], yuv[2], buffer, width);
-      yuv[0] += strides[0];
-      yuv[1] += strides[1];
-      yuv[2] += strides[1];
-      buffer += width * 4;
-      }
-
-    wicBitmapLock->Release();
-
-    // vidFrame ready
     mVidFramesLoaded++;
     }
   //}}}
@@ -345,8 +330,7 @@ private:
         sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
 
         svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, yuv, &sDstBufInfo);
-
-        if (sDstBufInfo.iBufferStatus == 1)
+        if (sDstBufInfo.iBufferStatus)
           saveYuvFrame (yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
                         sDstBufInfo.UsrData.sSystemBuffer.iWidth, sDstBufInfo.UsrData.sSystemBuffer.iHeight);
 
@@ -458,7 +442,7 @@ private:
   uint8_t* mPower;
 
   #ifdef WIN32
-    IWICBitmap* vidFrames[400];
+  cVidFrame vidFrames[400];
   #endif
   //}}}
   };

@@ -3,6 +3,20 @@
 
 #include "cHttp.h"
 
+class cVidFrame  {
+public:
+  cVidFrame(): mYbuf(nullptr), mUbuf(nullptr),mVbuf(nullptr),
+               mYStride(0), mUVStride(0), mWidth(0), mHeight(0), mId(0) {}
+  uint8_t* mYbuf;
+  uint8_t* mUbuf;
+  uint8_t* mVbuf;
+  int mYStride;
+  int mUVStride;
+  int mWidth;
+  int mHeight;
+  int mId;
+  };
+
 class iPlayer {
 public:
   virtual ~iPlayer() {}
@@ -26,9 +40,9 @@ public:
   virtual void togglePlaying() = 0;
 
   virtual int changeSource (cHttp* http, int channel) = 0;
-  virtual bool load (cHttp* http, int frame) = 0;
+  virtual bool load (ID2D1DeviceContext* dc, cHttp* http, int frame) = 0;
 
   virtual uint8_t* getPower (int frame, int& frames) = 0;
   virtual int16_t* getAudioSamples (int frame, int& seqNum) = 0;
-  virtual IWICBitmap* getVideoFrame (int frame, int seqNum) = 0;
+  virtual cVidFrame* getVideoFrame (int frame, int seqNum) = 0;
   };

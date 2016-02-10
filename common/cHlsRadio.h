@@ -117,7 +117,7 @@ public:
     }
   //}}}
   //{{{
-  bool load (cHttp* http, int frame) {
+  bool load (ID2D1DeviceContext* dc, cHttp* http, int frame) {
   // return false if any load failed
 
     bool ok = true;
@@ -163,7 +163,7 @@ public:
     }
   //}}}
   //{{{
-  IWICBitmap* getVideoFrame (int frame, int seqNum) {
+  cVidFrame* getVideoFrame (int frame, int seqNum) {
   // return videoFrame for frame in seqNum chunk
 
     int chunk;
@@ -260,7 +260,7 @@ private:
         vidFrameInChunk = (((frame - mBaseFrame) * getVidFramesPerChunk()) / getAudFramesPerChunk()) % getVidFramesPerChunk();
         if (vidFrameInChunk < 0)
           vidFrameInChunk += getVidFramesPerChunk();
-        if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded())) 
+        if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
           return true;
         }
 
