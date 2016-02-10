@@ -402,6 +402,7 @@
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="yuv2rgb.h" />
+    <ClInclude Include="yuvrgb_sse2.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="yuvrgb_sse2.asm">

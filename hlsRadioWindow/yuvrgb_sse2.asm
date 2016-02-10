@@ -1,20 +1,4 @@
 ; yuvrgb_sse2.asm - se2 yuv to rgb converter - 8 pixels per loop
-;  reads 128 bits of yuv 8 bit data and puts
-;    y values converted to 16 bit in xmm0
-;    u values converted to 16 bit and duplicated into xmm1
-;    v values converted to 16 bit and duplicated into xmm2
-;  yuv to rgb conversion using 16 bit fixed point results placed into registers as 8 bit clamped values
-;    r values in xmm3
-;    g values in xmm4
-;    b values in xmm5
-;  writes out the rgba pixels as 8 bit values with 0 for alpha
-;    xmm6 used for scratch
-;    xmm7 used for scratch
-;
-%ifdef WIN64
-;-------------------------------------------------------- X64----------------------------------------------------
-  DEFAULT REL
-  BITS 64
 
 SECTION .data align=16
 ; r = y + 0 * u + 1.402 * v
@@ -26,11 +10,16 @@ RConst     dw     0,  5743,     0,  5743,     0,  5743,     0,  5743
 GConst     dw -1409, -2925, -1409, -2925, -1409, -2925, -1409, -2925
 BConst     dw  7258,     0,  7258,     0,  7258,     0,  7258,     0
 
+%ifdef WIN64
+;-------------------------------------------------------- X64----------------------------------------------------
+  DEFAULT REL
+  BITS 64
+
 ; void yuv420_rgba32_sse2 (void* yPtr, void* uPtr, void* vPtr, void* toPtr, int64 width)
 SECTION .text align=16
         ALIGN 16
         global yuv420_rgba32_sse2
-yuv420_rgba32_sse2:
+yuv420_rgba32_sse2:              ; rcx,rdx,r8,r9,rax,xmm0-6 volatile regs
 ;                                  rcx = yPtr
 ;                                  rdx = uPtr
 ;                                   r8 = vPtr
@@ -106,19 +95,10 @@ REPEATLOOP:
         jnz REPEATLOOP
 ENDLOOP:
         ret
-
-SECTION .note.GNU-stack noalloc noexec nowrite progbits
 %endif
 
 %ifdef X86_32
 ;-----------------------------------------------x86-------------------------------------------------------
-SECTION .data align=16
-Const16    dw    16,    16,    16,    16,    16,    16,    16,    16
-Const128   dw   128,   128,   128,   128,   128,   128,   128,   128
-RConst     dw     0,  5743,     0,  5743,     0,  5743,     0,  5743
-GConst     dw -1409, -2925, -1409, -2925, -1409, -2925, -1409, -2925
-BConst     dw  7258,     0,  7258,     0,  7258,     0,  7258,     0
-
 ; void yuv420_rgba32_sse2 (void *fromYPtr, void *fromUPtr, void *fromVPtr, void *toPtr, int width)
 %define fromYPtr ebp+8
 %define fromUPtr ebp+12
@@ -229,7 +209,6 @@ ENDLOOP:
         mov esp, ebp
         pop ebp
         ret
+%endif
 
 SECTION .note.GNU-stack noalloc noexec nowrite progbits
-
-%endif

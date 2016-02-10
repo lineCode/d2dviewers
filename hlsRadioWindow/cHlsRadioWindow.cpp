@@ -167,13 +167,12 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     if (mVidFrame) {
-      //{{{  convert to mD2D1Bitmap 32bit BGRA
+      //{{{  convert IWICBitmap to mD2D1Bitmap 32bit BGRA
       IWICFormatConverter* wicFormatConverter;
       getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
 
       wicFormatConverter->Initialize (mVidFrame,
-        GUID_WICPixelFormat32bppPBGRA,
-        WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+        GUID_WICPixelFormat32bppPBGRA, WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
 
       if (mD2D1Bitmap)
         mD2D1Bitmap->Release();
