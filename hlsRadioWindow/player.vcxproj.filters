@@ -553,7 +553,7 @@
     <ClInclude Include="yuvrgb_sse2.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="yuv2rgb.h">
+    <ClInclude Include="..\common\cYuvFrame.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

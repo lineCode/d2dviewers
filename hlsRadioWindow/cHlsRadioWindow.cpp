@@ -31,7 +31,7 @@ class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
   cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
-                      mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
+                      mHttpRxBytes(0), mShowChan(false), mVideoFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
@@ -168,7 +168,8 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    if (makeBitmap())
+    makeBitmap (mVideoFrame);
+    if (mBitmap)
       dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -238,11 +239,11 @@ protected:
 
 private:
   //{{{
-  bool makeBitmap() {
+  bool makeBitmap (cYuvFrame* yuvFrame) {
 
-    if (mVidFrame) {
-      if (mVidFrame->mId != mVidId) {
-        mVidId = mVidFrame->mId;
+    if (yuvFrame) {
+      if (yuvFrame->mId != mVidId) {
+        mVidId = yuvFrame->mId;
         if (!mBitmap) {
           // create bitmap, should check size
           D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
@@ -250,26 +251,26 @@ private:
           d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
           d2d1_bitmapProperties.dpiX = 96.0f;
           d2d1_bitmapProperties.dpiY = 96.0f;
-          getDeviceContext()->CreateBitmap (SizeU (mVidFrame->mWidth, mVidFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
+          getDeviceContext()->CreateBitmap (SizeU (yuvFrame->mWidth, yuvFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
           }
 
         // vidFrame yuv420 -> bitmap bgra
-        auto bgraBuf = (uint8_t*)malloc (2*mVidFrame->mWidth * 4);
+        auto bgraBuf = (uint8_t*)malloc (2*yuvFrame->mWidth * 4);
 
-        auto yPtr = mVidFrame->mYbuf;
-        auto uPtr = mVidFrame->mUbuf;
-        auto vPtr = mVidFrame->mVbuf;
-        for (auto i = 0; i < mVidFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, mVidFrame->mWidth);
-          yPtr += mVidFrame->mYStride;
+        auto yPtr = yuvFrame->mYbuf;
+        auto uPtr = yuvFrame->mUbuf;
+        auto vPtr = yuvFrame->mVbuf;
+        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
 
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (mVidFrame->mWidth * 4), mVidFrame->mWidth);
-          yPtr += mVidFrame->mYStride;
-          uPtr += mVidFrame->mUVStride;
-          vPtr += mVidFrame->mUVStride;
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+          uPtr += yuvFrame->mUVStride;
+          vPtr += yuvFrame->mUVStride;
 
-          D2D1_RECT_U r(RectU (0, i, mVidFrame->mWidth, i+2));
-          mBitmap->CopyFromMemory (&r, bgraBuf, mVidFrame->mWidth * 4);
+          D2D1_RECT_U r(RectU (0, i, yuvFrame->mWidth, i+2));
+          mBitmap->CopyFromMemory (&r, bgraBuf, yuvFrame->mWidth * 4);
           }
 
         free (bgraBuf);
@@ -318,8 +319,8 @@ private:
         for (auto i = 0; i < 4096; i++)
           audioSamples[i] = (audioSamples[i] * getVolume()) / 80;
 
-      mVidFrame = mPlayer->getVideoFrame (mPlayer->getPlayFrame(), seqNum);
       winAudioPlay ((mPlayer->getPlaying() && audioSamples) ? audioSamples : mSilence, 4096, 1);
+      mVideoFrame = mPlayer->getVideoFrame (mPlayer->getPlayFrame(), seqNum);
 
       if (mPlayer->getPlaying()) {
         mPlayer->incPlayFrame (1);
@@ -365,7 +366,7 @@ private:
   int16_t* mSilence;
 
   int mVidId;
-  cVidFrame* mVidFrame;
+  cYuvFrame* mVideoFrame;
   ID2D1Bitmap* mBitmap;
   };
 

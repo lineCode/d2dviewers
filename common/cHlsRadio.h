@@ -1,6 +1,7 @@
 // cHlsRadio.h
 #pragma once
 //{{{  includes
+class cYuvFrame;
 #include "cRadioChan.h"
 #include "cHlsChunk.h"
 #include "iPlayer.h"
@@ -163,7 +164,7 @@ public:
     }
   //}}}
   //{{{
-  cVidFrame* getVideoFrame (int frame, int seqNum) {
+  cYuvFrame* getVideoFrame (int frame, int seqNum) {
   // return videoFrame for frame in seqNum chunk
 
     int chunk;

@@ -1,6 +1,7 @@
 // cHlsChunk.h
 #pragma once
 //{{{  includes
+#include "cYuvFrame.h"
 #include "cParsedUrl.h"
 #include "cHttp.h"
 #include "iPlayer.h"
@@ -28,7 +29,6 @@ static int chan = 0;
 
 #ifdef WIN32
   static bool avRegistered = false;
-  static int videoId = 0;
   static ISVCDecoder* svcDecoder = nullptr;
 
   static FILE* audFile = nullptr;
@@ -105,8 +105,8 @@ public:
     }
   //}}}
   //{{{
-  cVidFrame* getVideoFrame (int videoFrameInChunk) {
-    return &vidFrames [videoFrameInChunk];
+  cYuvFrame* getVideoFrame (int videoFrameInChunk) {
+    return &mYuvFrames [videoFrameInChunk];
     }
   //}}}
   //{{{
@@ -260,33 +260,6 @@ private:
 
 #ifdef WIN32
   //{{{
-  void saveYuvFrame (uint8_t** yuv, int* strides, int width, int height) {
-
-    vidFrames[mVidFramesLoaded].mYStride = strides[0];
-    vidFrames[mVidFramesLoaded].mUVStride = strides[1];
-    vidFrames[mVidFramesLoaded].mWidth = width;
-    vidFrames[mVidFramesLoaded].mHeight = height;
-    vidFrames[mVidFramesLoaded].mId = videoId++;
-
-    if (vidFrames[mVidFramesLoaded].mYbuf)
-      free (vidFrames[mVidFramesLoaded].mYbuf);
-    vidFrames[mVidFramesLoaded].mYbuf = (uint8_t*)malloc (vidFrames[mVidFramesLoaded].mHeight * vidFrames[mVidFramesLoaded].mYStride);
-    memcpy (vidFrames[mVidFramesLoaded].mYbuf, yuv[0], vidFrames[mVidFramesLoaded].mHeight * vidFrames[mVidFramesLoaded].mYStride);
-
-    if (vidFrames[mVidFramesLoaded].mUbuf)
-      free (vidFrames[mVidFramesLoaded].mUbuf);
-    vidFrames[mVidFramesLoaded].mUbuf = (uint8_t*)malloc ((vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
-    memcpy (vidFrames[mVidFramesLoaded].mUbuf, yuv[1], (vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
-
-    if (vidFrames[mVidFramesLoaded].mVbuf)
-      free (vidFrames[mVidFramesLoaded].mVbuf);
-    vidFrames[mVidFramesLoaded].mVbuf = (uint8_t*)malloc ((vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
-    memcpy (vidFrames[mVidFramesLoaded].mVbuf, yuv[2], (vidFrames[mVidFramesLoaded].mHeight/2) * vidFrames[mVidFramesLoaded].mUVStride);
-
-    mVidFramesLoaded++;
-    }
-  //}}}
-  //{{{
   void decodeVidOpenH264() {
 
     if (mVidLen) {
@@ -329,8 +302,9 @@ private:
 
         svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, yuv, &sDstBufInfo);
         if (sDstBufInfo.iBufferStatus)
-          saveYuvFrame (yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
-                        sDstBufInfo.UsrData.sSystemBuffer.iWidth, sDstBufInfo.UsrData.sSystemBuffer.iHeight);
+          mYuvFrames[mVidFramesLoaded++].set (yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
+                                              sDstBufInfo.UsrData.sSystemBuffer.iWidth,
+                                              sDstBufInfo.UsrData.sSystemBuffer.iHeight);
 
         iBufPos += iSliceSize;
         if (iBufPos >= mVidLen) {
@@ -352,10 +326,12 @@ private:
         avRegistered = true;
         }
 
-      AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);
       AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_H264);
+
+      AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);
       AVCodecContext* vidCodecContext = avcodec_alloc_context3 (vidCodec);
       avcodec_open2 (vidCodecContext, vidCodec, NULL);
+
       AVFrame* vidFrame = av_frame_alloc();
 
       AVPacket vidPacket;
@@ -372,13 +348,14 @@ private:
         int gotPicture = 0;
         bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
         if (gotPicture)
-          saveYuvFrame (vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
+          mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
+                                              vidCodecContext->width, vidCodecContext->height);
 
         vidPacket.data += bytesUsed;
         vidLen -= bytesUsed;
         }
 
-      av_free (vidFrame);
+      av_frame_free (&vidFrame);
       avcodec_close (vidCodecContext);
       }
     }
@@ -418,7 +395,7 @@ private:
       }
     }
   //}}}
-  cVidFrame vidFrames[400];
+  cYuvFrame mYuvFrames[400];
 #endif
 
   //{{{  private vars

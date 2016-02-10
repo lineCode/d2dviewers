@@ -398,10 +398,10 @@
     <ClInclude Include="..\common\cHttp.h" />
     <ClInclude Include="..\common\cParsedUrl.h" />
     <ClInclude Include="..\common\cRadioChan.h" />
+    <ClInclude Include="..\common\cYuvFrame.h" />
     <ClInclude Include="..\common\iPlayer.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="yuv2rgb.h" />
     <ClInclude Include="yuvrgb_sse2.h" />
   </ItemGroup>
   <ItemGroup>
