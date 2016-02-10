@@ -41,7 +41,7 @@ public:
   //{{{
   cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudFramesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
-                mAudSamplesPerAacFrame(0), mFramesPerAacFrame(0), mAacHE(false), mDecoder(0) {
+                mAudSamplesPerAacFrame(0), mAacHE(false), mDecoder(0) {
 
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
@@ -104,13 +104,11 @@ public:
     return mAudio ? (mAudio + (frameInChunk * mAudSamplesPerAacFrame * 2)) : nullptr;
     }
   //}}}
-#ifdef WIN32
   //{{{
   cVidFrame* getVideoFrame (int videoFrameInChunk) {
     return &vidFrames [videoFrameInChunk];
     }
   //}}}
-#endif
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
@@ -121,7 +119,6 @@ public:
 
     // aacHE has double size frames, treat as two normal frames
     bool aacHE = mAudBitrate <= 48000;
-    mFramesPerAacFrame = aacHE ? 2 : 1;
     mAudSamplesPerAacFrame = radioChan->getAudSamplesPerAacFrame();
 
     // hhtp get chunk
@@ -232,7 +229,7 @@ private:
 
     NeAACDecFrameInfo frameInfo;
     int16_t* buffer = mAudio;
-    int samplesPerAacFrame = mAudSamplesPerAacFrame * mFramesPerAacFrame;
+    int samplesPerAacFrame = mAudSamplesPerAacFrame * (aacHE ? 2 : 1);
     NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
 
     uint8_t* powerPtr = mPower;
@@ -240,7 +237,7 @@ private:
     while (ptr < mAudPtr + mAudLen) {
       NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
       ptr += frameInfo.bytesconsumed;
-      for (int i = 0; i < mFramesPerAacFrame; i++) {
+      for (int i = 0; i < (aacHE ? 2 : 1); i++) {
         // calc left, right power
         int valueL = 0;
         int valueR = 0;
@@ -260,6 +257,7 @@ private:
       }
     }
   //}}}
+
 #ifdef WIN32
   //{{{
   void saveYuvFrame (uint8_t** yuv, int* strides, int width, int height) {
@@ -420,6 +418,7 @@ private:
       }
     }
   //}}}
+  cVidFrame vidFrames[400];
 #endif
 
   //{{{  private vars
@@ -428,7 +427,6 @@ private:
   int mAudFramesLoaded;
   int mVidFramesLoaded;
   int mAudSamplesPerAacFrame;
-  int mFramesPerAacFrame;
   std::string mInfoStr;
 
   uint8_t* mAudPtr;
@@ -440,9 +438,5 @@ private:
   NeAACDecHandle mDecoder;
   int16_t* mAudio;
   uint8_t* mPower;
-
-  #ifdef WIN32
-  cVidFrame vidFrames[400];
-  #endif
   //}}}
   };
