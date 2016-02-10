@@ -239,7 +239,7 @@ protected:
 
 private:
   //{{{
-  bool makeBitmap (cYuvFrame* yuvFrame) {
+  void makeBitmap (cYuvFrame* yuvFrame) {
 
     if (yuvFrame) {
       if (yuvFrame->mId != mVidId) {
@@ -275,10 +275,11 @@ private:
 
         free (bgraBuf);
         }
-      return true;
       }
-    else
-      return false;
+    else if (mBitmap) {
+      mBitmap->Release();
+      mBitmap = nullptr;
+      }
     }
   //}}}
 
@@ -355,7 +356,7 @@ private:
     }
   //}}}
 
-  // private vars
+  //{{{  private vars
   iPlayer* mPlayer;
 
   int mChangeToChannel;
@@ -368,6 +369,7 @@ private:
   int mVidId;
   cYuvFrame* mVideoFrame;
   ID2D1Bitmap* mBitmap;
+  //}}}
   };
 
 //{{{
@@ -382,7 +384,7 @@ int wmain (int argc, wchar_t* argv[]) {
     //}}}
 
 #ifndef _DEBUG
-  //FreeConsole();
+  FreeConsole();
 #endif
 
   cHlsRadioWindow hlsRadioWindow;

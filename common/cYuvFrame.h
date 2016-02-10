@@ -5,18 +5,19 @@ static int videoId = 0;
 
 class cYuvFrame  {
 public:
-  cYuvFrame(): mYbuf(nullptr), mUbuf(nullptr),mVbuf(nullptr),
-               mYStride(0), mUVStride(0), mWidth(0), mHeight(0), mId(0) {}
+  cYuvFrame() : mId(0), mWidth(0), mHeight(0), mYStride(0), mUVStride(0),
+                mYbuf(nullptr), mUbuf(nullptr), mVbuf(nullptr) {}
 
   //{{{
   void set (uint8_t** yuv, int* strides, int width, int height) {
 
-    mYStride = strides[0];
-    mUVStride = strides[1];
+    mId = videoId++;
 
     mWidth = width;
     mHeight = height;
-    mId = videoId++;
+
+    mYStride = strides[0];
+    mUVStride = strides[1];
 
     if (mYbuf)
       free (mYbuf);
@@ -34,16 +35,36 @@ public:
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
     }
   //}}}
+  //{{{
+  void freeResources() {
 
+    mId = 0;
+    mWidth = 0;
+    mHeight = 0;
+
+    mYStride = 0;
+    mUVStride = 0;
+
+    if (mYbuf)
+      free (mYbuf);
+    mYbuf = nullptr;
+
+    if (mUbuf)
+      free (mUbuf);
+    mUbuf = nullptr;
+
+    if (mVbuf)
+      free (mVbuf);
+    mVbuf = nullptr;
+    }
+  //}}}
+
+  int mId;
+  int mWidth;
+  int mHeight;
+  int mYStride;
+  int mUVStride;
   uint8_t* mYbuf;
   uint8_t* mUbuf;
   uint8_t* mVbuf;
-
-  int mYStride;
-  int mUVStride;
-
-  int mWidth;
-  int mHeight;
-
-  int mId;
   };

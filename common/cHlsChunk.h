@@ -158,6 +158,9 @@ public:
 
     mSeqNum = 0;
     mAudFramesLoaded = 0;
+
+    for (auto i = 0; i < 400; i++)
+      mYuvFrames[i].freeResources();
     }
   //}}}
 
