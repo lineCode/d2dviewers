@@ -41,17 +41,17 @@ public:
   //{{{
   cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudSamplesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
-                mAacHE(false), mDecoder(0) {
+                mAacHE(false), mAudDecoder(0) {
 
     mAudSamples = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
-    mPower = (uint8_t*)malloc (375 * 2);
+    mAudPower = (uint8_t*)malloc (375 * 2);
     }
   //}}}
   //{{{
   ~cHlsChunk() {
 
-    if (mPower)
-      free (mPower);
+    if (mAudPower)
+      free (mAudPower);
     if (mAudSamples)
       vPortFree (mAudSamples);
 
@@ -93,10 +93,8 @@ public:
   //}}}
 
   //{{{
-  uint8_t* getAudPower (int frameInChunk, int& frames) {
-
-    frames = (getAudSamplesLoaded()/1024) - frameInChunk;
-    return mPower ? mPower + (frameInChunk * 2) : nullptr;
+  uint8_t* getAudPower() {
+    return mAudPower;
     }
   //}}}
   //{{{
@@ -210,15 +208,15 @@ private:
   //{{{
   void decodeAudFaad (bool aacHE, int samplesPerAacFrame) {
 
-    if (!mDecoder || (aacHE != mAacHE)) {
+    if (!mAudDecoder || (aacHE != mAacHE)) {
       //{{{  init audDecoder
       if (aacHE != mAacHE)
-        NeAACDecClose (mDecoder);
+        NeAACDecClose (mAudDecoder);
 
-      mDecoder = NeAACDecOpen();
-      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
+      mAudDecoder = NeAACDecOpen();
+      NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mAudDecoder);
       config->outputFormat = FAAD_FMT_16BIT;
-      NeAACDecSetConfiguration (mDecoder, config);
+      NeAACDecSetConfiguration (mAudDecoder, config);
 
       mAacHE = aacHE;
       }
@@ -227,18 +225,18 @@ private:
     // init aacDecoder
     unsigned long sampleRate;
     uint8_t chans;
-    NeAACDecInit (mDecoder, mAudPtr, 2048, &sampleRate, &chans);
+    NeAACDecInit (mAudDecoder, mAudPtr, 2048, &sampleRate, &chans);
 
     NeAACDecFrameInfo frameInfo;
     int16_t* buffer = mAudSamples;
 
     int actualSamplesPerAacFrame = aacHE ? samplesPerAacFrame*2 :samplesPerAacFrame;
-    NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
+    NeAACDecDecode2 (mAudDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
 
-    uint8_t* powerPtr = mPower;
+    uint8_t* powerPtr = mAudPower;
     auto ptr = mAudPtr;
     while (ptr < mAudPtr + mAudLen) {
-      NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
+      NeAACDecDecode2 (mAudDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
       ptr += frameInfo.bytesconsumed;
       for (int i = 0; i < (aacHE ? 2 : 1); i++) {
         // calc left, right power
@@ -414,8 +412,8 @@ private:
   size_t mVidLen;
 
   bool mAacHE;
-  NeAACDecHandle mDecoder;
+  NeAACDecHandle mAudDecoder;
   int16_t* mAudSamples;
-  uint8_t* mPower;
+  uint8_t* mAudPower;
   //}}}
   };

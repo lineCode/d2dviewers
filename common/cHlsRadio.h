@@ -146,12 +146,14 @@ public:
     int frameInChunk;
     int sampleInChunk;
 
-    frames = 0;
-
-    if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk))
-      return mChunks[chunk].getAudPower(frameInChunk, frames);
-    else
+    if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk)) {
+      frames = (mChunks[chunk].getAudSamplesLoaded()/1024) - frameInChunk;
+      return mChunks[chunk].getAudPower() + (frameInChunk * 2);
+      }
+    else {
+      frames = 0;
       return nullptr;
+      } 
     }
   //}}}
   //{{{
