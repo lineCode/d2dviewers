@@ -20,7 +20,7 @@ public:
   virtual int getSource() = 0;
   virtual int getNumSource() = 0;
   virtual std::string getSourceStr (int index) = 0;
-  virtual void incSourceBitrate() = 0;
+  virtual void setSourceVidBitrate (bool allowProfileChange, bool jumped) = 0;
   virtual double changeSource (cHttp* http, int channel) = 0;
 
   virtual void setPlaySecs (double secs) = 0;

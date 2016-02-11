@@ -148,7 +148,7 @@ protected:
     if (x < 80) {
       int channel = (y / 20) - 1;
       if (channel <= 0)
-        mPlayer->incSourceBitrate();
+        mPlayer->setSourceVidBitrate (true, false);
       else if (channel < mPlayer->getNumSource()) {
         mChangeToChannel = channel;
         signal();

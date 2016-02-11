@@ -154,19 +154,24 @@ public:
     }
   //}}}
   //{{{
-  void incVidBitrate() {
+  void setVidBitrate (bool allowProfileChange, bool jumped) {
 
-    if (mVidBitrate == 86000)
+    if (jumped) {
+      mVidBitrate = 86000;
+      mVidProfile = 0;
+      mVidFramesPerChunk = 200;
+      }
+    else if (mVidBitrate == 86000)
       mVidBitrate = 156000;
     else if (mVidBitrate == 156000)
       mVidBitrate = 281000;
     else if (mVidBitrate == 281000)
       mVidBitrate = 688000;
-    else if (mVidBitrate == 688000) {
+    else if (allowProfileChange && (mVidBitrate == 688000)) {
       mVidBitrate = 437000;
       mVidProfile = 1;
       }
-    else if (mVidBitrate == 437000) {
+    else if (allowProfileChange && (mVidBitrate == 437000)) {
       mVidBitrate = 827000;
       mVidProfile = 2;
       }
