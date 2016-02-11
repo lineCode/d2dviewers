@@ -13,27 +13,37 @@ public:
 
     mId = videoId++;
 
+    bool sizeChanged = (mWidth != width) || (mHeight != height) || (mYStride != strides[0]) || (mUVStride != strides[1]);
     mWidth = width;
     mHeight = height;
 
     mYStride = strides[0];
     mUVStride = strides[1];
 
-    if (mYbufRaw)
+    if (sizeChanged && mYbufRaw) {
       free (mYbufRaw);
-    mYbufRaw = (uint8_t*)malloc ((height * mYStride) + 15);
+      mYbufRaw = nullptr;
+      }
+    if (!mYbufRaw)
+      mYbufRaw = (uint8_t*)malloc ((height * mYStride) + 15);
     mYbuf = (uint8_t*)(((size_t)(mYbufRaw)+15) & ~0xf);
     memcpy (mYbuf, yuv[0], height * mYStride);
 
-    if (mUbufRaw)
+    if (sizeChanged && mUbufRaw) {
       free (mUbufRaw);
-    mUbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
+      mUbufRaw = nullptr;
+      }
+    if (!mUbufRaw)
+      mUbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
     mUbuf = (uint8_t*)(((size_t)(mUbufRaw)+15) & ~0xf);
     memcpy (mUbuf, yuv[1], (height/2) * mUVStride);
 
-    if (mVbufRaw)
+    if (sizeChanged && mVbufRaw) {
       free (mVbufRaw);
-    mVbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
+      mVbufRaw = nullptr;
+      }
+    if (!mVbufRaw)
+      mVbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
     mVbuf = (uint8_t*)(((size_t)(mVbufRaw)+15) & ~0xf);
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
     }
