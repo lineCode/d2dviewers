@@ -43,7 +43,7 @@ public:
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
                 mAacHE(false), mDecoder(0) {
 
-    mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
+    mAudSamples = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
     }
   //}}}
@@ -52,8 +52,8 @@ public:
 
     if (mPower)
       free (mPower);
-    if (mAudio)
-      vPortFree (mAudio);
+    if (mAudSamples)
+      vPortFree (mAudSamples);
 
   #ifdef WIN32
     if (svcDecoder) {
@@ -101,7 +101,7 @@ public:
   //}}}
   //{{{
   int16_t* getAudSamples() {
-    return mAudio;
+    return mAudSamples;
     }
   //}}}
   //{{{
@@ -230,7 +230,7 @@ private:
     NeAACDecInit (mDecoder, mAudPtr, 2048, &sampleRate, &chans);
 
     NeAACDecFrameInfo frameInfo;
-    int16_t* buffer = mAudio;
+    int16_t* buffer = mAudSamples;
 
     int actualSamplesPerAacFrame = aacHE ? samplesPerAacFrame*2 :samplesPerAacFrame;
     NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
@@ -415,7 +415,7 @@ private:
 
   bool mAacHE;
   NeAACDecHandle mDecoder;
-  int16_t* mAudio;
+  int16_t* mAudSamples;
   uint8_t* mPower;
   //}}}
   };
