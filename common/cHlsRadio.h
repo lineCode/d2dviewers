@@ -142,10 +142,16 @@ public:
   // frames = number of valid frames
 
     int seqNum;
-    int chunk = 0;
+    int chunk;
     int frameInChunk;
+    int sampleInChunk;
+
     frames = 0;
-    return findAudFrame (secs, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudPower (frameInChunk, frames) : nullptr;
+
+    if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk))
+      return mChunks[chunk].getAudPower(frameInChunk, frames);
+    else
+      return nullptr;
     }
   //}}}
   //{{{
@@ -154,7 +160,12 @@ public:
 
     int chunk;
     int frameInChunk;
-    return findAudFrame (secs, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudSamples (frameInChunk) : nullptr;
+    int sampleInChunk;
+
+    if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk))
+      return mChunks[chunk].getAudSamples (sampleInChunk);
+    else
+      return nullptr;
     }
   //}}}
   //{{{
@@ -224,7 +235,7 @@ private:
     }
   //}}}
   //{{{
-  bool findAudFrame (double secs, int& seqNum, int& chunk, int& audFrameInChunk) {
+  bool findAudFrame (double secs, int& seqNum, int& chunk, int& audFrameInChunk, int& audSampleInChunk) {
   // return true, seqNum, chunk and audFrameInChunk of loadedChunk from frame
   // - return false if not found
 
@@ -236,13 +247,15 @@ private:
         audFrameInChunk = audFrame % getAudFramesPerChunk();
         if (audFrameInChunk < 0)
           audFrameInChunk += getAudFramesPerChunk();
+        audSampleInChunk = audFrameInChunk * getAudSamplesPerAacFrame() * 2;
         if (mChunks[chunk].getAudFramesLoaded() && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
           return true;
         }
 
     seqNum = 0;
     chunk = 0;
-    audFrameInChunk = -1;
+    audFrameInChunk = 0;
+    audSampleInChunk = 0;
     return false;
     }
   //}}}

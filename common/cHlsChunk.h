@@ -41,7 +41,7 @@ public:
   //{{{
   cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudFramesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
-                mAudSamplesPerAacFrame(0), mAacHE(false), mDecoder(0) {
+                mAacHE(false), mDecoder(0) {
 
     mAudio = (int16_t*)pvPortMalloc (375 * 1024 * 2 * 2);
     mPower = (uint8_t*)malloc (375 * 2);
@@ -100,8 +100,8 @@ public:
     }
   //}}}
   //{{{
-  int16_t* getAudSamples (int frameInChunk) {
-    return mAudio ? (mAudio + (frameInChunk * mAudSamplesPerAacFrame * 2)) : nullptr;
+  int16_t* getAudSamples (int sampleInChunk) {
+    return mAudio ? (mAudio + sampleInChunk) : nullptr;
     }
   //}}}
   //{{{
@@ -119,7 +119,6 @@ public:
 
     // aacHE has double size frames, treat as two normal frames
     bool aacHE = mAudBitrate <= 48000;
-    mAudSamplesPerAacFrame = radioChan->getAudSamplesPerAacFrame();
 
     // hhtp get chunk
     startTimer();
@@ -132,7 +131,7 @@ public:
       pesFromTs (http->getContent(), http->getContentEnd(), 34, 0xC0, 33, 0xE0);
     auto time3 = getTimer();
       mAudPtr = http->getContent();
-      decodeAudFaad (aacHE);
+      decodeAudFaad (aacHE, radioChan->getAudSamplesPerAacFrame());
     auto time4 = getTimer();
       radioChan->getVidProfile() ? decodeVidFFmpeg() : decodeVidOpenH264();
       //saveToFile (changeChan, radioChan);
@@ -209,7 +208,7 @@ private:
     }
   //}}}
   //{{{
-  void decodeAudFaad (bool aacHE) {
+  void decodeAudFaad (bool aacHE, int samplesPerAacFrame) {
 
     if (!mDecoder || (aacHE != mAacHE)) {
       //{{{  init audDecoder
@@ -232,28 +231,29 @@ private:
 
     NeAACDecFrameInfo frameInfo;
     int16_t* buffer = mAudio;
-    int samplesPerAacFrame = mAudSamplesPerAacFrame * (aacHE ? 2 : 1);
-    NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+
+    int actualSamplesPerAacFrame = aacHE ? samplesPerAacFrame*2 :samplesPerAacFrame;
+    NeAACDecDecode2 (mDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
 
     uint8_t* powerPtr = mPower;
     auto ptr = mAudPtr;
     while (ptr < mAudPtr + mAudLen) {
-      NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
+      NeAACDecDecode2 (mDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
       ptr += frameInfo.bytesconsumed;
       for (int i = 0; i < (aacHE ? 2 : 1); i++) {
         // calc left, right power
         int valueL = 0;
         int valueR = 0;
-        for (int j = 0; j < mAudSamplesPerAacFrame; j++) {
+        for (int j = 0; j < samplesPerAacFrame; j++) {
           short sample = (*buffer++) >> 4;
           valueL += sample * sample;
           sample = (*buffer++) >> 4;
           valueR += sample * sample;
           }
 
-        uint8_t leftPix = (uint8_t)sqrt(valueL / (mAudSamplesPerAacFrame * 32.0f));
+        uint8_t leftPix = (uint8_t)sqrt(valueL / (samplesPerAacFrame * 32.0f));
         *powerPtr++ = (272/2) - leftPix;
-        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mAudSamplesPerAacFrame * 32.0f));
+        *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (samplesPerAacFrame * 32.0f));
 
         mAudFramesLoaded++;
         }
@@ -406,7 +406,6 @@ private:
   int mAudBitrate;
   int mAudFramesLoaded;
   int mVidFramesLoaded;
-  int mAudSamplesPerAacFrame;
   std::string mInfoStr;
 
   uint8_t* mAudPtr;
