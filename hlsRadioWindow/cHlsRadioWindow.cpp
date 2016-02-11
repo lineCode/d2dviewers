@@ -31,7 +31,7 @@ class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
   cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
-                      mHttpRxBytes(0), mShowChan(false), mVideoFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
+                      mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
@@ -69,6 +69,8 @@ public:
 protected:
   //{{{
   int keyInc() {
+  // control = hour
+  // shift   = min
     return controlKeyDown ? 60*60 : shiftKeyDown ? 60 : 1;
     }
   //}}}
@@ -81,17 +83,21 @@ protected:
 
       case 0x20 : mPlayer->togglePlaying(); break;  // space
 
-      case 0x21 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-5*60)); changed(); break; // page up
-      case 0x22 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+5*60)); changed(); break; // page down
+      case 0x21 : mPlayer->incPlaySecs (-5*60); changed(); break; // page up
+      case 0x22 : mPlayer->incPlaySecs (+5*60); changed(); break; // page down
 
       //case 0x23 : break; // end
       //case 0x24 : break; // home
 
-      case 0x25 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (-keyInc())); changed(); break;  // left arrow
-      case 0x27 : mPlayer->incPlayFrame (mPlayer->getAudFramesFromSec (+keyInc())); changed(); break;  // right arrow
+      case 0x25 : mPlayer->incPlaySecs (-keyInc()); changed(); break;  // left arrow
+      case 0x27 : mPlayer->incPlaySecs (+keyInc()); changed(); break;  // right arrow
 
-      case 0x26 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (-keyInc()); changed(); break; // up arrow
-      case 0x28 : mPlayer->setPlaying (false); mPlayer->incPlayFrame (+keyInc()); changed(); break; // down arrow
+      case 0x26 :  // up arrow
+      case 0x28 :  // down arrow
+        mPlayer->setPlaying (false);
+        mPlayer->incPlaySecs (((key == 0x26) ? -1.0 : 1.0) * keyInc() * mPlayer->getSecsPerVidFrame());
+        changed();
+        break;
       //case 0x2d : break; // insert
       //case 0x2e : break; // delete
 
@@ -155,7 +161,7 @@ protected:
     if (x > int(getClientF().width-20))
       setVolume (int(y * 100 / getClientF().height));
     else
-      mPlayer->incPlayFrame (-xInc);
+      mPlayer->incPlaySecs (-xInc * mPlayer->getSecsPerAudFrame());
     }
   //}}}
   //{{{
@@ -168,7 +174,7 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    makeBitmap (mVideoFrame);
+    makeBitmap (mVidFrame);
     if (mBitmap)
       dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
     else
@@ -183,24 +189,25 @@ protected:
     dc->FillRectangle (rVol, getYellowBrush());
 
     // waveform
-    int frame = int(mPlayer->getPlayFrame()) - (int)(getClientF().width/2);
+    double secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
     uint8_t* power = nullptr;
     int frames = 0;
     D2D1_RECT_F rWave = RectF (0,0,1,0);
-    for (; rWave.left < getClientF().width; rWave.left++, rWave.right++, frame++) {
+    for (; rWave.left < getClientF().width; rWave.left++, rWave.right++) {
       if (!frames)
-        power = mPlayer->getPower (frame, frames);
+        power = mPlayer->getPower (secs, frames);
       if (power) {
         rWave.top = (float)*power++;
         rWave.bottom = rWave.top + *power++;
         dc->FillRectangle (rWave, getBlueBrush());
         frames--;
         }
+      secs += mPlayer->getSecsPerAudFrame();
       }
 
     // topLine info str
     wchar_t wStr[200];
-    swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlayFrame()).c_str(), mHttpRxBytes/1000000.0f);
+    swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str(), mHttpRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
     if (mShowChan)
@@ -293,11 +300,11 @@ private:
     cHttp http;
     while (true) {
       if (mPlayer->getSource() != mChangeToChannel) {
-        mPlayer->setPlayFrame (mPlayer->changeSource (&http, mChangeToChannel) - mPlayer->getAudFramesFromSec(6));
+        mPlayer->setPlaySecs (mPlayer->changeSource (&http, mChangeToChannel) - 6.0);
         changed();
         }
-      if (!mPlayer->load (getDeviceContext(), &http, mPlayer->getPlayFrame())) {
-        printf ("sleep frame:%3.2f\n", mPlayer->getPlayFrame());
+      if (!mPlayer->load (getDeviceContext(), &http, mPlayer->getPlaySecs())) {
+        printf ("sleep frame:%3.2f\n", mPlayer->getPlaySecs());
         sleep (1000);
         }
       mHttpRxBytes = http.getRxBytes();
@@ -316,16 +323,16 @@ private:
     int lastSeqNum = 0;
     while (true) {
       int seqNum;
-      int16_t* audioSamples = mPlayer->getAudioSamples (mPlayer->getPlayFrame(), seqNum);
-      if (audioSamples && (getVolume() != 80))
+      int16_t* audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
+      if (audSamples && (getVolume() != 80))
         for (auto i = 0; i < 4096; i++)
-          audioSamples[i] = (audioSamples[i] * getVolume()) / 80;
+          audSamples[i] = (audSamples[i] * getVolume()) / 80;
 
-      winAudioPlay ((mPlayer->getPlaying() && audioSamples) ? audioSamples : mSilence, 4096, 1);
-      mVideoFrame = mPlayer->getVideoFrame (mPlayer->getPlayFrame(), seqNum);
+      winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1);
+      mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
       if (mPlayer->getPlaying()) {
-        mPlayer->incPlayFrame (1);
+        mPlayer->incPlaySecs (mPlayer->getSecsPerAudFrame());
         changed();
         }
 
@@ -368,7 +375,7 @@ private:
   int16_t* mSilence;
 
   int mVidId;
-  cYuvFrame* mVideoFrame;
+  cYuvFrame* mVidFrame;
   ID2D1Bitmap* mBitmap;
   //}}}
   };

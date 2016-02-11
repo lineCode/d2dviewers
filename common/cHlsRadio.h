@@ -9,7 +9,7 @@ class cYuvFrame;
 class cHlsRadio : public cRadioChan, public iPlayer {
 public:
   //{{{
-  cHlsRadio() : mPlayFrame(0), mPlaying(true), mBaseFrame(0), mAudBitrate(0), mJumped(false) {}
+  cHlsRadio() : mPlaying(true), mPlaySecs(0), mBaseSecs(0), mAudBitrate(0), mJumped(false) {}
   //}}}
   virtual ~cHlsRadio() {}
 
@@ -20,38 +20,32 @@ public:
     }
   //}}}
   //{{{
-  int getAudFramesFromSec (int sec) {
-    return cRadioChan::getAudFramesFromSec(sec);
+  double getSecsPerAudFrame() {
+    return cRadioChan::getSecsPerAudFrame();
     }
   //}}}
   //{{{
-  std::string getInfoStr (double seconds) {
+  double getSecsPerVidFrame() {
+    return cRadioChan::getSecsPerVidFrame();
+    }
+  //}}}
+  //{{{
+  std::string getInfoStr (double secs) {
     return getChannelName (getChannel()) +
            (isTvChannel() ? ':' + toString (getVidBitrate()/1000) + "k" : "") +
            ':' + toString (getAudBitrate()/1000) + "k " +
-           getFrameStr (seconds);
-    }
-  //}}}
-  //{{{
-  std::string getFrameStr (double seconds) {
-
-    int secsSinceMidnight = int (seconds / getAudFramesPerSecond());
-    int secs = secsSinceMidnight % 60;
-    int mins = (secsSinceMidnight / 60) % 60;
-    int hours = secsSinceMidnight / (60*60);
-
-    return toString (hours) + ':' + toString (mins) + ':' + toString (secs);
+           toString (int(secs) / (60 * 60)) + ':' + toString ((int(secs) / 60) % 60) + ':' + toString (int(secs) % 60);
     }
   //}}}
 
-  //{{{
-  double getPlayFrame() {
-    return mPlayFrame;
-    }
-  //}}}
   //{{{
   bool getPlaying() {
     return mPlaying;
+    }
+  //}}}
+  //{{{
+  double getPlaySecs() {
+    return mPlaySecs;
     }
   //}}}
 
@@ -72,18 +66,18 @@ public:
   //}}}
 
   //{{{
-  void setPlayFrame (double seconds) {
-    mPlayFrame = seconds;
+  void setPlaySecs (double secs) {
+    mPlaySecs = secs;
     }
   //}}}
   //{{{
-  void incPlayFrame (double seconds) {
-    setPlayFrame (mPlayFrame + seconds);
+  void incPlaySecs (double secs) {
+    setPlaySecs (mPlaySecs + secs);
     }
   //}}}
   //{{{
-  void incAlignPlayFrame (double seconds) {
-    setPlayFrame (mPlayFrame + seconds);
+  void incAlignPlaySecs (double secs) {
+    setPlaySecs (mPlaySecs + secs);
     }
   //}}}
 
@@ -99,7 +93,7 @@ public:
   //}}}
 
   //{{{
-  int changeSource (cHttp* http, int source) {
+  double changeSource (cHttp* http, int source) {
 
     printf ("cHlsChunks::setChan %d\n", source);
     setChannel (http, source);
@@ -109,22 +103,22 @@ public:
     int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
     int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
     int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
-    mBaseFrame = getAudFramesFromSec (secsSinceMidnight);
-    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%d\n",
-            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseFrame);
+    mBaseSecs = secsSinceMidnight;
+    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%3.2f\n",
+            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseSecs);
 
     invalidateChunks();
-    return mBaseFrame;
+    return mBaseSecs;
     }
   //}}}
   //{{{
-  bool load (ID2D1DeviceContext* dc, cHttp* http, double seconds) {
+  bool load (ID2D1DeviceContext* dc, cHttp* http, double secs) {
   // return false if any load failed
 
     bool ok = true;
 
     int chunk;
-    int seqNum = getSeqNumFromFrame (seconds);
+    int seqNum = getSeqNumFromSecs (secs);
 
     if (!findSeqNumChunk (seqNum, mAudBitrate, 0, chunk))
       ok &= mChunks[chunk].load (http, this, seqNum, mAudBitrate);
@@ -143,7 +137,7 @@ public:
   //}}}
 
   //{{{
-  uint8_t* getPower (double seconds, int& frames) {
+  uint8_t* getPower (double secs, int& frames) {
   // return pointer to frame power org,len uint8_t pairs
   // frames = number of valid frames
 
@@ -151,25 +145,25 @@ public:
     int chunk = 0;
     int frameInChunk;
     frames = 0;
-    return findAudFrame (seconds, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioPower (frameInChunk, frames) : nullptr;
+    return findAudFrame (secs, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudPower (frameInChunk, frames) : nullptr;
     }
   //}}}
   //{{{
-  int16_t* getAudioSamples (double seconds, int& seqNum) {
+  int16_t* getAudSamples (double secs, int& seqNum) {
   // return audio buffer for frame
 
     int chunk;
     int frameInChunk;
-    return findAudFrame (seconds, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudioSamples (frameInChunk) : nullptr;
+    return findAudFrame (secs, seqNum, chunk, frameInChunk) ? mChunks[chunk].getAudSamples (frameInChunk) : nullptr;
     }
   //}}}
   //{{{
-  cYuvFrame* getVideoFrame (double seconds, int seqNum) {
+  cYuvFrame* getVidFrame (double secs, int seqNum) {
   // return videoFrame for frame in seqNum chunk
 
     int chunk;
     int vidFrameInChunk;
-    return findVidFrame (seconds, seqNum, chunk, vidFrameInChunk) ? mChunks[chunk].getVideoFrame (vidFrameInChunk) : nullptr;
+    return findVidFrame (secs, seqNum, chunk, vidFrameInChunk) ? mChunks[chunk].getVidFrame (vidFrameInChunk) : nullptr;
     }
   //}}}
 
@@ -213,32 +207,33 @@ private:
   //}}}
   //{{{
   void setBitrate (int bitrate) {
-
     mAudBitrate = bitrate;
     }
   //}}}
 
   //{{{
-  int getSeqNumFromFrame (double seconds) {
+  int getSeqNumFromSecs (double secs) {
   // works for -ve frame
 
-    int r = (int)seconds - mBaseFrame;
-    if (r >= 0)
-      return getBaseSeqNum() + (r / getAudFramesPerChunk());
+    int audFrame = int ((secs - mBaseSecs) / getSecsPerAudFrame());
+
+    if (audFrame >= 0)
+      return getBaseSeqNum() + (audFrame / getAudFramesPerChunk());
     else
-      return getBaseSeqNum() - 1 - ((-r-1)/ getAudFramesPerChunk());
+      return getBaseSeqNum() - 1 - ((-audFrame-1)/ getAudFramesPerChunk());
     }
   //}}}
   //{{{
-  bool findAudFrame (double seconds, int& seqNum, int& chunk, int& audFrameInChunk) {
+  bool findAudFrame (double secs, int& seqNum, int& chunk, int& audFrameInChunk) {
   // return true, seqNum, chunk and audFrameInChunk of loadedChunk from frame
   // - return false if not found
 
-    int intSeconds = int(seconds);
-    seqNum = getSeqNumFromFrame (seconds);
+    seqNum = getSeqNumFromSecs (secs);
+
     for (chunk = 0; chunk < 3; chunk++)
       if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
-        audFrameInChunk = (intSeconds - mBaseFrame) % getAudFramesPerChunk();
+        int audFrame = int((secs - mBaseSecs) / getSecsPerAudFrame());
+        audFrameInChunk = audFrame % getAudFramesPerChunk();
         if (audFrameInChunk < 0)
           audFrameInChunk += getAudFramesPerChunk();
         if (mChunks[chunk].getAudFramesLoaded() && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
@@ -252,15 +247,16 @@ private:
     }
   //}}}
   //{{{
-  bool findVidFrame (double seconds, int& seqNum, int& chunk, int& vidFrameInChunk) {
+  bool findVidFrame (double secs, int& seqNum, int& chunk, int& vidFrameInChunk) {
   // return true, seqNum, chunk and vidFrameInChunk of loadedChunk from frame
   // - return false if not found
 
-    int intSeconds = int(seconds);
-    seqNum = getSeqNumFromFrame (seconds);
+    seqNum = getSeqNumFromSecs (secs);
+
     for (chunk = 0; chunk < 3; chunk++)
       if (mChunks[chunk].getSeqNum() && (seqNum == mChunks[chunk].getSeqNum())) {
-        vidFrameInChunk = (((intSeconds - mBaseFrame) * getVidFramesPerChunk()) / getAudFramesPerChunk()) % getVidFramesPerChunk();
+        int vidFrame = int ((secs - mBaseSecs) / getSecsPerVidFrame());
+        vidFrameInChunk = vidFrame % getVidFramesPerChunk();
         if (vidFrameInChunk < 0)
           vidFrameInChunk += getVidFramesPerChunk();
         if (mChunks[chunk].getVidFramesLoaded() && (vidFrameInChunk < mChunks[chunk].getVidFramesLoaded()))
@@ -315,10 +311,9 @@ private:
   //}}}
 
   // private vars
-  double mPlayFrame;
   bool mPlaying;
-
-  int mBaseFrame;
+  double mPlaySecs;
+  double mBaseSecs;
   int mAudBitrate;
   bool mJumped;
   std::string mInfoStr;

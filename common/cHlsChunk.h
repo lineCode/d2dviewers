@@ -93,19 +93,19 @@ public:
   //}}}
 
   //{{{
-  uint8_t* getAudioPower (int frameInChunk, int& frames) {
+  uint8_t* getAudPower (int frameInChunk, int& frames) {
 
     frames = getAudFramesLoaded() - frameInChunk;
     return mPower ? mPower + (frameInChunk * 2) : nullptr;
     }
   //}}}
   //{{{
-  int16_t* getAudioSamples (int frameInChunk) {
+  int16_t* getAudSamples (int frameInChunk) {
     return mAudio ? (mAudio + (frameInChunk * mAudSamplesPerAacFrame * 2)) : nullptr;
     }
   //}}}
   //{{{
-  cYuvFrame* getVideoFrame (int videoFrameInChunk) {
+  cYuvFrame* getVidFrame (int videoFrameInChunk) {
     return &mYuvFrames [videoFrameInChunk];
     }
   //}}}
