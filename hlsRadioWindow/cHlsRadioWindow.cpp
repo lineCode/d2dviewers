@@ -248,40 +248,35 @@ private:
   //{{{
   void makeBitmap (cYuvFrame* yuvFrame) {
 
+    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
     if (yuvFrame) {
       if (yuvFrame->mId != mVidId) {
         mVidId = yuvFrame->mId;
-        if (!mBitmap) {
-          // create bitmap, should check size
-          D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
-          d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-          d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
-          d2d1_bitmapProperties.dpiX = 96.0f;
-          d2d1_bitmapProperties.dpiY = 96.0f;
-          getDeviceContext()->CreateBitmap (SizeU (yuvFrame->mWidth, yuvFrame->mHeight), d2d1_bitmapProperties, &mBitmap);
-          }
+        if (!mBitmap) // create bitmap, should check size change as well
+          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
 
-        // vidFrame yuv420 -> bitmap bgra
-        void* bgraBuf = malloc ((2*yuvFrame->mWidth * 4) + 15);
-        uint8_t* alignedBgraBuf = (uint8_t*)(((size_t)(bgraBuf)+15) & ~0xf);
+        // allocate 16 byte aligned bgraBuf
+        auto bgraBufRaw = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufRaw) + 15) & ~0xf);
 
+        // convert yuv420 -> bitmap bgra
         auto yPtr = yuvFrame->mYbuf;
         auto uPtr = yuvFrame->mUbuf;
         auto vPtr = yuvFrame->mVbuf;
         for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, alignedBgraBuf, yuvFrame->mWidth);
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
           yPtr += yuvFrame->mYStride;
 
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, alignedBgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
           yPtr += yuvFrame->mYStride;
           uPtr += yuvFrame->mUVStride;
           vPtr += yuvFrame->mUVStride;
 
-          D2D1_RECT_U r(RectU (0, i, yuvFrame->mWidth, i+2));
-          mBitmap->CopyFromMemory (&r, alignedBgraBuf, yuvFrame->mWidth * 4);
+          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
           }
 
-        free (bgraBuf);
+        free (bgraBufRaw);
         }
       }
     else if (mBitmap) {
