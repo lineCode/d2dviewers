@@ -64,6 +64,25 @@ public:
     return getChannelName (index);
     }
   //}}}
+  //{{{
+  double changeSource (cHttp* http, int source) {
+
+    printf ("cHlsChunks::setChan %d\n", source);
+    setChannel (http, source);
+    mAudBitrate = getAudMidBitrate();
+
+    int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
+    int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
+    int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
+    int secs = (hour * 60 * 60) + (min * 60) + sec;
+    mBaseSecs = secs;
+    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%3.2f\n",
+            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secs, mBaseSecs);
+
+    invalidateChunks();
+    return mBaseSecs;
+    }
+  //}}}
 
   //{{{
   void setPlaySecs (double secs) {
@@ -92,25 +111,6 @@ public:
     }
   //}}}
 
-  //{{{
-  double changeSource (cHttp* http, int source) {
-
-    printf ("cHlsChunks::setChan %d\n", source);
-    setChannel (http, source);
-    mAudBitrate = getAudMidBitrate();
-
-    int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
-    int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
-    int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
-    mBaseSecs = secsSinceMidnight;
-    printf ("cHlsRadio::changeChan- baseSeqNum:%d dateTime:%s %dh %dm %ds %d baseFrame:%3.2f\n",
-            getBaseSeqNum(), getDateTime().c_str(), hour, min, sec, secsSinceMidnight, mBaseSecs);
-
-    invalidateChunks();
-    return mBaseSecs;
-    }
-  //}}}
   //{{{
   bool load (ID2D1DeviceContext* dc, cHttp* http, double secs) {
   // return false if any load failed
@@ -147,13 +147,13 @@ public:
     int sampleInChunk;
 
     if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk)) {
-      frames = (mChunks[chunk].getAudSamplesLoaded()/1024) - frameInChunk;
+      frames = (mChunks[chunk].getAudSamplesLoaded() / getAudSamplesPerAacFrame()) - frameInChunk;
       return mChunks[chunk].getAudPower() + (frameInChunk * 2);
       }
     else {
       frames = 0;
       return nullptr;
-      } 
+      }
     }
   //}}}
   //{{{

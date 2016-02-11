@@ -102,6 +102,7 @@ public:
     return &mYuvFrames [videoFrameInChunk];
     }
   //}}}
+
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
@@ -115,6 +116,7 @@ public:
     // hhtp get chunk
     startTimer();
     auto time1 = startTimer();
+
     auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, audBitrate));
     if (response == 200) {
       // allocate vidPes buffer
@@ -137,6 +139,7 @@ public:
       mInfoStr = "ok " + toString (seqNum) + ':' + toString (audBitrate /1000) + 'k';
       return true;
       }
+
     else {
       mSeqNum = 0;
       mInfoStr = toString (response) + ':' + toString (seqNum) + ':' + toString (audBitrate /1000) + "k " + http->getInfoStr();
@@ -399,6 +402,7 @@ private:
   int mVidFramesLoaded;
   std::string mInfoStr;
 
+  // temps for load
   uint8_t* mAudPtr;
   size_t mAudLen;
   uint8_t* mVidPtr;
@@ -406,6 +410,7 @@ private:
 
   bool mAacHE;
   NeAACDecHandle mAudDecoder;
+
   int16_t* mAudSamples;
   uint8_t* mAudPower;
   //}}}
