@@ -163,7 +163,7 @@ public:
     int sampleInChunk;
 
     if (findAudFrame (secs, seqNum, chunk, frameInChunk, sampleInChunk))
-      return mChunks[chunk].getAudSamples (sampleInChunk);
+      return mChunks[chunk].getAudSamples() + sampleInChunk*2;
     else
       return nullptr;
     }
@@ -247,8 +247,8 @@ private:
         audFrameInChunk = audFrame % getAudFramesPerChunk();
         if (audFrameInChunk < 0)
           audFrameInChunk += getAudFramesPerChunk();
-        audSampleInChunk = audFrameInChunk * getAudSamplesPerAacFrame() * 2;
-        if (mChunks[chunk].getAudFramesLoaded() && (audFrameInChunk < mChunks[chunk].getAudFramesLoaded()))
+        audSampleInChunk = audFrameInChunk * getAudSamplesPerAacFrame();
+        if (mChunks[chunk].getAudSamplesLoaded() && (audSampleInChunk < mChunks[chunk].getAudSamplesLoaded()))
           return true;
         }
 

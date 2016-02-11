@@ -39,7 +39,7 @@ static int chan = 0;
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudFramesLoaded(0), mVidFramesLoaded(0),
+  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudSamplesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
                 mAacHE(false), mDecoder(0) {
 
@@ -77,8 +77,8 @@ public:
     }
   //}}}
   //{{{
-  int getAudFramesLoaded() {
-    return mAudFramesLoaded;
+  int getAudSamplesLoaded() {
+    return mAudSamplesLoaded;
     }
   //}}}
   //{{{
@@ -95,13 +95,13 @@ public:
   //{{{
   uint8_t* getAudPower (int frameInChunk, int& frames) {
 
-    frames = getAudFramesLoaded() - frameInChunk;
+    frames = (getAudSamplesLoaded()/1024) - frameInChunk;
     return mPower ? mPower + (frameInChunk * 2) : nullptr;
     }
   //}}}
   //{{{
-  int16_t* getAudSamples (int sampleInChunk) {
-    return mAudio ? (mAudio + sampleInChunk) : nullptr;
+  int16_t* getAudSamples() {
+    return mAudio;
     }
   //}}}
   //{{{
@@ -112,7 +112,7 @@ public:
   //{{{
   bool load (cHttp* http, cRadioChan* radioChan, int seqNum, int audBitrate) {
 
-    mAudFramesLoaded = 0;
+    mAudSamplesLoaded = 0;
     mVidFramesLoaded = 0;
     mSeqNum = seqNum;
     mAudBitrate = audBitrate;
@@ -156,7 +156,7 @@ public:
   void invalidate() {
 
     mSeqNum = 0;
-    mAudFramesLoaded = 0;
+    mAudSamplesLoaded = 0;
 
     for (auto i = 0; i < 400; i++)
       mYuvFrames[i].freeResources();
@@ -255,7 +255,7 @@ private:
         *powerPtr++ = (272/2) - leftPix;
         *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (samplesPerAacFrame * 32.0f));
 
-        mAudFramesLoaded++;
+        mAudSamplesLoaded += samplesPerAacFrame;
         }
       }
     }
@@ -404,7 +404,7 @@ private:
   //{{{  private vars
   int mSeqNum;
   int mAudBitrate;
-  int mAudFramesLoaded;
+  int mAudSamplesLoaded;
   int mVidFramesLoaded;
   std::string mInfoStr;
 
