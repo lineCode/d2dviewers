@@ -183,7 +183,7 @@ protected:
     dc->FillRectangle (rVol, getYellowBrush());
 
     // waveform
-    int frame = mPlayer->getPlayFrame() - int(getClientF().width/2);
+    int frame = int(mPlayer->getPlayFrame()) - (int)(getClientF().width/2);
     uint8_t* power = nullptr;
     int frames = 0;
     D2D1_RECT_F rWave = RectF (0,0,1,0);
@@ -297,7 +297,7 @@ private:
         changed();
         }
       if (!mPlayer->load (getDeviceContext(), &http, mPlayer->getPlayFrame())) {
-        printf ("sleep frame:%d\n", mPlayer->getPlayFrame());
+        printf ("sleep frame:%3.2f\n", mPlayer->getPlayFrame());
         sleep (1000);
         }
       mHttpRxBytes = http.getRxBytes();
