@@ -31,7 +31,7 @@ class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
   cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
-                      mHttpRxBytes(0), mShowChan(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
+                      mHttpRxBytes(0), mShowChannel(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
 
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
@@ -133,9 +133,9 @@ protected:
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
 
-    bool showChan = mShowChan;
-    mShowChan = inClient && (x < 80);
-    if (showChan != mShowChan)
+    bool showChannel = mShowChannel;
+    mShowChannel = inClient && (x < 80);
+    if (showChannel != mShowChannel)
       changed();
 
     if (x < 80) {
@@ -147,7 +147,9 @@ protected:
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
       int channel = (y / 20) - 1;
-      if ((chan >= 0) && (chan < mPlayer->getNumSource())) {
+      if (channel <= 0)
+        mPlayer->incSourceBitrate();
+      else if (channel < mPlayer->getNumSource()) {
         mChangeToChannel = channel;
         signal();
         changed();
@@ -210,7 +212,7 @@ protected:
     swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str(), mHttpRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
-    if (mShowChan)
+    if (mShowChannel)
       for (auto i = 0; i < mPlayer->getNumSource(); i++) {
         swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr(i).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
@@ -220,7 +222,7 @@ protected:
     cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
     if (hlsRadio) {
       //{{{  has hlsRadio interface, show hlsRadioInfo
-      if (mShowChan) {
+      if (mShowChannel) {
         if (false) {
           // show chunk debug
           swprintf (wStr, 200, L"%hs", hlsRadio->getChunkInfoStr (0).c_str());
@@ -253,7 +255,14 @@ private:
     if (yuvFrame) {
       if (yuvFrame->mId != mVidId) {
         mVidId = yuvFrame->mId;
-        if (!mBitmap) // create bitmap, should check size change as well
+        if (mBitmap)  {
+          auto pixelSize = mBitmap->GetPixelSize();
+          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
+            mBitmap->Release();
+            mBitmap = nullptr;
+            }
+          }
+        if (!mBitmap) // create bitmap
           getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
 
         // allocate 16 byte aligned bgraBuf
@@ -365,7 +374,7 @@ private:
   int mChangeToChannel;
   int mHttpRxBytes;
 
-  bool mShowChan;
+  bool mShowChannel;
   HANDLE mSemaphore;
   int16_t* mSilence;
 

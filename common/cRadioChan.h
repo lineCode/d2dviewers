@@ -11,7 +11,7 @@ public:
   // baseProfile:0   688000:25:640x360    281000:25:384x216   156000:25:256x144    86000:25:192x108    31000:25:192x108
   // mainProfile:1   437000:25:512x288
   // highProfile:2  5070000:50:1280x720  2812000:50:960x540  1604000:25:960x540   827000:25:704x396
-  cRadioChan() : mChannel(0), mBaseSeqNum(0), mVidBitrate(688000), mVidFramesPerChunk(200), mVidProfile(0) {}
+  cRadioChan() : mChannel(0), mBaseSeqNum(0), mVidBitrate(86000), mVidFramesPerChunk(200), mVidProfile(0) {}
   virtual ~cRadioChan() {}
 
   // gets
@@ -152,6 +152,33 @@ public:
       mChanInfoStr = toString (http->getResponse()) + ' ' + http->getInfoStr() + ' ' + getM3u8path() + ' ' + mDateTime;
       }
     }
+  //}}}
+  //{{{
+  void incVidBitrate() {
+
+    if (mVidBitrate == 86000)
+      mVidBitrate = 156000;
+    else if (mVidBitrate == 156000)
+      mVidBitrate = 281000;
+    else if (mVidBitrate == 281000)
+      mVidBitrate = 688000;
+    else if (mVidBitrate == 688000) {
+      mVidBitrate = 437000;
+      mVidProfile = 1;
+      }
+    else if (mVidBitrate == 437000) {
+      mVidBitrate = 827000;
+      mVidProfile = 2;
+      }
+    else if (mVidBitrate == 827000)
+      mVidBitrate = 1604000;
+    else if (mVidBitrate == 1604000) {
+      mVidBitrate = 2812000;
+      mVidFramesPerChunk = 400;
+      }
+    else if (mVidBitrate == 2812000)
+      mVidBitrate = 5070000;
+    };
   //}}}
 
 private:

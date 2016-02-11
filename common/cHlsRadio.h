@@ -65,6 +65,11 @@ public:
     }
   //}}}
   //{{{
+  void incSourceBitrate() {
+    incVidBitrate();
+    }
+  //}}}
+  //{{{
   double changeSource (cHttp* http, int source) {
 
     printf ("cHlsChunks::setChan %d\n", source);
