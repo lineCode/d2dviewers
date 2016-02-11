@@ -58,16 +58,19 @@ public:
     mYStride = 0;
     mUVStride = 0;
 
-    if (mYbuf)
-      free (mYbuf);
+    if (mYbufRaw)
+      free (mYbufRaw);
+    mYbufRaw = nullptr;
     mYbuf = nullptr;
 
-    if (mUbuf)
-      free (mUbuf);
+    if (mUbufRaw)
+      free (mUbufRaw);
+    mUbufRaw = nullptr;
     mUbuf = nullptr;
 
-    if (mVbuf)
-      free (mVbuf);
+    if (mVbufRaw)
+      free (mVbufRaw);
+    mVbufRaw = nullptr;
     mVbuf = nullptr;
     }
   //}}}

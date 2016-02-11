@@ -65,8 +65,9 @@ public:
     }
   //}}}
   //{{{
-  void setSourceVidBitrate (bool allowProfileChange, bool jumped) {
-    setVidBitrate (allowProfileChange, jumped);
+  void incSourceVidBitrate (bool allowProfileChange) {
+    incVidBitrate (allowProfileChange, false);
+    invalidateChunks();
     }
   //}}}
   //{{{
@@ -205,7 +206,7 @@ public:
       // normal play, much better quality
       setBitrate (getAudHighBitrate());
 
-    setVidBitrate (false, jumped);
+    incVidBitrate (false, true);
     }
   //}}}
   //{{{

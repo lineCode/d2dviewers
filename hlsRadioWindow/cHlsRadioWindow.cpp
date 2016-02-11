@@ -147,8 +147,11 @@ protected:
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
       int channel = (y / 20) - 1;
-      if (channel <= 0)
-        mPlayer->setSourceVidBitrate (true, false);
+      if (channel <= 0) {
+        cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
+        if (hlsRadio)
+          hlsRadio->incSourceVidBitrate (true);
+        }
       else if (channel < mPlayer->getNumSource()) {
         mChangeToChannel = channel;
         signal();
