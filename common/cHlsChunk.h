@@ -39,7 +39,7 @@ static int chan = 0;
 class cHlsChunk {
 public:
   //{{{
-  cHlsChunk() : mSeqNum(0), mAudBitrate(0), mAudSamplesLoaded(0), mVidFramesLoaded(0),
+  cHlsChunk() : mSeqNum(0), mAudSamplesLoaded(0), mVidFramesLoaded(0),
                 mAudPtr(nullptr), mAudLen(0), mVidPtr(nullptr), mVidLen(0),
                 mAacHE(false), mAudDecoder(0) {
 
@@ -69,11 +69,6 @@ public:
   //{{{
   int getSeqNum() {
     return mSeqNum;
-    }
-  //}}}
-  //{{{
-  int getAudBitrate() {
-    return mAudBitrate;
     }
   //}}}
   //{{{
@@ -113,15 +108,14 @@ public:
     mAudSamplesLoaded = 0;
     mVidFramesLoaded = 0;
     mSeqNum = seqNum;
-    mAudBitrate = audBitrate;
 
     // aacHE has double size frames, treat as two normal frames
-    bool aacHE = mAudBitrate <= 48000;
+    bool aacHE = audBitrate <= 48000;
 
     // hhtp get chunk
     startTimer();
     auto time1 = startTimer();
-    auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, mAudBitrate));
+    auto response = http->get (radioChan->getHost(), radioChan->getTsPath (seqNum, audBitrate));
     if (response == 200) {
       // allocate vidPes buffer
     auto time2 = getTimer();
@@ -362,7 +356,7 @@ private:
     }
   //}}}
   //{{{
-  void saveToFile (cRadioChan* radioChan) {
+  void saveToFile (cRadioChan* radioChan, int audBitrate) {
 
     bool changeChan = chan != radioChan->getChannel();
     chan = radioChan->getChannel();
@@ -375,7 +369,7 @@ private:
         if (audFile)
            fclose (audFile);
         std::string fileName = "C:\\Users\\colin\\Desktop\\test264\\" + radioChan->getChannelName (radioChan->getChannel()) +
-                               '.' + toString (getAudBitrate()) + '.' + toString (mSeqNum) + ".adts";
+                               '.' + toString (audBitrate) + '.' + toString (mSeqNum) + ".adts";
         audFile = fopen (fileName.c_str(), "wb");
         }
       fwrite (mAudPtr, 1, mAudLen, audFile);
@@ -401,7 +395,6 @@ private:
 
   //{{{  private vars
   int mSeqNum;
-  int mAudBitrate;
   int mAudSamplesLoaded;
   int mVidFramesLoaded;
   std::string mInfoStr;
