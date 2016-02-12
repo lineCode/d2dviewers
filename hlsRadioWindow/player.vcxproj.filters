@@ -550,10 +550,10 @@
     <ClInclude Include="..\common\iPlayer.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="yuvrgb_sse2.h">
+    <ClInclude Include="..\common\cYuvFrame.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cYuvFrame.h">
+    <ClInclude Include="..\common\yuvrgb_sse2.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
@@ -571,6 +571,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="yuvrgb_sse2.asm" />
+    <CustomBuild Include="..\common\yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>

@@ -6,6 +6,7 @@
 
 #include "ts.h"
 //#include "bda.h"
+#include "../common/yuvrgb_sse2.h"
 
 #include "../common/winAudio.h"
 #include "../common/cYuvFrame.h"
@@ -17,6 +18,8 @@
 #pragma comment(lib,"avformat.lib")
 //}}}
 #define maxAudFrames 10000
+#define maxVidFrames 200
+
 
 class cTvWindow : public cD2dWindow {
 public:
@@ -142,7 +145,11 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  dc->Clear (ColorF(ColorF::Black));
+  makeBitmap (mVidFrame);
+  if (mBitmap)
+    dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+  else
+    dc->Clear (ColorF(ColorF::Black));
 
   D2D1_RECT_F r = RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
   dc->FillRectangle (r, getGreyBrush());
@@ -170,6 +177,54 @@ void onDraw (ID2D1DeviceContext* dc) {
 //}}}
 
 private:
+  //{{{
+  void makeBitmap (cYuvFrame* yuvFrame) {
+
+    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
+    if (yuvFrame) {
+      if (yuvFrame->mId != mVidId) {
+        mVidId = yuvFrame->mId;
+        if (mBitmap)  {
+          auto pixelSize = mBitmap->GetPixelSize();
+          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
+            mBitmap->Release();
+            mBitmap = nullptr;
+            }
+          }
+        if (!mBitmap) // create bitmap
+          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
+
+        // allocate 16 byte aligned bgraBuf
+        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
+
+        // convert yuv420 -> bitmap bgra
+        auto yPtr = yuvFrame->mYbuf;
+        auto uPtr = yuvFrame->mUbuf;
+        auto vPtr = yuvFrame->mVbuf;
+        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+          uPtr += yuvFrame->mUVStride;
+          vPtr += yuvFrame->mUVStride;
+
+          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
+          }
+
+        free (bgraBufUnaligned);
+        }
+      }
+    else if (mBitmap) {
+      mBitmap->Release();
+      mBitmap = nullptr;
+      }
+    }
+  //}}}
+
   //{{{
   void tsLoader() {
 
@@ -317,7 +372,7 @@ private:
                   //{{{  decode last vidPES
                   uint8_t* ptr = mVidPes;
                   int vidLen = int (vidPtr - mVidPes);
-                  printf ("vidPes %d %d - ", pid, vidLen); for (int j = 0; j < 16; j++) printf ("%02x ", mVidPes[j]); printf ("\n");
+                  //printf ("vidPes %d %d - ", pid, vidLen); for (int j = 0; j < 16; j++) printf ("%02x ", mVidPes[j]); printf ("\n");
 
                   AVFrame* vidFrame = av_frame_alloc();
 
@@ -335,12 +390,12 @@ private:
                     if (vidPacket.data) {
                       int gotPicture = 0;
                       bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
-                      if (gotPicture)
+                      if (gotPicture && (mVidFramesLoaded < maxVidFrames))
                         mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
                                                             vidCodecContext->width, vidCodecContext->height);
                       vidPacket.data += bytesUsed;
                       vidPacket.size -= bytesUsed;
-                      printf ("got:%d %d %d\n", gotPicture, bytesUsed, vidPacket.size);
+                      //printf ("got:%d %d %d\n", gotPicture, bytesUsed, vidPacket.size);
                       }
 
                     //printf ("- vidPes %d %d\n", vidLen, bytesUsed);
@@ -634,13 +689,14 @@ private:
         Sleep (40);
       else if (audFrames[int(playFrame)]) {
         winAudioPlay (audFrames[int(playFrame)], channels * samples*2, 1.0f);
-
         if (!getMouseDown())
           if ((int(playFrame)+1) < audFramesLoaded) {
             playFrame += 1.0;
             changed();
             }
         }
+      if (int(playFrame) < maxVidFrames)
+        mVidFrame = &mYuvFrames[int(playFrame)];
       }
 
     winAudioClose();
@@ -675,8 +731,11 @@ private:
   float audFramesPowerL [maxAudFrames];
   float audFramesPowerR [maxAudFrames];
 
-  cYuvFrame mYuvFrames[100];
+  int mVidId = 0;
+  cYuvFrame mYuvFrames[maxVidFrames];
   int mVidFramesLoaded = 0;
+  ID2D1Bitmap* mBitmap = nullptr;
+  cYuvFrame* mVidFrame = nullptr;
   //}}}
   };
 

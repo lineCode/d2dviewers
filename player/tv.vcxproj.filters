@@ -31,11 +31,17 @@
     <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\yuvrgb_sse2.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
       <UniqueIdentifier>{c3e8b688-223d-4215-bc72-289b623c322f}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\common\yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>

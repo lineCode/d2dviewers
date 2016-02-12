@@ -401,11 +401,11 @@
     <ClInclude Include="..\common\cYuvFrame.h" />
     <ClInclude Include="..\common\iPlayer.h" />
     <ClInclude Include="..\common\winAudio.h" />
+    <ClInclude Include="..\common\yuvrgb_sse2.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="yuvrgb_sse2.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="yuvrgb_sse2.asm">
+    <CustomBuild Include="..\common\yuvrgb_sse2.asm">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">nasm -I%(RootDir)%(Directory)  -f win64 -DWIN64 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
