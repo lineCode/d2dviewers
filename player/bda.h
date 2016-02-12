@@ -1,7 +1,7 @@
 // bda.h
 #pragma once
 
-void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_U client,
+void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
                      IDWriteTextFormat* textFormat,
                      ID2D1SolidColorBrush* whiteBrush,
                      ID2D1SolidColorBrush* blueBrush,

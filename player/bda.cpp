@@ -3,7 +3,7 @@
 #include "pch.h"
 
 #include "bda.h"
-#include "ts.h"
+//#include "ts.h"
 
 #include <initguid.h>
 #include <DShow.h>
@@ -217,7 +217,7 @@ int getSignalStrength() {
 //}}}
 
 //{{{
-void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_U client,
+void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
                      IDWriteTextFormat* textFormat,
                      ID2D1SolidColorBrush* whiteBrush,
                      ID2D1SolidColorBrush* blueBrush,

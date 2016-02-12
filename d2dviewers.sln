@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hlsRadioWindow", "hlsRadioW
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "welsdec", "openh264\WelsDecCore.vcxproj", "{01B4AE41-6AD6-4CAF-AEB3-C42F7F9121D5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tv", "player\tv.vcxproj", "{B80EBF50-0719-4408-B63F-43C64F802819}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{01B4AE41-6AD6-4CAF-AEB3-C42F7F9121D5}.Release|x64.Build.0 = Release|x64
 		{01B4AE41-6AD6-4CAF-AEB3-C42F7F9121D5}.Release|x86.ActiveCfg = Release|Win32
 		{01B4AE41-6AD6-4CAF-AEB3-C42F7F9121D5}.Release|x86.Build.0 = Release|Win32
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Debug|x64.ActiveCfg = Debug|x64
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Debug|x64.Build.0 = Debug|x64
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Debug|x86.ActiveCfg = Debug|Win32
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Debug|x86.Build.0 = Debug|Win32
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Release|x64.ActiveCfg = Release|x64
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Release|x64.Build.0 = Release|x64
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Release|x86.ActiveCfg = Release|Win32
+		{B80EBF50-0719-4408-B63F-43C64F802819}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

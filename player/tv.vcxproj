@@ -21,22 +21,19 @@
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="..\common\Xaudio2.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="bda.cpp" />
     <ClCompile Include="dvbSubtitle.cpp" />
-    <ClCompile Include="huffDecoder.cpp" />
-    <ClCompile Include="player.cpp" />
+    <ClCompile Include="tv.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="ts.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
@@ -50,11 +47,11 @@
     <ClInclude Include="ts.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{E532C54A-C565-43A2-BDA2-30750BCD0946}</ProjectGuid>
+    <ProjectGuid>{B80EBF50-0719-4408-B63F-43C64F802819}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
-    <ProjectName>playerRam</ProjectName>
+    <ProjectName>tv</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

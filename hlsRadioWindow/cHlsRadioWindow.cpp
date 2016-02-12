@@ -269,8 +269,8 @@ private:
           getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
 
         // allocate 16 byte aligned bgraBuf
-        auto bgraBufRaw = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
-        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufRaw) + 15) & ~0xf);
+        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
 
         // convert yuv420 -> bitmap bgra
         auto yPtr = yuvFrame->mYbuf;
@@ -288,7 +288,7 @@ private:
           mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
           }
 
-        free (bgraBufRaw);
+        free (bgraBufUnaligned);
         }
       }
     else if (mBitmap) {
@@ -338,7 +338,7 @@ private:
       winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1);
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
-      if (mPlayer->getPlaying()) {
+      if (audSamples && mPlayer->getPlaying()) {
         mPlayer->incPlaySecs (mPlayer->getSecsPerAudFrame());
         changed();
         }
@@ -371,7 +371,7 @@ private:
     }
   //}}}
 
-  //{{{  private vars
+  //{{{  vars
   iPlayer* mPlayer;
 
   int mChangeToChannel;

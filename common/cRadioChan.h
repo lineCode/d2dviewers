@@ -161,28 +161,41 @@ public:
       //mVidProfile = 0;
       //mVidFramesPerChunk = 200;
       }
-    else if (mVidBitrate == 86000)
+    else if (mVidBitrate == 86000) {
       mVidBitrate = 156000;
-    else if (mVidBitrate == 156000)
-      mVidBitrate = 281000;
-    else if (mVidBitrate == 281000)
-      mVidBitrate = 688000;
-    else if (allowProfileChange && (mVidBitrate == 688000)) {
-      mVidBitrate = 437000;
-      mVidProfile = 1;
+      mVidProfile = 0;
+      mVidFramesPerChunk = 200;
       }
-    else if (allowProfileChange && (mVidBitrate == 437000)) {
+    else if (mVidBitrate == 156000) {
+      mVidBitrate = 281000;
+      mVidProfile = 0;
+      mVidFramesPerChunk = 200;
+      }
+    else if (mVidBitrate == 281000) {
+      mVidBitrate = 688000;
+      mVidProfile = 0;
+      mVidFramesPerChunk = 200;
+      }
+    else if (allowProfileChange && (mVidBitrate == 688000)) {
       mVidBitrate = 827000;
       mVidProfile = 2;
+      mVidFramesPerChunk = 200;
       }
-    else if (mVidBitrate == 827000)
+    else if (mVidBitrate == 827000) {
       mVidBitrate = 1604000;
+      mVidProfile = 2;
+      mVidFramesPerChunk = 200;
+      }
     else if (mVidBitrate == 1604000) {
       mVidBitrate = 2812000;
+      mVidProfile = 2;
       mVidFramesPerChunk = 400;
       }
-    else if (mVidBitrate == 2812000)
+    else if (mVidBitrate == 2812000) {
       mVidBitrate = 5070000;
+      mVidProfile = 2;
+      mVidFramesPerChunk = 400;
+      }
     };
   //}}}
 

@@ -6,7 +6,8 @@ static int videoId = 0;
 class cYuvFrame  {
 public:
   cYuvFrame() : mId(0), mWidth(0), mHeight(0), mYStride(0), mUVStride(0),
-                mYbuf(nullptr), mUbuf(nullptr), mVbuf(nullptr), mYbufRaw(nullptr), mUbufRaw(nullptr), mVbufRaw(nullptr) {}
+                mYbuf(nullptr), mUbuf(nullptr), mVbuf(nullptr), 
+                mYbufUnaligned(nullptr), mUbufUnaligned(nullptr), mVbufUnaligned(nullptr) {}
 
   //{{{
   void set (uint8_t** yuv, int* strides, int width, int height) {
@@ -20,31 +21,31 @@ public:
     mYStride = strides[0];
     mUVStride = strides[1];
 
-    if (sizeChanged && mYbufRaw) {
-      free (mYbufRaw);
-      mYbufRaw = nullptr;
+    if (sizeChanged && mYbufUnaligned) {
+      free (mYbufUnaligned);
+      mYbufUnaligned = nullptr;
       }
-    if (!mYbufRaw)
-      mYbufRaw = (uint8_t*)malloc ((height * mYStride) + 15);
-    mYbuf = (uint8_t*)(((size_t)(mYbufRaw)+15) & ~0xf);
+    if (!mYbufUnaligned)
+      mYbufUnaligned = (uint8_t*)malloc ((height * mYStride) + 15);
+    mYbuf = (uint8_t*)(((size_t)(mYbufUnaligned)+15) & ~0xf);
     memcpy (mYbuf, yuv[0], height * mYStride);
 
-    if (sizeChanged && mUbufRaw) {
-      free (mUbufRaw);
-      mUbufRaw = nullptr;
+    if (sizeChanged && mUbufUnaligned) {
+      free (mUbufUnaligned);
+      mUbufUnaligned = nullptr;
       }
-    if (!mUbufRaw)
-      mUbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
-    mUbuf = (uint8_t*)(((size_t)(mUbufRaw)+15) & ~0xf);
+    if (!mUbufUnaligned)
+      mUbufUnaligned = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
+    mUbuf = (uint8_t*)(((size_t)(mUbufUnaligned)+15) & ~0xf);
     memcpy (mUbuf, yuv[1], (height/2) * mUVStride);
 
-    if (sizeChanged && mVbufRaw) {
-      free (mVbufRaw);
-      mVbufRaw = nullptr;
+    if (sizeChanged && mVbufUnaligned) {
+      free (mVbufUnaligned);
+      mVbufUnaligned = nullptr;
       }
-    if (!mVbufRaw)
-      mVbufRaw = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
-    mVbuf = (uint8_t*)(((size_t)(mVbufRaw)+15) & ~0xf);
+    if (!mVbufUnaligned)
+      mVbufUnaligned = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
+    mVbuf = (uint8_t*)(((size_t)(mVbufUnaligned)+15) & ~0xf);
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
     }
   //}}}
@@ -58,19 +59,19 @@ public:
     mYStride = 0;
     mUVStride = 0;
 
-    if (mYbufRaw)
-      free (mYbufRaw);
-    mYbufRaw = nullptr;
+    if (mYbufUnaligned)
+      free (mYbufUnaligned);
+    mYbufUnaligned = nullptr;
     mYbuf = nullptr;
 
-    if (mUbufRaw)
-      free (mUbufRaw);
-    mUbufRaw = nullptr;
+    if (mUbufUnaligned)
+      free (mUbufUnaligned);
+    mUbufUnaligned = nullptr;
     mUbuf = nullptr;
 
-    if (mVbufRaw)
-      free (mVbufRaw);
-    mVbufRaw = nullptr;
+    if (mVbufUnaligned)
+      free (mVbufUnaligned);
+    mVbufUnaligned = nullptr;
     mVbuf = nullptr;
     }
   //}}}
@@ -85,7 +86,7 @@ public:
   uint8_t* mVbuf;
 
 private:
-  uint8_t* mYbufRaw;
-  uint8_t* mUbufRaw;
-  uint8_t* mVbufRaw;
+  uint8_t* mYbufUnaligned;
+  uint8_t* mUbufUnaligned;
+  uint8_t* mVbufUnaligned;
   };
