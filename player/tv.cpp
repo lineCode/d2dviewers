@@ -8,6 +8,7 @@
 //#include "bda.h"
 
 #include "../common/winAudio.h"
+#include "../common/cYuvFrame.h"
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
@@ -314,6 +315,7 @@ private:
               if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == 0xe0)) {
                 if (vidPtr) {
                   //{{{  decode last vidPES
+                  uint8_t* ptr = mVidPes;
                   int vidLen = int (vidPtr - mVidPes);
                   printf ("vidPes %d %d - ", pid, vidLen); for (int j = 0; j < 16; j++) printf ("%02x ", mVidPes[j]); printf ("\n");
 
@@ -325,21 +327,22 @@ private:
                   vidPacket.size = 0;
 
                   int bytesUsed = 0;
-                  while (bytesUsed || vidLen) {
-                    uint8_t* data = NULL;
-                    int len = av_parser_parse2 (vidParser, vidCodecContext, &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
+                  while (vidLen) {
+                    int len = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, ptr, vidLen, 0, 0, AV_NOPTS_VALUE);
+                    ptr += len;
+                    vidLen -= len;
 
-                    if (data) {
+                    if (vidPacket.data) {
                       int gotPicture = 0;
                       bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
                       if (gotPicture)
-                        printf ("gotpicture\n");
-                        //mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
-                        //                                    vidCodecContext->width, vidCodecContext->height);
+                        mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
+                                                            vidCodecContext->width, vidCodecContext->height);
+                      vidPacket.data += bytesUsed;
+                      vidPacket.size -= bytesUsed;
+                      printf ("got:%d %d %d\n", gotPicture, bytesUsed, vidPacket.size);
                       }
 
-                    vidPacket.data += len;
-                    vidLen -= len;
                     //printf ("- vidPes %d %d\n", vidLen, bytesUsed);
                     }
 
@@ -530,7 +533,7 @@ private:
     memset (&sub, 0, sizeof(AVSubtitle));
 
     audFramesLoaded = 0;
-    vidFramesLoaded = 0;
+    mVidFramesLoaded = 0;
     AVPacket avPacket;
     while (true) {
       while (av_read_frame (mAvFormatContext, &avPacket) >= 0) {
@@ -590,13 +593,13 @@ private:
 
         else if (avPacket.stream_index == vidStream) {
           // vid packet
-          if (vidFramesLoaded < 2000) {
+          if (mVidFramesLoaded < 2000) {
             int gotPicture = 0;
             avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &avPacket);
             if (gotPicture) {
               // create wicBitmap
               //printf ("got pictuure %d\n", vidFramesLoaded);
-              vidFramesLoaded++;
+              mVidFramesLoaded++;
               }
             }
           }
@@ -672,7 +675,8 @@ private:
   float audFramesPowerL [maxAudFrames];
   float audFramesPowerR [maxAudFrames];
 
-  int vidFramesLoaded = 0;
+  cYuvFrame mYuvFrames[100];
+  int mVidFramesLoaded = 0;
   //}}}
   };
 
