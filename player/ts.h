@@ -722,10 +722,13 @@ public:
   //{{{
   cService (int sid, int tsid, int onid, int type, char* provider, char* name)
     : mSid(sid), mTsid(tsid), mOnid(onid), mType(type),
-      mVpid(-1), mApid(-1), mSubPid(-1), mPcrPid(-1), mProgramPid(-1)  {
+      mVidPid(-1), mNumAudPids(0), mSubPid(-1), mPcrPid(-1), mProgramPid(-1)  {
 
     strcpy (mName, name);
     strcpy (mProvider, provider);
+
+    mAudPids[0] = -1;
+    mAudPids[1] = -1;
     }
   //}}}
   ~cService() {}
@@ -747,8 +750,8 @@ public:
     }
   //}}}
 
-  int getVpid() const { return mVpid; }
-  int getApid() const { return mApid; }
+  int getVidPid() const { return mVidPid; }
+  int getAudPid() const { return mAudPids[0]; }
   int getSubPid() const { return mSubPid; }
   int getPcrPid() const { return mPcrPid; }
   int getProgramPid() const { return mProgramPid; }
@@ -758,8 +761,13 @@ public:
   cEpgItem* getNow() { return &mNow; }
 
   //  sets
-  void setVpid (const int pid) { mVpid = pid; }
-  void setApid (const int pid) { mApid = pid; }
+  void setVidPid (const int pid) { mVidPid = pid; }
+  void setAudPid (const int pid) { 
+    if (mNumAudPids == 0)
+      mAudPids[mNumAudPids++] = pid;
+    else if (mAudPids[0] != pid)
+      mAudPids[1] = pid;
+    }
   void setSubPid (const int pid) { mSubPid = pid; }
   void setPcrPid (const int pid) { mPcrPid = pid; }
   void setProgramPid (const int pid) { mProgramPid = pid; }
@@ -784,7 +792,7 @@ public:
   void print() {
 
     printf ("- sid:%d tsid:%d onid:%d - prog:%d v:%d a:%d sub:%d pcr:%d %s <%s> <%s>\n",
-            mSid, mTsid, mOnid, mProgramPid, mVpid, mApid, mSubPid, mPcrPid,
+            mSid, mTsid, mOnid, mProgramPid, mVidPid, mNumAudPids, mSubPid, mPcrPid,
             getTypeStr(), mName, mProvider);
 
     mNow.print ("  - ");
@@ -800,8 +808,9 @@ private:
   int mOnid;
   int mType;
 
-  int mVpid;
-  int mApid;
+  int mVidPid;
+  int mNumAudPids;
+  int mAudPids[2];
   int mSubPid;
   int mPcrPid;
   int mProgramPid;
@@ -815,20 +824,16 @@ private:
   tEpgItemMap mEpgItemMap;
   };
 //}}}
-typedef std::map<int,cPidInfo> tPidInfoMap; // pid inserts <pid,cPidInfo> into mPidInfoMap
-typedef std::map<int,int>      tProgramMap; // PAT inserts <pid,sid>'s into mProgramMap
-                                            //     - pids parsed as programPid PMTs
-typedef std::map<int,cService> tServiceMap; // SDT inserts <sid,cService> into mServiceMap
-                                            //     - sets cService ServiceType,Name,Provider
-                                            // PMT - sets cService stream pids
-                                            // EIT - adds cService Now,Epg events
-//{{{  vars
+typedef std::map<int,cPidInfo> tPidInfoMap;  // pid inserts <pid,cPidInfo> into mPidInfoMap
+typedef std::map<int,int>      tProgramMap;  // PAT inserts <pid,sid>'s into mProgramMap
+                                             //     - pids parsed as programPid PMTs
+typedef std::map<int,cService> tServiceMap;  // SDT inserts <sid,cService> into mServiceMap
+                                             //     - sets cService ServiceType,Name,Provider
+                                             // PMT - sets cService stream pids
+                                             // EIT - adds cService Now,Epg events
+//{{{  static vars
 static int mPackets = 0;
 static int mDiscontinuity = 0;
-
-static HANDLE mFile = INVALID_HANDLE_VALUE;
-static int mVpid = -1;
-static int mApid = -1;
 
 static time_t mCurTime;
 static wchar_t wTimeStr[25];
@@ -846,7 +851,6 @@ static void recordChange (int sid) {
 
   tServiceMap::iterator it = mServiceMap.find (sid);
   if (it != mServiceMap.end()) {
-
     tm curTime = *localtime (&mCurTime);
     wchar_t fileName[100];
     std::locale loc1 ("English");
@@ -868,8 +872,6 @@ static void recordChange (int sid) {
 
     // save fileName root
     printf ("recordChange %ls\n", fileName);
-    //mVpid = it->second.vpid();
-    //mApid = it->second.apid();
     }
   }
 //}}}
@@ -896,9 +898,9 @@ static void updatePidInfo (int pid) {
                   strlen (serviceIt->second.getNow()->mTitle)+1,
                   serviceIt->second.getNow()->mTitle, _TRUNCATE);
 
-      if (pid == serviceIt->second.getVpid())
+      if (pid == serviceIt->second.getVidPid())
         swprintf (pidInfoIt->second.mInfo, 100, L"vid %ls %ls ", name, title);
-      else if (pid == serviceIt->second.getApid())
+      else if (pid == serviceIt->second.getAudPid())
         swprintf (pidInfoIt->second.mInfo, 100, L"aud %ls %ls ", name, title);
       else if (pid == serviceIt->second.getSubPid())
         swprintf (pidInfoIt->second.mInfo, 100, L"sub %ls %ls ", name, title);
@@ -1396,8 +1398,8 @@ static void parseEit (unsigned char* buf, unsigned char* bufEnd) {
               if (it->second.setNow (startTime, duration, title, shortDescription)) {
                 it->second.getNow()->print ("EIT now changed - ");
                 updatePidInfo (it->second.getProgramPid());
-                updatePidInfo (it->second.getVpid());
-                updatePidInfo (it->second.getApid());
+                updatePidInfo (it->second.getVidPid());
+                updatePidInfo (it->second.getAudPid());
                 updatePidInfo (it->second.getSubPid());
                 }
               }
@@ -1544,12 +1546,12 @@ static void parsePmt (int pid, unsigned char* buf, unsigned char* bufEnd) {
 
       bool recognised = true;
       switch (streamType) {
-        case 2:  serviceIt->second.setVpid (esPid); break;       // ISO 13818-2 video
-        case 3:  serviceIt->second.setApid (esPid); break;       // ISO 11172-3 audio
-        case 4:  serviceIt->second.setApid (esPid); break;       // ISO 13818-3 audio
-        case 6:  serviceIt->second.setSubPid (esPid); break;     // subtitle
-        case 17: serviceIt->second.setApid (esPid); break;       // HD aud
-        case 27: serviceIt->second.setVpid (esPid); break;       // HD vid
+        case 2:  serviceIt->second.setVidPid (esPid); break; // ISO 13818-2 video
+        case 3:  serviceIt->second.setAudPid (esPid); break; // ISO 11172-3 audio
+        case 4:  serviceIt->second.setAudPid (esPid); break; // ISO 13818-3 audio
+        case 6:  serviceIt->second.setSubPid (esPid); break; // subtitle
+        case 17: serviceIt->second.setAudPid (esPid); break; // HD aud
+        case 27: serviceIt->second.setVidPid (esPid); break; // HD vid
         case 5:  recognised = false; break;
         case 11: recognised = false; break;
         case 13:
@@ -1631,45 +1633,6 @@ tPidInfoMap* getPidInfoMap() {
 
 // public
 //{{{
-void openTsFile (wchar_t* filename) {
-
-  mFile = CreateFile (filename, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
-  }
-//}}}
-//{{{
-void closeTsFile() {
-
-  if (mFile != INVALID_HANDLE_VALUE)
-    CloseHandle (mFile);
-  }
-//}}}
-
-//{{{
-void printServices() {
-
-  printf ("--- ServiceMap -----\n");
-  for (tServiceMap::iterator it = mServiceMap.begin(); it != mServiceMap.end(); it++)
-    it->second.print();
-  }
-//}}}
-//{{{
-void printPrograms() {
-
-  printf ("--- ProgramMap -----\n");
-  for (tProgramMap::iterator it = mProgramMap.begin(); it != mProgramMap.end(); it++)
-    printf ("- programPid:%d sid:%d\n", it->first, it->second);
-  }
-//}}}
-//{{{
-void printPids() {
-
-  printf ("--- PidInfoMap -----\n");
-  for (tPidInfoMap::iterator it = mPidInfoMap.begin(); it != mPidInfoMap.end(); it++)
-    it->second.print();
-  }
-//}}}
-
-//{{{
 void renderPidInfo (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
                     IDWriteTextFormat* textFormat,
                     ID2D1SolidColorBrush* whiteBrush,
@@ -1704,5 +1667,29 @@ void renderPidInfo (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
       top += 14.0f;
       }
     }
+  }
+//}}}
+//{{{
+void printServices() {
+
+  printf ("--- ServiceMap -----\n");
+  for (tServiceMap::iterator it = mServiceMap.begin(); it != mServiceMap.end(); it++)
+    it->second.print();
+  }
+//}}}
+//{{{
+void printPrograms() {
+
+  printf ("--- ProgramMap -----\n");
+  for (tProgramMap::iterator it = mProgramMap.begin(); it != mProgramMap.end(); it++)
+    printf ("- programPid:%d sid:%d\n", it->first, it->second);
+  }
+//}}}
+//{{{
+void printPids() {
+
+  printf ("--- PidInfoMap -----\n");
+  for (tPidInfoMap::iterator it = mPidInfoMap.begin(); it != mPidInfoMap.end(); it++)
+    it->second.print();
   }
 //}}}
