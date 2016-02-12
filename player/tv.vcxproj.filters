@@ -3,7 +3,6 @@
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="..\common\Xaudio2.cpp" />
-    <ClCompile Include="dvbSubtitle.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="tv.cpp" />
   </ItemGroup>
@@ -15,9 +14,6 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="decode.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="dvbSubtitle.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="huffDecoder.h">

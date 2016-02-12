@@ -26,7 +26,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="dvbSubtitle.cpp" />
     <ClCompile Include="tv.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -40,7 +39,6 @@
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="bda.h" />
     <ClInclude Include="decode.h" />
-    <ClInclude Include="dvbSubtitle.h" />
     <ClInclude Include="huffDecoder.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="qedit.h" />
