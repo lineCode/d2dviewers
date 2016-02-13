@@ -6,10 +6,11 @@
 
 #include "ts.h"
 //#include "bda.h"
+
+#include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
 
 #include "../common/winAudio.h"
-#include "../common/cYuvFrame.h"
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
@@ -17,9 +18,8 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxAudFrames 10000
-#define maxVidFrames 200
-
+#define maxVidFrames 256
+#define maxAudFrames 512
 
 class cTvWindow : public cD2dWindow {
 public:
@@ -32,42 +32,11 @@ public:
     wcstombs (mFilename, mWideFilename, 100);
     initialise (title, width, height);
 
-    mAudPes = (uint8_t*)malloc (10000);
-    mVidPes = (uint8_t*)malloc (1000000);
+    for (int i = 0; i < maxAudFrames; i++)
+      mAudFrames[i] = nullptr;
 
     thread ([=]() { tsLoader(); } ).detach();
-
-    if (false) {
-      //{{{  laucnh loader
-      av_register_all();
-      avformat_network_init();
-      mAvFormatContext = NULL;
-      avformat_open_input (&mAvFormatContext, mFilename, NULL, NULL);
-      avformat_find_stream_info (mAvFormatContext, NULL);
-      for (unsigned int i = 0; i < mAvFormatContext->nb_streams; i++)
-        if ((mAvFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) && (vidStream == -1))
-          vidStream = i;
-        else if ((mAvFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) && (audStream == -1))
-          audStream = i;
-        else if ((mAvFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) && (subStream == -1))
-          subStream = i;
-
-      if (audStream >= 0) {
-        channels = mAvFormatContext->streams[audStream]->codec->channels;
-        sampleRate = mAvFormatContext->streams[audStream]->codec->sample_rate;
-        }
-
-      printf ("filename:%s sampleRate:%d channels:%d streams:%d aud:%d vid:%d sub:%d\n",
-              mFilename, sampleRate, channels, mAvFormatContext->nb_streams, audStream, vidStream, subStream);
-      //av_dump_format (mAvFormatContext, 0, mFilename, 0);
-
-      if (channels > 2)
-        channels = 2;
-
-      // launch loaderThread
-      thread ([=]() { loader(); } ).detach();
-      }
-      //}}}
+    //thread ([=]() { fileLoader(); } ).detach();
 
     // launch playerThread, higher priority
     auto playerThread = thread ([=]() { player(); });
@@ -76,6 +45,10 @@ public:
 
     // loop in windows message pump till quit
     messagePump();
+
+    //printServices();
+    //printPids();
+    //printPrograms();
     }
   //}}}
 
@@ -87,19 +60,19 @@ bool onKey (int key) {
     case 0x00 : break;
     case 0x1B : return true;
 
-    case 0x20 : playing = !playing; break;
+    case 0x20 : mPlaying = !mPlaying; break;
 
-    case 0x21 : playFrame -= 5.0f * audFramesPerSec; changed(); break;
-    case 0x22 : playFrame += 5.0f * audFramesPerSec; changed(); break;
+    case 0x21 : mPlayFrame -= 5.0f * mAudFramesPerSec; changed(); break;
+    case 0x22 : mPlayFrame += 5.0f * mAudFramesPerSec; changed(); break;
 
-    case 0x23 : playFrame = audFramesLoaded - 1.0f; changed(); break;
-    case 0x24 : playFrame = 0; break;
+    case 0x23 : mPlayFrame = mAudFramesLoaded - 1.0f; changed(); break;
+    case 0x24 : mPlayFrame = 0; break;
 
-    case 0x25 : playFrame -= 1.0f * audFramesPerSec; changed(); break;
-    case 0x27 : playFrame += 1.0f * audFramesPerSec; changed(); break;
+    case 0x25 : mPlayFrame -= 1.0f * mAudFramesPerSec; changed(); break;
+    case 0x27 : mPlayFrame += 1.0f * mAudFramesPerSec; changed(); break;
 
-    case 0x26 : playing = false; playFrame -=2; changed(); break;
-    case 0x28 : playing = false; playFrame +=2; changed(); break;
+    case 0x26 : mPlaying = false; mPlayFrame -=2; changed(); break;
+    case 0x28 : mPlaying = false; mPlayFrame +=2; changed(); break;
 
     case 0x2d : break;
     case 0x2e : break;
@@ -107,24 +80,24 @@ bool onKey (int key) {
     default   : printf ("key %x\n", key);
     }
 
-  if (playFrame < 0)
-    playFrame = 0;
-  else if (playFrame >= audFramesLoaded)
-    playFrame = audFramesLoaded - 1.0f;
+  if (mPlayFrame < 0)
+    mPlayFrame = 0;
+  else if (mPlayFrame >= mAudFramesLoaded)
+    mPlayFrame = mAudFramesLoaded - 1.0f;
 
   return false;
   }
 //}}}
 //{{{
-void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
+void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
   if (!mouseMoved)
-    playFrame += x - (getClientF().width/2.0f);
+    mPlayFrame += x - (getClientF().width/2.0f);
 
-  if (playFrame < 0)
-    playFrame = 0;
-  else if (playFrame >= audFramesLoaded)
-    playFrame = audFramesLoaded - 1.0f;
+  if (mPlayFrame < 0)
+    mPlayFrame = 0;
+  else if (mPlayFrame >= mAudFramesLoaded)
+    mPlayFrame = mAudFramesLoaded - 1.0f;
 
   changed();
   }
@@ -132,12 +105,12 @@ void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 //{{{
 void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-  playFrame -= xInc;
+  mPlayFrame -= xInc;
 
-  if (playFrame < 0)
-    playFrame = 0;
-  else if (playFrame >= audFramesLoaded)
-    playFrame = audFramesLoaded - 1.0f;
+  if (mPlayFrame < 0)
+    mPlayFrame = 0;
+  else if (mPlayFrame >= mAudFramesLoaded)
+    mPlayFrame = mAudFramesLoaded - 1.0f;
 
   changed();
   }
@@ -145,32 +118,34 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  makeBitmap (mVidFrame);
+  int vidFrame = int(mPlayFrame*25/mAudFramesPerSec) - 27;
+  if (vidFrame >= 0)
+    makeBitmap (&mYuvFrames[vidFrame % maxVidFrames]);
   if (mBitmap)
     dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
   else
     dc->Clear (ColorF(ColorF::Black));
 
-  D2D1_RECT_F r = RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
+  D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
   dc->FillRectangle (r, getGreyBrush());
 
-  int j = int(playFrame) - (int)(getClientF().width/2);
-  for (float i = 0.0f; (i < getClientF().width) && (j < audFramesLoaded); i++, j++) {
-    r.left = i;
-    r.right = i + 1.0f;
-    if (j >= 0) {
-      r.top = (getClientF().height/2.0f) - audFramesPowerL[j];
-      r.bottom = (getClientF().height/2.0f) + audFramesPowerR[j];
+  int audFrame = int(mPlayFrame) - (int)(getClientF().width/2);
+  for (r.left = 0.0f; (r.left < getClientF().width) && (audFrame < mAudFramesLoaded); r.left++, audFrame++) {
+    if (audFrame >= 0) {
+      r.top = (getClientF().height/2.0f) - mAudFramesPowerL[audFrame % maxAudFrames];
+      r.bottom = (getClientF().height/2.0f) + mAudFramesPowerR[audFrame % maxAudFrames];
+      r.right = r.left + 1.0f;
       dc->FillRectangle (r, getBlueBrush());
       }
     }
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1fs - %2.0f:%d", playFrame/audFramesPerSec, playFrame, audFramesLoaded);
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d",
+            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(getClientF().width-200-2, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
+                RectF(getClientF().width-300-2, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(getClientF().width-200, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+                RectF(getClientF().width-300, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
 
   renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   }
@@ -178,86 +153,48 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
-  void makeBitmap (cYuvFrame* yuvFrame) {
-
-    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
-    if (yuvFrame) {
-      if (yuvFrame->mId != mVidId) {
-        mVidId = yuvFrame->mId;
-        if (mBitmap)  {
-          auto pixelSize = mBitmap->GetPixelSize();
-          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
-            mBitmap->Release();
-            mBitmap = nullptr;
-            }
-          }
-        if (!mBitmap) // create bitmap
-          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
-
-        // allocate 16 byte aligned bgraBuf
-        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
-        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
-
-        // convert yuv420 -> bitmap bgra
-        auto yPtr = yuvFrame->mYbuf;
-        auto uPtr = yuvFrame->mUbuf;
-        auto vPtr = yuvFrame->mVbuf;
-        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-          uPtr += yuvFrame->mUVStride;
-          vPtr += yuvFrame->mUVStride;
-
-          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
-          }
-
-        free (bgraBufUnaligned);
-        }
-      }
-    else if (mBitmap) {
-      mBitmap->Release();
-      mBitmap = nullptr;
-      }
-    }
-  //}}}
-
-  //{{{
   void tsLoader() {
 
     uint8_t tsBuf[240*188];
+    uint8_t* audPes = (uint8_t*)malloc (5000);
+    uint8_t* vidPes = (uint8_t*)malloc (500000);
     uint8_t* audPtr = nullptr;
     uint8_t* vidPtr = nullptr;
-
+    //{{{  init av
     av_register_all();
-    avformat_network_init();
 
     AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
     AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
     AVCodecContext* vidCodecContext = avcodec_alloc_context3 (vidCodec);
     avcodec_open2 (vidCodecContext, vidCodec, NULL);
 
+    AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
+    AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
+    AVCodecContext* audCodecContext = avcodec_alloc_context3 (audCodec);
+    avcodec_open2 (audCodecContext, audCodec, NULL);
+    //}}}
+
     HANDLE readFile = CreateFile (mWideFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     while (true) {
+      //{{{  readFile
       DWORD sampleLen = 0;
       ReadFile (readFile, tsBuf, 240*188, &sampleLen, NULL);
       if (!sampleLen)
         break;
       //printf ("readfile %d\n", sampleLen);
-
-      uint8_t* ptr = tsBuf;
+      //}}}
+      while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+        Sleep (40);
 
       size_t i = 0;
-      while ((ptr < tsBuf + sampleLen) && (*ptr++ == 0x47) &&
-             ((ptr+187 >= tsBuf + sampleLen) || (*(ptr+187) == 0x47))) {
-        auto payStart = *ptr & 0x40;
-        auto pid = ((*ptr & 0x1F) << 8) | *(ptr+1);
-        auto headerBytes = (*(ptr+2) & 0x20) ? (4 + *(ptr+3)) : 3;
-        auto continuity = *(ptr+2) & 0x0F;
-        ptr += headerBytes;
+      uint8_t* tsPtr = tsBuf;
+      while ((tsPtr < tsBuf + sampleLen) && (*tsPtr++ == 0x47) && ((tsPtr+187 >= tsBuf + sampleLen) || (*(tsPtr+187) == 0x47))) {
+        //{{{  packet start
+        auto payStart = *tsPtr & 0x40;
+        auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
+        auto headerBytes = (*(tsPtr+2) & 0x20) ? (4 + *(tsPtr+3)) : 3;
+        auto continuity = *(tsPtr+2) & 0x0F;
+        tsPtr += headerBytes;
         auto tsFrameBytesLeft = 187 - headerBytes;
 
         bool discontinuity = false;
@@ -288,6 +225,7 @@ private:
           //}}}
         pidInfoIt->second.mContinuity = continuity;
         pidInfoIt->second.mTotal++;
+        //}}}
 
         if (isSection) {
           if (payStart) {
@@ -363,56 +301,52 @@ private:
             if ((pid == mVidPid) && (pid == serviceIt->second.getVidPid())) {
               //{{{  vidPid
               if (discontinuity) {
+                //{{{  discontinuity
                 printf ("vid disc------------------------------------------\n");
                 vidPtr = nullptr;
                 }
+                //}}}
 
-              if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == 0xe0)) {
+              if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
                 if (vidPtr) {
-                  //{{{  decode last vidPES
-                  uint8_t* ptr = mVidPes;
-                  int vidLen = int (vidPtr - mVidPes);
-                  //printf ("vidPes %d %d - ", pid, vidLen); for (int j = 0; j < 16; j++) printf ("%02x ", mVidPes[j]); printf ("\n");
-
-                  AVFrame* vidFrame = av_frame_alloc();
+                  uint8_t* ptr = vidPes;
+                  int vidLen = int (vidPtr - vidPes);
 
                   AVPacket vidPacket;
                   av_init_packet (&vidPacket);
-                  vidPacket.data = mVidPes;
+                  vidPacket.data = vidPes;
                   vidPacket.size = 0;
 
                   int bytesUsed = 0;
+                  AVFrame* vidFrame = av_frame_alloc();
                   while (vidLen) {
                     int len = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, ptr, vidLen, 0, 0, AV_NOPTS_VALUE);
                     ptr += len;
                     vidLen -= len;
-
                     if (vidPacket.data) {
                       int gotPicture = 0;
                       bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
-                      if (gotPicture && (mVidFramesLoaded < maxVidFrames))
-                        mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
-                                                            vidCodecContext->width, vidCodecContext->height);
+                      if (gotPicture) {
+                        mYuvFrames[mVidFramesLoaded % maxVidFrames].set (
+                          vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
+                        mVidFramesLoaded++;
+                        }
                       vidPacket.data += bytesUsed;
                       vidPacket.size -= bytesUsed;
-                      //printf ("got:%d %d %d\n", gotPicture, bytesUsed, vidPacket.size);
                       }
-
-                    //printf ("- vidPes %d %d\n", vidLen, bytesUsed);
                     }
-
                   av_frame_free (&vidFrame);
                   }
-                  //}}}
 
-                int pesHeaderBytes = 9 + *(ptr+8);
-                ptr += pesHeaderBytes;
+                // start next vidPES
+                int pesHeaderBytes = 9 + *(tsPtr+8);
+                tsPtr += pesHeaderBytes;
                 tsFrameBytesLeft -= pesHeaderBytes;
-                vidPtr = mVidPes;
+                vidPtr = vidPes;
                 }
 
               if (vidPtr) {
-                memcpy (vidPtr, ptr, tsFrameBytesLeft);
+                memcpy (vidPtr, tsPtr, tsFrameBytesLeft);
                 vidPtr += tsFrameBytesLeft;
                 }
               else
@@ -422,47 +356,41 @@ private:
             else if ((pid == mAudPid) && (pid == serviceIt->second.getAudPid())) {
               //{{{  audPid
               if (discontinuity) {
+                //{{{  discontinuity
                 printf ("aud discontinuity --------------------\n");
                 audPtr = nullptr;
                 }
+                //}}}
 
-              if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == 0xc0)) {
+              if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
                 if (audPtr) {
-                  //{{{  decode last audPES
-                  int audLen = int (audPtr - mAudPes);
-                  //printf ("audPes %d %d - ", pid, audLen);
-                  //for (int j = 0; j < 16; j++) printf ("%02x ", mAudPes[j]);
-                  //printf ("\n");
-
-                  AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
-                  AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
-                  AVCodecContext* audCodecContext = avcodec_alloc_context3 (audCodec);
-                  avcodec_open2 (audCodecContext, audCodec, NULL);
-
-                  AVFrame* audFrame = av_frame_alloc();
+                  // decode last audPES
+                  int audLen = int (audPtr - audPes);
 
                   AVPacket audPacket;
                   av_init_packet (&audPacket);
-                  audPacket.data = mAudPes;
+                  audPacket.data = audPes;
                   audPacket.size = 0;
 
                   int bytesUsed = 0;
+                  AVFrame* audFrame = av_frame_alloc();
                   while (bytesUsed || audLen) {
                     uint8_t* data = NULL;
                     av_parser_parse2 (audParser, audCodecContext, &data, &audPacket.size, audPacket.data, audLen, 0, 0, AV_NOPTS_VALUE);
 
                     int gotPicture = 0;
                     bytesUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
-                    if (gotPicture && (audFramesLoaded < maxAudFrames)) {
+                    if (gotPicture) {
                       samples = audFrame->nb_samples;
-                      audFramesPerSec = (float)sampleRate / samples;
-                      audFrames[audFramesLoaded] = malloc (channels * samples * 2);
+                      mAudFramesPerSec = (float)sampleRate / samples;
+                      if (!mAudFrames[mAudFramesLoaded % maxAudFrames])
+                        mAudFrames[mAudFramesLoaded % maxAudFrames] = malloc (channels*samples*2);
 
                       if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
                         //{{{  16bit signed planar
                         short* lptr = (short*)audFrame->data[0];
                         short* rptr = (short*)audFrame->data[1];
-                        short* ptr = (short*)audFrames[audFramesLoaded];
+                        short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames];
 
                         double valueL = 0;
                         double valueR = 0;
@@ -473,16 +401,15 @@ private:
                           valueR += pow(*ptr++, 2);
                           }
 
-                        audFramesPowerL[audFramesLoaded] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-                        audFramesPowerR[audFramesLoaded] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-                        audFramesLoaded++;
+                        mAudFramesPowerL[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
+                        mAudFramesPowerR[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
                         }
                         //}}}
                       else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
                         //{{{  32bit float planar
                         float* lptr = (float*)audFrame->data[0];
                         float* rptr = (float*)audFrame->data[1];
-                        short* ptr = (short*)audFrames[audFramesLoaded];
+                        short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames];
 
                         double valueL = 0;
                         double valueR = 0;
@@ -493,36 +420,31 @@ private:
                           valueR += pow(*ptr++, 2);
                           }
 
-                        audFramesPowerL[audFramesLoaded] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-                        audFramesPowerR[audFramesLoaded] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-                        audFramesLoaded++;
+                        mAudFramesPowerL[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
+                        mAudFramesPowerR[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
                         }
                         //}}}
                       else
-                        printf ("new sample_fmt:%d\n",audCodecContext->sample_fmt);
+                        printf ("new sample_fmt:%d\n", audCodecContext->sample_fmt);
+                      mAudFramesLoaded++;
                       }
-
                     audPacket.data += bytesUsed;
                     audLen -= bytesUsed;
-                    //printf ("audPes %d %d\n", audLen, bytesUsed);
                     }
-
                   av_frame_free (&audFrame);
-                  avcodec_close (audCodecContext);
                   }
-                  //}}}
 
                 // start new audPES
-                int pesHeaderBytes = 9 + *(ptr+8);
-                ptr += pesHeaderBytes;
+                int pesHeaderBytes = 9 + *(tsPtr+8);
+                tsPtr += pesHeaderBytes;
                 tsFrameBytesLeft -= pesHeaderBytes;
 
                 // reset pes pointer
-                audPtr = mAudPes;
+                audPtr = audPes;
                 }
 
               if (audPtr) {
-                memcpy (audPtr, ptr, tsFrameBytesLeft);
+                memcpy (audPtr, tsPtr, tsFrameBytesLeft);
                 audPtr += tsFrameBytesLeft;
                 }
               else
@@ -531,32 +453,56 @@ private:
               //}}}
             }
           }
-
-        ptr += tsFrameBytesLeft;
+        tsPtr += tsFrameBytesLeft;
         i += 188;
         }
-
-      int mVidLen = (int)(vidPtr - mVidPes);
-      int mAudLen = (int)(audPtr - mAudPes);
       }
-
     CloseHandle (readFile);
+    avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
-    //printServices();
-    //printPids();
-    //printPrograms();
     }
   //}}}
   //{{{
-  void loader() {
+  void fileLoader() {
 
+    //{{{  av init
+    av_register_all();
+    avformat_network_init();
+
+    AVFormatContext* avFormatContext;
+    avformat_open_input (&avFormatContext, mFilename, NULL, NULL);
+    avformat_find_stream_info (avFormatContext, NULL);
+
+    int vidStream = -1;
+    int audStream = -1;
+    int subStream = -1;
+    for (unsigned int i = 0; i < avFormatContext->nb_streams; i++)
+      if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) && (vidStream == -1))
+        vidStream = i;
+      else if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) && (audStream == -1))
+        audStream = i;
+      else if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) && (subStream == -1))
+        subStream = i;
+
+    if (audStream >= 0) {
+      channels = avFormatContext->streams[audStream]->codec->channels;
+      sampleRate = avFormatContext->streams[audStream]->codec->sample_rate;
+      }
+
+    printf ("filename:%s sampleRate:%d channels:%d streams:%d aud:%d vid:%d sub:%d\n",
+            mFilename, sampleRate, channels, avFormatContext->nb_streams, audStream, vidStream, subStream);
+    //av_dump_format (avFormatContext, 0, mFilename, 0);
+
+    if (channels > 2)
+      channels = 2;
+    //}}}
     //{{{  aud init
     AVCodecContext* audCodecContext = NULL;
     AVCodec* audCodec = NULL;
     AVFrame* audFrame = NULL;
 
     if (audStream >= 0) {
-      audCodecContext = mAvFormatContext->streams[audStream]->codec;
+      audCodecContext = avFormatContext->streams[audStream]->codec;
       audCodec = avcodec_find_decoder (audCodecContext->codec_id);
       avcodec_open2 (audCodecContext, audCodec, NULL);
       audFrame = av_frame_alloc();
@@ -568,7 +514,7 @@ private:
     AVFrame* vidFrame = NULL;
 
     if (vidStream >= 0) {
-      vidCodecContext = mAvFormatContext->streams[vidStream]->codec;
+      vidCodecContext = avFormatContext->streams[vidStream]->codec;
       vidCodec = avcodec_find_decoder (vidCodecContext->codec_id);
       avcodec_open2 (vidCodecContext, vidCodec, NULL);
       vidFrame = av_frame_alloc();
@@ -579,33 +525,35 @@ private:
     AVCodec* subCodec = NULL;
 
     if (subStream >= 0) {
-      subCodecContext = mAvFormatContext->streams[subStream]->codec;
+      subCodecContext = avFormatContext->streams[subStream]->codec;
       subCodec = avcodec_find_decoder (subCodecContext->codec_id);
       avcodec_open2 (subCodecContext, subCodec, NULL);
       }
     //}}}
+
     AVSubtitle sub;
     memset (&sub, 0, sizeof(AVSubtitle));
 
-    audFramesLoaded = 0;
-    mVidFramesLoaded = 0;
     AVPacket avPacket;
     while (true) {
-      while (av_read_frame (mAvFormatContext, &avPacket) >= 0) {
+      while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+        Sleep (40);
+
+      while (av_read_frame (avFormatContext, &avPacket) >= 0) {
         if (avPacket.stream_index == audStream) {
-          // aud packet
-          int gotPicture = 0;
-          avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &avPacket);
-          if (gotPicture && (audFramesLoaded < maxAudFrames)) {
+          //{{{  aud packet
+          int gotAudio = 0;
+          avcodec_decode_audio4 (audCodecContext, audFrame, &gotAudio, &avPacket);
+          if (gotAudio && (mAudFramesLoaded < maxAudFrames)) {
             samples = audFrame->nb_samples;
-            audFramesPerSec = (float)sampleRate / samples;
-            audFrames[audFramesLoaded] = malloc (channels * samples * 2);
+            mAudFramesPerSec = (float)sampleRate / samples;
+            mAudFrames[mAudFramesLoaded] = malloc (channels * samples * 2);
 
             if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
               //{{{  16bit signed planar
               short* lptr = (short*)audFrame->data[0];
               short* rptr = (short*)audFrame->data[1];
-              short* ptr = (short*)audFrames[audFramesLoaded];
+              short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames];
 
               double valueL = 0;
               double valueR = 0;
@@ -616,16 +564,15 @@ private:
                 valueR += pow(*ptr++, 2);
                 }
 
-              audFramesPowerL[audFramesLoaded] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-              audFramesPowerR[audFramesLoaded] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-              audFramesLoaded++;
+              mAudFramesPowerL[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
+              mAudFramesPowerR[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
               }
               //}}}
             else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
               //{{{  32bit float planar
               float* lptr = (float*)audFrame->data[0];
               float* rptr = (float*)audFrame->data[1];
-              short* ptr = (short*)audFrames[audFramesLoaded];
+              short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames];
 
               double valueL = 0;
               double valueR = 0;
@@ -636,33 +583,36 @@ private:
                 valueR += pow(*ptr++, 2);
                 }
 
-              audFramesPowerL[audFramesLoaded] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-              audFramesPowerR[audFramesLoaded] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-              audFramesLoaded++;
+              mAudFramesPowerL[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
+              mAudFramesPowerR[mAudFramesLoaded % maxAudFrames] = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
               }
               //}}}
             else
               printf ("new sample_fmt:%d\n",audCodecContext->sample_fmt);
+            mAudFramesLoaded++;
             }
           }
-
+          //}}}
         else if (avPacket.stream_index == vidStream) {
-          // vid packet
+          //{{{  vid packet
           if (mVidFramesLoaded < 2000) {
             int gotPicture = 0;
             avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &avPacket);
             if (gotPicture) {
-              // create wicBitmap
-              //printf ("got pictuure %d\n", vidFramesLoaded);
+              mYuvFrames[mVidFramesLoaded % maxVidFrames].set (
+                vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
               mVidFramesLoaded++;
               }
             }
           }
+          //}}}
         else if (avPacket.stream_index == subStream) {
+          //{{{  sub packet
           int gotPicture = 0;
           avsubtitle_free (&sub);
           avcodec_decode_subtitle2 (subCodecContext, &sub, &gotPicture, &avPacket);
           }
+          //}}}
         av_free_packet (&avPacket);
         }
       }
@@ -671,36 +621,82 @@ private:
     av_free (audFrame);
     avcodec_close (vidCodecContext);
     avcodec_close (audCodecContext);
-    avformat_close_input (&mAvFormatContext);
+    avformat_close_input (&avFormatContext);
     }
   //}}}
   //{{{
   void player() {
 
     CoInitialize (NULL);
+
     // wait for first aud frame to load for sampleRate, channels
-    while (audFramesLoaded < 1)
+    while (mAudFramesLoaded < 1)
       Sleep (40);
 
     winAudioOpen (sampleRate, 16, channels);
 
     while (true) {
-      if (!playing || (int(playFrame)+1 >= audFramesLoaded))
+      if (!mPlaying || (int(mPlayFrame)+1 >= mAudFramesLoaded))
         Sleep (40);
-      else if (audFrames[int(playFrame)]) {
-        winAudioPlay (audFrames[int(playFrame)], channels * samples*2, 1.0f);
+      else if (mAudFrames[int(mPlayFrame)]) {
+        winAudioPlay (mAudFrames[int(mPlayFrame) % maxAudFrames], channels * samples*2, 1.0f);
         if (!getMouseDown())
-          if ((int(playFrame)+1) < audFramesLoaded) {
-            playFrame += 1.0;
+          if ((int(mPlayFrame)+1) < mAudFramesLoaded) {
+            mPlayFrame += 1.0;
             changed();
             }
         }
-      if (int(playFrame) < maxVidFrames)
-        mVidFrame = &mYuvFrames[int(playFrame)];
       }
 
     winAudioClose();
     CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void makeBitmap (cYuvFrame* yuvFrame) {
+
+    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
+    if (yuvFrame) {
+      if (yuvFrame->mId != mVidId) {
+        mVidId = yuvFrame->mId;
+        if (mBitmap)  {
+          auto pixelSize = mBitmap->GetPixelSize();
+          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
+            mBitmap->Release();
+            mBitmap = nullptr;
+            }
+          }
+        if (!mBitmap) // create bitmap
+          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
+
+        // allocate 16 byte aligned bgraBuf
+        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
+
+        // convert yuv420 -> bitmap bgra
+        auto yPtr = yuvFrame->mYbuf;
+        auto uPtr = yuvFrame->mUbuf;
+        auto vPtr = yuvFrame->mVbuf;
+        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+          uPtr += yuvFrame->mUVStride;
+          vPtr += yuvFrame->mUVStride;
+
+          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
+          }
+
+        free (bgraBufUnaligned);
+        }
+      }
+    else if (mBitmap) {
+      mBitmap->Release();
+      mBitmap = nullptr;
+      }
     }
   //}}}
 
@@ -708,34 +704,27 @@ private:
   wchar_t* mWideFilename;
   char mFilename[100];
 
-  int vidStream = -1;
-  int audStream = -1;
-  int subStream = -1;
-  AVFormatContext* mAvFormatContext;
+  int mVidPid = 1301;
+  int mAudPid = 1302;
 
-  int mVidPid = 1401;
-  int mAudPid = 1402;
-  uint8_t* mAudPes = nullptr;
-  uint8_t* mVidPes = nullptr;
-
-  float audFramesPerSec = 0.0;
+  int samples = 1024;
+  float mAudFramesPerSec = 40;
   unsigned char channels = 2;
   unsigned long sampleRate = 48000;
-  int samples = 1024;
 
-  bool playing = true;
-  double playFrame = 0;
+  bool mPlaying = true;
+  double mPlayFrame = 0;
 
-  int audFramesLoaded = 0;
-  void* audFrames [maxAudFrames];
-  float audFramesPowerL [maxAudFrames];
-  float audFramesPowerR [maxAudFrames];
+  int mAudFramesLoaded = 0;
+  void* mAudFrames [maxAudFrames];
+  float mAudFramesPowerL [maxAudFrames];
+  float mAudFramesPowerR [maxAudFrames];
 
   int mVidId = 0;
-  cYuvFrame mYuvFrames[maxVidFrames];
   int mVidFramesLoaded = 0;
+  cYuvFrame mYuvFrames[maxVidFrames];
+
   ID2D1Bitmap* mBitmap = nullptr;
-  cYuvFrame* mVidFrame = nullptr;
   //}}}
   };
 
@@ -750,10 +739,9 @@ int wmain (int argc, wchar_t* argv[]) {
   //}}}
 
   printf ("Player %d\n", argc);
-  // CreateThread (NULL, 0, tsFileLoaderThread, argv[2], 0, NULL);
-  //  bda
+
+  // bda
   //int freq = 674000; // 650000 674000 706000
-  //wchar_t fileName [100];
   //swprintf (fileName, 100, L"C://Users/nnn/Desktop/%d.ts", freq);
   //openTsFile (fileName);
   //createBDAGraph (freq);
