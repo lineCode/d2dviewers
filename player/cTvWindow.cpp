@@ -4,7 +4,7 @@
 
 #include "../common/cD2dWindow.h"
 
-#include "ts.h"
+#include "cTs.h"
 //#include "bda.h"
 
 #include "../common/cYuvFrame.h"
@@ -140,14 +140,14 @@ void onDraw (ID2D1DeviceContext* dc) {
     }
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d",
-            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded);
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d",
+            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded, mDiscontinuity);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(getClientF().width-300-2, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(getClientF().width-300, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
 
-  renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+  mTs.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   }
 //}}}
 
@@ -181,15 +181,15 @@ private:
       ReadFile (readFile, tsBuf, 240*188, &sampleLen, NULL);
       if (!sampleLen)
         break;
-      //printf ("readfile %d\n", sampleLen);
       //}}}
+
       while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
         Sleep (40);
 
       size_t i = 0;
       uint8_t* tsPtr = tsBuf;
       while ((tsPtr < tsBuf + sampleLen) && (*tsPtr++ == 0x47) && ((tsPtr+187 >= tsBuf + sampleLen) || (*(tsPtr+187) == 0x47))) {
-        //{{{  packet start
+        //{{{  parse packetStart
         auto payStart = *tsPtr & 0x40;
         auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
         auto headerBytes = (*(tsPtr+2) & 0x20) ? (4 + *(tsPtr+3)) : 3;
@@ -199,37 +199,28 @@ private:
 
         bool discontinuity = false;
         bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
-                         (mProgramMap.find (pid) != mProgramMap.end());
+                         (mTs.mProgramMap.find (pid) != mTs.mProgramMap.end());
 
-        tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
-        if (pidInfoIt == mPidInfoMap.end()) {
-          //{{{  new pid, new cPidInfo
-          printf ("PID new cPidInfo %d\n", pid);
-
-          // insert new cPidInfo, get pidInfoIt iterator
-          pair<tPidInfoMap::iterator, bool> resultPair = mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
-          pidInfoIt = resultPair.first;
+        tPidInfoMap::iterator pidInfoIt = mTs.getPidInfoMap()->find (pid);
+        if (pidInfoIt == mTs.getPidInfoMap()->end()) {
+          // new pid, insert new cPidInfo, get pidInfoIt iterator
+          pair<tPidInfoMap::iterator, bool> insPair = mTs.getPidInfoMap()->insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
+          pidInfoIt = insPair.first;
           }
-          //}}}
         else if (continuity != ((pidInfoIt->second.mContinuity+1) & 0x0f)) {
-          //{{{  discontinuity
-          // count all continuity error
-          mDiscontinuity++;
+          // discontinuity, count all errors
           discontinuity = true;
-
+          mDiscontinuity++;
           if (isSection) // only report section, program continuity error
-            printf ("continuity error %d pid:%d - %x:%x\n", mPackets, pid,  continuity, pidInfoIt->second.mContinuity);
-
+            printf ("continuity error pid:%d - %x:%x\n", pid,  continuity, pidInfoIt->second.mContinuity);
           pidInfoIt->second.mBufBytes = 0;
           }
-          //}}}
         pidInfoIt->second.mContinuity = continuity;
         pidInfoIt->second.mTotal++;
         //}}}
-
         if (isSection) {
           if (payStart) {
-            //{{{  parse section start
+            //{{{  parse sectionStart
             int pointerField = tsBuf[i+4];
             if ((pointerField > 0) && (pidInfoIt->second.mBufBytes > 0)) {
               // payloadStart has end of lastSection
@@ -237,7 +228,7 @@ private:
 
               pidInfoIt->second.mBufBytes += pointerField;
               if (pidInfoIt->second.mLength + 3 <= pidInfoIt->second.mBufBytes) {
-                parseEit (pidInfoIt->second.mBuf,0);
+                mTs.parseEit (pidInfoIt->second.mBuf,0);
                 pidInfoIt->second.mLength = 0;
                 pidInfoIt->second.mBufBytes = 0;
                 }
@@ -254,7 +245,7 @@ private:
             pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
             if (pidInfoIt->second.mLength + 3 <= TS_SIZE - 5 - pointerField) {
               // first section
-              parseSection(pid, &tsBuf[j], &tsBuf[sampleLen]);
+              mTs.parseSection(pid, &tsBuf[j], &tsBuf[sampleLen]);
               j += pidInfoIt->second.mLength + 3;
               pidInfoIt->second.mBufBytes = 0;
 
@@ -262,7 +253,7 @@ private:
                 // parse more sections
                 pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
                 if (j + pidInfoIt->second.mLength + 4 - i < TS_SIZE) {
-                  parseSection (pid, &tsBuf[j], &tsBuf[sampleLen]);
+                  mTs.parseSection (pid, &tsBuf[j], &tsBuf[sampleLen]);
                   j += pidInfoIt->second.mLength + 3;
                   pidInfoIt->second.mBufBytes = 0;
                   }
@@ -284,22 +275,22 @@ private:
             }
             //}}}
           else if (pidInfoIt->second.mBufBytes > 0) {
-            //{{{  parse section continuation
+            //{{{  parse sectionContinuation
             memcpy (&pidInfoIt->second.mBuf[pidInfoIt->second.mBufBytes], &tsBuf[i+4], TS_SIZE - 4);
             pidInfoIt->second.mBufBytes += TS_SIZE - 4;
 
             if (pidInfoIt->second.mLength + 3 <= pidInfoIt->second.mBufBytes) {
-              parseSection (pid, pidInfoIt->second.mBuf, 0);
+              mTs.parseSection (pid, pidInfoIt->second.mBuf, 0);
               pidInfoIt->second.mBufBytes = 0;
               }
             }
             //}}}
           }
         else {
-          tServiceMap::iterator serviceIt = mServiceMap.find (pidInfoIt->second.mSid);
-          if (serviceIt != mServiceMap.end()) {
+          tServiceMap::iterator serviceIt = mTs.mServiceMap.find (pidInfoIt->second.mSid);
+          if (serviceIt != mTs.mServiceMap.end()) {
             if ((pid == mVidPid) && (pid == serviceIt->second.getVidPid())) {
-              //{{{  vidPid
+              //{{{  parse vidPid
               if (discontinuity) {
                 //{{{  discontinuity
                 printf ("vid disc------------------------------------------\n");
@@ -350,11 +341,11 @@ private:
                 vidPtr += tsFrameBytesLeft;
                 }
               else
-                printf ("discard vid\n");
+                printf ("discard vid %d\n", pid);
               }
               //}}}
             else if ((pid == mAudPid) && (pid == serviceIt->second.getAudPid())) {
-              //{{{  audPid
+              //{{{  parse audPid
               if (discontinuity) {
                 //{{{  discontinuity
                 printf ("aud discontinuity --------------------\n");
@@ -448,7 +439,7 @@ private:
                 audPtr += tsFrameBytesLeft;
                 }
               else
-                printf ("discard aud\n");
+                printf ("discard aud %d\n", pid);
               }
               //}}}
             }
@@ -457,6 +448,7 @@ private:
         i += 188;
         }
       }
+
     CloseHandle (readFile);
     avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
@@ -703,6 +695,9 @@ private:
   //{{{  vars
   wchar_t* mWideFilename;
   char mFilename[100];
+
+  cTs mTs;
+  int mDiscontinuity = 0;
 
   int mVidPid = 1301;
   int mAudPid = 1302;

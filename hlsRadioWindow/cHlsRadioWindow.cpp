@@ -147,7 +147,7 @@ protected:
   void onMouseDown (bool right, int x, int y) {
     if (x < 80) {
       int channel = (y / 20) - 1;
-      if (channel <= 0) {
+      if (channel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
         if (hlsRadio)
           hlsRadio->incSourceVidBitrate (true);
@@ -338,7 +338,7 @@ private:
       winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1);
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
-      if (audSamples && mPlayer->getPlaying()) {
+      if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {
         mPlayer->incPlaySecs (mPlayer->getSecsPerAudFrame());
         changed();
         }

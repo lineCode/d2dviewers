@@ -26,7 +26,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="tv.cpp" />
+    <ClCompile Include="cTvWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -39,13 +39,13 @@
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="..\common\yuvrgb_sse2.h" />
     <ClInclude Include="bda.h" />
+    <ClInclude Include="cTs.h" />
     <ClInclude Include="decode.h" />
     <ClInclude Include="huffDecoder.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="qedit.h" />
-    <ClInclude Include="ts.h" />
   </ItemGroup>
-<ItemGroup>
+  <ItemGroup>
     <CustomBuild Include="..\common\yuvrgb_sse2.asm">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
@@ -58,13 +58,12 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </CustomBuild>
   </ItemGroup>
-
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B80EBF50-0719-4408-B63F-43C64F802819}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
-    <ProjectName>tv</ProjectName>
+    <ProjectName>tvWindow</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

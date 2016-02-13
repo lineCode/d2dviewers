@@ -4,7 +4,7 @@
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="tv.cpp" />
+    <ClCompile Include="cTvWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bda.h">
@@ -25,15 +25,13 @@
     <ClInclude Include="qedit.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="ts.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\yuvrgb_sse2.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="cTs.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
@@ -42,6 +40,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\common\yuvrgb_sse2.asm" />
+    <CustomBuild Include="..\common\yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>
