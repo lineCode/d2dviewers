@@ -155,6 +155,9 @@ private:
   //{{{
   void tsLoader() {
 
+    uint64_t lastPts = 0;
+    uint64_t lastVidPts = 0;
+    uint64_t lastVidDts = 0;
     uint8_t tsBuf[240*188];
     uint8_t* audPes = (uint8_t*)malloc (5000);
     uint8_t* vidPes = (uint8_t*)malloc (500000);
@@ -318,6 +321,7 @@ private:
                       int gotPicture = 0;
                       bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
                       if (gotPicture) {
+                        printf ("vid pic %d\n", mVidFramesLoaded);
                         mYuvFrames[mVidFramesLoaded % maxVidFrames].set (
                           vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
                         mVidFramesLoaded++;
@@ -330,6 +334,36 @@ private:
                   }
 
                 // start next vidPES
+                uint64_t pts;
+                uint64_t dts;
+                int64_t diffPts;
+                if (*(tsPtr+7) & 0x80) { // has PTS
+                  if (*(tsPtr+9) & 0x20 == 0)
+                    printf ("pts cockup\n");
+                  pts = (((*(tsPtr+9)) & 0x0E) << 30) |
+                          (*(tsPtr+10) << 22) | ((*(tsPtr+11) & 0xFE) << 14) |
+                          (*(tsPtr+12) << 7) | (*(tsPtr+13) >> 1);
+                  diffPts = pts - lastVidPts;
+                  lastVidPts = pts;
+                  }
+                int64_t diffDts = 0;
+                if (*(tsPtr+7) & 0x40) { // has DTS
+                  if (*(tsPtr+9) & 0x10 == 0)
+                    printf ("dts cockup\n");
+                  dts = (((*(tsPtr+14)) & 0x0E) << 30) |
+                          (*(tsPtr+15) << 22) | ((*(tsPtr+16) & 0xFE) << 14) |
+                          (*(tsPtr+17) << 7) | (*(tsPtr+18) >> 1);
+                  diffDts = dts - lastVidDts;
+                  lastVidDts = dts;
+                  }
+                else
+                  dts = 0;
+
+                printf ("vid %x %x %x %x %x %x - %x %x %x %x %x -- %x %x %x %x\n",
+                        ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)),
+                        *(tsPtr+4), *(tsPtr+5), *(tsPtr+6), *(tsPtr+7), *(tsPtr+8),
+                        *(tsPtr+9), *(tsPtr+10), *(tsPtr+11), *(tsPtr+12), *(tsPtr+13), pts, diffPts, dts, diffDts
+                        );
                 int pesHeaderBytes = 9 + *(tsPtr+8);
                 tsPtr += pesHeaderBytes;
                 tsFrameBytesLeft -= pesHeaderBytes;
@@ -417,6 +451,7 @@ private:
                         //}}}
                       else
                         printf ("new sample_fmt:%d\n", audCodecContext->sample_fmt);
+                      printf ("aud samples %d %d\n", samples, mAudFramesLoaded);
                       mAudFramesLoaded++;
                       }
                     audPacket.data += bytesUsed;
@@ -426,6 +461,23 @@ private:
                   }
 
                 // start new audPES
+                uint64_t pts;
+                uint64_t diffPts;
+                if (*(tsPtr+7) & 0x80) { // has PTS
+                  if (*(tsPtr+9) & 0x20 == 0)
+                    printf ("pts cockup\n");
+                  pts = (((*(tsPtr+9)) & 0x0E) << 30) |
+                          (*(tsPtr+10) << 22) | ((*(tsPtr+11) & 0xFE) << 14) |
+                          (*(tsPtr+12) << 7) | (*(tsPtr+13) >> 1);
+                  diffPts = pts - lastPts;
+                  lastPts = pts;
+                  }
+                printf ("aud %x %x %x %x %x %x - %x %x %x %x %x -- %x %x\n",
+                        ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)),
+                        *(tsPtr+4), *(tsPtr+5), *(tsPtr+6), *(tsPtr+7), *(tsPtr+8),
+                        *(tsPtr+9), *(tsPtr+10), *(tsPtr+11), *(tsPtr+12), *(tsPtr+13), pts, diffPts
+                        );
+
                 int pesHeaderBytes = 9 + *(tsPtr+8);
                 tsPtr += pesHeaderBytes;
                 tsFrameBytesLeft -= pesHeaderBytes;
@@ -699,8 +751,8 @@ private:
   cTs mTs;
   int mDiscontinuity = 0;
 
-  int mVidPid = 1301;
-  int mAudPid = 1302;
+  int mVidPid = 1701;
+  int mAudPid = 1702;
 
   int samples = 1024;
   float mAudFramesPerSec = 40;
