@@ -627,9 +627,10 @@ static unsigned long crcTable[256] = {
 class cPidInfo {
 public:
   //{{{
-  cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection), 
-                                                 mPts(0), mDts(0), mContinuity(-1), mTotal(0),
-                                                 mLength(0), mBufBytes(0), mPesBuf(nullptr), mPesPtr(nullptr) {
+  cPidInfo::cPidInfo (int pid, bool isSection) :
+      mPid(pid), mSid(-1), mIsSection(isSection), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
+      mLength(0), mBufBytes(0) {
+
     switch (pid) {
       case PID_PAT: wcscpy (mInfo, L"Pat "); break;
       case PID_CAT: wcscpy (mInfo, L"Cat "); break;
@@ -665,9 +666,6 @@ public:
   int mLength;
   size_t mBufBytes;
   unsigned char mBuf[10000];
-
-  uint8_t* mPesBuf;
-  uint8_t* mPesPtr;
 
   // render text for speed,locking
   wchar_t mInfo[100];
@@ -1039,7 +1037,7 @@ public:
     if (!mPidInfoMap.empty()) {
       // title
       wchar_t wStr[200];
-      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
+      swprintf (wStr, 200, L"%ls %ls services:%d", getCurTime(), getNetworkName(), getNumServices());
 
       D2D1_RECT_F textRect = D2D1::RectF(0.0f, 0.0f, (float)1024.0f, (float)client.height);
       d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
@@ -1654,6 +1652,26 @@ private:
       DescrLength += GetDescrLength (ptr);
       ptr += GetDescrLength (ptr);
       }
+    }
+  //}}}
+
+  // interface for render
+  //{{{
+  wchar_t* getCurTime() {
+
+    return wTimeStr;
+    }
+  //}}}
+  //{{{
+  wchar_t* getNetworkName() {
+
+    return wNetworkNameStr;
+    };
+  //}}}
+  //{{{
+  int getNumServices() {
+
+    return (int)mServiceMap.size();
     }
   //}}}
 
