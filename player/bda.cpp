@@ -317,7 +317,7 @@ uint8_t* createBDAGraph (int freq) {
   ComPtr<IBaseFilter> bdaTif =
     createFilter (graphBuilder, CLSID_BDAtif, L"BDAtif", mpeg2Demux);
 
-  bdaBuf = (uint8_t*) malloc (1000000000);
+  bdaBuf = (uint8_t*) malloc (200000000);
   bdaPtr = bdaBuf;
 
   ComPtr<IMediaControl> mediaControl;
