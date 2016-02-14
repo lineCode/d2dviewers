@@ -326,15 +326,14 @@ private:
               vidPacket.data = vidPes;
               vidPacket.size = 0;
 
-              AVFrame* vidFrame = av_frame_alloc();
-
-              int vidLen = int (vidPtr - vidPes);
+              int pesLen = int (vidPtr - vidPes);
               vidPtr = vidPes;
-              while (vidLen) {
-                int len = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, vidPtr, vidLen, 0, 0, AV_NOPTS_VALUE);
-                vidPtr += len;
-                vidLen -= len;
+              while (pesLen) {
+                int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, vidPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                vidPtr += lenUsed;
+                pesLen -= lenUsed;
                 if (vidPacket.data) {
+                  AVFrame* vidFrame = av_frame_alloc();
                   int gotPicture = 0;
                   int bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
                   if (gotPicture) {
@@ -343,11 +342,11 @@ private:
                       vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
                     mVidFramesLoaded++;
                     }
+                  av_frame_free (&vidFrame);
                   vidPacket.data += bytesUsed;
                   vidPacket.size -= bytesUsed;
                   }
                 }
-              av_frame_free (&vidFrame);
               }
 
             getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
@@ -361,8 +360,6 @@ private:
             memcpy (vidPtr, tsPtr, tsFrameBytesLeft);
             vidPtr += tsFrameBytesLeft;
             }
-          else
-            printf ("discard vid %d\n", pid);
           }
           //}}}
         else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
@@ -379,20 +376,20 @@ private:
               audPacket.data = audPes;
               audPacket.size = 0;
 
-              AVFrame* audFrame = av_frame_alloc();
-
-              int audLen = int (audPtr - audPes);
+              int pesLen = int (audPtr - audPes);
               audPtr = audPes;
-              while (audLen) {
-                int len = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, audPtr, audLen, 0, 0, AV_NOPTS_VALUE);
-                audPtr += len;
-                audLen -= len;
+              while (pesLen) {
+                int lenUsed = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, audPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                audPtr += lenUsed;
+                pesLen -= lenUsed;
                 if (audPacket.data) {
                   int gotPicture = 0;
+                  AVFrame* audFrame = av_frame_alloc();
                   int bytesUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
                   samples = audFrame->nb_samples;
                   mAudFramesPerSec = (float)sampleRate / samples;
 
+                  printf ("aud samples %d %d %x %x\n", samples, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                   mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, samples);
 
                   if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
@@ -433,16 +430,14 @@ private:
                     mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
                     }
                     //}}}
-                  else
-                    printf ("new sample_fmt:%d\n", audCodecContext->sample_fmt);
-                  printf ("aud samples %d %d %x %x\n", samples, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                   mAudFramesLoaded++;
+
+                  av_frame_free (&audFrame);
 
                   audPacket.data += bytesUsed;
                   audPacket.size -= bytesUsed;
                   }
                 }
-              av_frame_free (&audFrame);
               }
 
             getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
@@ -458,8 +453,6 @@ private:
             memcpy (audPtr, tsPtr, tsFrameBytesLeft);
             audPtr += tsFrameBytesLeft;
             }
-          else
-            printf ("discard aud %d\n", pid);
           }
           //}}}
 
