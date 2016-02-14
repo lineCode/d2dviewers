@@ -628,7 +628,7 @@ class cPidInfo {
 public:
   //{{{
   cPidInfo::cPidInfo (int pid, bool isSection) :
-      mPid(pid), mIsSection(isSection), mSid(-1), mContinuity(-1), mTotal(0),
+      mPid(pid), mSid(-1), mIsSection(isSection), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
       mLength(0), mBufBytes(0) {
 
     switch (pid) {
@@ -655,6 +655,9 @@ public:
   int  mPid;
   int  mSid;
   bool mIsSection;
+
+  int64_t mPts;
+  int64_t mDts;
 
   int  mContinuity;
   int  mTotal;
@@ -796,8 +799,8 @@ public:
 
     mNow.print ("  - ");
 
-    for (tEpgItemMap::iterator it = mEpgItemMap.begin(); it != mEpgItemMap.end(); it++)
-      it->second.print ("    - ");
+    for (auto epgItem : mEpgItemMap)
+      epgItem.second.print ("    - ");
     }
   //}}}
 
@@ -1040,9 +1043,8 @@ public:
       d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
 
       float top = 20.0f;
-      for (tPidInfoMap::iterator it = getPidInfoMap()->begin(); it != getPidInfoMap()->end(); it++) {
-        // pidInfo
-        float total = (float)it->second.mTotal;
+      for (auto pidInfo : mPidInfoMap) {
+        float total = (float)pidInfo.second.mTotal;
         if (total > mLargest)
           mLargest = total;
         float len = (total/mLargest) * (client.width-50.0f);
@@ -1050,7 +1052,7 @@ public:
         d2dContext->FillRectangle (r, blueBrush);
 
         textRect.top = top;
-        swprintf (wStr, 200, L"%4d %ls%d", it->first, it->second.mInfo, it->second.mTotal);
+        swprintf (wStr, 200, L"%4d %ls%d", pidInfo.first, pidInfo.second.mInfo, pidInfo.second.mTotal);
         d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
 
         top += 14.0f;
@@ -1062,24 +1064,24 @@ public:
   void printServices() {
 
     printf ("--- ServiceMap -----\n");
-    for (tServiceMap::iterator it = mServiceMap.begin(); it != mServiceMap.end(); it++)
-      it->second.print();
+    for (auto service : mServiceMap)
+      service.second.print();
     }
   //}}}
   //{{{
   void printPrograms() {
 
     printf ("--- ProgramMap -----\n");
-    for (tProgramMap::iterator it = mProgramMap.begin(); it != mProgramMap.end(); it++)
-      printf ("- programPid:%d sid:%d\n", it->first, it->second);
+    for (auto map : mProgramMap)
+      printf ("- programPid:%d sid:%d\n", map.first, map.second);
     }
   //}}}
   //{{{
   void printPids() {
 
     printf ("--- PidInfoMap -----\n");
-    for (tPidInfoMap::iterator it = mPidInfoMap.begin(); it != mPidInfoMap.end(); it++)
-      it->second.print();
+    for (auto pidInfo : mPidInfoMap)
+      pidInfo.second.print();
     }
   //}}}
 

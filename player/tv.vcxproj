@@ -35,6 +35,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\common\cAudFrame.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="..\common\yuvrgb_sse2.h" />

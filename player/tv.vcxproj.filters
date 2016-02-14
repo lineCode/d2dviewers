@@ -32,6 +32,9 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="cTs.h" />
+    <ClInclude Include="..\common\cAudFrame.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

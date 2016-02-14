@@ -300,7 +300,7 @@ private:
 
         svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, yuv, &sDstBufInfo);
         if (sDstBufInfo.iBufferStatus)
-          mYuvFrames[mVidFramesLoaded++].set (yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
+          mYuvFrames[mVidFramesLoaded++].set (0, yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
                                               sDstBufInfo.UsrData.sSystemBuffer.iWidth,
                                               sDstBufInfo.UsrData.sSystemBuffer.iHeight);
 
@@ -346,7 +346,7 @@ private:
         int gotPicture = 0;
         bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
         if (gotPicture)
-          mYuvFrames[mVidFramesLoaded++].set (vidFrame->data, vidFrame->linesize,
+          mYuvFrames[mVidFramesLoaded++].set (0, vidFrame->data, vidFrame->linesize,
                                               vidCodecContext->width, vidCodecContext->height);
 
         vidPacket.data += bytesUsed;
