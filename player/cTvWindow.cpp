@@ -4,7 +4,7 @@
 
 #include "../common/cD2dWindow.h"
 
-#include "cTs.h"
+#include "cTsSection.h"
 //#include "bda.h"
 
 #include "../common/cYuvFrame.h"
@@ -162,7 +162,7 @@ void onDraw (ID2D1DeviceContext* dc) {
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(getClientF().width-300, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
 
-  //mTs.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+  //mTsSection.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   }
 //}}}
 
@@ -195,7 +195,7 @@ private:
       //}}}
       //{{{  choose service
       int j = 0;
-      for (auto service : mTs.mServiceMap) {
+      for (auto service : mTsSection.mServiceMap) {
         if (j == mService) {
           mServicePtr = &service.second;
           break;
@@ -219,12 +219,12 @@ private:
         auto tsFrameBytesLeft = 187 - headerBytes;
 
         bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
-                         (mTs.mProgramMap.find (pid) != mTs.mProgramMap.end());
+                         (mTsSection.mProgramMap.find (pid) != mTsSection.mProgramMap.end());
 
-        tPidInfoMap::iterator pidInfoIt = mTs.getPidInfoMap()->find (pid);
-        if (pidInfoIt == mTs.getPidInfoMap()->end()) {
+        tPidInfoMap::iterator pidInfoIt = mTsSection.getPidInfoMap()->find (pid);
+        if (pidInfoIt == mTsSection.getPidInfoMap()->end()) {
           // new pid, insert new cPidInfo, get pidInfoIt iterator
-          pair<tPidInfoMap::iterator, bool> insPair = mTs.getPidInfoMap()->insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
+          pair<tPidInfoMap::iterator, bool> insPair = mTsSection.getPidInfoMap()->insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
           pidInfoIt = insPair.first;
           }
         else if (continuity != ((pidInfoIt->second.mContinuity+1) & 0x0f)) {
@@ -248,7 +248,7 @@ private:
 
               pidInfoIt->second.mBufBytes += pointerField;
               if (pidInfoIt->second.mLength + 3 <= pidInfoIt->second.mBufBytes) {
-                mTs.parseEit (pidInfoIt->second.mBuf,0);
+                mTsSection.parseEit (pidInfoIt->second.mBuf,0);
                 pidInfoIt->second.mLength = 0;
                 pidInfoIt->second.mBufBytes = 0;
                 }
@@ -265,7 +265,7 @@ private:
             pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
             if (pidInfoIt->second.mLength + 3 <= TS_SIZE - 5 - pointerField) {
               // first section
-              mTs.parseSection(pid, &tsBuf[j], &tsBuf[sampleLen]);
+              mTsSection.parseSection(pid, &tsBuf[j], &tsBuf[sampleLen]);
               j += pidInfoIt->second.mLength + 3;
               pidInfoIt->second.mBufBytes = 0;
 
@@ -273,7 +273,7 @@ private:
                 // parse more sections
                 pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
                 if (j + pidInfoIt->second.mLength + 4 - i < TS_SIZE) {
-                  mTs.parseSection (pid, &tsBuf[j], &tsBuf[sampleLen]);
+                  mTsSection.parseSection (pid, &tsBuf[j], &tsBuf[sampleLen]);
                   j += pidInfoIt->second.mLength + 3;
                   pidInfoIt->second.mBufBytes = 0;
                   }
@@ -300,15 +300,15 @@ private:
             pidInfoIt->second.mBufBytes += TS_SIZE - 4;
 
             if (pidInfoIt->second.mLength + 3 <= pidInfoIt->second.mBufBytes) {
-              mTs.parseSection (pid, pidInfoIt->second.mBuf, 0);
+              mTsSection.parseSection (pid, pidInfoIt->second.mBuf, 0);
               pidInfoIt->second.mBufBytes = 0;
               }
             }
             //}}}
           }
         else {
-          //tServiceMap::iterator serviceIt = mTs.mServiceMap.find (pidInfoIt->second.mSid);
-          //if (serviceIt != mTs.mServiceMap.end()) {
+          //tServiceMap::iterator serviceIt = mTsSection.mServiceMap.find (pidInfoIt->second.mSid);
+          //if (serviceIt != mTsSection.mServiceMap.end()) {
           //if ((pid == mVidPid) && (pid == serviceIt->second.getVidPid())) {
           //else if ((pid == mAudPid) && (pid == serviceIt->second.getAudPid())) {
           if (mServicePtr && (pid == mServicePtr->getVidPid())) {
@@ -322,16 +322,16 @@ private:
                 vidPacket.data = pidInfoIt->second.mPesBuf;
                 vidPacket.size = 0;
 
-                int vidLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
+                int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
                 pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
-                while (vidLen) {
-                  int len = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, pidInfoIt->second.mPesPtr, vidLen, 0, 0, AV_NOPTS_VALUE);
-                  pidInfoIt->second.mPesPtr += len;
-                  vidLen -= len;
+                while (pesLen) {
+                  int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                  pidInfoIt->second.mPesPtr += lenUsed;
+                  pesLen -= lenUsed;
                   if (vidPacket.data) {
                     int gotPicture = 0;
                     AVFrame* vidFrame = av_frame_alloc();
-                    int bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
+                    int packetUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
                     if (gotPicture) {
                       printf ("vid pic %d %x %x\n", mVidFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                       mYuvFrames[mVidFramesLoaded % maxVidFrames].set (pidInfoIt->second.mPts,
@@ -339,8 +339,8 @@ private:
                       mVidFramesLoaded++;
                       }
                     av_frame_free (&vidFrame);
-                    vidPacket.data += bytesUsed;
-                    vidPacket.size -= bytesUsed;
+                    vidPacket.data += packetUsed;
+                    vidPacket.size -= packetUsed;
                     }
                   }
                 }
@@ -373,18 +373,18 @@ private:
                 audPacket.data = pidInfoIt->second.mPesBuf;
                 audPacket.size = 0;
 
-                int audLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
+                int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
                 pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
-                while (audLen) {
-                  int len = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, pidInfoIt->second.mPesPtr, audLen, 0, 0, AV_NOPTS_VALUE);
-                  pidInfoIt->second.mPesPtr += len;
-                  audLen -= len;
+                while (pesLen) {
+                  int lenUsed = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                  pidInfoIt->second.mPesPtr += lenUsed;
+                  pesLen -= lenUsed;
                   if (audPacket.data) {
                     AVFrame* audFrame = av_frame_alloc();
                     int gotPicture = 0;
-                    int bytesUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
+                    int packetUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
                     if (audPacket.data) {
-                      printf ("aud samples %d %d %x %x\n", 
+                      printf ("aud samples %d %d %x %x\n",
                               audFrame->nb_samples, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                       mAudFramesPerSec = (float)sampleRate / audFrame->nb_samples;
                       mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, audFrame->nb_samples);
@@ -429,8 +429,8 @@ private:
                       mAudFramesLoaded++;
                       }
                     av_frame_free (&audFrame);
-                    audPacket.data += bytesUsed;
-                    audPacket.size -= bytesUsed;
+                    audPacket.data += packetUsed;
+                    audPacket.size -= packetUsed;
                     }
                   }
                 }
@@ -622,6 +622,7 @@ private:
 
     av_free (vidFrame);
     av_free (audFrame);
+
     avcodec_close (vidCodecContext);
     avcodec_close (audCodecContext);
     avformat_close_input (&avFormatContext);
@@ -740,7 +741,7 @@ private:
   wchar_t* mWideFilename;
   char mFilename[100];
 
-  cTs mTs;
+  cTsSection mTsSection;
   int mDiscontinuity = 0;
 
   int mService = 6;
