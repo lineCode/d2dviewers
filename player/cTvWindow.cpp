@@ -171,10 +171,6 @@ private:
   void tsLoader() {
 
     uint8_t tsBuf[240*188];
-    uint8_t* audPes = (uint8_t*)malloc (5000);
-    uint8_t* vidPes = (uint8_t*)malloc (500000);
-    uint8_t* audPtr = nullptr;
-    uint8_t* vidPtr = nullptr;
     //{{{  init av
     av_register_all();
 
@@ -315,22 +311,25 @@ private:
         else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
           //{{{  parse vidPid
           if (discontinuity)
-            vidPtr = nullptr;
+            pidInfoIt->second.mPesPtr = nullptr;
 
           if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
             // start next vidPES
-            if (vidPtr) {
-              // decode last vidPES
+            if (!pidInfoIt->second.mPesBuf)
+              pidInfoIt->second.mPesBuf = (uint8_t*)malloc (500000);
+
+            if (pidInfoIt->second.mPesPtr) {
+              //{{{  decode last vidPES
               AVPacket vidPacket;
               av_init_packet (&vidPacket);
-              vidPacket.data = vidPes;
+              vidPacket.data = pidInfoIt->second.mPesBuf;
               vidPacket.size = 0;
 
-              int pesLen = int (vidPtr - vidPes);
-              vidPtr = vidPes;
+              int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
+              pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
               while (pesLen) {
-                int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, vidPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-                vidPtr += lenUsed;
+                int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                pidInfoIt->second.mPesPtr += lenUsed;
                 pesLen -= lenUsed;
                 if (vidPacket.data) {
                   AVFrame* vidFrame = av_frame_alloc();
@@ -348,39 +347,43 @@ private:
                   }
                 }
               }
+              //}}}
 
             getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
-            vidPtr = vidPes;
+            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             }
 
-          if (vidPtr) {
-            memcpy (vidPtr, tsPtr, tsFrameBytesLeft);
-            vidPtr += tsFrameBytesLeft;
+          if (pidInfoIt->second.mPesPtr) {
+            memcpy (pidInfoIt->second.mPesPtr, tsPtr, tsFrameBytesLeft);
+            pidInfoIt->second.mPesPtr += tsFrameBytesLeft;
             }
           }
           //}}}
         else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
           //{{{  parse audPid
           if (discontinuity)
-            audPtr = nullptr;
+            pidInfoIt->second.mPesPtr = nullptr;
 
           if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
-            // start new audPES
-            if (audPtr) {
-              // decode last audPES
+            if (!pidInfoIt->second.mPesBuf)
+              pidInfoIt->second.mPesBuf = (uint8_t*)malloc (5000);
+
+            // start new aud PES
+            if (pidInfoIt->second.mPesPtr) {
+              //{{{  decode last audPES
               AVPacket audPacket;
               av_init_packet (&audPacket);
-              audPacket.data = audPes;
+              audPacket.data = pidInfoIt->second.mPesBuf;
               audPacket.size = 0;
 
-              int pesLen = int (audPtr - audPes);
-              audPtr = audPes;
+              int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
+              pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
               while (pesLen) {
-                int lenUsed = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, audPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-                audPtr += lenUsed;
+                int lenUsed = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                pidInfoIt->second.mPesPtr += lenUsed;
                 pesLen -= lenUsed;
                 if (audPacket.data) {
                   int gotPicture = 0;
@@ -439,6 +442,7 @@ private:
                   }
                 }
               }
+              //}}}
 
             getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
@@ -446,12 +450,12 @@ private:
             tsFrameBytesLeft -= pesHeaderBytes;
 
             // reset pes pointer
-            audPtr = audPes;
+            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             }
 
-          if (audPtr) {
-            memcpy (audPtr, tsPtr, tsFrameBytesLeft);
-            audPtr += tsFrameBytesLeft;
+          if (pidInfoIt->second.mPesPtr) {
+            memcpy (pidInfoIt->second.mPesPtr, tsPtr, tsFrameBytesLeft);
+            pidInfoIt->second.mPesPtr += tsFrameBytesLeft;
             }
           }
           //}}}
