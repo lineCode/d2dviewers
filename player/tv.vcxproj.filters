@@ -5,6 +5,7 @@
     <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cTvWindow.cpp" />
+    <ClCompile Include="bda.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bda.h">

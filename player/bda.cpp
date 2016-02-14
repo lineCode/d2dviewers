@@ -34,6 +34,9 @@ static bool gotSampleCB = false;
 static ComPtr<IGraphBuilder> graphBuilder;   // ensure graph persists
 static ComPtr<IScanningTuner> scanningTuner; // for signalStrength
 
+static uint8_t* bdaBuf = nullptr;
+static uint8_t* bdaPtr = nullptr;
+
 // bda
 //{{{
 class cSampleGrabCB : public ISampleGrabberCB {
@@ -71,7 +74,11 @@ STDMETHODIMP cSampleGrabCB::SampleCB (double sampleTime, IMediaSample* mediaSamp
   BYTE* samples;
   mediaSample->GetPointer (&samples);
 
-  parsePackets (samples, mediaSample->GetActualDataLength());
+  memcpy (bdaPtr, samples, mediaSample->GetActualDataLength());
+  bdaPtr += mediaSample->GetActualDataLength();
+
+  //parsePackets (samples, mediaSample->GetActualDataLength());
+  //printf ("got samples\n");
 
   return S_OK;
   }
@@ -148,39 +155,41 @@ static ComPtr<IBaseFilter> findFilter (ComPtr<IGraphBuilder> graphBuilder, const
   ComPtr<IEnumMoniker> classEnumerator;
   systemDevEnum->CreateClassEnumerator (clsid, &classEnumerator, 0);
 
-  int i = 1;
-  IMoniker* moniker = NULL;
-  ULONG fetched;
-  while (classEnumerator->Next (1, &moniker, &fetched) == S_OK) {
-    IPropertyBag* propertyBag;
-    if (moniker->BindToStorage (NULL, NULL, IID_IPropertyBag, (void**)&propertyBag) == S_OK) {
-      VARIANT varName;
-      VariantInit (&varName);
-      propertyBag->Read (L"FriendlyName", &varName, 0);
-      VariantClear (&varName);
+  if (classEnumerator) {
+    int i = 1;
+    IMoniker* moniker = NULL;
+    ULONG fetched;
+    while (classEnumerator->Next (1, &moniker, &fetched) == S_OK) {
+      IPropertyBag* propertyBag;
+      if (moniker->BindToStorage (NULL, NULL, IID_IPropertyBag, (void**)&propertyBag) == S_OK) {
+        VARIANT varName;
+        VariantInit (&varName);
+        propertyBag->Read (L"FriendlyName", &varName, 0);
+        VariantClear (&varName);
 
-      #ifdef BDA_COMMENTS
-      wprintf (L"FindFilter - %s:%d\n", varName.bstrVal, instance);
-      #endif
+        #ifdef BDA_COMMENTS
+        wprintf (L"FindFilter - %s:%d\n", varName.bstrVal, instance);
+        #endif
 
-      // bind the filter
-      moniker->BindToObject (NULL, NULL, IID_IBaseFilter, (void**)(&filter));
+        // bind the filter
+        moniker->BindToObject (NULL, NULL, IID_IBaseFilter, (void**)(&filter));
 
-      graphBuilder->AddFilter (filter.Get(), name);
-      propertyBag->Release();
-
-      if (connectPins (graphBuilder, fromFilter, filter)) {
+        graphBuilder->AddFilter (filter.Get(), name);
         propertyBag->Release();
-        break;
+
+        if (connectPins (graphBuilder, fromFilter, filter)) {
+          propertyBag->Release();
+          break;
+          }
+        else
+          graphBuilder->RemoveFilter (filter.Get());
         }
-      else
-        graphBuilder->RemoveFilter (filter.Get());
+      propertyBag->Release();
+      moniker->Release();
       }
-    propertyBag->Release();
+
     moniker->Release();
     }
-
-  moniker->Release();
   return filter;
   }
 //}}}
@@ -235,7 +244,13 @@ void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
 //}}}
 
 //{{{
-void createBDAGraph (int freq) {
+uint8_t* getBDAend() {
+
+  return bdaPtr;
+  }
+//}}}
+//{{{
+uint8_t* createBDAGraph (int freq) {
 
   printf ("BDAcreate\n");
   CoCreateInstance (CLSID_FilterGraph, nullptr,
@@ -283,6 +298,9 @@ void createBDAGraph (int freq) {
   // dvbtNetworkProvider -> dvbtTuner -> dvbtCapture -> sampleGrabberFilter -> mpeg2Demux -> bdaTif
   ComPtr<IBaseFilter> dvbtTuner  =
     findFilter (graphBuilder, KSCATEGORY_BDA_NETWORK_TUNER, L"DVBTtuner", dvbtNetworkProvider);
+  if (!dvbtTuner)
+    return nullptr;
+
   ComPtr<IBaseFilter> dvbtCapture =
     findFilter (graphBuilder, KSCATEGORY_BDA_RECEIVER_COMPONENT, L"DVBTcapture", dvbtTuner);
 
@@ -299,10 +317,14 @@ void createBDAGraph (int freq) {
   ComPtr<IBaseFilter> bdaTif =
     createFilter (graphBuilder, CLSID_BDAtif, L"BDAtif", mpeg2Demux);
 
+  bdaBuf = (uint8_t*) malloc (1000000000);
+  bdaPtr = bdaBuf;
+
   ComPtr<IMediaControl> mediaControl;
   graphBuilder.As (&mediaControl);
   mediaControl->Run();
 
   printf ("- running\n");
+  return bdaBuf;
   }
 //}}}

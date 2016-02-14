@@ -628,7 +628,7 @@ class cPidInfo {
 public:
   //{{{
   cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection),
-                                                 mPts(0), mDts(0), mContinuity(-1), mTotal(0),
+                                                 mStreamType(0), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
                                                  mLength(0), mBufBytes(0), mPesBuf(nullptr), mPesPtr(nullptr) {
     switch (pid) {
       case PID_PAT: wcscpy (mInfo, L"Pat "); break;
@@ -655,6 +655,7 @@ public:
   int  mSid;
   bool mIsSection;
 
+  int mStreamType;
   int64_t mPts;
   int64_t mDts;
 
@@ -1054,7 +1055,7 @@ public:
         d2dContext->FillRectangle (r, blueBrush);
 
         textRect.top = top;
-        swprintf (wStr, 200, L"%4d %ls%d", pidInfo.first, pidInfo.second.mInfo, pidInfo.second.mTotal);
+        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
         d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
 
         top += 14.0f;
@@ -1468,6 +1469,7 @@ private:
           tPidInfoMap::iterator sectionIt = mPidInfoMap.find (esPid);
           if (sectionIt != mPidInfoMap.end())
             sectionIt->second.mSid = sid;
+          sectionIt->second.mStreamType = streamType;
           updatePidInfo (esPid);
           }
 

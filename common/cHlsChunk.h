@@ -330,30 +330,30 @@ private:
       AVCodecContext* vidCodecContext = avcodec_alloc_context3 (vidCodec);
       avcodec_open2 (vidCodecContext, vidCodec, NULL);
 
-      AVFrame* vidFrame = av_frame_alloc();
-
       AVPacket vidPacket;
       av_init_packet (&vidPacket);
       vidPacket.data = mVidPtr;
       vidPacket.size = 0;
 
-      int bytesUsed = 0;
+      int packetUsed = 0;
       int vidLen = (int)mVidLen;
-      while (bytesUsed || vidLen) {
+      AVFrame* vidFrame = av_frame_alloc();
+      while (packetUsed || vidLen) {
         uint8_t* data = NULL;
         av_parser_parse2 (vidParser, vidCodecContext, &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
 
-        int gotPicture = 0;
-        bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
-        if (gotPicture)
+        int got = 0;
+        packetUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &vidPacket);
+        if (got)
           mYuvFrames[mVidFramesLoaded++].set (0, vidFrame->data, vidFrame->linesize,
                                               vidCodecContext->width, vidCodecContext->height);
 
-        vidPacket.data += bytesUsed;
-        vidLen -= bytesUsed;
+        vidPacket.data += packetUsed;
+        vidLen -= packetUsed;
         }
-
       av_frame_free (&vidFrame);
+
+      av_parser_close (vidParser);
       avcodec_close (vidCodecContext);
       }
     }

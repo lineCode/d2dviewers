@@ -33,8 +33,8 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    //auto playerThread = std::thread ([=]() { playerReference264(); });
-    auto playerThread = std::thread ([=]() { playerOpenH264(); });
+    auto playerThread = std::thread ([=]() { playerReference264(); });
+    //auto playerThread = std::thread ([=]() { playerOpenH264(); });
     //SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
     playerThread.detach();
 
