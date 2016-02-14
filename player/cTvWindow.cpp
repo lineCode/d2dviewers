@@ -141,12 +141,8 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 void onDraw (ID2D1DeviceContext* dc) {
 
   int vidFrame = int(mPlayFrame*25/mAudFramesPerSec) - mVidOffset;
-  if (vidFrame >= 0) {
+  if (vidFrame >= 0)
     makeBitmap (&mYuvFrames[vidFrame % maxVidFrames]);
-    //printf ("playing %d %d %x %x\n",
-    //        int(mPlayFrame), vidFrame, mAudFrames[int(mPlayFrame) % maxAudFrames].mPts, mYuvFrames[vidFrame % maxVidFrames].mPts);
-    }
-
   if (mBitmap)
     dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
   else
@@ -166,12 +162,15 @@ void onDraw (ID2D1DeviceContext* dc) {
     }
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d %d",
-            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded, mDiscontinuity, mVidOffset);
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d %d a:%d v:%d %d",
+            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded,
+            mDiscontinuity, mVidOffset,
+            mAudFrames[int(mPlayFrame) % maxAudFrames].mPts, mYuvFrames[vidFrame % maxVidFrames].mPts,
+            mAudFrames[int(mPlayFrame) % maxAudFrames].mPts - mYuvFrames[vidFrame % maxVidFrames].mPts);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(getClientF().width-300-2, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
+                RectF(0, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(getClientF().width-300, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+                RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
   mTsSection.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   }

@@ -1042,10 +1042,10 @@ public:
       wchar_t wStr[200];
       swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
 
-      D2D1_RECT_F textRect = D2D1::RectF(0.0f, 0.0f, (float)1024.0f, (float)client.height);
+      D2D1_RECT_F textRect = D2D1::RectF(0, 20.0f, (float)1024.0f, (float)client.height);
       d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
 
-      float top = 20.0f;
+      float top = 40.0f;
       for (auto pidInfo : mPidInfoMap) {
         float total = (float)pidInfo.second.mTotal;
         if (total > mLargest)
