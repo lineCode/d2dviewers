@@ -168,6 +168,88 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
+  void makeBitmap (cYuvFrame* yuvFrame) {
+
+    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
+    if (yuvFrame) {
+      if (yuvFrame->mId != mVidId) {
+        mVidId = yuvFrame->mId;
+        if (mBitmap)  {
+          auto pixelSize = mBitmap->GetPixelSize();
+          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
+            mBitmap->Release();
+            mBitmap = nullptr;
+            }
+          }
+        if (!mBitmap) // create bitmap
+          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
+
+        // allocate 16 byte aligned bgraBuf
+        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
+
+        // convert yuv420 -> bitmap bgra
+        auto yPtr = yuvFrame->mYbuf;
+        auto uPtr = yuvFrame->mUbuf;
+        auto vPtr = yuvFrame->mVbuf;
+        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+
+          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+          yPtr += yuvFrame->mYStride;
+          uPtr += yuvFrame->mUVStride;
+          vPtr += yuvFrame->mUVStride;
+
+          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
+          }
+
+        free (bgraBufUnaligned);
+        }
+      }
+    else if (mBitmap) {
+      mBitmap->Release();
+      mBitmap = nullptr;
+      }
+    }
+  //}}}
+  //{{{
+  int64_t parseTimeStamp (bool isPts, uint8_t* tsPtr) {
+
+    tsPtr += 9;
+    if (isPts) {
+      if (((*tsPtr) & 0x20) == 0)
+        return 0;
+      }
+    else { // isDts
+      if (((*tsPtr) & 0x10) == 0)
+        return 0;
+      tsPtr += 5;
+      }
+
+    return (((*tsPtr) & 0x0E)<<30) | (*(tsPtr+1)<<22) | ((*(tsPtr+2) & 0xFE)<<14) | (*(tsPtr+2)<<7) | (*(tsPtr+3)>>1);
+    }
+  //}}}
+  //{{{
+  void parseTimeStamps (uint8_t* tsPtr, int64_t& pts, int64_t& dts) {
+
+    pts = ((*(tsPtr+8) >= 5) && (*(tsPtr+7) & 0x80)) ? parseTimeStamp (true, tsPtr) : 0;
+    dts = ((*(tsPtr+8) >= 10) && (*(tsPtr+7) & 0x40)) ? parseTimeStamp (false, tsPtr) : 0;
+
+    //printf ("%x len:%04d 6:%02x 7:%02x 8:%02x pts:%02x:%02x:%02x:%02x:%02x dts:%02x:%02x:%02x:%02x:%02x - pts:%x dts:%x\n",
+    //        ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)),
+    //        (*(tsPtr+4) << 8) | *(tsPtr+5),
+    //        *(tsPtr+6), *(tsPtr+7), *(tsPtr+8),
+    //        *(tsPtr+9), *(tsPtr+10), *(tsPtr+11), *(tsPtr+12), *(tsPtr+13),
+    //        *(tsPtr+14), *(tsPtr+15), *(tsPtr+16), *(tsPtr+17), *(tsPtr+18),
+    //        pts, dts);
+
+    //printf ("%x pts:%x dts:%x\n", ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)), pts, dts);
+    }
+  //}}}
+
+  //{{{
   void tsLoader() {
 
     uint8_t tsBuf[240*188];
@@ -314,7 +396,7 @@ private:
             pidInfoIt->second.mPesPtr = nullptr;
 
           if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
-            // start next vidPES
+            // start new vidPES
             if (!pidInfoIt->second.mPesBuf)
               pidInfoIt->second.mPesBuf = (uint8_t*)malloc (500000);
 
@@ -349,7 +431,7 @@ private:
               }
               //}}}
 
-            getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+            parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
@@ -444,7 +526,7 @@ private:
               }
               //}}}
 
-            getTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+            parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
@@ -659,87 +741,6 @@ private:
 
     winAudioClose();
     CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void makeBitmap (cYuvFrame* yuvFrame) {
-
-    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
-    if (yuvFrame) {
-      if (yuvFrame->mId != mVidId) {
-        mVidId = yuvFrame->mId;
-        if (mBitmap)  {
-          auto pixelSize = mBitmap->GetPixelSize();
-          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
-            mBitmap->Release();
-            mBitmap = nullptr;
-            }
-          }
-        if (!mBitmap) // create bitmap
-          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
-
-        // allocate 16 byte aligned bgraBuf
-        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
-        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
-
-        // convert yuv420 -> bitmap bgra
-        auto yPtr = yuvFrame->mYbuf;
-        auto uPtr = yuvFrame->mUbuf;
-        auto vPtr = yuvFrame->mVbuf;
-        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-          uPtr += yuvFrame->mUVStride;
-          vPtr += yuvFrame->mUVStride;
-
-          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
-          }
-
-        free (bgraBufUnaligned);
-        }
-      }
-    else if (mBitmap) {
-      mBitmap->Release();
-      mBitmap = nullptr;
-      }
-    }
-  //}}}
-  //{{{
-  int64_t getTimeStamp (bool isPts, uint8_t* tsPtr) {
-
-    tsPtr += 9;
-    if (isPts) {
-      if (((*tsPtr) & 0x20) == 0)
-        return 0;
-      }
-    else { // isDts
-      if (((*tsPtr) & 0x10) == 0)
-        return 0;
-      tsPtr += 5;
-      }
-
-    return (((*tsPtr) & 0x0E)<<30) | (*(tsPtr+1)<<22) | ((*(tsPtr+2) & 0xFE)<<14) | (*(tsPtr+2)<<7) | (*(tsPtr+3)>>1);
-    }
-  //}}}
-  //{{{
-  void getTimeStamps (uint8_t* tsPtr, int64_t& pts, int64_t& dts) {
-
-    pts = ((*(tsPtr+8) >= 5) && (*(tsPtr+7) & 0x80)) ? getTimeStamp (true, tsPtr) : 0;
-    dts = ((*(tsPtr+8) >= 10) && (*(tsPtr+7) & 0x40)) ? getTimeStamp (false, tsPtr) : 0;
-
-    //printf ("%x len:%04d 6:%02x 7:%02x 8:%02x pts:%02x:%02x:%02x:%02x:%02x dts:%02x:%02x:%02x:%02x:%02x - pts:%x dts:%x\n",
-    //        ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)),
-    //        (*(tsPtr+4) << 8) | *(tsPtr+5),
-    //        *(tsPtr+6), *(tsPtr+7), *(tsPtr+8),
-    //        *(tsPtr+9), *(tsPtr+10), *(tsPtr+11), *(tsPtr+12), *(tsPtr+13),
-    //        *(tsPtr+14), *(tsPtr+15), *(tsPtr+16), *(tsPtr+17), *(tsPtr+18),
-    //        pts, dts);
-
-    //printf ("%x pts:%x dts:%x\n", ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)), pts, dts);
     }
   //}}}
 
