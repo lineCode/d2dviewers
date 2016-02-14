@@ -219,6 +219,7 @@ private:
         tsPtr += headerBytes;
         auto tsFrameBytesLeft = 187 - headerBytes;
 
+        bool discontinuity = false;
         bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
                          (mTsSection.mProgramMap.find (pid) != mTsSection.mProgramMap.end());
 
@@ -230,11 +231,11 @@ private:
           }
         else if (continuity != ((pidInfoIt->second.mContinuity+1) & 0x0f)) {
           // discontinuity, count all errors
+          discontinuity = true;
           mDiscontinuity++;
           if (isSection) // only report section, program continuity error
             printf ("continuity error pid:%d - %x:%x\n", pid,  continuity, pidInfoIt->second.mContinuity);
           pidInfoIt->second.mBufBytes = 0;
-          pidInfoIt->second.mPesPtr = nullptr;
           }
         pidInfoIt->second.mContinuity = continuity;
         pidInfoIt->second.mTotal++;
@@ -309,6 +310,9 @@ private:
           }
         else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
           //{{{  parse vidPid
+          if (discontinuity)
+            pidInfoIt->second.mPesPtr = nullptr;
+
           if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
             // start next vidPES
             if (!pidInfoIt->second.mPesBuf)
@@ -349,8 +353,6 @@ private:
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
-
-            // restart pes pointer
             pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             }
 
@@ -362,11 +364,14 @@ private:
           //}}}
         else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
           //{{{  parse audPid
+          if (discontinuity)
+            pidInfoIt->second.mPesPtr = nullptr;
+
           if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
-            // start new aud PES
             if (!pidInfoIt->second.mPesBuf)
               pidInfoIt->second.mPesBuf = (uint8_t*)malloc (5000);
 
+            // start new aud PES
             if (pidInfoIt->second.mPesPtr) {
               //{{{  decode last audPES
               AVPacket audPacket;
@@ -444,7 +449,7 @@ private:
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
 
-            // restart pes pointer
+            // reset pes pointer
             pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             }
 
