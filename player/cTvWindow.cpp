@@ -158,8 +158,8 @@ void onDraw (ID2D1DeviceContext* dc) {
   int audFrame = int(mPlayFrame) - (int)(getClientF().width/2);
   for (r.left = 0.0f; (r.left < getClientF().width) && (audFrame < mAudFramesLoaded); r.left++, audFrame++) {
     if (audFrame >= 0) {
-      r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerL;
-      r.bottom = (getClientF().height/2.0f) + mAudFrames[audFrame % maxAudFrames].mPowerR;
+      r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerLeft;
+      r.bottom = (getClientF().height/2.0f) + mAudFrames[audFrame % maxAudFrames].mPowerRight;
       r.right = r.left + 1.0f;
       dc->FillRectangle (r, getBlueBrush());
       }
@@ -302,7 +302,6 @@ private:
           j++;
         }
       //}}}
-
       while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
         Sleep (40);
 
@@ -406,165 +405,160 @@ private:
             }
             //}}}
           }
-        else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
-          //{{{  parse vidPid
-          if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
-            // start new vidPES
-            if (!pidInfoIt->second.mPesBuf)
-              pidInfoIt->second.mPesBuf = (uint8_t*)malloc (500000);
 
+        else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
+          if (!pidInfoIt->second.mPesBuf) {
+            //{{{  allocate vid resources
+            pidInfoIt->second.mPesBuf = (uint8_t*)malloc (500000);
+
+            vidParser = av_parser_init (pidInfoIt->second.mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
+            vidCodec = avcodec_find_decoder (pidInfoIt->second.mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
+            vidCodecContext = avcodec_alloc_context3 (vidCodec);
+
+            avcodec_open2 (vidCodecContext, vidCodec, NULL);
+            }
+            //}}}
+          if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
             if (pidInfoIt->second.mPesPtr) {
               //{{{  decode last vidPES
-              if (!vidParser) {
-                vidParser = av_parser_init (pidInfoIt->second.mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
-                vidCodec = avcodec_find_decoder (pidInfoIt->second.mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
-                vidCodecContext = avcodec_alloc_context3 (vidCodec);
-                avcodec_open2 (vidCodecContext, vidCodec, NULL);
-                }
-
-              AVPacket vidPacket;
-              av_init_packet (&vidPacket);
-              vidPacket.data = pidInfoIt->second.mPesBuf;
-              vidPacket.size = 0;
+              AVPacket avPacket;
+              av_init_packet (&avPacket);
+              avPacket.data = pidInfoIt->second.mPesBuf;
+              avPacket.size = 0;
 
               int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
               pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
               while (pesLen) {
-                int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &vidPacket.data, &vidPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &avPacket.data, &avPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
                 pidInfoIt->second.mPesPtr += lenUsed;
                 pesLen -= lenUsed;
-                if (vidPacket.data) {
-                  AVFrame* vidFrame = av_frame_alloc();
-                  int gotPicture = 0;
-                  int bytesUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &gotPicture, &vidPacket);
-                  if (gotPicture) {
-                    printf ("vid pic %d %x %x\n", mVidFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+
+                if (avPacket.data) {
+                  AVFrame* avFrame = av_frame_alloc();
+                  int got = 0;
+                  int bytesUsed = avcodec_decode_video2 (vidCodecContext, avFrame, &got, &avPacket);
+                  if (got) {
+                    printf ("vid %d %d %d\n", mVidFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                     mYuvFrames[mVidFramesLoaded % maxVidFrames].set (pidInfoIt->second.mPts,
-                      vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
+                      avFrame->data, avFrame->linesize, vidCodecContext->width, vidCodecContext->height);
                     mVidFramesLoaded++;
                     }
-                  av_frame_free (&vidFrame);
-                  vidPacket.data += bytesUsed;
-                  vidPacket.size -= bytesUsed;
+                  av_frame_free (&avFrame);
+
+                  avPacket.data += bytesUsed;
+                  avPacket.size -= bytesUsed;
                   }
                 }
               }
               //}}}
-
+            //{{{  start new vidPES
+            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
-            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
+            //}}}
             }
-
           if (pidInfoIt->second.mPesPtr) {
+            //{{{  copy rest of ts to pesBuf
             memcpy (pidInfoIt->second.mPesPtr, tsPtr, tsFrameBytesLeft);
             pidInfoIt->second.mPesPtr += tsFrameBytesLeft;
             }
+            //}}}
           }
-          //}}}
-        else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
-          //{{{  parse audPid
-          if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
-            if (!pidInfoIt->second.mPesBuf)
-              pidInfoIt->second.mPesBuf = (uint8_t*)malloc (5000);
 
-            // start new aud PES
+        else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
+          if (!pidInfoIt->second.mPesBuf) {
+            //{{{  allocate aud resources
+            pidInfoIt->second.mPesBuf = (uint8_t*)malloc (5000);
+
+            audParser = av_parser_init (pidInfoIt->second.mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
+            audCodec = avcodec_find_decoder (pidInfoIt->second.mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
+            audCodecContext = avcodec_alloc_context3 (audCodec);
+
+            avcodec_open2 (audCodecContext, audCodec, NULL);
+            }
+            //}}}
+          if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
             if (pidInfoIt->second.mPesPtr) {
               //{{{  decode last audPES
-              if (!audParser) {
-                audParser = av_parser_init (pidInfoIt->second.mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
-                audCodec = avcodec_find_decoder (pidInfoIt->second.mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
-                audCodecContext = avcodec_alloc_context3 (audCodec);
-                avcodec_open2 (audCodecContext, audCodec, NULL);
-                }
-
-              AVPacket audPacket;
-              av_init_packet (&audPacket);
-              audPacket.data = pidInfoIt->second.mPesBuf;
-              audPacket.size = 0;
+              AVPacket avPacket;
+              av_init_packet (&avPacket);
+              avPacket.data = pidInfoIt->second.mPesBuf;
+              avPacket.size = 0;
 
               int pesLen = int (pidInfoIt->second.mPesPtr - pidInfoIt->second.mPesBuf);
               pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
               while (pesLen) {
-                int lenUsed = av_parser_parse2 (audParser, audCodecContext, &audPacket.data, &audPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+                int lenUsed = av_parser_parse2 (audParser, audCodecContext, &avPacket.data, &avPacket.size, pidInfoIt->second.mPesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
                 pidInfoIt->second.mPesPtr += lenUsed;
                 pesLen -= lenUsed;
-                if (audPacket.data) {
-                  int gotPicture = 0;
-                  AVFrame* audFrame = av_frame_alloc();
-                  int bytesUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
-                  samples = audFrame->nb_samples;
-                  mAudFramesPerSec = (float)sampleRate / samples;
 
-                  printf ("aud samples %d %d %x %x\n", samples, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
-                  mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, samples);
+                if (avPacket.data) {
+                  int got = 0;
+                  AVFrame* avFrame = av_frame_alloc();
+                  int bytesUsed = avcodec_decode_audio4 (audCodecContext, avFrame, &got, &avPacket);
+                  if (got) {
+                    mSamplesPerAcFrame = avFrame->nb_samples;
+                    mAudFramesPerSec = (float)sampleRate / mSamplesPerAcFrame;
 
-                  if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
-                    //{{{  16bit signed planar
-                    short* lptr = (short*)audFrame->data[0];
-                    short* rptr = (short*)audFrame->data[1];
-                    short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
+                    printf ("aud %d %d %d %d\n", mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts, mSamplesPerAcFrame);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, mSamplesPerAcFrame);
 
-                    double valueL = 0;
-                    double valueR = 0;
-                    for (int i = 0; i < audFrame->nb_samples; i++) {
-                      *ptr = *lptr++;
-                      valueL += pow(*ptr++, 2);
-                      *ptr = *rptr++;
-                      valueR += pow(*ptr++, 2);
+                    double leftValue = 0;
+                    double rightValue = 0;
+                    short* samplePtr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
+                    if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
+                      //{{{  16bit signed planar
+                      short* leftPtr = (short*)avFrame->data[0];
+                      short* rightPtr = (short*)avFrame->data[1];
+                      for (int i = 0; i < mSamplesPerAcFrame; i++) {
+                        *samplePtr = *leftPtr++;
+                        leftValue += pow(*samplePtr++, 2);
+                        *samplePtr = *rightPtr++;
+                        rightValue += pow(*samplePtr++, 2);
+                        }
                       }
-
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerL = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-                    }
-                    //}}}
-                  else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
-                    //{{{  32bit float planar
-                    float* lptr = (float*)audFrame->data[0];
-                    float* rptr = (float*)audFrame->data[1];
-                    short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
-
-                    double valueL = 0;
-                    double valueR = 0;
-                    for (int i = 0; i < audFrame->nb_samples; i++) {
-                      *ptr = (short)(*lptr++ * 0x8000);
-                      valueL += pow(*ptr++, 2);
-                      *ptr = (short)(*rptr++ * 0x8000);
-                      valueR += pow(*ptr++, 2);
+                      //}}}
+                    else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
+                      //{{{  32bit float planar
+                      float* leftPtr = (float*)avFrame->data[0];
+                      float* rightPtr = (float*)avFrame->data[1];
+                      for (int i = 0; i < mSamplesPerAcFrame; i++) {
+                        *samplePtr = (short)(*leftPtr++ * 0x8000);
+                        leftValue += pow(*samplePtr++, 2);
+                        *samplePtr = (short)(*rightPtr++ * 0x8000);
+                        rightValue += pow(*samplePtr++, 2);
+                        }
                       }
-
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
+                      //}}}
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerLeft = (float)sqrt (leftValue) / (mSamplesPerAcFrame * 2.0f);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerRight = (float)sqrt (rightValue) / (mSamplesPerAcFrame * 2.0f);
+                    mAudFramesLoaded++;
                     }
-                    //}}}
-                  mAudFramesLoaded++;
+                  av_frame_free (&avFrame);
 
-                  av_frame_free (&audFrame);
-
-                  audPacket.data += bytesUsed;
-                  audPacket.size -= bytesUsed;
+                  avPacket.data += bytesUsed;
+                  avPacket.size -= bytesUsed;
                   }
                 }
               }
               //}}}
-
+            //{{{  start new audPES
+            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
             parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
             int pesHeaderBytes = 9 + *(tsPtr+8);
             tsPtr += pesHeaderBytes;
             tsFrameBytesLeft -= pesHeaderBytes;
-
-            // reset pes pointer
-            pidInfoIt->second.mPesPtr = pidInfoIt->second.mPesBuf;
+            //}}}
             }
-
           if (pidInfoIt->second.mPesPtr) {
+            //{{{  copy rest of ts to pesBuf
             memcpy (pidInfoIt->second.mPesPtr, tsPtr, tsFrameBytesLeft);
             pidInfoIt->second.mPesPtr += tsFrameBytesLeft;
             }
+            //}}}
           }
-          //}}}
 
         tsPtr += tsFrameBytesLeft;
         i += 188;
@@ -828,11 +822,11 @@ private:
                   int gotPicture = 0;
                   AVFrame* audFrame = av_frame_alloc();
                   int bytesUsed = avcodec_decode_audio4 (audCodecContext, audFrame, &gotPicture, &audPacket);
-                  samples = audFrame->nb_samples;
-                  mAudFramesPerSec = (float)sampleRate / samples;
+                  mSamplesPerAcFrame = audFrame->nb_samples;
+                  mAudFramesPerSec = (float)sampleRate / mSamplesPerAcFrame;
 
-                  printf ("aud samples %d %d %x %x\n", samples, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
-                  mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, samples);
+                  printf ("aud samples %d %d %x %x\n", mSamplesPerAcFrame, mAudFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+                  mAudFrames[mAudFramesLoaded % maxAudFrames].set (pidInfoIt->second.mPts, 2, mSamplesPerAcFrame);
 
                   if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
                     //{{{  16bit signed planar
@@ -849,8 +843,8 @@ private:
                       valueR += pow(*ptr++, 2);
                       }
 
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerL = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerLeft = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerRight = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
                     }
                     //}}}
                   else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
@@ -868,8 +862,8 @@ private:
                       valueR += pow(*ptr++, 2);
                       }
 
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
-                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerLeft = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
+                    mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerRight = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
                     }
                     //}}}
                   mAudFramesLoaded++;
@@ -997,49 +991,40 @@ private:
           int gotAudio = 0;
           avcodec_decode_audio4 (audCodecContext, audFrame, &gotAudio, &avPacket);
           if (gotAudio) {
-            samples = audFrame->nb_samples;
-            mAudFramesPerSec = (float)sampleRate / samples;
+            mSamplesPerAcFrame = audFrame->nb_samples;
+            mAudFramesPerSec = (float)sampleRate / mSamplesPerAcFrame;
+            mAudFrames[mAudFramesLoaded % maxAudFrames].set (0, 2, mSamplesPerAcFrame);
 
-            mAudFrames[mAudFramesLoaded % maxAudFrames].set (0, 2, samples);
-
+            double valueL = 0;
+            double valueR = 0;
+            short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
             if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
               //{{{  16bit signed planar
               short* lptr = (short*)audFrame->data[0];
               short* rptr = (short*)audFrame->data[1];
-              short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
-
-              double valueL = 0;
-              double valueR = 0;
-              for (int i = 0; i < audFrame->nb_samples; i++) {
+              for (int i = 0; i < mSamplesPerAcFrame; i++) {
                 *ptr = *lptr++;
                 valueL += pow(*ptr++, 2);
                 *ptr = *rptr++;
                 valueR += pow(*ptr++, 2);
                 }
-
-              mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerL = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-              mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
               }
               //}}}
             else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
               //{{{  32bit float planar
               float* lptr = (float*)audFrame->data[0];
               float* rptr = (float*)audFrame->data[1];
-              short* ptr = (short*)mAudFrames[mAudFramesLoaded % maxAudFrames].mSamples;
-
-              double valueL = 0;
-              double valueR = 0;
-              for (int i = 0; i < audFrame->nb_samples; i++) {
+              for (int i = 0; i < mSamplesPerAcFrame; i++) {
                 *ptr = (short)(*lptr++ * 0x8000);
                 valueL += pow(*ptr++, 2);
                 *ptr = (short)(*rptr++ * 0x8000);
                 valueR += pow(*ptr++, 2);
                 }
-
-              mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerL = (float)sqrt (valueL) / (audFrame->nb_samples * 2.0f);
-              mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerR = (float)sqrt (valueR) / (audFrame->nb_samples * 2.0f);
               }
               //}}}
+            mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerLeft = (float)sqrt (valueL) / (mSamplesPerAcFrame * 2.0f);
+            mAudFrames[mAudFramesLoaded % maxAudFrames].mPowerRight = (float)sqrt (valueR) / (mSamplesPerAcFrame * 2.0f);
+
             mAudFramesLoaded++;
             }
           }
@@ -1089,7 +1074,7 @@ private:
       if (!mPlaying || (int(mPlayFrame)+1 >= mAudFramesLoaded))
         Sleep (40);
       else if (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples) {
-        winAudioPlay (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples, channels * samples*2, 1.0f);
+        winAudioPlay (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples, channels * mSamplesPerAcFrame *2, 1.0f);
         if (!getMouseDown())
           if ((int(mPlayFrame)+1) < mAudFramesLoaded) {
             mPlayFrame += 1.0;
@@ -1117,7 +1102,7 @@ private:
   int mVidPid = 1701;
   int mAudPid = 1702;
 
-  int samples = 1024;
+  int mSamplesPerAcFrame = 1024;
   float mAudFramesPerSec = 40;
   unsigned char channels = 2;
   unsigned long sampleRate = 48000;

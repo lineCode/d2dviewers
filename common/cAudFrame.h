@@ -3,7 +3,7 @@
 
 class cAudFrame  {
 public:
-  cAudFrame() : mPts(0), mNumSamples(0), mSamples(nullptr), mPowerL(0), mPowerR(0) {}
+  cAudFrame() : mPts(0), mNumSamples(0), mSamples(nullptr), mPowerLeft(0), mPowerRight(0) {}
   //{{{
   ~cAudFrame() {
     if (mSamples)
@@ -40,6 +40,6 @@ public:
   int64_t mPts;
   int mNumSamples;
   int16_t* mSamples;
-  float mPowerL;
-  float mPowerR;
+  float mPowerLeft;
+  float mPowerRight;
   };
