@@ -627,7 +627,7 @@ static unsigned long crcTable[256] = {
 class cPidInfo {
 public:
   //{{{
-  cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection),
+  cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection), 
                                                  mPts(0), mDts(0), mContinuity(-1), mTotal(0),
                                                  mLength(0), mBufBytes(0), mPesBuf(nullptr), mPesPtr(nullptr) {
     switch (pid) {
@@ -836,7 +836,7 @@ typedef std::map<int,cService> tServiceMap;  // SDT inserts <sid,cService> into 
                                              //     - sets cService ServiceType,Name,Provider
                                              // PMT - sets cService stream pids
                                              // EIT - adds cService Now,Epg events
-class cTsSection {
+class cTs {
 public:
   //{{{
   tPidInfoMap* getPidInfoMap() {
