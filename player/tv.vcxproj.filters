@@ -31,8 +31,10 @@
     <ClInclude Include="..\common\yuvrgb_sse2.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cTs.h" />
     <ClInclude Include="..\common\cAudFrame.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="cTsSection.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

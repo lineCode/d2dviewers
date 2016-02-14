@@ -4,7 +4,7 @@
 
 #include "../common/cD2dWindow.h"
 
-#include "cTs.h"
+#include "cTsSection.h"
 //#include "bda.h"
 
 #include "../common/cYuvFrame.h"
@@ -699,11 +699,11 @@ private:
 
     tsPtr += 9;
     if (isPts) {
-      if (*tsPtr & 0x20 == 0)
+      if (((*tsPtr) & 0x20) == 0)
         return 0;
       }
     else { // isDts
-      if (*tsPtr & 0x10 == 0)
+      if (((*tsPtr) & 0x10) == 0)
         return 0;
       tsPtr += 5;
       }
@@ -733,7 +733,7 @@ private:
   wchar_t* mWideFilename;
   char mFilename[100];
 
-  cTs mTs;
+  cTsSection mTs;
   int mDiscontinuity = 0;
 
   int mVidPid = 1701;
