@@ -629,7 +629,8 @@ public:
   //{{{
   cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection),
                                                  mStreamType(0), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
-                                                 mLength(0), mBufBytes(0), mPesBuf(nullptr), mPesPtr(nullptr) {
+                                                 mLength(0), mBufBytes(0), 
+                                                 mPesBufSize(0), mPesBuf(nullptr), mPesPtr(nullptr) {
     switch (pid) {
       case PID_PAT: wcscpy (mInfo, L"Pat "); break;
       case PID_CAT: wcscpy (mInfo, L"Cat "); break;
@@ -667,6 +668,8 @@ public:
   size_t mBufBytes;
   unsigned char mBuf[10000];
 
+  // PES buffer, should be used by section buffer
+  int mPesBufSize;
   uint8_t* mPesBuf;
   uint8_t* mPesPtr;
 
