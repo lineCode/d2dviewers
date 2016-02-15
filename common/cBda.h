@@ -229,9 +229,6 @@ DEFINE_GUID (CLSID_BDAtif,
              0xFC772ab0, 0x0c7f, 0x11d3, 0x8F,0xf2, 0x00,0xa0,0xc9,0x22,0x4c,0xf4);
 
 //}}}
-//#define BDA_COMMENTS
-
-uint8_t* bdaEndPtr = nullptr;
 
 //{{{
 class cSampleGrabCB : public ISampleGrabberCB {
@@ -239,38 +236,47 @@ public:
   cSampleGrabCB() {};
   virtual ~cSampleGrabCB() {};
 
+  //{{{
+  uint8_t* getBuffer() {
+    return mBuffer;
+    }
+  //}}}
+  //{{{
+  void setBuffer (uint8_t* buffer) {
+    mBuffer = buffer;
+    }
+  //}}}
+
 private:
   // ISampleGrabberCB methods
   STDMETHODIMP_(ULONG) AddRef() { return ++ul_cbrc; }
   STDMETHODIMP_(ULONG) Release() { return --ul_cbrc; }
-  STDMETHODIMP QueryInterface (REFIID /*riid*/, void** /*p_p_object*/) { return E_NOTIMPL; }
+  STDMETHODIMP QueryInterface (REFIID riid, void** p_p_object) { return E_NOTIMPL; }
 
   //{{{
-
   STDMETHODIMP cSampleGrabCB::BufferCB (double sampleTime, BYTE* samples, long sampleLen ) {
-
     printf ("BufferCB\n");
     return S_OK;
     }
   //}}}
-  //{{{
+
   STDMETHODIMP cSampleGrabCB::SampleCB (double sampleTime, IMediaSample* mediaSample) {
 
     if (mediaSample->IsDiscontinuity() == S_OK)
       printf ("cSampleGrabCB::SampleCB sample Discontinuity\n");
 
-    BYTE* samples;
+    uint8_t* samples;
     mediaSample->GetPointer (&samples);
 
-    memcpy (bdaEndPtr, samples, mediaSample->GetActualDataLength());
-    bdaEndPtr += mediaSample->GetActualDataLength();
+    memcpy (mBuffer, samples, mediaSample->GetActualDataLength());
+    mBuffer += mediaSample->GetActualDataLength();
 
     return S_OK;
     }
-  //}}}
 
   // vars
   ULONG ul_cbrc;
+  uint8_t* mBuffer = nullptr;
   };
 //}}}
 
@@ -278,6 +284,99 @@ class cBda {
 public:
   cBda() {}
   ~cBda() {}
+  //{{{
+  uint8_t* createGraph (int freq, int bufSize) {
+
+    printf ("cBda::createGraph %d %dm\n", freq, bufSize/1000000);
+    CoCreateInstance (CLSID_FilterGraph, nullptr,
+                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (mGraphBuilder.GetAddressOf()));
+
+    ComPtr<IBaseFilter> dvbtNetworkProvider;
+    CoCreateInstance (CLSID_DVBTNetworkProvider, nullptr,
+                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (dvbtNetworkProvider.GetAddressOf()));
+    mGraphBuilder->AddFilter (dvbtNetworkProvider.Get(), L"dvbtNetworkProvider");
+
+    // scanningTuner interface from dvbtNetworkProvider
+    dvbtNetworkProvider.As (&mScanningTuner);
+
+    ComPtr<ITuningSpace> tuningSpace;
+    mScanningTuner->get_TuningSpace (tuningSpace.GetAddressOf());
+
+    // setup dvbTuningSpace2 interface
+    ComPtr<IDVBTuningSpace2> dvbTuningSpace2;
+    tuningSpace.As (&dvbTuningSpace2);
+    dvbTuningSpace2->put__NetworkType (CLSID_DVBTNetworkProvider);
+    dvbTuningSpace2->put_SystemType (DVB_Terrestrial);
+    dvbTuningSpace2->put_NetworkID (9018);
+    dvbTuningSpace2->put_FrequencyMapping (L"");
+    dvbTuningSpace2->put_UniqueName (L"DTV DVB-T");
+    dvbTuningSpace2->put_FriendlyName (L"DTV DVB-T");
+
+    // create dvbtLocator and setup in dvbTuningSpace2 interface
+    ComPtr<IDVBTLocator> dvbtLocator;
+    CoCreateInstance (CLSID_DVBTLocator, nullptr,
+                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (dvbtLocator.GetAddressOf()));
+    dvbtLocator->put_CarrierFrequency (freq);
+    dvbtLocator->put_Bandwidth (8);
+    dvbTuningSpace2->put_DefaultLocator (dvbtLocator.Get());
+
+    // tuneRequest from scanningTuner
+    ComPtr<ITuneRequest> tuneRequest;
+    HRESULT hr = mScanningTuner->get_TuneRequest (tuneRequest.GetAddressOf());
+    if (hr != S_OK)
+      hr = tuningSpace->CreateTuneRequest (tuneRequest.GetAddressOf());
+
+    tuneRequest->put_Locator (dvbtLocator.Get());
+    mScanningTuner->Validate (tuneRequest.Get());
+    mScanningTuner->put_TuneRequest (tuneRequest.Get());
+
+    // dvbtNetworkProvider -> dvbtTuner -> dvbtCapture -> sampleGrabberFilter -> mpeg2Demux -> bdaTif
+    ComPtr<IBaseFilter> dvbtTuner  =
+      findFilter (mGraphBuilder, KSCATEGORY_BDA_NETWORK_TUNER, L"DVBTtuner", dvbtNetworkProvider);
+    if (!dvbtTuner)
+      return nullptr;
+
+    ComPtr<IBaseFilter> dvbtCapture =
+      findFilter (mGraphBuilder, KSCATEGORY_BDA_RECEIVER_COMPONENT, L"DVBTcapture", dvbtTuner);
+
+    ComPtr<IBaseFilter> sampleGrabberFilter =
+      createFilter (mGraphBuilder, CLSID_SampleGrabber, L"grabber", dvbtCapture);
+    ComPtr<ISampleGrabber> sampleGrabber;
+    sampleGrabberFilter.As (&sampleGrabber);
+    sampleGrabber->SetOneShot (false);
+    sampleGrabber->SetBufferSamples (true);
+
+    mBdaBuf = (uint8_t*) malloc (bufSize);
+    mBdaPtr = mBdaBuf;
+    mSampleGrabCB.setBuffer (mBdaBuf);
+    sampleGrabber->SetCallback (&mSampleGrabCB, 0);
+
+    ComPtr<IBaseFilter> mpeg2Demux =
+      createFilter (mGraphBuilder, CLSID_MPEG2Demultiplexer, L"MPEG2demux", sampleGrabberFilter);
+    ComPtr<IBaseFilter> bdaTif =
+      createFilter (mGraphBuilder, CLSID_BDAtif, L"BDAtif", mpeg2Demux);
+
+    ComPtr<IMediaControl> mediaControl;
+    mGraphBuilder.As (&mediaControl);
+    mediaControl->Run();
+
+    printf ("- running\n");
+    return mBdaBuf;
+    }
+  //}}}
+  //{{{
+  uint8_t* getSamples (int len) {
+
+    while (mBdaPtr + len > mSampleGrabCB.getBuffer())
+      Sleep (2);
+
+    uint8_t* ptr = mBdaPtr;
+    mBdaPtr += len;
+    return ptr;
+    }
+  //}}}
+
+private:
   //{{{
   bool  connectPins (ComPtr<IGraphBuilder> graphBuilder,
                      ComPtr<IBaseFilter> fromFilter, ComPtr<IBaseFilter> toFilter,
@@ -437,101 +536,11 @@ public:
     }
   //}}}
 
-  //{{{
-  uint8_t* getBda (int len) {
-
-    while (mBdaPtr + len > bdaEndPtr)
-      Sleep (2);
-
-    uint8_t* ptr = mBdaPtr;
-    mBdaPtr += len;
-    return ptr;
-    }
-  //}}}
-  //{{{
-  uint8_t* createBDAGraph (int freq, int bufSize) {
-
-    printf ("BDAcreate\n");
-    CoCreateInstance (CLSID_FilterGraph, nullptr,
-                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (mGraphBuilder.GetAddressOf()));
-
-    ComPtr<IBaseFilter> dvbtNetworkProvider;
-    CoCreateInstance (CLSID_DVBTNetworkProvider, nullptr,
-                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (dvbtNetworkProvider.GetAddressOf()));
-    mGraphBuilder->AddFilter (dvbtNetworkProvider.Get(), L"dvbtNetworkProvider");
-
-    // scanningTuner interface from dvbtNetworkProvider
-    dvbtNetworkProvider.As (&mScanningTuner);
-
-    ComPtr<ITuningSpace> tuningSpace;
-    mScanningTuner->get_TuningSpace (tuningSpace.GetAddressOf());
-
-    // setup dvbTuningSpace2 interface
-    ComPtr<IDVBTuningSpace2> dvbTuningSpace2;
-    tuningSpace.As (&dvbTuningSpace2);
-    dvbTuningSpace2->put__NetworkType (CLSID_DVBTNetworkProvider);
-    dvbTuningSpace2->put_SystemType (DVB_Terrestrial);
-    dvbTuningSpace2->put_NetworkID (9018);
-    dvbTuningSpace2->put_FrequencyMapping (L"");
-    dvbTuningSpace2->put_UniqueName (L"DTV DVB-T");
-    dvbTuningSpace2->put_FriendlyName (L"DTV DVB-T");
-
-    // create dvbtLocator and setup in dvbTuningSpace2 interface
-    ComPtr<IDVBTLocator> dvbtLocator;
-    CoCreateInstance (CLSID_DVBTLocator, nullptr,
-                      CLSCTX_INPROC_SERVER, IID_PPV_ARGS (dvbtLocator.GetAddressOf()));
-    dvbtLocator->put_CarrierFrequency (freq);
-    dvbtLocator->put_Bandwidth (8);
-    dvbTuningSpace2->put_DefaultLocator (dvbtLocator.Get());
-
-    // tuneRequest from scanningTuner
-    ComPtr<ITuneRequest> tuneRequest;
-    HRESULT hr = mScanningTuner->get_TuneRequest (tuneRequest.GetAddressOf());
-    if (hr != S_OK)
-      hr = tuningSpace->CreateTuneRequest (tuneRequest.GetAddressOf());
-
-    tuneRequest->put_Locator (dvbtLocator.Get());
-    mScanningTuner->Validate (tuneRequest.Get());
-    mScanningTuner->put_TuneRequest (tuneRequest.Get());
-
-    // dvbtNetworkProvider -> dvbtTuner -> dvbtCapture -> sampleGrabberFilter -> mpeg2Demux -> bdaTif
-    ComPtr<IBaseFilter> dvbtTuner  =
-      findFilter (mGraphBuilder, KSCATEGORY_BDA_NETWORK_TUNER, L"DVBTtuner", dvbtNetworkProvider);
-    if (!dvbtTuner)
-      return nullptr;
-
-    ComPtr<IBaseFilter> dvbtCapture =
-      findFilter (mGraphBuilder, KSCATEGORY_BDA_RECEIVER_COMPONENT, L"DVBTcapture", dvbtTuner);
-
-    ComPtr<IBaseFilter> sampleGrabberFilter =
-      createFilter (mGraphBuilder, CLSID_SampleGrabber, L"grabber", dvbtCapture);
-    ComPtr<ISampleGrabber> sampleGrabber;
-    sampleGrabberFilter.As (&sampleGrabber);
-    sampleGrabber->SetOneShot (false);
-    sampleGrabber->SetBufferSamples (true);
-    sampleGrabber->SetCallback (new cSampleGrabCB(), 0);
-
-    ComPtr<IBaseFilter> mpeg2Demux =
-      createFilter (mGraphBuilder, CLSID_MPEG2Demultiplexer, L"MPEG2demux", sampleGrabberFilter);
-    ComPtr<IBaseFilter> bdaTif =
-      createFilter (mGraphBuilder, CLSID_BDAtif, L"BDAtif", mpeg2Demux);
-
-    mBdaBuf = (uint8_t*) malloc (bufSize);
-    mBdaPtr = mBdaBuf;
-    bdaEndPtr = mBdaBuf;
-
-    ComPtr<IMediaControl> mediaControl;
-    mGraphBuilder.As (&mediaControl);
-    mediaControl->Run();
-
-    printf ("- running\n");
-    return mBdaBuf;
-    }
-  //}}}
-
   // vars
   ComPtr<IGraphBuilder> mGraphBuilder;   // ensure graph persists
   ComPtr<IScanningTuner> mScanningTuner; // for signalStrength
+
+  cSampleGrabCB mSampleGrabCB;
 
   uint8_t* mBdaBuf = nullptr;
   uint8_t* mBdaPtr = nullptr;

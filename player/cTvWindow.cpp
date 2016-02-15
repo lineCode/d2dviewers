@@ -45,7 +45,7 @@ public:
     else {
       // 650000 674000 706000
       mPlaying = false;
-      if (mBda.createBDAGraph (674000, 500000000))
+      if (mBda.createGraph (674000, 500000000))
         thread ([=]() { tsLiveLoader(); } ).detach();
       }
 
@@ -590,7 +590,7 @@ private:
 
     while (true) {
       // wait for chunk of ts
-      uint8_t* bda = mBda.getBda (240*188);
+      uint8_t* bda = mBda.getSamples (240*188);
 
       // get chunk
       tsParser (bda, bda + (240*188));
