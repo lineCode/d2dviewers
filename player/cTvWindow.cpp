@@ -44,8 +44,8 @@ public:
       //thread ([=]() { fileLoader(); } ).detach();
     else {
       // 650000 674000 706000
-      mBda = createBDAGraph (674000);
-      if (mBda)
+      mPlaying = false;
+      if (createBDAGraph (650000, 500000000))
         thread ([=]() { tsLiveLoader(); } ).detach();
       }
 
@@ -264,9 +264,9 @@ private:
   //{{{
   void saveBDA() {
 
-    FILE* file = fopen ("C:\\Users\\colin\\Desktop\\bdaDump.ts", "wb");
-    fwrite (mBda, 1, getBDAend() - mBda, file);
-    fclose (file);
+    //FILE* file = fopen ("C:\\Users\\colin\\Desktop\\bdaDump.ts", "wb");
+    //fwrite (mBda, 1, getBda(200000000) - mBda, file);
+    //fclose (file);
     }
   //}}}
 
@@ -316,8 +316,8 @@ private:
           if ((pointerField > 0) && (pidInfoIt->second.mBufBytes > 0)) {
             // section payStart has end of lastSection !
             memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr+1, pointerField);
-
             pidInfoIt->second.mBufBytes += pointerField;
+
             if (pidInfoIt->second.mSectionLength + 3 <= pidInfoIt->second.mBufBytes) {
               mTsSection.parseEit (pidInfoIt->second.mBuf, 0);
               pidInfoIt->second.mSectionLength = 0;
@@ -348,8 +348,8 @@ private:
                 }
               else {
                 if (!pidInfoIt->second.mBuf) {
-                  pidInfoIt->second.mBuf = (uint8_t*)malloc (5000);
                   pidInfoIt->second.mBufSize = 5000;
+                  pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                   }
                 memcpy (pidInfoIt->second.mBuf, tsPtr + pointerField+1, 187 - (pointerField+1));
                 pidInfoIt->second.mBufBytes = 187 - (pointerField+1);
@@ -360,8 +360,8 @@ private:
 
           else if (pointerField < 183) {
             if (!pidInfoIt->second.mBuf) {
-              pidInfoIt->second.mBuf = (uint8_t*)malloc (5000);
               pidInfoIt->second.mBufSize = 5000;
+              pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
               }
             memcpy (pidInfoIt->second.mBuf, tsPtr + pointerField + 1, 183 - pointerField);
             pidInfoIt->second.mBufBytes = 183 - pointerField;
@@ -389,7 +389,7 @@ private:
       else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
         if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
           if (!pidInfoIt->second.mBuf) {
-            //{{{  first vidPES start, allocate vid resources
+            //{{{  first vidPES, allocate resources
             pidInfoIt->second.mBufSize = 500000;
             pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
 
@@ -401,7 +401,7 @@ private:
             }
             //}}}
           else if (pidInfoIt->second.mBufPtr) {
-            //{{{  decode last vidPES
+            //{{{  decode prev vidPES
             AVPacket avPacket;
             av_init_packet (&avPacket);
             avPacket.data = pidInfoIt->second.mBuf;
@@ -432,7 +432,7 @@ private:
               }
             }
             //}}}
-          //{{{  start new vidPES
+          //{{{  start next vidPES
           pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
 
           parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
@@ -448,7 +448,7 @@ private:
       else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
         if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
           if (!pidInfoIt->second.mBuf) {
-            //{{{  first audPES start, allocate aud resources
+            //{{{  first audPES, allocate resources
             pidInfoIt->second.mBufSize = 5000;
             pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
 
@@ -460,7 +460,7 @@ private:
             }
             //}}}
           else if (pidInfoIt->second.mBufPtr) {
-            //{{{  decode last audPES
+            //{{{  decode prev audPES
             AVPacket avPacket;
             av_init_packet (&avPacket);
             avPacket.data = pidInfoIt->second.mBuf;
@@ -522,7 +522,7 @@ private:
               }
             }
             //}}}
-          //{{{  start new audPES
+          //{{{  start next audPES
           pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
 
           parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
@@ -588,17 +588,12 @@ private:
   //{{{
   void tsLiveLoader() {
 
-    uint8_t* bda = mBda;
-
     while (true) {
       // wait for chunk of ts
-      while (getBDAend() > bda + 240*188)
-        Sleep (1);
+      uint8_t* bda = getBda (240*188);
 
       // get chunk
-      uint8_t* bdaEnd = getBDAend();
-      tsParser (bda, bdaEnd);
-      bda = bdaEnd;
+      tsParser (bda, bda + (240*188));
 
       // no faster than player
       while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
@@ -844,7 +839,7 @@ private:
 int wmain (int argc, wchar_t* argv[]) {
 
   #ifndef _DEBUG
-    //FreeConsole();
+    FreeConsole();
   #endif
 
   cTvWindow tvWindow;

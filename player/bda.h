@@ -8,5 +8,5 @@ void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
                      ID2D1SolidColorBrush* blackBrush,
                      ID2D1SolidColorBrush* greyBrush);
 
-uint8_t* getBDAend();
-uint8_t* createBDAGraph (int freq);
+uint8_t* getBda (int len);
+bool createBDAGraph (int freq, int bufSize);

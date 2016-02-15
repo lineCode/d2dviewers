@@ -36,6 +36,7 @@ static ComPtr<IScanningTuner> scanningTuner; // for signalStrength
 
 static uint8_t* bdaBuf = nullptr;
 static uint8_t* bdaPtr = nullptr;
+static uint8_t* bdaEndPtr = nullptr;
 
 // bda
 //{{{
@@ -73,12 +74,8 @@ STDMETHODIMP cSampleGrabCB::SampleCB (double sampleTime, IMediaSample* mediaSamp
 
   BYTE* samples;
   mediaSample->GetPointer (&samples);
-
-  memcpy (bdaPtr, samples, mediaSample->GetActualDataLength());
-  bdaPtr += mediaSample->GetActualDataLength();
-
-  //parsePackets (samples, mediaSample->GetActualDataLength());
-  //printf ("got samples\n");
+  memcpy (bdaEndPtr, samples, mediaSample->GetActualDataLength());
+  bdaEndPtr += mediaSample->GetActualDataLength();
 
   return S_OK;
   }
@@ -244,13 +241,19 @@ void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
 //}}}
 
 //{{{
-uint8_t* getBDAend() {
+uint8_t* getBda (int len) {
 
-  return bdaPtr;
+  while (bdaEndPtr - bdaPtr < len)
+    Sleep(1);
+
+  uint8_t* ptr = bdaPtr;
+  bdaPtr += len;
+
+  return ptr;
   }
 //}}}
 //{{{
-uint8_t* createBDAGraph (int freq) {
+bool createBDAGraph (int freq, int bufSize) {
 
   printf ("BDAcreate\n");
   CoCreateInstance (CLSID_FilterGraph, nullptr,
@@ -299,7 +302,7 @@ uint8_t* createBDAGraph (int freq) {
   ComPtr<IBaseFilter> dvbtTuner  =
     findFilter (graphBuilder, KSCATEGORY_BDA_NETWORK_TUNER, L"DVBTtuner", dvbtNetworkProvider);
   if (!dvbtTuner)
-    return nullptr;
+    return false;
 
   ComPtr<IBaseFilter> dvbtCapture =
     findFilter (graphBuilder, KSCATEGORY_BDA_RECEIVER_COMPONENT, L"DVBTcapture", dvbtTuner);
@@ -317,14 +320,15 @@ uint8_t* createBDAGraph (int freq) {
   ComPtr<IBaseFilter> bdaTif =
     createFilter (graphBuilder, CLSID_BDAtif, L"BDAtif", mpeg2Demux);
 
-  bdaBuf = (uint8_t*) malloc (200000000);
+  bdaBuf = (uint8_t*) malloc (bufSize);
   bdaPtr = bdaBuf;
+  bdaEndPtr = bdaBuf;
 
   ComPtr<IMediaControl> mediaControl;
   graphBuilder.As (&mediaControl);
   mediaControl->Run();
 
   printf ("- running\n");
-  return bdaBuf;
+  return true;
   }
 //}}}
