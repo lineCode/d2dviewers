@@ -13,10 +13,6 @@
 //}}}
 //{{{  ts, pid, tid const
 // ts
-#define TS_SIZE          188
-#define TS_HEADER        0x47
-#define PAY_START        0x40
-#define ADAPT_FIELD      0x20
 
 // pid
 #define PID_PAT          0x00   /* Program Association Table */
@@ -629,7 +625,7 @@ public:
   //{{{
   cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection),
                                                  mStreamType(0), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
-                                                 mLength(0), mBufBytes(0), 
+                                                 mLength(0), mBufBytes(0),
                                                  mPesBufSize(0), mPesBuf(nullptr), mPesPtr(nullptr) {
     switch (pid) {
       case PID_PAT: wcscpy (mInfo, L"Pat "); break;
