@@ -22,6 +22,8 @@
 #define maxVidFrames 128
 #define maxAudFrames 256
 
+cBda mBda;
+
 class cTvWindow : public cD2dWindow {
 public:
   cTvWindow() {}
@@ -45,8 +47,11 @@ public:
     else {
       // 650000 674000 706000
       mPlaying = false;
-      if (mBda.createGraph (674000, 500000000))
-        thread ([=]() { tsLiveLoader(); } ).detach();
+      if (mBda.createGraph (674000)) {
+        auto loaderThread = thread ([=]() { tsLiveLoader(); } );
+        SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+        loaderThread.detach();
+        }
       }
 
     // launch playerThread, higher priority
@@ -588,12 +593,11 @@ private:
   //{{{
   void tsLiveLoader() {
 
+    int chunkSize = 240*188;
     while (true) {
       // wait for chunk of ts
-      uint8_t* bda = mBda.getSamples (240*188);
-
-      // get chunk
-      tsParser (bda, bda + (240*188));
+      uint8_t* bda = mBda.getSamples (chunkSize);
+      tsParser (bda, bda + chunkSize);
 
       // no faster than player
       while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
@@ -796,8 +800,6 @@ private:
   // tsSection
   cTsSection mTsSection;
   int mDiscontinuity = 0;
-
-  cBda mBda;
 
   // service
   int mService = 1;

@@ -237,13 +237,20 @@ public:
   virtual ~cSampleGrabCB() {};
 
   //{{{
-  uint8_t* getBuffer() {
-    return mBuffer;
+  int hasSamples() {
+    return mNumSamplesRx - mNumSamplesUsed;
     }
   //}}}
   //{{{
-  void setBuffer (uint8_t* buffer) {
-    mBuffer = buffer;
+  uint8_t* getSamples (int len) {
+
+    if (len <= mNumSamplesRx - mNumSamplesUsed) {
+      uint8_t* ptr = mSamples + mNumSamplesUsed;
+      mNumSamplesUsed += len;
+      return ptr;
+      }
+    else
+      return nullptr;
     }
   //}}}
 
@@ -267,16 +274,17 @@ private:
 
     uint8_t* samples;
     mediaSample->GetPointer (&samples);
-
-    memcpy (mBuffer, samples, mediaSample->GetActualDataLength());
-    mBuffer += mediaSample->GetActualDataLength();
+    memcpy (mSamples + mNumSamplesRx, samples, mediaSample->GetActualDataLength());
+    mNumSamplesRx += mediaSample->GetActualDataLength();
 
     return S_OK;
     }
 
   // vars
   ULONG ul_cbrc;
-  uint8_t* mBuffer = nullptr;
+  uint8_t mSamples[4000*240*188];
+  int mNumSamplesUsed = 0;
+  int mNumSamplesRx = 0;
   };
 //}}}
 
@@ -285,9 +293,9 @@ public:
   cBda() {}
   ~cBda() {}
   //{{{
-  uint8_t* createGraph (int freq, int bufSize) {
+  bool createGraph (int freq) {
 
-    printf ("cBda::createGraph %d %dm\n", freq, bufSize/1000000);
+    printf ("cBda::createGraph %d\n", freq);
     CoCreateInstance (CLSID_FilterGraph, nullptr,
                       CLSCTX_INPROC_SERVER, IID_PPV_ARGS (mGraphBuilder.GetAddressOf()));
 
@@ -334,7 +342,7 @@ public:
     ComPtr<IBaseFilter> dvbtTuner  =
       findFilter (mGraphBuilder, KSCATEGORY_BDA_NETWORK_TUNER, L"DVBTtuner", dvbtNetworkProvider);
     if (!dvbtTuner)
-      return nullptr;
+      return false;
 
     ComPtr<IBaseFilter> dvbtCapture =
       findFilter (mGraphBuilder, KSCATEGORY_BDA_RECEIVER_COMPONENT, L"DVBTcapture", dvbtTuner);
@@ -345,10 +353,6 @@ public:
     sampleGrabberFilter.As (&sampleGrabber);
     sampleGrabber->SetOneShot (false);
     sampleGrabber->SetBufferSamples (true);
-
-    mBdaBuf = (uint8_t*) malloc (bufSize);
-    mBdaPtr = mBdaBuf;
-    mSampleGrabCB.setBuffer (mBdaBuf);
     sampleGrabber->SetCallback (&mSampleGrabCB, 0);
 
     ComPtr<IBaseFilter> mpeg2Demux =
@@ -361,24 +365,50 @@ public:
     mediaControl->Run();
 
     printf ("- running\n");
-    return mBdaBuf;
+    return true;
     }
   //}}}
   //{{{
   uint8_t* getSamples (int len) {
 
-    while (mBdaPtr + len > mSampleGrabCB.getBuffer())
+    while (mSampleGrabCB.hasSamples() < len)
       Sleep (2);
 
-    uint8_t* ptr = mBdaPtr;
-    mBdaPtr += len;
-    return ptr;
+    return mSampleGrabCB.getSamples (len);
+    }
+  //}}}
+  //{{{
+  int getSignalStrength() {
+
+    long strength = 0;
+
+    if (mScanningTuner)
+      mScanningTuner->get_SignalStrength (&strength);
+
+    return strength / 100000;
+    }
+  //}}}
+  //{{{
+  void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
+                       IDWriteTextFormat* textFormat,
+                       ID2D1SolidColorBrush* whiteBrush,
+                       ID2D1SolidColorBrush* blueBrush,
+                       ID2D1SolidColorBrush* blackBrush,
+                       ID2D1SolidColorBrush* greyBrush) {
+
+    if (mGraphBuilder) {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"%2d", getSignalStrength());
+
+      D2D1_RECT_F textRect = D2D1::RectF((float)client.width-20, 0.0f, (float)client.width, 20.0f);
+      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
+      }
     }
   //}}}
 
 private:
   //{{{
-  bool  connectPins (ComPtr<IGraphBuilder> graphBuilder,
+  bool connectPins (ComPtr<IGraphBuilder> graphBuilder,
                      ComPtr<IBaseFilter> fromFilter, ComPtr<IBaseFilter> toFilter,
                      wchar_t* fromPinName = NULL, wchar_t* toPinName = NULL) {
   // connect pins, if name == NULL use first correct direction unconnected pin, else use pin matching name
@@ -505,43 +535,9 @@ private:
     }
   //}}}
 
-  // private interface to render
-  //{{{
-  int getSignalStrength() {
-
-    long strength = 0;
-
-    if (mScanningTuner)
-      mScanningTuner->get_SignalStrength (&strength);
-
-    return strength / 100000;
-    }
-  //}}}
-
-  //{{{
-  void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
-                       IDWriteTextFormat* textFormat,
-                       ID2D1SolidColorBrush* whiteBrush,
-                       ID2D1SolidColorBrush* blueBrush,
-                       ID2D1SolidColorBrush* blackBrush,
-                       ID2D1SolidColorBrush* greyBrush) {
-
-    if (mGraphBuilder) {
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%2d", getSignalStrength());
-
-      D2D1_RECT_F textRect = D2D1::RectF((float)client.width-20, 0.0f, (float)client.width, 20.0f);
-      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
-      }
-    }
-  //}}}
-
   // vars
   ComPtr<IGraphBuilder> mGraphBuilder;   // ensure graph persists
   ComPtr<IScanningTuner> mScanningTuner; // for signalStrength
 
   cSampleGrabCB mSampleGrabCB;
-
-  uint8_t* mBdaBuf = nullptr;
-  uint8_t* mBdaPtr = nullptr;
   };
