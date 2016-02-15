@@ -1,4 +1,4 @@
-// cTs.h
+// cTsSection.h
 #pragma once
 //#define TSERROR
 //#define EIT_EXTENDED_EVENT_DEBUG
@@ -623,10 +623,8 @@ static unsigned long crcTable[256] = {
 class cPidInfo {
 public:
   //{{{
-  cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid), mSid(-1), mIsSection(isSection),
-                                                 mStreamType(0), mPts(0), mDts(0), mContinuity(-1), mTotal(0),
-                                                 mLength(0), mBufBytes(0),
-                                                 mPesBufSize(0), mPesBuf(nullptr), mPesPtr(nullptr) {
+  cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid),  mIsSection(isSection) {
+
     switch (pid) {
       case PID_PAT: wcscpy (mInfo, L"Pat "); break;
       case PID_CAT: wcscpy (mInfo, L"Cat "); break;
@@ -644,30 +642,27 @@ public:
 
   //{{{
   void cPidInfo::print() {
-    printf ("- pid:%d sid:%d total:%d\n", mPid, mSid, mTotal);
+    printf ("- pid:%d sid:%d total:%d stream:%d\n", mPid, mSid, mTotal, mStreamType);
     }
   //}}}
 
   int  mPid;
-  int  mSid;
+  int  mSid = -1;
   bool mIsSection;
 
-  int mStreamType;
-  int64_t mPts;
-  int64_t mDts;
+  int mStreamType = 0;
+  int64_t mPts = 0;
+  int64_t mDts = 0;
 
-  int  mContinuity;
-  int  mTotal;
+  int  mContinuity = -1;
+  int  mTotal = 0;
 
-  // section buffer
-  int mLength;
-  size_t mBufBytes;
-  unsigned char mBuf[10000];
-
-  // PES buffer, should be used by section buffer
-  int mPesBufSize;
-  uint8_t* mPesBuf;
-  uint8_t* mPesPtr;
+  // content buffer
+  int mSectionLength = 0;
+  size_t mBufBytes = 0;
+  uint8_t* mBufPtr = nullptr;
+  int mBufSize = 0;
+  uint8_t* mBuf = nullptr;
 
   // render text for speed,locking
   wchar_t mInfo[100];
