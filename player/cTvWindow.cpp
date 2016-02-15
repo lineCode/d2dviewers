@@ -342,25 +342,28 @@ private:
               #endif
               }
 
-            size_t j = i + pointerField + 5;
-            pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
+            size_t j = i + pointerField + 5;     // j = p+i+1
+            size_t p = pointerField + 1;
+            pidInfoIt->second.mLength = ((*(tsPtr+p+1) & 0x0F) << 8) | *(tsPtr+p+2);
             if (pidInfoIt->second.mLength + 3 <= 188 - 5 - pointerField) {
               // parse first section
-              mTsSection.parseSection (pid, tsBuf+j, tsPtr+tsFrameBytesLeft);
+              mTsSection.parseSection (pid, tsPtr+p, tsPtr+tsFrameBytesLeft);
               j += pidInfoIt->second.mLength + 3;
+              p += pidInfoIt->second.mLength + 3;
               pidInfoIt->second.mBufBytes = 0;
 
-              while (tsBuf[j] != 0xFF) {
+              while (*(tsPtr+p) != 0xFF) {
                 // parse more sections
-                pidInfoIt->second.mLength = ((tsBuf[j+1] & 0x0f) << 8) | tsBuf[j+2];
-                if (j + pidInfoIt->second.mLength + 4 - i < 188) {
+                pidInfoIt->second.mLength = ((*(tsPtr+p+1) & 0x0F) << 8) | *(tsPtr+p+2);
+                if (p+i+1 + pidInfoIt->second.mLength + 4 - i < 188) {
                   mTsSection.parseSection (pid, tsBuf+j, tsPtr+tsFrameBytesLeft);
                   j += pidInfoIt->second.mLength + 3;
+                  p += pidInfoIt->second.mLength + 3;
                   pidInfoIt->second.mBufBytes = 0;
                   }
                 else {
-                  memcpy (pidInfoIt->second.mBuf, tsBuf + j, 188 - (j - i));
-                  pidInfoIt->second.mBufBytes = 188 - (j - i);
+                  memcpy (pidInfoIt->second.mBuf, tsPtr + p, 187 - p);
+                  pidInfoIt->second.mBufBytes = 187 - p;
                   break;
                   }
                 }
