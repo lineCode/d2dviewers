@@ -5,12 +5,8 @@
     <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cTvWindow.cpp" />
-    <ClCompile Include="bda.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bda.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -23,9 +19,6 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="qedit.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -36,6 +29,12 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="cTsSection.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\cTsSection.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\cBda.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

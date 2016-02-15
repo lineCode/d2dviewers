@@ -19,52 +19,24 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="cTvWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="tvGrab.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\common\cAudFrame.h" />
     <ClInclude Include="..\common\cBda.h" />
-    <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cTsSection.h" />
-    <ClInclude Include="..\common\winAudio.h" />
-    <ClInclude Include="..\common\yuvrgb_sse2.h" />
-    <ClInclude Include="cTsSection.h" />
-    <ClInclude Include="decode.h" />
-    <ClInclude Include="huffDecoder.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\common\yuvrgb_sse2.asm">
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">nasm -I%(RootDir)%(Directory)  -f win64 -DWIN64 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">nasm -I%(RootDir)%(Directory)  -f win64 -DWIN64 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </CustomBuild>
-  </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{B80EBF50-0719-4408-B63F-43C64F802819}</ProjectGuid>
+    <ProjectGuid>{57CD802F-3D94-48C6-9ABC-E3D768DF830B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
-    <ProjectName>tvWindow</ProjectName>
+    <ProjectName>tvGrab</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

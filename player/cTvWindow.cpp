@@ -4,8 +4,8 @@
 
 #include "../common/cD2dWindow.h"
 
-#include "cTsSection.h"
-#include "bda.h"
+#include "../common/cTsSection.h"
+#include "../common/cBda.h"
 
 #include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
@@ -45,7 +45,7 @@ public:
     else {
       // 650000 674000 706000
       mPlaying = false;
-      if (createBDAGraph (650000, 500000000))
+      if (mBda.createBDAGraph (674000, 500000000))
         thread ([=]() { tsLiveLoader(); } ).detach();
       }
 
@@ -590,7 +590,7 @@ private:
 
     while (true) {
       // wait for chunk of ts
-      uint8_t* bda = getBda (240*188);
+      uint8_t* bda = mBda.getBda (240*188);
 
       // get chunk
       tsParser (bda, bda + (240*188));
@@ -797,6 +797,8 @@ private:
   cTsSection mTsSection;
   int mDiscontinuity = 0;
 
+  cBda mBda;
+
   // service
   int mService = 1;
   cService* mServicePtr = nullptr;
@@ -830,19 +832,20 @@ private:
   cYuvFrame mYuvFrames[maxVidFrames];
 
   ID2D1Bitmap* mBitmap = nullptr;
-
-  uint8_t* mBda = nullptr;
   //}}}
   };
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
+  CoInitialize (NULL);
   #ifndef _DEBUG
     FreeConsole();
   #endif
 
   cTvWindow tvWindow;
   tvWindow.run (L"tvWindow", 896, 504, argv[1]);
+
+  CoUninitialize();
   }
 //}}}
