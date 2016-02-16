@@ -44,20 +44,26 @@ public:
   //{{{
   cSampleGrabberCB() {
     mSamples = (uint8_t*)malloc (BUFSIZE);
-    };
+    mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
+    }
   //}}}
-  virtual ~cSampleGrabberCB() {};
-
   //{{{
-  uint8_t* getSamples (int len) {
+  virtual ~cSampleGrabberCB() {
+    CloseHandle (mSemaphore);
+    }
+  //}}}
+  //{{{
+  uint8_t* getSamples (int64_t len) {
 
     if (mNumSamplesRx - mNumSamplesUsed > BUFSIZE) {
       printf ("cSampleGrabberCB::getSamples buffer stale\n");
       mNumSamplesUsed = mNumSamplesRx - BUFSIZE;
       }
     else {
-      while (len > mNumSamplesRx - mNumSamplesUsed)
-        Sleep (1);
+      while (len > mNumSamplesRx - mNumSamplesUsed) {
+        WaitForSingleObject (mSemaphore, 10 * 1000);
+        //printf ("wait %lld %lld %lld %lld\n", len, mNumSamplesRx, mNumSamplesUsed, mNumSamplesRx - mNumSamplesUsed);
+        }
       }
 
     uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
@@ -84,14 +90,16 @@ private:
     if (mediaSample->IsDiscontinuity() == S_OK)
       printf ("cSampleGrabCB::SampleCB sample isDiscontinuity\n");
 
+    long actualDataLength = mediaSample->GetActualDataLength();
+    if (actualDataLength != 240*188)
+      printf ("cSampleGrabCB::SampleCB - unexpected sampleLength\n");
+
     uint8_t* samples;
     mediaSample->GetPointer (&samples);
-    long len = mediaSample->GetActualDataLength();
-    memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, len);
-    mNumSamplesRx += len;
+    memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, actualDataLength);
+    mNumSamplesRx += actualDataLength;
 
-    if (len != 240*188)
-      printf ("cSampleGrabCB::SampleCB - unexpected sampleLength\n");
+    ReleaseSemaphore (mSemaphore, 1, NULL);
 
     mNumCb++;
     return S_OK;
@@ -100,10 +108,11 @@ private:
 
   // vars
   ULONG ul_cbrc;
+  HANDLE mSemaphore;
 
   int mNumCb = 0;
-  volatile int mNumSamplesRx = 0;
-  volatile int mNumSamplesUsed = 0;
+  volatile int64_t mNumSamplesRx = 0;
+  volatile int64_t mNumSamplesUsed = 0;
 
   uint8_t* mSamples;
   };
