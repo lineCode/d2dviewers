@@ -562,29 +562,25 @@ private:
   void tsFileLoader() {
 
     uint8_t tsBuf[240*188];
-
-    HANDLE readFile = CreateFile (mWideFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    while (true) {
-      DWORD sampleLen = 0;
-      ReadFile (readFile, tsBuf, 240*188, &sampleLen, NULL);
-      if (!sampleLen)
-        break;
-
-      tsParser (tsBuf, tsBuf + sampleLen);
-
-      while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
-        Sleep (20);
-      //{{{  choose service
-      int j = 0;
-      for (auto service : mTsSection.mServiceMap) {
-        if (j == mService) {
-          mServicePtr = &service.second;
-          break;
+    HANDLE readFile = CreateFile (mWideFilename, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    DWORD numberOfBytesRead = 0;
+    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
+      if (numberOfBytesRead) {
+        tsParser (tsBuf, tsBuf + numberOfBytesRead);
+        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+          Sleep (20);
+        //{{{  choose service
+        int j = 0;
+        for (auto service : mTsSection.mServiceMap) {
+          if (j == mService) {
+            mServicePtr = &service.second;
+            break;
+            }
+          else
+            j++;
           }
-        else
-          j++;
+        //}}}
         }
-      //}}}
       }
 
     CloseHandle (readFile);
