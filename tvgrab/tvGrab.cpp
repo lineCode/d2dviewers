@@ -19,42 +19,44 @@ int wmain (int argc, wchar_t* argv[]) {
     }
     //}}}
 
-  int freq = (argc >= 2) ? _wtoi (argv[1]) : 674000;
-
-  bda.createGraph (freq); // 650000 674000 706000
+  bda.createGraph ((argc >= 2) ? _wtoi (argv[1]) : 674000); // 650000 674000 706000
   printf ("tvGrab\n");
-  FILE* file = fopen ("C:\\Users\\colin\\Desktop\\bda.ts", "wb");
 
-  int transfer = 16*240*188;
+  HANDLE mFile = CreateFile (L"C:\\Users\\colin\\Desktop\\bda.ts",
+                             GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
   int total = 0;
-
-  printf ("signal %d\n", bda.getSignalStrength());
+  int transfer = 240*188;
 
   int contOk = 0;
-  for (int i = 0; i < 128; i++) {
+  for (int i = 0; i < 256; i++) {
     uint8_t* bdaBuf =  bda.getSamples (transfer);
 
-    int sync = 0;
-    uint8_t* tsPtr = bdaBuf;
-    for (int j = 0; j < 240; j++) {
-      if (*tsPtr == 0x47) {
-        sync++;
-        auto continuity = *(tsPtr+3) & 0x0F;
-        auto pid = ((*(tsPtr+1) & 0x1F) << 8) | *(tsPtr+2);
-        if ((pidCont[pid] == -1) || (pidCont[pid] == ((continuity - 1) & 0x0f)))
-          contOk++;
-        pidCont[pid] = continuity;
-        pidCount[pid]++;
-        tsPtr += 188;
+    if (true) {
+      int sync = 0;
+      uint8_t* tsPtr = bdaBuf;
+      for (int j = 0; j < 240; j++) {
+        if (*tsPtr == 0x47) {
+          sync++;
+          auto continuity = *(tsPtr+3) & 0x0F;
+          auto pid = ((*(tsPtr+1) & 0x1F) << 8) | *(tsPtr+2);
+          if ((pidCont[pid] == -1) || (pidCont[pid] == ((continuity - 1) & 0x0f)))
+            contOk++;
+          pidCont[pid] = continuity;
+          pidCount[pid]++;
+          tsPtr += 188;
+          }
         }
+      printf ("bda %d %4.3fm %d %d %d     \r", i, total/1000000.0, bda.getSignalStrength(), sync, contOk);
       }
-    printf ("bda %d %4.3fm %d %d %d         \r", i, total/1000000.0, bda.getSignalStrength(), sync, contOk);
+    else
+      printf ("bda %d %4.3fm %d\r", i, total/1000000.0, bda.getSignalStrength());
 
-    fwrite (bdaBuf, 1, transfer, file);
+    DWORD written;
+    WriteFile (mFile, bdaBuf, transfer, &written, NULL);
     total += transfer;
     }
 
-  fclose (file);
+  CloseHandle (mFile);
 
   CoUninitialize();
   }
