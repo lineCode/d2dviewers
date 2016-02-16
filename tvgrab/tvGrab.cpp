@@ -51,8 +51,8 @@ int wmain (int argc, wchar_t* argv[]) {
               i, total/1000000.0, bda.getSignalStrength(), sync, contOk, (uint64_t)bdaBuf);
       }
     else
-      printf ("bda %d %4.3fm %d %llx %d       \r",
-              i, total/1000000.0, bda.getSignalStrength(), (uint64_t)bdaBuf, bda.hasSamples());
+      printf ("bda %d %4.3fm %d %llx  \r",
+              i, total/1000000.0, bda.getSignalStrength(), (uint64_t)bdaBuf);
 
     DWORD written;
     WriteFile (mFile, bdaBuf, transfer, &written, NULL);

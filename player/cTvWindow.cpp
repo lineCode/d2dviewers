@@ -161,9 +161,9 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d %d a:%lld v:%lld %lld",
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d av:%d sig:%d a:%lld v:%lld a-v%lld",
             mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded,
-            mDiscontinuity, mVidOffset,
+            mDiscontinuity, mVidOffset,  mBda.getSignalStrength(),
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts, mYuvFrames[vidFrame % maxVidFrames].mPts,
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts - mYuvFrames[vidFrame % maxVidFrames].mPts);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),

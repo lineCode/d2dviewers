@@ -38,7 +38,6 @@ using namespace Microsoft::WRL;
 //}}}
 
 #define BUFSIZE (256*240*188)
-#define CIRCULAR
 //{{{
 class cSampleGrabberCB : public ISampleGrabberCB {
 public:
@@ -50,28 +49,20 @@ public:
   virtual ~cSampleGrabberCB() {};
 
   //{{{
-  int hasSamples() {
-    return mNumSamplesRx - mNumSamplesUsed;
-    }
-  //}}}
-  //{{{
   uint8_t* getSamples (int len) {
 
     if (mNumSamplesRx - mNumSamplesUsed > BUFSIZE) {
       printf ("cSampleGrabberCB::getSamples buffer stale\n");
-      uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
-      mNumSamplesUsed += len;
-      return ptr;
-      }
-    else if (len <= mNumSamplesRx - mNumSamplesUsed) {
-      uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
-      mNumSamplesUsed += len;
-      return ptr;
+      mNumSamplesUsed = mNumSamplesRx - BUFSIZE;
       }
     else {
-      printf ("cSampleGrabberCB::getSamples failed to get samples\n");
-      return nullptr;
+      while (len > mNumSamplesRx - mNumSamplesUsed)
+        Sleep (1);
       }
+
+    uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
+    mNumSamplesUsed += len;
+    return ptr;
     }
   //}}}
 
@@ -81,8 +72,12 @@ private:
   STDMETHODIMP_(ULONG) Release() { return --ul_cbrc; }
   STDMETHODIMP QueryInterface (REFIID riid, void** p_p_object) { return E_NOTIMPL; }
 
-  STDMETHODIMP BufferCB (double sampleTime, BYTE* samples, long sampleLen) { printf ("BufferCB\n"); return S_OK; }
-
+  //{{{
+  STDMETHODIMP BufferCB (double sampleTime, BYTE* samples, long sampleLen) {
+    printf ("cSampleGrabberCB::BufferCB called\n");
+    return S_OK;
+    }
+  //}}}
   //{{{
   STDMETHODIMP SampleCB (double sampleTime, IMediaSample* mediaSample) {
 
@@ -105,9 +100,11 @@ private:
 
   // vars
   ULONG ul_cbrc;
+
   int mNumCb = 0;
   volatile int mNumSamplesRx = 0;
   volatile int mNumSamplesUsed = 0;
+
   uint8_t* mSamples;
   };
 //}}}
@@ -192,6 +189,7 @@ public:
     return true;
     }
   //}}}
+
   //{{{
   int getSignalStrength() {
 
@@ -203,17 +201,11 @@ public:
     return strength / 100000;
     }
   //}}}
-
-  int hasSamples() {
-    return mSampleGrabberCB.hasSamples();
-    }
-
+  //{{{
   uint8_t* getSamples (int len) {
-    while (mSampleGrabberCB.hasSamples() < len)
-      Sleep (1);
-
     return mSampleGrabberCB.getSamples (len);
     }
+  //}}}
 
 private:
   //{{{
@@ -249,15 +241,11 @@ private:
               if ((toPinInfo.dir == PINDIR_INPUT) && (!toPinName || !wcscmp (toPinInfo.achName, toPinName))) {
                 // found toPin
                 if (graphBuilder->Connect(fromPin.Get(), toPin.Get()) == S_OK) {
-                  #ifdef BDA_COMMENTS
                   wprintf(L"- connecting pin %s to %s\n", fromPinInfo.achName, toPinInfo.achName);
-                  #endif
                   return true;
                   }
                 else {
-                  #ifdef BDA_COMMENTS
                   printf ("- connectPins failed\n");
-                  #endif
                   return false;
                   }
                 }
@@ -299,9 +287,7 @@ private:
           propertyBag->Read (L"FriendlyName", &varName, 0);
           VariantClear (&varName);
 
-          #ifdef BDA_COMMENTS
-          wprintf (L"FindFilter - %s:%d\n", varName.bstrVal, instance);
-          #endif
+          wprintf (L"FindFilter - %s\n", varName.bstrVal);
 
           // bind the filter
           moniker->BindToObject (NULL, NULL, IID_IBaseFilter, (void**)(&filter));
@@ -336,17 +322,15 @@ private:
     graphBuilder->AddFilter (filter.Get(), title);
     connectPins (graphBuilder, fromFilter, filter);
 
-    #ifdef BDA_COMMENTS
     wprintf (L"CreateFilter %s\n", title);
-    #endif
 
     return filter;
     }
   //}}}
 
   // vars
-  ComPtr<IGraphBuilder> mGraphBuilder;   // ensure graph persists
-  ComPtr<IScanningTuner> mScanningTuner; // for signalStrength
+  ComPtr<IGraphBuilder> mGraphBuilder;
+  ComPtr<IScanningTuner> mScanningTuner;
 
   cSampleGrabberCB mSampleGrabberCB;
   };
