@@ -37,11 +37,16 @@ DEFINE_GUID (CLSID_BDAtif, 0xFC772ab0, 0x0c7f, 0x11d3, 0x8F,0xf2, 0x00,0xa0,0xc9
 using namespace Microsoft::WRL;
 //}}}
 
-#define BUFSIZE 1024*240*188
+#define BUFSIZE (256*240*188)
+#define CIRCULAR
 //{{{
 class cSampleGrabberCB : public ISampleGrabberCB {
 public:
-  cSampleGrabberCB() {};
+  //{{{
+  cSampleGrabberCB() {
+    mSamples = (uint8_t*)malloc (BUFSIZE);
+    };
+  //}}}
   virtual ~cSampleGrabberCB() {};
 
   //{{{
@@ -52,14 +57,21 @@ public:
   //{{{
   uint8_t* getSamples (int len) {
 
-    if (len <= mNumSamplesRx - mNumSamplesUsed) {
-      uint8_t* ptr = mSamples + mNumSamplesUsed;
-      //uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
+    if (mNumSamplesRx - mNumSamplesUsed > BUFSIZE) {
+      printf ("cSampleGrabberCB::getSamples buffer stale\n");
+      uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
       mNumSamplesUsed += len;
       return ptr;
       }
-    else
+    else if (len <= mNumSamplesRx - mNumSamplesUsed) {
+      uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
+      mNumSamplesUsed += len;
+      return ptr;
+      }
+    else {
+      printf ("cSampleGrabberCB::getSamples failed to get samples\n");
       return nullptr;
+      }
     }
   //}}}
 
@@ -71,6 +83,7 @@ private:
 
   STDMETHODIMP BufferCB (double sampleTime, BYTE* samples, long sampleLen) { printf ("BufferCB\n"); return S_OK; }
 
+  //{{{
   STDMETHODIMP SampleCB (double sampleTime, IMediaSample* mediaSample) {
 
     if (mediaSample->IsDiscontinuity() == S_OK)
@@ -78,21 +91,24 @@ private:
 
     uint8_t* samples;
     mediaSample->GetPointer (&samples);
-    memcpy (mSamples + mNumSamplesRx, samples, mediaSample->GetActualDataLength());
-    //memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, mediaSample->GetActualDataLength());
-    mNumSamplesRx += mediaSample->GetActualDataLength();
+    long len = mediaSample->GetActualDataLength();
+    memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, len);
+    mNumSamplesRx += len;
 
-    if (mediaSample->GetActualDataLength() != 240*188)
+    if (len != 240*188)
       printf ("cSampleGrabCB::SampleCB - unexpected sampleLength\n");
 
+    mNumCb++;
     return S_OK;
     }
+  //}}}
 
   // vars
   ULONG ul_cbrc;
-  uint8_t mSamples[BUFSIZE];
-  int mNumSamplesRx = 0;
-  int mNumSamplesUsed = 0;
+  int mNumCb = 0;
+  volatile int mNumSamplesRx = 0;
+  volatile int mNumSamplesUsed = 0;
+  uint8_t* mSamples;
   };
 //}}}
 
@@ -176,16 +192,6 @@ public:
     return true;
     }
   //}}}
-
-  //{{{
-  uint8_t* getSamples (int len) {
-
-    while (mSampleGrabberCB.hasSamples() < len)
-      Sleep (2);
-
-    return mSampleGrabberCB.getSamples (len);
-    }
-  //}}}
   //{{{
   int getSignalStrength() {
 
@@ -197,6 +203,17 @@ public:
     return strength / 100000;
     }
   //}}}
+
+  int hasSamples() {
+    return mSampleGrabberCB.hasSamples();
+    }
+
+  uint8_t* getSamples (int len) {
+    while (mSampleGrabberCB.hasSamples() < len)
+      Sleep (1);
+
+    return mSampleGrabberCB.getSamples (len);
+    }
 
 private:
   //{{{

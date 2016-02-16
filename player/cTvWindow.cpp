@@ -46,7 +46,6 @@ public:
       //thread ([=]() { fileLoader(); } ).detach();
     else {
       // 650000 674000 706000
-      mPlaying = false;
       if (mBda.createGraph (674000)) {
         auto loaderThread = thread ([=]() { tsLiveLoader(); } );
         SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -61,10 +60,6 @@ public:
 
     // loop in windows message pump till quit
     messagePump();
-
-    mTsSection.printServices();
-    mTsSection.printPids();
-    mTsSection.printPrograms();
     }
   //}}}
 
@@ -106,7 +101,7 @@ bool onKey (int key) {
     case 0x38 :
     case 0x39 : mService = key - '0'; break;
 
-    case 0x46 : saveBDA();
+    case 0x44 : debug();
     default   : printf ("key %x\n", key);
     }
 
@@ -116,6 +111,15 @@ bool onKey (int key) {
     mPlayFrame = mAudFramesLoaded - 1.0f;
 
   return false;
+  }
+//}}}
+//{{{
+void onMouseProx (bool inClient, int x, int y) {
+
+  bool showChannel = mShowChannel;
+  mShowChannel = inClient && (x < 80);
+  if (showChannel != mShowChannel)
+    changed();
   }
 //}}}
 //{{{
@@ -156,19 +160,6 @@ void onDraw (ID2D1DeviceContext* dc) {
   else
     dc->Clear (ColorF(ColorF::Black));
 
-  D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
-  dc->FillRectangle (r, getGreyBrush());
-
-  int audFrame = int(mPlayFrame) - (int)(getClientF().width/2);
-  for (r.left = 0.0f; (r.left < getClientF().width) && (audFrame < mAudFramesLoaded); r.left++, audFrame++) {
-    if (audFrame >= 0) {
-      r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerLeft;
-      r.bottom = (getClientF().height/2.0f) + mAudFrames[audFrame % maxAudFrames].mPowerRight;
-      r.right = r.left + 1.0f;
-      dc->FillRectangle (r, getBlueBrush());
-      }
-    }
-
   wchar_t wStr[200];
   swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d %d a:%lld v:%lld %lld",
             mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded,
@@ -176,11 +167,24 @@ void onDraw (ID2D1DeviceContext* dc) {
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts, mYuvFrames[vidFrame % maxVidFrames].mPts,
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts - mYuvFrames[vidFrame % maxVidFrames].mPts);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(0, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
-  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
-  mTsSection.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+  if (mShowChannel) {
+    D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
+    dc->FillRectangle (r, getGreyBrush());
+
+    int audFrame = int(mPlayFrame) - (int)(getClientF().width/2);
+    for (r.left = 0.0f; (r.left < getClientF().width) && (audFrame < mAudFramesLoaded); r.left++, audFrame++) {
+      if (audFrame >= 0) {
+        r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerLeft;
+        r.bottom = (getClientF().height/2.0f) + mAudFrames[audFrame % maxAudFrames].mPowerRight;
+        r.right = r.left + 1.0f;
+        dc->FillRectangle (r, getBlueBrush());
+        }
+      }
+
+    mTsSection.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+    }
   }
 //}}}
 
@@ -267,11 +271,10 @@ private:
     }
   //}}}
   //{{{
-  void saveBDA() {
-
-    //FILE* file = fopen ("C:\\Users\\colin\\Desktop\\bdaDump.ts", "wb");
-    //fwrite (mBda, 1, getBda(200000000) - mBda, file);
-    //fclose (file);
+  void debug() {
+    mTsSection.printServices();
+    mTsSection.printPids();
+    mTsSection.printPrograms();
     }
   //}}}
 
@@ -279,7 +282,6 @@ private:
   void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
 
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
-    int packets = int(tsEnd - tsPtr) / 188;
     while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
       //{{{  parse tsFrame start
       auto payStart = *tsPtr & 0x40;
@@ -552,10 +554,7 @@ private:
         }
         //}}}
       tsPtr += tsFrameBytesLeft;
-      packets--;
       }
-    if (packets)
-      printf ("sync error- packets left %d\n", packets);
     }
   //}}}
 
@@ -597,11 +596,17 @@ private:
   //{{{
   void tsLiveLoader() {
 
+    int count = 0;
+    mPlaying = false;
+
     int chunkSize = 240*188;
     while (true) {
+      count++;
       // wait for chunk of ts
       uint8_t* bda = mBda.getSamples (chunkSize);
       tsParser (bda, bda + chunkSize);
+      if (count == 200)
+        mPlaying = true;
 
       // no faster than player
       while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
@@ -801,12 +806,14 @@ private:
   wchar_t* mWideFilename;
   char mFilename[100];
 
+  bool mShowChannel = false;
+
   // tsSection
   cTsSection mTsSection;
   int mDiscontinuity = 0;
 
   // service
-  int mService = 1;
+  int mService = 0;
   cService* mServicePtr = nullptr;
   int mVidOffset = 25;
 
