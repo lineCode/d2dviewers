@@ -236,6 +236,7 @@ public:
   cSampleGrabCB() {};
   virtual ~cSampleGrabCB() {};
 
+  #define BUFSIZE 1024*240*188
   //{{{
   int hasSamples() {
     return mNumSamplesRx - mNumSamplesUsed;
@@ -245,7 +246,7 @@ public:
   uint8_t* getSamples (int len) {
 
     if (len <= mNumSamplesRx - mNumSamplesUsed) {
-      uint8_t* ptr = mSamples + mNumSamplesUsed;
+      uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
       mNumSamplesUsed += len;
       return ptr;
       }
@@ -274,7 +275,7 @@ private:
 
     uint8_t* samples;
     mediaSample->GetPointer (&samples);
-    memcpy (mSamples + mNumSamplesRx, samples, mediaSample->GetActualDataLength());
+    memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, mediaSample->GetActualDataLength());
     mNumSamplesRx += mediaSample->GetActualDataLength();
 
     return S_OK;
@@ -282,7 +283,7 @@ private:
 
   // vars
   ULONG ul_cbrc;
-  uint8_t mSamples[4000*240*188];
+  uint8_t mSamples[BUFSIZE];
   int mNumSamplesUsed = 0;
   int mNumSamplesRx = 0;
   };
@@ -368,6 +369,7 @@ public:
     return true;
     }
   //}}}
+
   //{{{
   uint8_t* getSamples (int len) {
 
@@ -386,23 +388,6 @@ public:
       mScanningTuner->get_SignalStrength (&strength);
 
     return strength / 100000;
-    }
-  //}}}
-  //{{{
-  void renderBDAGraph (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
-                       IDWriteTextFormat* textFormat,
-                       ID2D1SolidColorBrush* whiteBrush,
-                       ID2D1SolidColorBrush* blueBrush,
-                       ID2D1SolidColorBrush* blackBrush,
-                       ID2D1SolidColorBrush* greyBrush) {
-
-    if (mGraphBuilder) {
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%2d", getSignalStrength());
-
-      D2D1_RECT_F textRect = D2D1::RectF((float)client.width-20, 0.0f, (float)client.width, 20.0f);
-      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
-      }
     }
   //}}}
 

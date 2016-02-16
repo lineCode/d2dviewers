@@ -279,7 +279,8 @@ private:
   void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
 
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
-    while ((tsPtr < tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 >= tsEnd) || (*(tsPtr+187) == 0x47))) {
+    int packets = int(tsEnd - tsPtr) / 188;
+    while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
       //{{{  parse tsFrame start
       auto payStart = *tsPtr & 0x40;
       auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
@@ -551,19 +552,22 @@ private:
         }
         //}}}
       tsPtr += tsFrameBytesLeft;
+      packets--;
       }
+    if (packets)
+      printf ("sync error- packets left %d\n", packets);
     }
   //}}}
 
   //{{{
   void tsFileLoader() {
 
-    uint8_t tsBuf[128*188];
+    uint8_t tsBuf[240*188];
 
     HANDLE readFile = CreateFile (mWideFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     while (true) {
       DWORD sampleLen = 0;
-      ReadFile (readFile, tsBuf, 128*188, &sampleLen, NULL);
+      ReadFile (readFile, tsBuf, 240*188, &sampleLen, NULL);
       if (!sampleLen)
         break;
 
@@ -842,7 +846,7 @@ int wmain (int argc, wchar_t* argv[]) {
 
   CoInitialize (NULL);
   #ifndef _DEBUG
-    FreeConsole();
+    //FreeConsole();
   #endif
 
   cTvWindow tvWindow;
