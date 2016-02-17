@@ -37,40 +37,256 @@ DEFINE_GUID (CLSID_BDAtif, 0xFC772ab0, 0x0c7f, 0x11d3, 0x8F,0xf2, 0x00,0xa0,0xc9
 using namespace Microsoft::WRL;
 //}}}
 
-#define BUFSIZE (256*240*188)
+//{{{
+class cBipBuffer {
+public:
+    cBipBuffer() : mBuffer(NULL), ixa(0), sza(0), ixb(0), szb(0), buflen(0), ixResrv(0), szResrv(0) {}
+    //{{{
+    ~cBipBuffer() {
+        // We don't call FreeBuffer, because we don't need to reset our variables - our object is dying
+        if (mBuffer != NULL)
+            ::VirtualFree (mBuffer, buflen, MEM_DECOMMIT);
+    }
+    //}}}
+
+    //{{{
+    bool allocateBuffer (int buffersize) {
+    // Allocates a buffer in virtual memory, to the nearest page size (rounded up)
+    //   int buffersize                size of buffer to allocate, in bytes (default: 4096)
+    //   return bool                        true if successful, false if buffer cannot be allocated
+
+      if (buffersize <= 0)
+        return false;
+      if (mBuffer != NULL)
+        freeBuffer();
+
+      SYSTEM_INFO si;
+      ::GetSystemInfo(&si);
+
+      // Calculate nearest page size
+      buffersize = ((buffersize + si.dwPageSize - 1) / si.dwPageSize) * si.dwPageSize;
+
+      mBuffer = (BYTE*)::VirtualAlloc(NULL, buffersize, MEM_COMMIT, PAGE_READWRITE);
+      if (mBuffer == NULL)
+        return false;
+
+      buflen = buffersize;
+      return true;
+      }
+    //}}}
+    //{{{
+    void clear() {
+    // Clears the buffer of any allocations or reservations. Note; it
+    // does not wipe the buffer memory; it merely resets all pointers,
+    // returning the buffer to a completely empty state ready for new
+    // allocations.
+
+      ixa = sza = ixb = szb = ixResrv = szResrv = 0;
+      }
+    //}}}
+    //{{{
+    void freeBuffer() {
+    // Frees a previously allocated buffer, resetting all internal pointers to 0.
+
+      if (mBuffer == NULL)
+        return;
+
+      ixa = sza = ixb = szb = buflen = 0;
+
+      ::VirtualFree(mBuffer, buflen, MEM_DECOMMIT);
+
+      mBuffer = NULL;
+      }
+    //}}}
+
+    //{{{
+    uint8_t* reserve (int size, OUT int& reserved) {
+    // Reserves space in the buffer for a memory write operation
+    //   int size                 amount of space to reserve
+    //   OUT int& reserved        size of space actually reserved
+    // Returns:
+    //   BYTE*                    pointer to the reserved block
+    //   Will return NULL for the pointer if no space can be allocated.
+    //   Can return any value from 1 to size in reserved.
+    //   Will return NULL if a previous reservation has not been committed.
+
+      // We always allocate on B if B exists; this means we have two blocks and our buffer is filling.
+      if (szb) {
+        int freespace = getBFreeSpace();
+        if (size < freespace)
+          freespace = size;
+        if (freespace == 0)
+          return NULL;
+
+        szResrv = freespace;
+        reserved = freespace;
+        ixResrv = ixb + szb;
+        return mBuffer + ixResrv;
+        }
+      else {
+        // Block b does not exist, so we can check if the space AFTER a is bigger than the space
+        // before A, and allocate the bigger one.
+        int freespace = getSpaceAfterA();
+        if (freespace >= ixa) {
+          if (freespace == 0)
+            return NULL;
+          if (size < freespace)
+            freespace = size;
+
+          szResrv = freespace;
+          reserved = freespace;
+          ixResrv = ixa + sza;
+          return mBuffer + ixResrv;
+          }
+        else {
+          if (ixa == 0)
+            return NULL;
+          if (ixa < size)
+            size = ixa;
+          szResrv = size;
+          reserved = size;
+          ixResrv = 0;
+          return mBuffer;
+          }
+        }
+      }
+    //}}}
+    //{{{
+    void commit (int size) {
+    // Commits space that has been written to in the buffer
+    // Parameters:
+    //   int size                number of bytes to commit
+    //   Committing a size > than the reserved size will cause an assert in a debug build;
+    //   in a release build, the actual reserved size will be used.
+    //   Committing a size < than the reserved size will commit that amount of data, and release
+    //   the rest of the space.
+    //   Committing a size of 0 will release the reservation.
+
+      if (size == 0) {
+        // decommit any reservation
+        szResrv = ixResrv = 0;
+        return;
+        }
+
+      // If we try to commit more space than we asked for, clip to the size we asked for.
+
+      if (size > szResrv)
+        size = szResrv;
+
+      // If we have no blocks being used currently, we create one in A.
+      if (sza == 0 && szb == 0) {
+        ixa = ixResrv;
+        sza = size;
+
+        ixResrv = 0;
+        szResrv = 0;
+        return;
+        }
+
+      if (ixResrv == sza + ixa)
+        sza += size;
+      else
+        szb += size;
+
+      ixResrv = 0;
+      szResrv = 0;
+      }
+    //}}}
+
+    //{{{
+    uint8_t* getContiguousBlock (OUT int& size) {
+    // Gets a pointer to the first contiguous block in the buffer, and returns the size of that block.
+    //   OUT int & size            returns the size of the first contiguous block
+    // Returns:
+    //   BYTE*                    pointer to the first contiguous block, or NULL if empty.
+
+      if (sza == 0) {
+        size = 0;
+        return NULL;
+        }
+
+      size = sza;
+      return mBuffer + ixa;
+      }
+    //}}}
+    //{{{
+    void decommitBlock (int size) {
+    // Decommits space from the first contiguous block
+    //   int size                amount of memory to decommit
+
+      if (size >= sza) {
+        ixa = ixb;
+        sza = szb;
+        ixb = 0;
+        szb = 0;
+        }
+      else {
+        sza -= size;
+        ixa += size;
+        }
+      }
+    //}}}
+    //{{{
+    int getCommittedSize() const {
+    // Queries how much data (in total) has been committed in the buffer
+    // Returns:
+    //   int                    total amount of committed data in the buffer
+
+      return sza + szb;
+      }
+    //}}}
+
+private:
+  //{{{
+  int getSpaceAfterA() const {
+    return buflen - ixa - sza;
+    }
+  //}}}
+  //{{{
+  int getBFreeSpace() const {
+    return ixa - ixb - szb;
+    }
+  //}}}
+
+  uint8_t* mBuffer;
+  int buflen;
+
+  int ixa;
+  int sza;
+
+  int ixb;
+  int szb;
+
+  int ixResrv;
+  int szResrv;
+  };
+//}}}
 //{{{
 class cSampleGrabberCB : public ISampleGrabberCB {
 public:
-  //{{{
-  cSampleGrabberCB() {
-    mSamples = (uint8_t*)malloc (BUFSIZE);
-    mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
-    }
-  //}}}
-  //{{{
-  virtual ~cSampleGrabberCB() {
-    CloseHandle (mSemaphore);
-    }
-  //}}}
-  //{{{
-  uint8_t* getSamples (int64_t len) {
+  cSampleGrabberCB() {}
+  virtual ~cSampleGrabberCB() {}
 
-    if (mNumSamplesRx - mNumSamplesUsed > BUFSIZE) {
-      printf ("cSampleGrabberCB::getSamples buffer stale\n");
-      mNumSamplesUsed = mNumSamplesRx - BUFSIZE;
-      }
-    else {
-      while (len > mNumSamplesRx - mNumSamplesUsed) {
-        WaitForSingleObject (mSemaphore, 10 * 1000);
-        //printf ("wait %lld %lld %lld %lld\n", len, mNumSamplesRx, mNumSamplesUsed, mNumSamplesRx - mNumSamplesUsed);
-        }
-      }
-
-    uint8_t* ptr = mSamples + (mNumSamplesUsed % BUFSIZE);
-    mNumSamplesUsed += len;
-    return ptr;
+  //{{{
+  void allocateBuffer (int bufSize) {
+    mBipBuffer.allocateBuffer (bufSize);
     }
   //}}}
+
+  //{{{
+  uint8_t* getContiguousBlock (int& len) {
+
+    return mBipBuffer.getContiguousBlock (len);
+    }
+  //}}}
+  //{{{
+  void decommitBlock (int len) {
+
+    mBipBuffer.decommitBlock (len);
+    }
+  //}}}
+
+  int mPackets = 0;
 
 private:
   // ISampleGrabberCB methods
@@ -90,37 +306,37 @@ private:
     if (mediaSample->IsDiscontinuity() == S_OK)
       printf ("cSampleGrabCB::SampleCB sample isDiscontinuity\n");
 
-    long actualDataLength = mediaSample->GetActualDataLength();
+    int actualDataLength = mediaSample->GetActualDataLength();
     if (actualDataLength != 240*188)
       printf ("cSampleGrabCB::SampleCB - unexpected sampleLength\n");
 
-    uint8_t* samples;
-    mediaSample->GetPointer (&samples);
-    memcpy (mSamples + (mNumSamplesRx % BUFSIZE), samples, actualDataLength);
-    mNumSamplesRx += actualDataLength;
+    mPackets++;
 
-    ReleaseSemaphore (mSemaphore, 1, NULL);
+    int bytesAllocated = 0;
+    uint8_t* ptr = mBipBuffer.reserve (actualDataLength, bytesAllocated);
 
-    mNumCb++;
+    if (!ptr || (bytesAllocated != actualDataLength))
+      printf ("failed to reserve buffer\n");
+    else {
+      uint8_t* samples;
+      mediaSample->GetPointer (&samples);
+      memcpy (ptr, samples, actualDataLength);
+      mBipBuffer.commit (actualDataLength);
+      }
+
     return S_OK;
     }
   //}}}
 
   // vars
-  ULONG ul_cbrc;
-  HANDLE mSemaphore;
-
-  int mNumCb = 0;
-  volatile int64_t mNumSamplesRx = 0;
-  volatile int64_t mNumSamplesUsed = 0;
-
-  uint8_t* mSamples;
+  ULONG ul_cbrc = 0;
+  cBipBuffer mBipBuffer;
   };
 //}}}
 
 class cBda {
 public:
-  cBda() {}
+  cBda (int bufSize)  { mSampleGrabberCB.allocateBuffer (bufSize); }
   ~cBda() {}
   //{{{
   bool createGraph (int freq) {
@@ -199,6 +415,7 @@ public:
     }
   //}}}
 
+  int getPackets() { return mSampleGrabberCB.mPackets; }
   //{{{
   int getSignalStrength() {
 
@@ -211,8 +428,13 @@ public:
     }
   //}}}
   //{{{
-  uint8_t* getSamples (int len) {
-    return mSampleGrabberCB.getSamples (len);
+  uint8_t* getContiguousBlock (int& len) {
+    return mSampleGrabberCB.getContiguousBlock (len);
+    }
+  //}}}
+  //{{{
+  void decommitBlock (int len) {
+    mSampleGrabberCB.decommitBlock (len);
     }
   //}}}
 
