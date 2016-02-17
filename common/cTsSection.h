@@ -1461,9 +1461,10 @@ private:
         if (recognised) {
           // set sid for each stream pid
           tPidInfoMap::iterator sectionIt = mPidInfoMap.find (esPid);
-          if (sectionIt != mPidInfoMap.end())
+          if (sectionIt != mPidInfoMap.end()) {
             sectionIt->second.mSid = sid;
-          sectionIt->second.mStreamType = streamType;
+            sectionIt->second.mStreamType = streamType;
+            }
           updatePidInfo (esPid);
           }
 

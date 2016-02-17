@@ -13,7 +13,6 @@ public:
   void set (int64_t pts, uint8_t** yuv, int* strides, int width, int height) {
 
     mId = videoId++;
-    mPts = pts;
 
     bool sizeChanged = (mWidth != width) || (mHeight != height) || (mYStride != strides[0]) || (mUVStride != strides[1]);
     mWidth = width;
@@ -48,6 +47,8 @@ public:
       mVbufUnaligned = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
     mVbuf = (uint8_t*)(((size_t)(mVbufUnaligned)+15) & ~0xf);
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
+
+    mPts = pts;
     }
   //}}}
   //{{{
