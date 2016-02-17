@@ -32,25 +32,25 @@ public:
   //}}}
   virtual ~cTvWindow() {}
   //{{{
-  void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
+  void run (wchar_t* title, int width, int height, wchar_t* arg) {
 
-    if (wFilename) {
-      mWideFilename = wFilename;
-      wcstombs (mFilename, mWideFilename, 100);
-      }
     initialise (title, width, height);
 
     // av init
     av_register_all();
     avformat_network_init();
 
-    if (wFilename)
-      thread ([=]() { tsFileLoader(); } ).detach();
-      //thread ([=]() { fileLoader(); } ).detach();
-    else {
-      auto loaderThread = thread ([=]() { tsLiveLoader(); } );
+    int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
+    if (freq) {
+      auto loaderThread = thread ([=]() { tsLiveLoader (freq); } );
       //SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
       loaderThread.detach();
+      }
+    else if (arg) {
+      mWideFilename = arg;
+      wcstombs (mFilename, mWideFilename, 100);
+      thread ([=]() { tsFileLoader(); } ).detach();
+      //thread ([=]() { fileLoader(); } ).detach();
       }
 
     // launch playerThread, higher priority
@@ -590,11 +590,11 @@ private:
     }
   //}}}
   //{{{
-  void tsLiveLoader() {
+  void tsLiveLoader (int freq) {
 
     CoInitialize (NULL);
     cBda bda (128*240*188);
-    bda.createGraph (674000); // 650000 674000 706000
+    bda.createGraph (freq); // 650000 674000 706000
     Sleep (1000);
 
     int blockLen = 0;
@@ -855,11 +855,15 @@ private:
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
+  CoInitialize (NULL);
+
   #ifndef _DEBUG
-    //FreeConsole();
+    FreeConsole();
   #endif
 
   cTvWindow tvWindow;
   tvWindow.run (L"tvWindow", 896, 504, argv[1]);
+
+  CoUninitialize();
   }
 //}}}
