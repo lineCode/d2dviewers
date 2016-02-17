@@ -36,22 +36,14 @@ public:
 
     initialise (title, width, height);
 
-    // av init
-    av_register_all();
-    avformat_network_init();
-
     int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
     if (freq) {
       auto loaderThread = thread ([=]() { tsLiveLoader (freq); } );
       //SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
       loaderThread.detach();
       }
-    else if (arg) {
-      mWideFilename = arg;
-      wcstombs (mFilename, mWideFilename, 100);
-      thread ([=]() { tsFileLoader(); } ).detach();
-      //thread ([=]() { fileLoader(); } ).detach();
-      }
+    else if (arg)
+      thread ([=]() { isTsFile (arg) ? tsFileLoader (arg) : ffmpegFileLoader (arg); } ).detach();
 
     // launch playerThread, higher priority
     auto playerThread = thread ([=]() { player(); });
@@ -153,6 +145,8 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 void onDraw (ID2D1DeviceContext* dc) {
 
   int vidFrame = int(mPlayFrame*25/mAudFramesPerSec) - mVidOffset;
+  if (vidFrame > mVidFramesLoaded)
+    vidFrame = mVidFramesLoaded;
   if (vidFrame >= 0)
     makeBitmap (&mYuvFrames[vidFrame % maxVidFrames]);
   if (mBitmap)
@@ -268,6 +262,19 @@ private:
     //        pts, dts);
 
     //printf ("%x pts:%x dts:%x\n", ((*tsPtr) << 24) | ((*(tsPtr+1)) << 16) | ((*(tsPtr+2)) << 8) | (*(tsPtr+3)), pts, dts);
+    }
+  //}}}
+  //{{{
+  bool isTsFile (wchar_t* wFileName) {
+
+    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+    uint8_t buf[512];
+    DWORD numberOfBytesRead = 0;
+    ReadFile (readFile, buf, 512, &numberOfBytesRead, NULL);
+    CloseHandle (readFile);
+
+    return (buf[0] == 0x47) && (buf[188] == 0x47);
     }
   //}}}
   //{{{
@@ -559,40 +566,13 @@ private:
   //}}}
 
   //{{{
-  void tsFileLoader() {
-
-    uint8_t tsBuf[240*188];
-    HANDLE readFile = CreateFile (mWideFilename, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-    DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
-      if (numberOfBytesRead) {
-        tsParser (tsBuf, tsBuf + numberOfBytesRead);
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
-          Sleep (20);
-        //{{{  choose service
-        int j = 0;
-        for (auto service : mTsSection.mServiceMap) {
-          if (j == mService) {
-            mServicePtr = &service.second;
-            break;
-            }
-          else
-            j++;
-          }
-        //}}}
-        }
-      }
-
-    CloseHandle (readFile);
-
-    avcodec_close (audCodecContext);
-    avcodec_close (vidCodecContext);
-    }
-  //}}}
-  //{{{
   void tsLiveLoader (int freq) {
 
     CoInitialize (NULL);
+    av_register_all();
+
+    mVidOffset = 25;
+
     cBda bda (128*240*188);
     bda.createGraph (freq); // 650000 674000 706000
     Sleep (1000);
@@ -632,11 +612,54 @@ private:
     }
   //}}}
   //{{{
-  void ffmpegFileLoader() {
+  void tsFileLoader (wchar_t* wFileName) {
 
+    CoInitialize (NULL);
+    av_register_all();
+
+    mVidOffset = 25;
+
+    uint8_t tsBuf[240*188];
+    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    DWORD numberOfBytesRead = 0;
+    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
+      if (numberOfBytesRead) {
+        tsParser (tsBuf, tsBuf + numberOfBytesRead);
+        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+          Sleep (20);
+        //{{{  choose service
+        int j = 0;
+        for (auto service : mTsSection.mServiceMap) {
+          if (j == mService) {
+            mServicePtr = &service.second;
+            break;
+            }
+          else
+            j++;
+          }
+        //}}}
+        }
+      }
+
+    CloseHandle (readFile);
+
+    avcodec_close (audCodecContext);
+    avcodec_close (vidCodecContext);
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void ffmpegFileLoader (wchar_t* wFileName) {
+
+    CoInitialize (NULL);
+    av_register_all();
+    //avformat_network_init();
+
+    char filename[100];
+    wcstombs (filename, wFileName, 100);
     //{{{  av init
     AVFormatContext* avFormatContext;
-    avformat_open_input (&avFormatContext, mFilename, NULL, NULL);
+    avformat_open_input (&avFormatContext, filename, NULL, NULL);
     avformat_find_stream_info (avFormatContext, NULL);
 
     int vidStream = -1;
@@ -656,8 +679,8 @@ private:
       }
 
     printf ("filename:%s sampleRate:%d channels:%d streams:%d aud:%d vid:%d sub:%d\n",
-            mFilename, mSampleRate, mChannels, avFormatContext->nb_streams, audStream, vidStream, subStream);
-    //av_dump_format (avFormatContext, 0, mFilename, 0);
+            filename, mSampleRate, mChannels, avFormatContext->nb_streams, audStream, vidStream, subStream);
+    //av_dump_format (avFormatContext, 0, filename, 0);
 
     if (mChannels > 2)
       mChannels = 2;
@@ -772,6 +795,7 @@ private:
     avcodec_close (audCodecContext);
 
     avformat_close_input (&avFormatContext);
+    CoUninitialize();
     }
   //}}}
   //{{{
@@ -805,9 +829,6 @@ private:
   //}}}
 
   //{{{  vars
-  wchar_t* mWideFilename;
-  char mFilename[100];
-
   bool mShowChannel = false;
 
   // tsSection
@@ -817,7 +838,7 @@ private:
   // service
   int mService = 0;
   cService* mServicePtr = nullptr;
-  int mVidOffset = 25;
+  int mVidOffset = 0;
 
   // av stuff
   AVCodecParserContext* vidParser = nullptr;
