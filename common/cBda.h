@@ -52,8 +52,8 @@ public:
     //{{{
     bool allocateBuffer (int buffersize) {
     // Allocates a buffer in virtual memory, to the nearest page size (rounded up)
-    //   int buffersize                size of buffer to allocate, in bytes (default: 4096)
-    //   return bool                        true if successful, false if buffer cannot be allocated
+    //   int buffersize size of buffer to allocate, in bytes 
+    //   return bool true if successful, false if buffer cannot be allocated
 
       if (buffersize <= 0)
         return false;
@@ -66,7 +66,7 @@ public:
       // Calculate nearest page size
       buffersize = ((buffersize + si.dwPageSize - 1) / si.dwPageSize) * si.dwPageSize;
 
-      mBuffer = (BYTE*)::VirtualAlloc(NULL, buffersize, MEM_COMMIT, PAGE_READWRITE);
+      mBuffer = (BYTE*)::VirtualAlloc (NULL, buffersize, MEM_COMMIT, PAGE_READWRITE);
       if (mBuffer == NULL)
         return false;
 
@@ -211,8 +211,7 @@ public:
     //}}}
     //{{{
     void decommitBlock (int size) {
-    // Decommits space from the first contiguous block
-    //   int size                amount of memory to decommit
+    // Decommits space from the first contiguous block,  size amount of memory to decommit
 
       if (size >= sza) {
         ixa = ixb;
@@ -341,7 +340,6 @@ public:
   //{{{
   bool createGraph (int freq) {
 
-    printf ("cBda::createGraph %d\n", freq);
     CoCreateInstance (CLSID_FilterGraph, nullptr,
                       CLSCTX_INPROC_SERVER, IID_PPV_ARGS (mGraphBuilder.GetAddressOf()));
 
@@ -409,8 +407,6 @@ public:
     ComPtr<IMediaControl> mediaControl;
     mGraphBuilder.As (&mediaControl);
     mediaControl->Run();
-
-    printf ("- running\n");
     return true;
     }
   //}}}
@@ -420,13 +416,13 @@ public:
   int getSignalStrength() {
 
     long strength = 0;
-
     if (mScanningTuner)
       mScanningTuner->get_SignalStrength (&strength);
 
     return strength / 100000;
     }
   //}}}
+
   //{{{
   uint8_t* getContiguousBlock (int& len) {
     return mSampleGrabberCB.getContiguousBlock (len);

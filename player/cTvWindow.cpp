@@ -22,11 +22,14 @@
 #define maxVidFrames 128
 #define maxAudFrames 256
 
-cBda mBda;
-
 class cTvWindow : public cD2dWindow {
 public:
-  cTvWindow() {}
+  //{{{
+  cTvWindow() {
+    mSilence = (int16_t*)malloc (1152*4);
+    memset (mSilence, 0, 1152*4);
+    }
+  //}}}
   virtual ~cTvWindow() {}
   //{{{
   void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
@@ -45,12 +48,9 @@ public:
       thread ([=]() { tsFileLoader(); } ).detach();
       //thread ([=]() { fileLoader(); } ).detach();
     else {
-      // 650000 674000 706000
-      if (mBda.createGraph (674000)) {
-        auto loaderThread = thread ([=]() { tsLiveLoader(); } );
-        SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
-        loaderThread.detach();
-        }
+      auto loaderThread = thread ([=]() { tsLiveLoader(); } );
+      //SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+      loaderThread.detach();
       }
 
     // launch playerThread, higher priority
@@ -161,9 +161,9 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d av:%d sig:%d a:%lld v:%lld a-v%lld",
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d %d:%d d:%d av:%d a:%lld v:%lld a-v%lld",
             mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded, vidFrame, mVidFramesLoaded,
-            mDiscontinuity, mVidOffset,  mBda.getSignalStrength(),
+            mDiscontinuity, mVidOffset,
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts, mYuvFrames[vidFrame % maxVidFrames].mPts,
             mAudFrames[int(mPlayFrame) % maxAudFrames].mPts - mYuvFrames[vidFrame % maxVidFrames].mPts);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
@@ -592,37 +592,43 @@ private:
   //{{{
   void tsLiveLoader() {
 
-    int count = 0;
-    mPlaying = false;
+    CoInitialize (NULL);
+    cBda bda (128*240*188);
+    bda.createGraph (674000); // 650000 674000 706000
+    Sleep (1000);
 
-    int chunkSize = 240*188;
+    int blockLen = 0;
     while (true) {
-      count++;
       // wait for chunk of ts
-      uint8_t* bda = mBda.getSamples (chunkSize);
-      tsParser (bda, bda + chunkSize);
-      if (count == 200)
-        mPlaying = true;
+      uint8_t* ptr = bda.getContiguousBlock (blockLen);
+      if (blockLen) {
+        tsParser (ptr, ptr + blockLen);
+        bda.decommitBlock (blockLen);
 
-      // no faster than player
-      while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
-        Sleep (20);
+        // no faster than player
+        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+          Sleep (20);
 
-      //{{{  choose service
-      int j = 0;
-      for (auto service : mTsSection.mServiceMap) {
-        if (j == mService) {
-          mServicePtr = &service.second;
-          break;
+        //{{{  choose service
+        int j = 0;
+        for (auto service : mTsSection.mServiceMap) {
+          if (j == mService) {
+            mServicePtr = &service.second;
+            break;
+            }
+          else
+            j++;
           }
-        else
-          j++;
+        //}}}
         }
-      //}}}
+      else
+        Sleep (1);
       }
 
     avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
+
+    CoUninitialize();
     }
   //}}}
   //{{{
@@ -781,7 +787,7 @@ private:
 
     while (true) {
       if (!mPlaying || (int(mPlayFrame)+1 >= mAudFramesLoaded))
-        Sleep (40);
+        winAudioPlay (mSilence, mChannels*mSamplesPerAcFrame*2, 1.0f);
       else if (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples) {
         winAudioPlay (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples, mChannels*mSamplesPerAcFrame*2, 1.0f);
         if (!getMouseDown())
@@ -825,6 +831,8 @@ private:
   AVCodecContext* subCodecContext = nullptr;
   AVCodec* subCodec = nullptr;
 
+  int16_t* mSilence;
+
   int mSamplesPerAcFrame = 0;
   float mAudFramesPerSec = 40;
   unsigned char mChannels = 2;
@@ -847,14 +855,11 @@ private:
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
-  CoInitialize (NULL);
   #ifndef _DEBUG
     //FreeConsole();
   #endif
 
   cTvWindow tvWindow;
   tvWindow.run (L"tvWindow", 896, 504, argv[1]);
-
-  CoUninitialize();
   }
 //}}}
