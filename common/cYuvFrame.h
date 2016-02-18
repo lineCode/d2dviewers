@@ -55,6 +55,7 @@ public:
   void freeResources() {
 
     mId = 0;
+    mPts = 0;
     mWidth = 0;
     mHeight = 0;
 
@@ -75,6 +76,13 @@ public:
       free (mVbufUnaligned);
     mVbufUnaligned = nullptr;
     mVbuf = nullptr;
+    }
+  //}}}
+  //{{{
+  void invalidate() {
+
+    mId = 0;
+    mPts = 0;
     }
   //}}}
 

@@ -41,7 +41,6 @@
     <ClInclude Include="..\common\cTsSection.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="..\common\yuvrgb_sse2.h" />
-    <ClInclude Include="cTsSection.h" />
     <ClInclude Include="decode.h" />
     <ClInclude Include="huffDecoder.h" />
     <ClInclude Include="pch.h" />

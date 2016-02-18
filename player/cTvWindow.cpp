@@ -26,8 +26,8 @@ class cTvWindow : public cD2dWindow {
 public:
   //{{{
   cTvWindow() {
-    mSilence = (int16_t*)malloc (1152*4);
-    memset (mSilence, 0, 1152*4);
+    mSilence = (int16_t*)malloc (2048*4);
+    memset (mSilence, 0, 2048*4);
     }
   //}}}
   virtual ~cTvWindow() {}
@@ -70,16 +70,14 @@ bool onKey (int key) {
     case 0x21 : mPlayFrame -= 5.0f * mAudFramesPerSec; changed(); break;
     case 0x22 : mPlayFrame += 5.0f * mAudFramesPerSec; changed(); break;
 
-    case 0x23 : mPlayFrame = mAudFramesLoaded - 1.0f; changed(); break;
-    case 0x24 : mPlayFrame = 0; break;
+    case 0x23 : break; // home
+    case 0x24 : break; // end
 
     case 0x25 : mPlayFrame -= 1.0f * mAudFramesPerSec; changed(); break;
     case 0x27 : mPlayFrame += 1.0f * mAudFramesPerSec; changed(); break;
 
-    //case 0x26 : mPlaying = false; mPlayFrame -=2; changed(); break;
-    //case 0x28 : mPlaying = false; mPlayFrame +=2; changed(); break;
-    case 0x26 : mVidOffset -=1; break;
-    case 0x28 : mVidOffset +=1; break;
+    case 0x26 : mPlaying = false; mPlayFrame -= 2.0f; changed(); break;
+    case 0x28 : mPlaying = false;  mPlayFrame += 2.0f; changed(); break;
 
     case 0x2d : break;
     case 0x2e : break;
@@ -93,17 +91,11 @@ bool onKey (int key) {
     case 0x36 :
     case 0x37 :
     case 0x38 :
-    case 0x39 : mService = key - '0'; break;
+    case 0x39 : selectService (key - '0'); break;
 
     case 0x44 : debug();
     default   : printf ("key %x\n", key);
     }
-
-  if (mPlayFrame < 0)
-    mPlayFrame = 0;
-  else if (mPlayFrame >= mAudFramesLoaded)
-    mPlayFrame = mAudFramesLoaded - 1.0f;
-
   return false;
   }
 //}}}
@@ -121,12 +113,6 @@ void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
   if (!mouseMoved)
     mPlayFrame += x - (getClientF().width/2.0f);
-
-  if (mPlayFrame < 0)
-    mPlayFrame = 0;
-  else if (mPlayFrame >= mAudFramesLoaded)
-    mPlayFrame = mAudFramesLoaded - 1.0f;
-
   changed();
   }
 //}}}
@@ -134,12 +120,6 @@ void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
   mPlayFrame -= xInc;
-
-  if (mPlayFrame < 0)
-    mPlayFrame = 0;
-  else if (mPlayFrame >= mAudFramesLoaded)
-    mPlayFrame = mAudFramesLoaded - 1.0f;
-
   changed();
   }
 //}}}
@@ -163,12 +143,9 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d d:%d off:%d d:%d av:%d a:%lld v:%lld av%lld",
-            mPlayFrame/mAudFramesPerSec,
-            mPlayFrame, mAudFramesLoaded,
-            vidFrame, mVidFramesLoaded,
-            mDiscontinuity, mVidOffset,
-            mAudPlayPts, mYuvFrames[vidFrame].mPts, mAudPlayPts - mYuvFrames[vidFrame].mPts);
+  swprintf (wStr, 200, L"%4.1f %2.0f:%d v:%dof:%d dis:%d av:%lld",
+            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded,
+            vidFrame, mVidFramesLoaded, mDiscontinuity, mAudPlayPts - mYuvFrames[vidFrame].mPts);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -192,6 +169,27 @@ void onDraw (ID2D1DeviceContext* dc) {
 //}}}
 
 private:
+  //{{{
+  void selectService (int index) {
+
+    int j = 0;
+    for (auto service : mTsSection.mServiceMap) {
+      if (j == index) {
+        mVidPid = service.second.getVidPid();
+        mAudPid = service.second.getAudPid();
+        mPlayFrame = mAudFramesLoaded > 0 ? mAudFramesLoaded - 1 : 0;
+        printf ("selectService  %d %d %d\n", index,  mVidPid,  mAudPid);
+
+        for (int i= 0; i < maxVidFrames; i++)
+          mYuvFrames[i].invalidate();
+
+        break;
+        }
+      else
+        j++;
+      }
+    }
+  //}}}
   //{{{
   void makeBitmap (cYuvFrame* yuvFrame) {
 
@@ -284,6 +282,9 @@ private:
 
   //{{{
   void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
+
+    if (mAudPid <= 0)
+      selectService (0);
 
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
     while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
@@ -398,7 +399,7 @@ private:
           //}}}
         }
 
-      else if (mServicePtr && (pid == mServicePtr->getVidPid())) {
+      else if (pid == mVidPid) {
         if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
           if (!pidInfoIt->second.mBuf) {
             //{{{  first vidPES, allocate resources
@@ -463,7 +464,7 @@ private:
         copyPES = true;
         }
 
-      else if (mServicePtr && (pid == mServicePtr->getAudPid())) {
+      else if (pid == mAudPid) {
         if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
           if (!pidInfoIt->second.mBuf) {
             //{{{  first audPES, allocate resources
@@ -590,18 +591,6 @@ private:
         // no faster than player
         while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
           Sleep (20);
-
-        //{{{  choose service
-        int j = 0;
-        for (auto service : mTsSection.mServiceMap) {
-          if (j == mService) {
-            mServicePtr = &service.second;
-            break;
-            }
-          else
-            j++;
-          }
-        //}}}
         }
       else
         Sleep (1);
@@ -627,17 +616,6 @@ private:
         tsParser (tsBuf, tsBuf + numberOfBytesRead);
         while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
           Sleep (20);
-        //{{{  choose service
-        int j = 0;
-        for (auto service : mTsSection.mServiceMap) {
-          if (j == mService) {
-            mServicePtr = &service.second;
-            break;
-            }
-          else
-            j++;
-          }
-        //}}}
         }
       }
 
@@ -810,16 +788,19 @@ private:
     winAudioOpen (mSampleRate, 16, mChannels);
 
     while (true) {
-      if (!mPlaying || (int(mPlayFrame)+1 >= mAudFramesLoaded))
-        winAudioPlay (mSilence, mChannels*mSamplesPerAacFrame*2, 1.0f);
-      else if (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples) {
+      bool play = mPlaying && (int(mPlayFrame) < mAudFramesLoaded);
+
+      if (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples) {
         mAudPlayPts = mAudFrames[int(mPlayFrame) % maxAudFrames].mPts;
-        winAudioPlay (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples, mChannels*mSamplesPerAacFrame*2, 1.0f);
-        if (!getMouseDown())
-          if ((int(mPlayFrame)+1) < mAudFramesLoaded) {
+        winAudioPlay (play ? mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples : mSilence,
+                      mChannels*mSamplesPerAacFrame*2, 1.0f);
+
+        if (play) {
+          if (int(mPlayFrame) < mAudFramesLoaded) {
             mPlayFrame += 1.0;
             changed();
             }
+          }
         }
       }
 
@@ -838,8 +819,9 @@ private:
   int mDiscontinuity = 0;
 
   // service
-  int mService = 0;
-  cService* mServicePtr = nullptr;
+  int mVidPid = 0;
+  int mAudPid = 0;
+
   int mVidOffset = 0;
   int64_t mVidPts = 0;
 
@@ -882,7 +864,7 @@ int wmain (int argc, wchar_t* argv[]) {
   CoInitialize (NULL);
 
   #ifndef _DEBUG
-    //FreeConsole();
+    FreeConsole();
   #endif
 
   cTvWindow tvWindow;

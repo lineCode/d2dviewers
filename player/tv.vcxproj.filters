@@ -28,13 +28,10 @@
     <ClInclude Include="..\common\cAudFrame.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="cTsSection.h">
+    <ClInclude Include="..\common\cBda.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cTsSection.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\cBda.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
