@@ -19,8 +19,8 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxVidFrames 128
-#define maxAudFrames 256
+#define maxVidFrames 40
+#define maxAudFrames 40
 
 class cTvWindow : public cD2dWindow {
 public:
@@ -126,15 +126,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  int vidFrame = -1;
-  int64_t nearest = 0;
-  for (int i = 0; i < maxVidFrames; i++)
-    if (mYuvFrames[i].mPts)
-      if ((vidFrame == -1) || (abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset*3600) < nearest)) {
-        vidFrame = i;
-        nearest = abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset * 3600);
-        }
-
+  int vidFrame = findNearestVidFrameToAudPts();
   if (vidFrame >= 0)
     makeBitmap (&mYuvFrames[vidFrame % maxVidFrames]);
   if (mBitmap)
@@ -143,9 +135,8 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %2.0f:%d v:%dof:%d dis:%d av:%lld",
-            mPlayFrame/mAudFramesPerSec, mPlayFrame, mAudFramesLoaded,
-            vidFrame, mVidFramesLoaded, mDiscontinuity, mAudPlayPts - mYuvFrames[vidFrame].mPts);
+  swprintf (wStr, 200, L"%4.1f %4.3fm dis:%d ",
+            mPlayFrame/mAudFramesPerSec, mFileBytes/1000000.0, mDiscontinuity);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -170,6 +161,24 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
+  int findNearestVidFrameToAudPts () {
+
+    int vidFrame = -1;
+    int64_t nearest = 0;
+
+    for (int i = 0; i < maxVidFrames; i++) {
+      if (mYuvFrames[i].mPts) {
+        if ((vidFrame == -1) || (abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset*3600) < nearest)) {
+          vidFrame = i;
+          nearest = abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset * 3600);
+          }
+        }
+      }
+    return vidFrame;
+    }
+  //}}}
+
+  //{{{
   void selectService (int index) {
 
     int j = 0;
@@ -177,12 +186,9 @@ private:
       if (j == index) {
         mVidPid = service.second.getVidPid();
         mAudPid = service.second.getAudPid();
-        mPlayFrame = mAudFramesLoaded > 0 ? mAudFramesLoaded - 1 : 0;
-        printf ("selectService  %d %d %d\n", index,  mVidPid,  mAudPid);
-
         for (int i= 0; i < maxVidFrames; i++)
           mYuvFrames[i].invalidate();
-
+        mPlayFrame = mAudFramesLoaded;
         break;
         }
       else
@@ -239,9 +245,7 @@ private:
   //}}}
   //{{{
   int64_t parseTimeStamp (bool isPts, uint8_t* tsPtr) {
-    return    (((*tsPtr) & 0x0E) << 29) | (*(tsPtr+1) << 22) |
-            ((*(tsPtr+2) & 0xFE) << 14) | (*(tsPtr+3) << 7)  |
-            ((*(tsPtr+4) & 0xFE) >> 1);
+    return (((*tsPtr) & 0x0E) << 29) | (*(tsPtr+1) << 22) | ((*(tsPtr+2) & 0xFE) << 14) | (*(tsPtr+3) << 7)  | (*(tsPtr+4) >> 1);
     }
   //}}}
   //{{{
@@ -434,15 +438,15 @@ private:
                 int got = 0;
                 int bytesUsed = avcodec_decode_video2 (vidCodecContext, avFrame, &got, &avPacket);
                 if (got) {
-                  //printf ("vid %d pts:%x dts:%x\n", mVidFramesLoaded, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+                  //printf ("vid pts:%x dts:%x\n", pidInfoIt->second.mPts, pidInfoIt->second.mDts);
                   if (((pidInfoIt->second.mStreamType == 27) && !pidInfoIt->second.mDts) ||
                       (((pidInfoIt->second.mStreamType == 2) && pidInfoIt->second.mDts))) // use pts
                     mVidPts = pidInfoIt->second.mPts;
                   else // fake pts
                     mVidPts += 3600;
-                  mYuvFrames[mVidFramesLoaded % maxVidFrames].set (
+                  mYuvFrames[mNextFreeVidFrame].set (
                     mVidPts, avFrame->data, avFrame->linesize, vidCodecContext->width, vidCodecContext->height);
-                  mVidFramesLoaded++;
+                  mNextFreeVidFrame = (mNextFreeVidFrame + 1) % maxVidFrames;
                   }
                 av_frame_free (&avFrame);
 
@@ -608,11 +612,16 @@ private:
     CoInitialize (NULL);
     av_register_all();
 
-    uint8_t tsBuf[240*188];
+    //DWORD WINAPI SetFilePointer (HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD  dwMoveMethod);
+    //FILE_CURRENT FILE_BEGIN
+
+    mFileBytes = 0;
+    uint8_t tsBuf[256*188];
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
+    while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
+        mFileBytes += numberOfBytesRead;
         tsParser (tsBuf, tsBuf + numberOfBytesRead);
         while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
           Sleep (20);
@@ -748,10 +757,8 @@ private:
           avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &avPacket);
 
           if (got) {
-            mYuvFrames[mVidFramesLoaded % maxVidFrames].set (
-              0, vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
-
-            mVidFramesLoaded++;
+            mYuvFrames[mNextFreeVidFrame].set (0, vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
+            mNextFreeVidFrame = (mNextFreeVidFrame + 1) % maxVidFrames;
             }
           }
           //}}}
@@ -818,6 +825,8 @@ private:
   cTsSection mTsSection;
   int mDiscontinuity = 0;
 
+  int mFileBytes = 0;
+
   // service
   int mVidPid = 0;
   int mAudPid = 0;
@@ -851,7 +860,7 @@ private:
   cAudFrame mAudFrames [maxAudFrames];
 
   int mVidId = 0;
-  int mVidFramesLoaded = 0;
+  int mNextFreeVidFrame = 0;
   cYuvFrame mYuvFrames[maxVidFrames];
 
   ID2D1Bitmap* mBitmap = nullptr;
