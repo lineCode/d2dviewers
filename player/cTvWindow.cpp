@@ -20,8 +20,8 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxVidFrames 40
-#define maxAudFrames 80
+#define maxVidFrames 128
+#define maxAudFrames 256
 
 class cTvWindow : public cD2dWindow {
 public:
@@ -68,17 +68,17 @@ bool onKey (int key) {
 
     case 0x20 : mPlaying = !mPlaying; break;
 
-    case 0x21 : mPlayFrame -= 5.0f * mAudFramesPerSec; changed(); break;
-    case 0x22 : mPlayFrame += 5.0f * mAudFramesPerSec; changed(); break;
+    case 0x21 : mPlayTime -= 5 * 90000; changed(); break;
+    case 0x22 : mPlayTime += 5 * 90000; changed(); break;
 
     case 0x23 : break; // home
     case 0x24 : break; // end
 
-    case 0x25 : mPlayFrame -= 1.0f * mAudFramesPerSec; changed(); break;
-    case 0x27 : mPlayFrame += 1.0f * mAudFramesPerSec; changed(); break;
+    case 0x25 : mPlayTime -= 90000; changed(); break;
+    case 0x27 : mPlayTime += 90000; changed(); break;
 
-    case 0x26 : mPlaying = false; mPlayFrame -= 2.0f; changed(); break;
-    case 0x28 : mPlaying = false;  mPlayFrame += 2.0f; changed(); break;
+    case 0x26 : mPlaying = false; mPlayTime -= 3600; changed(); break;
+    case 0x28 : mPlaying = false;  mPlayTime += 3600; changed(); break;
 
     case 0x2d : break;
     case 0x2e : break;
@@ -112,22 +112,21 @@ void onMouseProx (bool inClient, int x, int y) {
 //{{{
 void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
-  if (!mouseMoved)
-    mPlayFrame += x - (getClientF().width/2.0f);
+  if (!mouseMoved) {}
   changed();
   }
 //}}}
 //{{{
 void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-  mPlayFrame -= xInc;
+  mPlayTime -= xInc*3600;
   changed();
   }
 //}}}
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  int vidFrame = findNearestVidFrameToAudPts();
+  int vidFrame = findNearestVidFrame (mPlayTime);
   if (vidFrame >= 0)
     makeBitmap (&mYuvFrames[vidFrame % maxVidFrames]);
   if (mBitmap)
@@ -136,8 +135,8 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f %4.3fm dis:%d ",
-            mPlayFrame/mAudFramesPerSec, mFileBytes/1000000.0, mDiscontinuity);
+  swprintf (wStr, 200, L"%4.1f %4.3fm dis:%d pre:%d",
+                       (mPlayTime-mBaseTime)/90000.0, mFilePtr/1000000.0, mDiscontinuity, (int)mPreLoaded);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -145,8 +144,9 @@ void onDraw (ID2D1DeviceContext* dc) {
     D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
 
-    int audFrame = int(mPlayFrame) - (int)(getClientF().width/2);
-    for (r.left = 0.0f; (r.left < getClientF().width) && (audFrame < mAudFramesLoaded); r.left++, audFrame++) {
+    // ***** fix ********
+    int audFrame = findNearestAudFrame (mPlayTime) - (int)(getClientF().width/2);
+    for (r.left = 0.0f; r.left < getClientF().width; r.left++, audFrame++) {
       if (audFrame >= 0) {
         r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerLeft;
         r.bottom = (getClientF().height/2.0f) + mAudFrames[audFrame % maxAudFrames].mPowerRight;
@@ -162,20 +162,56 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
-  int findNearestVidFrameToAudPts () {
+  int findNearestVidFrame (int64_t pts) {
 
     int vidFrame = -1;
     int64_t nearest = 0;
 
     for (int i = 0; i < maxVidFrames; i++) {
       if (mYuvFrames[i].mPts) {
-        if ((vidFrame == -1) || (abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset*3600) < nearest)) {
+        if ((vidFrame == -1) || (abs(mYuvFrames[i].mPts - pts - mVidOffset*3600) < nearest)) {
           vidFrame = i;
-          nearest = abs(mYuvFrames[i].mPts - mAudPlayPts - mVidOffset * 3600);
+          nearest = abs(mYuvFrames[i].mPts - pts - mVidOffset * 3600);
           }
         }
       }
     return vidFrame;
+    }
+  //}}}
+  //{{{
+  int findNearestAudFrame (int64_t pts) {
+
+    int audFrame = -1;
+    int64_t nearest = 0;
+
+    for (int i = 0; i < maxAudFrames; i++) {
+      if (mAudFrames[i].mPts) {
+        if ((audFrame == -1) || (abs(mAudFrames[i].mPts - pts) < nearest)) {
+          audFrame = i;
+          nearest = abs(mAudFrames[i].mPts - pts);
+          }
+        }
+      }
+    return audFrame;
+    }
+  //}}}
+  //{{{
+  int64_t preloaded (int64_t pts) {
+
+    int audFrame = -1;
+    int64_t ahead = 0;
+
+    for (int i = 0; i < maxAudFrames; i++) {
+      if (mAudFrames[i].mPts) {
+        if ((audFrame == -1) || (mAudFrames[i].mPts - pts) > ahead) {
+          audFrame = i;
+          ahead = mAudFrames[i].mPts - pts;
+          }
+        }
+      }
+
+    // return true if less than a second ahead
+    return ahead;
     }
   //}}}
 
@@ -185,11 +221,22 @@ private:
     int j = 0;
     for (auto service : mTsSection.mServiceMap) {
       if (j == index) {
-        mVidPid = service.second.getVidPid();
-        mAudPid = service.second.getAudPid();
-        for (int i= 0; i < maxVidFrames; i++)
-          mYuvFrames[i].invalidate();
-        mPlayFrame = mAudFramesLoaded;
+        int mPcrPid = service.second.getPcrPid();
+        tPidInfoMap::iterator pidInfoIt = mTsSection.getPidInfoMap()->find (mPcrPid);
+        if (pidInfoIt != mTsSection.getPidInfoMap()->end()) {
+          mVidPid = service.second.getVidPid();
+          mAudPid = service.second.getAudPid();
+
+          for (int i= 0; i < maxVidFrames; i++)
+            mYuvFrames[i].invalidate();
+          for (int i= 0; i < maxAudFrames; i++)
+            mAudFrames[i].invalidate();
+
+          mBaseTime = pidInfoIt->second.mPcr;
+          mPlayTime = mBaseTime;
+
+          printf ("selectService %d vid:%d aud:%d pcr:%d base:%lld\n", j, mVidPid, mAudPid, mPcrPid, mBaseTime);
+          }
         break;
         }
       else
@@ -286,21 +333,18 @@ private:
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
     while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
       //{{{  parse tsFrame start
-      auto tei = *tsPtr & 0x80;
-      if (tei)
-        printf ("----------------------------------------- tei ------------------------------\n");
-
-      auto payStart = *tsPtr & 0x40;
+      //bool tei = *tsPtr & 0x80;
+      bool payStart = ((*tsPtr) & 0x40) != 0;
       auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
-      auto adaption = *(tsPtr+2) & 0x20;
-      auto payload = *(tsPtr+2) & 0x10;
+      bool adaption = (*(tsPtr+2) & 0x20) != 0;
+      //bool payload = *(tsPtr+2) & 0x10;
       auto headerBytes = adaption ? (4 + *(tsPtr+3)) : 3;
       auto continuity = *(tsPtr+2) & 0x0F;
-
-      int64_t pcr = adaption && (*(tsPtr+4) & 0x80) ? parseTimeStamp (tsPtr+5) : 0;
       //if ((adaption && (*(tsPtr+4) & 0x80)) discontinuity = true;
+      bool hasPcr = adaption && (*(tsPtr+4) & 0x10);
+      int64_t pcr = hasPcr ? ((*(tsPtr+5)<<25) | (*(tsPtr+6)<<17)  | (*(tsPtr+7)<<9) | (*(tsPtr+8)<<1) | (*(tsPtr+9)>>7)) : 0;
 
-      auto copyPES = false;
+      bool copyPES = false;
 
       tsPtr += headerBytes;
       auto tsFrameBytesLeft = 187 - headerBytes;
@@ -326,7 +370,8 @@ private:
         pidInfoIt->second.mBufPtr = nullptr;
         }
 
-      pidInfoIt->second.mPcr = pcr;
+      if (hasPcr)
+        pidInfoIt->second.mPcr = pcr;
       pidInfoIt->second.mContinuity = continuity;
       pidInfoIt->second.mTotal++;
       //}}}
@@ -586,6 +631,37 @@ private:
   //}}}
 
   //{{{
+  void tsFileLoader (wchar_t* wFileName) {
+
+    CoInitialize (NULL);
+    av_register_all();
+
+    mFilePtr = 0;
+    uint8_t tsBuf[256*188];
+    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    DWORD numberOfBytesRead = 0;
+    while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
+      if (numberOfBytesRead) {
+        mFilePtr += numberOfBytesRead;
+        tsParser (tsBuf, tsBuf + numberOfBytesRead);
+
+        mPreLoaded = preloaded (mPlayTime);
+        if (mBaseTime && (mPreLoaded > 90000))
+          Sleep (20);
+
+        // not all the time **********
+        //SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
+        }
+      }
+
+    CloseHandle (readFile);
+
+    avcodec_close (audCodecContext);
+    avcodec_close (vidCodecContext);
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
   void tsLiveLoader (int freq) {
 
     CoInitialize (NULL);
@@ -603,7 +679,7 @@ private:
         bda.decommitBlock (blockLen);
 
         // no faster than player
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/4)
+        if (preloaded (mPlayTime) > 90000)
           Sleep (20);
         }
       else
@@ -613,35 +689,6 @@ private:
     avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
 
-    CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void tsFileLoader (wchar_t* wFileName) {
-
-    CoInitialize (NULL);
-    av_register_all();
-
-    //DWORD WINAPI SetFilePointer (HANDLE hFile, LONG lDistanceToMove, PLONG lpDistanceToMoveHigh, DWORD  dwMoveMethod);
-    //FILE_CURRENT FILE_BEGIN
-
-    mFileBytes = 0;
-    uint8_t tsBuf[256*188];
-    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-    DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
-      if (numberOfBytesRead) {
-        mFileBytes += numberOfBytesRead;
-        tsParser (tsBuf, tsBuf + numberOfBytesRead);
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/4)
-          Sleep (20);
-        }
-      }
-
-    CloseHandle (readFile);
-
-    avcodec_close (audCodecContext);
-    avcodec_close (vidCodecContext);
     CoUninitialize();
     }
   //}}}
@@ -714,8 +761,8 @@ private:
     while (true) {
       while (av_read_frame (avFormatContext, &avPacket) >= 0) {
 
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
-          Sleep (40);
+        //while (mAudFramesLoaded > int(mPlayTime) + maxAudFrames/2)
+        //  Sleep (40);
 
         if (avPacket.stream_index == audStream) {
           //{{{  aud packet
@@ -798,26 +845,18 @@ private:
 
     CoInitialize (NULL);
 
-    // wait for first aud frame to load for sampleRate, channels
+    // wait for first aud frame to load for mSampleRate, mChannels
     while (mAudFramesLoaded < 1)
       Sleep (40);
 
     winAudioOpen (mSampleRate, 16, mChannels);
 
     while (true) {
-      bool play = mPlaying && (int(mPlayFrame) < mAudFramesLoaded);
-
-      if (mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples) {
-        mAudPlayPts = mAudFrames[int(mPlayFrame) % maxAudFrames].mPts;
-        winAudioPlay (play ? mAudFrames[int(mPlayFrame) % maxAudFrames].mSamples : mSilence,
-                      mChannels*mSamplesPerAacFrame*2, 1.0f);
-
-        if (play) {
-          if (int(mPlayFrame) < mAudFramesLoaded) {
-            mPlayFrame += 1.0;
-            changed();
-            }
-          }
+      int audFrame = findNearestAudFrame (mPlayTime);
+      winAudioPlay ((mPlaying && (audFrame >= 0)) ? mAudFrames[audFrame].mSamples : mSilence, mChannels*mSamplesPerAacFrame*2, 1.0f);
+      if (mPlaying && (audFrame >= 0)) {
+        mPlayTime += (mSamplesPerAacFrame * 90) / 48;
+        changed();
         }
       }
 
@@ -829,13 +868,12 @@ private:
 
   //{{{  vars
   bool mShowChannel = false;
-  int64_t mAudPlayPts;
 
   // tsSection
   cTsSection mTsSection;
   int mDiscontinuity = 0;
 
-  int mFileBytes = 0;
+  int mFilePtr = 0;
 
   // service
   int mVidPid = 0;
@@ -864,7 +902,9 @@ private:
   unsigned long mSampleRate = 48000;
 
   bool mPlaying = true;
-  double mPlayFrame = 0;
+  int64_t mPlayTime = 0;
+  int64_t mBaseTime = 0;
+  int64_t mPreLoaded = 0;
 
   int mAudFramesLoaded = 0;
   cAudFrame mAudFrames [maxAudFrames];

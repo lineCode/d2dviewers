@@ -36,6 +36,12 @@ public:
     mSamples = nullptr;
     }
   //}}}
+  //{{{
+  void invalidate() {
+
+    mPts = 0;
+    }
+  //}}}
 
   int64_t mPts;
   int mNumSamples;
