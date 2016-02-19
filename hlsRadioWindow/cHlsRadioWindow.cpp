@@ -30,9 +30,7 @@
 class cHlsRadioWindow : public cD2dWindow, public cVolume {
 public:
   //{{{
-  cHlsRadioWindow() : mPlayer(nullptr), mChangeToChannel(0),
-                      mHttpRxBytes(0), mShowChannel(false), mVidFrame(nullptr), mBitmap(nullptr), mVidId(-1) {
-
+  cHlsRadioWindow() {
     mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
     }
   //}}}
@@ -256,8 +254,8 @@ private:
     static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
 
     if (yuvFrame) {
-      if (yuvFrame->mId != mVidId) {
-        mVidId = yuvFrame->mId;
+      if (yuvFrame->mPts != mVidPts) {
+        mVidPts = yuvFrame->mPts;
         if (mBitmap)  {
           auto pixelSize = mBitmap->GetPixelSize();
           if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
@@ -372,18 +370,18 @@ private:
   //}}}
 
   //{{{  vars
-  iPlayer* mPlayer;
+  iPlayer* mPlayer = nullptr;
 
-  int mChangeToChannel;
-  int mHttpRxBytes;
+  int mChangeToChannel = 0;
+  int mHttpRxBytes = 0;
 
-  bool mShowChannel;
+  bool mShowChannel = false;
   HANDLE mSemaphore;
-  int16_t* mSilence;
+  int16_t* mSilence = nullptr;
 
-  int mVidId;
-  cYuvFrame* mVidFrame;
-  ID2D1Bitmap* mBitmap;
+  int64_t mVidPts = 0;
+  cYuvFrame* mVidFrame = nullptr;
+  ID2D1Bitmap* mBitmap = nullptr;
   //}}}
   };
 

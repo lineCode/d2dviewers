@@ -26,6 +26,7 @@
 //}}}
 //{{{  static vars
 static int chan = 0;
+static int64_t fakeVidPts = 0;
 
 #ifdef WIN32
   static bool avRegistered = false;
@@ -300,7 +301,7 @@ private:
 
         svcDecoder->DecodeFrameNoDelay (mVidPtr + iBufPos, iSliceSize, yuv, &sDstBufInfo);
         if (sDstBufInfo.iBufferStatus)
-          mYuvFrames[mVidFramesLoaded++].set (0, yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
+          mYuvFrames[mVidFramesLoaded++].set (fakeVidPts++, yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
                                               sDstBufInfo.UsrData.sSystemBuffer.iWidth,
                                               sDstBufInfo.UsrData.sSystemBuffer.iHeight);
 
@@ -345,7 +346,7 @@ private:
         int got = 0;
         packetUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &vidPacket);
         if (got)
-          mYuvFrames[mVidFramesLoaded++].set (0, vidFrame->data, vidFrame->linesize,
+          mYuvFrames[mVidFramesLoaded++].set (fakeVidPts++, vidFrame->data, vidFrame->linesize,
                                               vidCodecContext->width, vidCodecContext->height);
 
         vidPacket.data += packetUsed;
