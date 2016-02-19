@@ -6,7 +6,6 @@
 #include "../common/timer.h"
 
 #include "../common/cTsSection.h"
-#include "../common/cBda.h"
 
 #include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
@@ -39,22 +38,17 @@ public:
 
     initialise (title, width, height);
 
-    int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
-    if (freq) {
-      auto loaderThread = thread ([=]() { tsLiveLoader (freq); } );
-      //SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
-      loaderThread.detach();
-      }
-    else if (arg)
+    if (arg) {
       thread ([=]() { isTsFile (arg) ? tsFileLoader (arg) : ffmpegFileLoader (arg); } ).detach();
 
-    // launch playerThread, higher priority
-    auto playerThread = thread ([=]() { player(); });
-    SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
-    playerThread.detach();
+      // launch playerThread, higher priority
+      auto playerThread = thread ([=]() { player(); });
+      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+      playerThread.detach();
 
-    // loop in windows message pump till quit
-    messagePump();
+      // loop in windows message pump till quit
+      messagePump();
+      }
     }
   //}}}
 
@@ -162,6 +156,31 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
+  int findAudFrame (int64_t pts) {
+  // find aud frame matching pts
+
+    for (int i = 0; i < maxAudFrames; i++)
+      if (mAudFrames[i].mPts)
+        if (abs(mAudFrames[i].mPts - pts) <= (mSamplesPerAacFrame * 90/2) / 48)
+          return i;
+
+    return -1;
+    }
+  //}}}
+  //{{{
+  int64_t getAudPreLoaded (int64_t pts) {
+  // return largest loaded audFrame pts diff ahead of pts
+
+    int64_t ahead = 0;
+    for (int audFrame = 0; audFrame < maxAudFrames; audFrame++)
+      if (mAudFrames[audFrame].mPts)
+        if (!audFrame || (mAudFrames[audFrame].mPts - pts > ahead))
+          ahead = mAudFrames[audFrame].mPts - pts;
+
+    return ahead;
+    }
+  //}}}
+  //{{{
   int findNearestVidFrame (int64_t pts) {
 
     int vidFrame = -1;
@@ -176,37 +195,6 @@ private:
         }
       }
     return vidFrame;
-    }
-  //}}}
-  //{{{
-  int findAudFrame (int64_t pts) {
-  // find aud frame matching pts
-
-    for (int i = 0; i < maxAudFrames; i++)
-      if (mAudFrames[i].mPts)
-        if (abs(mAudFrames[i].mPts - pts) <= (mSamplesPerAacFrame * 90/2) / 48)
-          return i;
-
-    return -1;
-    }
-  //}}}
-  //{{{
-  int64_t preloaded (int64_t pts) {
-
-    int audFrame = -1;
-    int64_t ahead = 0;
-
-    for (int i = 0; i < maxAudFrames; i++) {
-      if (mAudFrames[i].mPts) {
-        if ((audFrame == -1) || (mAudFrames[i].mPts - pts) > ahead) {
-          audFrame = i;
-          ahead = mAudFrames[i].mPts - pts;
-          }
-        }
-      }
-
-    // return true if less than a second ahead
-    return ahead;
     }
   //}}}
 
@@ -640,12 +628,9 @@ private:
         mFilePtr += numberOfBytesRead;
         tsParser (tsBuf, tsBuf + numberOfBytesRead);
 
-        mPreLoaded = preloaded (mPlayTime);
+        mPreLoaded = getAudPreLoaded (mPlayTime);
         if (mBaseTime && (mPreLoaded > 90000))
           Sleep (20);
-
-        // not all the time **********
-        //SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
         }
       }
 
@@ -653,37 +638,6 @@ private:
 
     avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
-    CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void tsLiveLoader (int freq) {
-
-    CoInitialize (NULL);
-
-    cBda bda (128*240*188);
-    bda.createGraph (freq); // 650000 674000 706000
-    Sleep (1000);
-
-    int blockLen = 0;
-    while (true) {
-      // wait for chunk of ts
-      uint8_t* ptr = bda.getContiguousBlock (blockLen);
-      if (blockLen) {
-        tsParser (ptr, ptr + blockLen);
-        bda.decommitBlock (blockLen);
-
-        mPreLoaded = preloaded (mPlayTime);
-        if (mBaseTime && (mPreLoaded > 90000))
-          Sleep (20);
-        }
-      else
-        Sleep (1);
-      }
-
-    avcodec_close (audCodecContext);
-    avcodec_close (vidCodecContext);
-
     CoUninitialize();
     }
   //}}}
