@@ -39,6 +39,7 @@
     <ClInclude Include="..\common\cBda.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cTsSection.h" />
+    <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="..\common\yuvrgb_sse2.h" />
     <ClInclude Include="decode.h" />

@@ -653,6 +653,7 @@ public:
   int mStreamType = 0;
   int64_t mPts = 0;
   int64_t mDts = 0;
+  int64_t mPcr = 0;
 
   int  mContinuity = -1;
   int  mTotal = 0;

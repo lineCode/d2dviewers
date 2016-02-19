@@ -34,6 +34,9 @@
     <ClInclude Include="..\common\cTsSection.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\timer.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

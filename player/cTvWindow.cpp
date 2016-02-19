@@ -3,6 +3,7 @@
 #include "pch.h"
 
 #include "../common/cD2dWindow.h"
+#include "../common/timer.h"
 
 #include "../common/cTsSection.h"
 #include "../common/cBda.h"
@@ -20,7 +21,7 @@
 #pragma comment(lib,"avformat.lib")
 //}}}
 #define maxVidFrames 40
-#define maxAudFrames 40
+#define maxAudFrames 80
 
 class cTvWindow : public cD2dWindow {
 public:
@@ -296,17 +297,8 @@ private:
       auto headerBytes = adaption ? (4 + *(tsPtr+3)) : 3;
       auto continuity = *(tsPtr+2) & 0x0F;
 
-      int64_t pcr = 0;
-      bool hasPcr = false;
-      bool discontinuity = false;
-      if (adaption) {
-        if (*(tsPtr+4) & 0x80)
-          discontinuity = true;
-        if (*(tsPtr+4) & 0x10) {
-          hasPcr = true;
-          pcr = parseTimeStamp (tsPtr+5);
-          }
-        }
+      int64_t pcr = adaption && (*(tsPtr+4) & 0x80) ? parseTimeStamp (tsPtr+5) : 0;
+      //if ((adaption && (*(tsPtr+4) & 0x80)) discontinuity = true;
 
       auto copyPES = false;
 
@@ -334,6 +326,7 @@ private:
         pidInfoIt->second.mBufPtr = nullptr;
         }
 
+      pidInfoIt->second.mPcr = pcr;
       pidInfoIt->second.mContinuity = continuity;
       pidInfoIt->second.mTotal++;
       //}}}
@@ -610,7 +603,7 @@ private:
         bda.decommitBlock (blockLen);
 
         // no faster than player
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/4)
           Sleep (20);
         }
       else
@@ -640,7 +633,7 @@ private:
       if (numberOfBytesRead) {
         mFileBytes += numberOfBytesRead;
         tsParser (tsBuf, tsBuf + numberOfBytesRead);
-        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/2)
+        while (mAudFramesLoaded > int(mPlayFrame) + maxAudFrames/4)
           Sleep (20);
         }
       }
