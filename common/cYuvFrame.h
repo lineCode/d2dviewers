@@ -1,18 +1,14 @@
 // cYuvFrame.h
 #pragma once
 
-static int videoId = 0;
-
 class cYuvFrame  {
 public:
-  cYuvFrame() : mId(0), mPts(0), mWidth(0), mHeight(0), mYStride(0), mUVStride(0),
+  cYuvFrame() : mPts(0), mWidth(0), mHeight(0), mYStride(0), mUVStride(0),
                 mYbuf(nullptr), mUbuf(nullptr), mVbuf(nullptr),
                 mYbufUnaligned(nullptr), mUbufUnaligned(nullptr), mVbufUnaligned(nullptr) {}
 
   //{{{
   void set (int64_t pts, uint8_t** yuv, int* strides, int width, int height) {
-
-    mId = videoId++;
 
     bool sizeChanged = (mWidth != width) || (mHeight != height) || (mYStride != strides[0]) || (mUVStride != strides[1]);
     mWidth = width;
@@ -54,7 +50,6 @@ public:
   //{{{
   void freeResources() {
 
-    mId = 0;
     mPts = 0;
     mWidth = 0;
     mHeight = 0;
@@ -81,12 +76,10 @@ public:
   //{{{
   void invalidate() {
 
-    mId = 0;
     mPts = 0;
     }
   //}}}
 
-  int mId;
   int64_t mPts;
   int mWidth;
   int mHeight;

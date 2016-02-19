@@ -250,8 +250,8 @@ private:
     static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
 
     if (yuvFrame) {
-      if (yuvFrame->mId != mVidId) {
-        mVidId = yuvFrame->mId;
+      if (yuvFrame->mPts != mBitmapPts) {
+        mBitmapPts = yuvFrame->mPts;
         if (mBitmap)  {
           auto pixelSize = mBitmap->GetPixelSize();
           if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
@@ -678,8 +678,8 @@ private:
         tsParser (ptr, ptr + blockLen);
         bda.decommitBlock (blockLen);
 
-        // no faster than player
-        if (preloaded (mPlayTime) > 90000)
+        mPreLoaded = preloaded (mPlayTime);
+        if (mBaseTime && (mPreLoaded > 90000))
           Sleep (20);
         }
       else
@@ -909,10 +909,10 @@ private:
   int mAudFramesLoaded = 0;
   cAudFrame mAudFrames [maxAudFrames];
 
-  int mVidId = 0;
   int mNextFreeVidFrame = 0;
   cYuvFrame mYuvFrames[maxVidFrames];
 
+  int64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
   //}}}
   };
