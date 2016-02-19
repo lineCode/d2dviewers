@@ -145,7 +145,7 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->FillRectangle (r, getGreyBrush());
 
     // ***** fix ********
-    int audFrame = findNearestAudFrame (mPlayTime) - (int)(getClientF().width/2);
+    int audFrame = findAudFrame (mPlayTime) - (int)(getClientF().width/2);
     for (r.left = 0.0f; r.left < getClientF().width; r.left++, audFrame++) {
       if (audFrame >= 0) {
         r.top = (getClientF().height/2.0f) - mAudFrames[audFrame % maxAudFrames].mPowerLeft;
@@ -179,20 +179,15 @@ private:
     }
   //}}}
   //{{{
-  int findNearestAudFrame (int64_t pts) {
+  int findAudFrame (int64_t pts) {
+  // find aud frame matching pts
 
-    int audFrame = -1;
-    int64_t nearest = 0;
+    for (int i = 0; i < maxAudFrames; i++)
+      if (mAudFrames[i].mPts)
+        if (abs(mAudFrames[i].mPts - pts) <= (mSamplesPerAacFrame * 90/2) / 48)
+          return i;
 
-    for (int i = 0; i < maxAudFrames; i++) {
-      if (mAudFrames[i].mPts) {
-        if ((audFrame == -1) || (abs(mAudFrames[i].mPts - pts) < nearest)) {
-          audFrame = i;
-          nearest = abs(mAudFrames[i].mPts - pts);
-          }
-        }
-      }
-    return audFrame;
+    return -1;
     }
   //}}}
   //{{{
@@ -852,9 +847,9 @@ private:
     winAudioOpen (mSampleRate, 16, mChannels);
 
     while (true) {
-      int audFrame = findNearestAudFrame (mPlayTime);
+      int audFrame = findAudFrame (mPlayTime);
       winAudioPlay ((mPlaying && (audFrame >= 0)) ? mAudFrames[audFrame].mSamples : mSilence, mChannels*mSamplesPerAacFrame*2, 1.0f);
-      if (mPlaying && (audFrame >= 0)) {
+      if (mPlaying) {
         mPlayTime += (mSamplesPerAacFrame * 90) / 48;
         changed();
         }
