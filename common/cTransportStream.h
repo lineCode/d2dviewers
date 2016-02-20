@@ -839,38 +839,6 @@ public:
   //}}}
 
   //{{{
-  int getNumServices() {
-    return (int)mServiceMap.size();
-    }
-  //}}}
-  //{{{
-  char* getServiceNow (int index) {
-
-    int j = 0;
-    for (auto service : mServiceMap) {
-      if (j == index)
-        return service.second.getNow()->mTitle;
-      j++;
-      }
-
-    return nullptr;
-    }
-  //}}}
-  //{{{
-  char* getServiceName (int index) {
-
-    int j = 0;
-    for (auto service : mServiceMap) {
-      if (j == index)
-        return service.second.getName();
-      j++;
-      }
-
-    return nullptr;
-    }
-  //}}}
-
-  //{{{
   void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
 
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
@@ -1062,6 +1030,63 @@ public:
   //}}}
 
   //{{{
+  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client,
+                      IDWriteTextFormat* textFormat,
+                      ID2D1SolidColorBrush* whiteBrush,
+                      ID2D1SolidColorBrush* blueBrush,
+                      ID2D1SolidColorBrush* blackBrush,
+                      ID2D1SolidColorBrush* greyBrush) {
+
+    if (!mPidInfoMap.empty()) {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
+      D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+
+      float top = 40.0f;
+      for (auto pidInfo : mPidInfoMap) {
+        float total = (float)pidInfo.second.mTotal;
+        if (total > mLargest)
+          mLargest = total;
+        float len = (total/mLargest) * (client.width-50.0f);
+        D2D1_RECT_F r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
+        dc->FillRectangle (r, blueBrush);
+
+        textr.top = top;
+        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
+        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+
+        top += 14.0f;
+        }
+      }
+    }
+  //}}}
+  //{{{
+  void drawServices (ID2D1DeviceContext* dc, D2D1_SIZE_F client,
+                      IDWriteTextFormat* textFormat,
+                      ID2D1SolidColorBrush* whiteBrush,
+                      ID2D1SolidColorBrush* blueBrush,
+                      ID2D1SolidColorBrush* blackBrush,
+                      ID2D1SolidColorBrush* greyBrush) {
+
+    D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+    for (auto service : mServiceMap) {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"%hs - %hs", service.second.getName(), service.second.getNow()->mTitle);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+      textr.top += 20.0f;
+      }
+    }
+  //}}}
+  //{{{
+  void printPids() {
+
+    printf ("--- PidInfoMap -----\n");
+    for (auto pidInfo : mPidInfoMap)
+      pidInfo.second.print();
+    }
+  //}}}
+  //{{{
   void printServices() {
 
     printf ("--- ServiceMap -----\n");
@@ -1075,46 +1100,6 @@ public:
     printf ("--- ProgramMap -----\n");
     for (auto map : mProgramMap)
       printf ("- programPid:%d sid:%d\n", map.first, map.second);
-    }
-  //}}}
-  //{{{
-  void printPids() {
-
-    printf ("--- PidInfoMap -----\n");
-    for (auto pidInfo : mPidInfoMap)
-      pidInfo.second.print();
-    }
-  //}}}
-  //{{{
-  void renderPidInfo (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
-                      IDWriteTextFormat* textFormat,
-                      ID2D1SolidColorBrush* whiteBrush,
-                      ID2D1SolidColorBrush* blueBrush,
-                      ID2D1SolidColorBrush* blackBrush,
-                      ID2D1SolidColorBrush* greyBrush) {
-
-    if (!mPidInfoMap.empty()) {
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
-      D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, 1024.0f, client.height);
-      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
-
-      float top = 40.0f;
-      for (auto pidInfo : mPidInfoMap) {
-        float total = (float)pidInfo.second.mTotal;
-        if (total > mLargest)
-          mLargest = total;
-        float len = (total/mLargest) * (client.width-50.0f);
-        D2D1_RECT_F r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
-        d2dContext->FillRectangle (r, blueBrush);
-
-        textr.top = top;
-        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
-        d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
-
-        top += 14.0f;
-        }
-      }
     }
   //}}}
 
@@ -1230,13 +1215,13 @@ private:
     pat_t* Pat = (pat_t*)buf;
     if (crc32 (buf, HILO(Pat->section_length) + 3)) {
       //{{{  bad crc
-      printf ("PAT - bad crc %d\n", HILO(Pat->section_length) + 3);
+      printf ("parsePAT - bad crc %d\n", HILO(Pat->section_length) + 3);
       return;
       }
       //}}}
     if (Pat->table_id != TID_PAT) {
       //{{{  wrong tid
-      printf ("PAT - unexpected TID %x\n", Pat->table_id);
+      printf ("parsePAT - unexpected TID %x\n", Pat->table_id);
       return;
       }
       //}}}
@@ -1254,7 +1239,7 @@ private:
         tProgramMap::iterator it = mProgramMap.find (pid);
         if (it == mProgramMap.end()) {
           mProgramMap.insert (tProgramMap::value_type (pid, sid));
-          printf ("PAT new program pid:%d sid:%d\n", pid, sid);
+          printf ("parsePAT - new program pid:%d sid:%d\n", pid, sid);
           }
         }
       sectionLength -= PAT_PROG_LEN;
@@ -1269,7 +1254,7 @@ private:
 
     if (crc32 (buf, HILO (Nit->section_length) + 3)) {
       //{{{  bad crc
-      printf ("parseNit - bad crc %d\n", HILO (Nit->section_length) + 3);
+      printf ("parseNIT - bad crc %d\n", HILO (Nit->section_length) + 3);
       return;
       }
       //}}}
@@ -1289,7 +1274,7 @@ private:
     int sectionLength = HILO (Nit->section_length) + 3 - NIT_LEN - 4;
     if (loopLength <= sectionLength) {
       if (sectionLength >= 0)
-        parseDescrs ("NIT1", networkId, ptr, loopLength, Nit->table_id);
+        parseDescrs ("parseNIT1", networkId, ptr, loopLength, Nit->table_id);
       sectionLength -= loopLength;
 
       ptr += loopLength;
@@ -1309,7 +1294,7 @@ private:
           ptr += NIT_TS_LEN;
           if (loop2Length <= loopLength)
             if (loopLength >= 0)
-              parseDescrs ("NIT2", tsid, ptr, loop2Length, Nit->table_id);
+              parseDescrs ("parseNIT2", tsid, ptr, loop2Length, Nit->table_id);
 
           loopLength -= loop2Length + NIT_TS_LEN;
           sectionLength -= loop2Length + NIT_TS_LEN;
@@ -1326,7 +1311,7 @@ private:
     sdt_t* Sdt = (sdt_t*)buf;
     if (crc32 (buf, HILO (Sdt->section_length) + 3)) {
       //{{{  wrong crc
-      printf ("Sdt - bad crc %d\n", HILO (Sdt->section_length) + 3);
+      printf ("parseSDT - bad crc %d\n", HILO (Sdt->section_length) + 3);
       return;
       }
       //}}}
@@ -1334,7 +1319,7 @@ private:
       return;
     if (Sdt->table_id != TID_SDT_ACT) {
       //{{{  wrong tid
-      printf ("SDT - unexpected TID %x\n", Sdt->table_id);
+      printf ("parseSDT - unexpected TID %x\n", Sdt->table_id);
       return;
       }
       //}}}
@@ -1419,7 +1404,7 @@ private:
 
     eit_t* Eit = (eit_t*)buf;
     if (crc32 (buf, HILO (Eit->section_length) + 3)) {
-      printf ("EIT - bad crc %d\n", HILO (Eit->section_length) + 3);
+      printf ("parseEIT - bad crc %d\n", HILO (Eit->section_length) + 3);
       return;
       }
 
@@ -1427,7 +1412,7 @@ private:
     int sid = HILO (Eit->service_id);
     //int tsid = HILO (Eit->transport_stream_id);
     //int onid = HILO (Eit->original_network_id);
-    //printf ("EIT - tid:%x sid:%d\n", tid, sid);
+    //printf ("parseEIT - tid:%x sid:%d\n", tid, sid);
 
     bool now = (tid == TID_EIT_ACT);
     bool next = (tid == TID_EIT_OTH);
@@ -1435,7 +1420,7 @@ private:
                (tid == TID_EIT_ACT_SCH+1) || (tid == TID_EIT_OTH_SCH+1);
     if (!now && !next && !epg) {
       //{{{  unexpected tid
-      printf ("EIT - unexpected tid:%x\n", tid);
+      printf ("parseEIT - unexpected tid:%x\n", tid);
       return;
       }
       //}}}
@@ -1554,12 +1539,12 @@ private:
           case DESCR_DATA_BROADCAST: // 0x64
           case 0x76:                 // content_identifier
           case 0x7e:                 // FTA_content_management
-            //printf ("EIT - expected tag:%x %d %d\n", GetDescrTag(ptr), tid, sid);
+            //printf ("parseEIT - expected tag:%x %d %d\n", GetDescrTag(ptr), tid, sid);
             break;
           case 0x4a:                 // linkage
           case 0x89:                 // user_defined
           default:
-            //printf ("EIT - unexpected tag:%x %d %d\n", GetDescrTag(ptr), tid, sid);
+            //printf ("parseEIT - unexpected tag:%x %d %d\n", GetDescrTag(ptr), tid, sid);
             break;
           }
 
@@ -1592,13 +1577,13 @@ private:
     pmt_t* pmt = (pmt_t*)buf;
     if (crc32 (buf, HILO (pmt->section_length) + 3)) {
       //{{{  bad crc
-      printf ("parsepmt - pid:%d bad crc %d\n", pid, HILO(pmt->section_length) + 3);
+      printf ("parsePMT - pid:%d bad crc %d\n", pid, HILO(pmt->section_length) + 3);
       return;
       }
       //}}}
     if (pmt->table_id != TID_PMT) {
       //{{{  wrong tid
-      printf ("parsepmt - wrong TID %x\n", pmt->table_id);
+      printf ("parsePMT - wrong TID %x\n", pmt->table_id);
       return;
       }
       //}}}
@@ -1625,7 +1610,7 @@ private:
 
       int streamLength = sectionLength - programInfoLength - PMT_LEN;
       if (streamLength >= 0)
-        parseDescrs ("pmt1", sid, ptr, programInfoLength, pmt->table_id);
+        parseDescrs ("parsePMT1", sid, ptr, programInfoLength, pmt->table_id);
 
       ptr += programInfoLength;
       while (streamLength > 0) {
@@ -1645,7 +1630,7 @@ private:
           case 11: recognised = false; break;
           case 13:
           default:
-            printf ("PMT - unknown streamType:%d sid:%d esPid:%d\n", streamType, sid, esPid);
+            printf ("parsePMT - unknown streamType:%d sid:%d esPid:%d\n", streamType, sid, esPid);
             recognised = false;
             break;
           }
@@ -1661,7 +1646,7 @@ private:
           }
 
         int loopLength = HILO (pmtInfo->ES_info_length);
-        parseDescrs ("pmt2", sid, ptr, loopLength, pmt->table_id);
+        parseDescrs ("parsePMT2", sid, ptr, loopLength, pmt->table_id);
 
         ptr += PMT_INFO_LEN;
         streamLength -= loopLength + PMT_INFO_LEN;

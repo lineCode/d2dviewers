@@ -39,17 +39,19 @@ public:
 
   //{{{
   int64_t selectService (int index) {
+  // select service by index, return basePts of pts when switched
 
-    int64_t baseTime = cTransportStream::selectService (index);
+    int64_t basePts = cTransportStream::selectService (index);
 
     for (int i= 0; i < maxVidFrames; i++)
       mYuvFrames[i].invalidate();
 
-    return baseTime;
+    return basePts;
     }
   //}}}
   //{{{
   cYuvFrame* findNearestVidFrame (int64_t pts) {
+  // find nearestVidFrame to pts, nullPtr if no candidate
 
     cYuvFrame* yuvFrame = nullptr;
 
@@ -67,10 +69,10 @@ public:
     }
   //}}}
 
-  int mSamplesPerAacFrame = 0;
-  float mAudFramesPerSec = 40;
   unsigned char mChannels = 2;
   unsigned long mSampleRate = 48000;
+  int mSamplesPerAacFrame = 0;
+  float mAudFramesPerSec = 40;
 
   int mLoadAudFrame = 0;
   cAudFrame mAudFrames[maxAudFrames];
@@ -82,15 +84,12 @@ protected:
   //{{{
   void decodeAudPes (cPidInfo* pidInfo) {
 
-    if (!audParser) {
-      //{{{  allocate decoder
+    if (!audParser) { // allocate decoder
       audParser = av_parser_init (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
       audCodec = avcodec_find_decoder (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
       audCodecContext = avcodec_alloc_context3 (audCodec);
-
       avcodec_open2 (audCodecContext, audCodec, NULL);
       }
-      //}}}
 
     AVPacket avPacket;
     av_init_packet (&avPacket);
@@ -149,14 +148,12 @@ protected:
   //{{{
   void decodeVidPes (cPidInfo* pidInfo) {
 
-    if (!vidParser) {
-      //{{{  allocate decoder
+    if (!vidParser) { // allocate decoder
       vidParser = av_parser_init (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
       vidCodec = avcodec_find_decoder (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
       vidCodecContext = avcodec_alloc_context3 (vidCodec);
       avcodec_open2 (vidCodecContext, vidCodec, NULL);
       }
-      //}}}
 
     AVPacket avPacket;
     av_init_packet (&avPacket);
@@ -317,20 +314,14 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   // draw title
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f filePtr:%4.3fm dis:%d", (mAudPts-mBaseTime)/90000.0, mFilePtr/1000000.0, mTs.getDiscontinuity());
-  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+  D2D1_RECT_F textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
+  swprintf (wStr, 200, L"%4.1f filePtr:%4.3fm dis:%d", (mAudPts- mBasePts)/90000.0f, mFilePtr/1000000.0f, mTs.getDiscontinuity());
+  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), textr, getWhiteBrush());
 
+  if (mShowChannel)
+    mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream)
-    mTs.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
-  else if (mShowChannel) {
-    // draw services
-    for (int i = 0; i < mTs.getNumServices(); i++) {
-      swprintf (wStr, 200, L"%hs - %hs", mTs.getServiceName (i), mTs.getServiceNow (i));
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                    RectF(0, (i+1)*20.0f, getClientF().width, getClientF().height), getWhiteBrush());
-      }
-    }
+    mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   }
 //}}}
 
@@ -338,9 +329,9 @@ private:
   //{{{
   void selectService (int index) {
 
-    int64_t baseTime = mTs.selectService (index);
-    if (baseTime)
-      mBaseTime = baseTime;
+    int64_t basePts = mTs.selectService (index);
+    if (basePts)
+      mBasePts = basePts;
     }
   //}}}
   //{{{
@@ -407,7 +398,7 @@ private:
     while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
         mTs.tsParser (tsBuf, tsBuf + numberOfBytesRead);
-        while (mTs.mLoadAudFrame - mPlayAudFrame > 10)
+        while (mTs.mLoadAudFrame - mPlayAudFrame > 8)
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)
@@ -463,7 +454,7 @@ private:
 
   int mPlayAudFrame = 0;
   bool mPlaying = true;
-  int64_t mBaseTime = 0;
+  int64_t mBasePts = 0;
 
   long mFilePtr = 0;
 
