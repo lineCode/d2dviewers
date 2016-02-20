@@ -316,9 +316,23 @@ bool onKey (int key) {
 void onMouseProx (bool inClient, int x, int y) {
 
   bool showChannel = mShowChannel;
+  bool transportStream = mShowTransportStream;
+
+  mShowTransportStream = inClient && (x > getClientF().width);
   mShowChannel = inClient && (x < 80);
-  if (showChannel != mShowChannel)
+
+  if ((transportStream != mShowTransportStream) || (showChannel != mShowChannel))
     changed();
+  }
+//}}}
+//{{{
+void onMouseDown (bool right, int x, int y) {
+
+  if (x < 80) {
+    int channel = (y / 20) - 1;
+    if (channel >= 0)
+      selectService (channel);
+    }
   }
 //}}}
 //{{{
@@ -347,15 +361,17 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->Clear (ColorF(ColorF::Black));
 
   wchar_t wStr[200];
+  //{{{  draw title
   swprintf (wStr, 200, L"%4.1f %4.3fm dis:%d pre:%d",
                        (mPlayTime-mBaseTime)/90000.0, mFilePtr/1000000.0, mTs.getDiscontinuity(), (int)mPreLoaded);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+  //}}}
 
-  if (mShowChannel) {
+  if (mShowTransportStream) {
     D2D1_RECT_F r = RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height);
     dc->FillRectangle (r, getGreyBrush());
-
+    //{{{  draw waveform
     // ***** fix ********
     int audFrame = mTs.findAudFrame (mPlayTime) - (int)(getClientF().width/2);
     for (r.left = 0.0f; r.left < getClientF().width; r.left++, audFrame++) {
@@ -366,8 +382,17 @@ void onDraw (ID2D1DeviceContext* dc) {
         dc->FillRectangle (r, getBlueBrush());
         }
       }
-
+    //}}}
     mTs.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+    }
+  else if (mShowChannel) {
+    //{{{  draw services
+    for (int i = 0; i < mTs.getNumServices(); i++) {
+      swprintf (wStr, 200, L"%hs - %hs", mTs.getServiceName (i), mTs.getServiceNow (i));
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0, (i+1)*20.0f, getClientF().width, getClientF().height), getWhiteBrush());
+      }
+    //}}}
     }
   }
 //}}}
@@ -667,7 +692,7 @@ private:
 
   //{{{  vars
   bool mShowChannel = false;
-
+  bool mShowTransportStream = false;
   // tsSection
   cDecodeTransportStream mTs;
 

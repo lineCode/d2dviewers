@@ -126,7 +126,7 @@
 #define DESCR_CELL_FREQ_LINK        0x6D
 #define DESCR_ANNOUNCEMENT_SUPPORT  0x6E
 //}}}
-//{{{  tables
+//{{{  table, descr structs
 //{{{  pat layout
 #define PAT_LEN 8
 typedef struct {
@@ -803,7 +803,7 @@ private:
   tEpgItemMap mEpgItemMap;
   };
 //}}}
-
+//{{{  map typedefs
 typedef std::map<int,cPidInfo> tPidInfoMap;  // pid inserts <pid,cPidInfo> into mPidInfoMap
 typedef std::map<int,int>      tProgramMap;  // PAT inserts <pid,sid>'s into mProgramMap
                                              //     - pids parsed as programPid PMTs
@@ -811,6 +811,8 @@ typedef std::map<int,cService> tServiceMap;  // SDT inserts <sid,cService> into 
                                              //     - sets cService ServiceType,Name
                                              // PMT - sets cService stream pids
                                              // EIT - adds cService Now,Epg events
+//}}}
+
 class cTransportStream {
 public:
   cTransportStream() {}
@@ -833,6 +835,38 @@ public:
   //{{{
   int getSelectedVidPid() {
     return mSelectedVidPid;
+    }
+  //}}}
+
+  //{{{
+  int getNumServices() {
+    return (int)mServiceMap.size();
+    }
+  //}}}
+  //{{{
+  char* getServiceNow (int index) {
+
+    int j = 0;
+    for (auto service : mServiceMap) {
+      if (j == index)
+        return service.second.getNow()->mTitle;
+      j++;
+      }
+
+    return nullptr;
+    }
+  //}}}
+  //{{{
+  char* getServiceName (int index) {
+
+    int j = 0;
+    for (auto service : mServiceMap) {
+      if (j == index)
+        return service.second.getName();
+      j++;
+      }
+
+    return nullptr;
     }
   //}}}
 
