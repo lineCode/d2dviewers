@@ -639,8 +639,8 @@ public:
   int64_t mDts = 0;
   int64_t mPcr = 0;
 
-  int  mContinuity = -1;
-  int  mTotal = 0;
+  int mContinuity = -1;
+  int mTotal = 0;
 
   // content buffer
   int mSectionLength = 0;
@@ -695,9 +695,9 @@ public:
   //}}}
 
   time_t mStartTime;
-  int    mDuration;
-  char   mTitle[100];
-  char   mShortDescription[400];
+  int mDuration;
+  char mTitle[100];
+  char mShortDescription[400];
   };
 //}}}
 //{{{
