@@ -21,16 +21,16 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
+#include "../include/config.h"
 
 #if defined(ARCH_X86) || defined(ARCH_X86_64)
 
 #include <inttypes.h>
 
-#include "mpeg2.h"
-#include "attributes.h"
+#include "../include/mpeg2.h"
+#include "../include/attributes.h"
 #include "mpeg2_internal.h"
-#include "mmx.h"
+#include "../include/mmx.h"
 
 #define CPU_MMXEXT 0
 #define CPU_3DNOW 1

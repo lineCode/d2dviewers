@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="libmpeg2.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="libmpeg2\alloc.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -51,6 +48,18 @@
     <ClCompile Include="libvo\video_out_null.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\mpeg2dec.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\getopt.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\gettimeofday.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libmpeg2\motion_comp_mmx.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libmpeg2\mpeg2_internal.h">
@@ -60,6 +69,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="libmpeg2\convert\convert_internal.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\getopt.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\gettimeofday.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -21,14 +21,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include "config.h"
+#include "../include/config.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
-#include <getopt.h>
+#include "../src/getopt.h"
 #ifdef HAVE_IO_H
 #include <fcntl.h>
 #include <io.h>
@@ -38,8 +38,8 @@
 #endif
 #include <inttypes.h>
 
-#include "mpeg2.h"
-#include "video_out.h"
+#include "../include/mpeg2.h"
+#include "../include/video_out.h"
 #include "gettimeofday.h"
 
 static int buffer_size = 4096;

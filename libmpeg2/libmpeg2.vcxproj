@@ -142,7 +142,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="libmpeg2.cpp" />
     <ClCompile Include="libmpeg2\alloc.c" />
     <ClCompile Include="libmpeg2\convert\rgb.c" />
     <ClCompile Include="libmpeg2\convert\uyvy.c" />
@@ -150,15 +149,21 @@
     <ClCompile Include="libmpeg2\header.c" />
     <ClCompile Include="libmpeg2\idct.c" />
     <ClCompile Include="libmpeg2\motion_comp.c" />
+    <ClCompile Include="libmpeg2\motion_comp_mmx.c" />
     <ClCompile Include="libmpeg2\slice.c" />
     <ClCompile Include="libvo\video_out.c" />
     <ClCompile Include="libvo\video_out_dx.c" />
     <ClCompile Include="libvo\video_out_null.c" />
+    <ClCompile Include="src\getopt.c" />
+    <ClCompile Include="src\gettimeofday.c" />
+    <ClCompile Include="src\mpeg2dec.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libmpeg2\convert\convert_internal.h" />
     <ClInclude Include="libmpeg2\mpeg2_internal.h" />
     <ClInclude Include="libmpeg2\vlc.h" />
+    <ClInclude Include="src\getopt.h" />
+    <ClInclude Include="src\gettimeofday.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
