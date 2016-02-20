@@ -30,6 +30,8 @@ public:
   virtual ~cDecodeTransportStream() {
     avcodec_close (audCodecContext);
     avcodec_close (vidCodecContext);
+    av_parser_close (audParser);
+    av_parser_close (vidParser);
     }
   //}}}
 
@@ -523,8 +525,8 @@ private:
     AVCodec* audCodec = nullptr;
     AVCodecContext* audCodecContext = nullptr;
 
-    //AVCodecContext* subCodecContext = nullptr;
-    //AVCodec* subCodec = nullptr;
+    AVCodecContext* subCodecContext = nullptr;
+    AVCodec* subCodec = nullptr;
     //{{{  av init
     AVFormatContext* avFormatContext;
     avformat_open_input (&avFormatContext, filename, NULL, NULL);
@@ -569,9 +571,9 @@ private:
     //}}}
     //{{{  sub init
     if (subStream >= 0) {
-      //subCodecContext = avFormatContext->streams[subStream]->codec;
-      //subCodec = avcodec_find_decoder (subCodecContext->codec_id);
-      //avcodec_open2 (subCodecContext, subCodec, NULL);
+      subCodecContext = avFormatContext->streams[subStream]->codec;
+      subCodec = avcodec_find_decoder (subCodecContext->codec_id);
+      avcodec_open2 (subCodecContext, subCodec, NULL);
       }
     //}}}
 
@@ -646,8 +648,8 @@ private:
         else if (avPacket.stream_index == subStream) {
           //{{{  sub packet
           int got = 0;
-          //avsubtitle_free (&sub);
-          //avcodec_decode_subtitle2 (subCodecContext, &sub, &got, &avPacket);
+          avsubtitle_free (&sub);
+          avcodec_decode_subtitle2 (subCodecContext, &sub, &got, &avPacket);
           }
           //}}}
         av_free_packet (&avPacket);
@@ -693,6 +695,7 @@ private:
   //{{{  vars
   bool mShowChannel = false;
   bool mShowTransportStream = false;
+
   // tsSection
   cDecodeTransportStream mTs;
 

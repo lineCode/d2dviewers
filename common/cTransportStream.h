@@ -130,33 +130,33 @@
 //{{{  pat layout
 #define PAT_LEN 8
 typedef struct {
-  unsigned char table_id                  :8;
+  uint8_t table_id                  :8;
 
-  unsigned char section_length_hi         :4;
-  unsigned char dummy1                    :2;
-  unsigned char dummy                     :1;
-  unsigned char section_syntax_indicator  :1;
+  uint8_t section_length_hi         :4;
+  uint8_t dummy1                    :2;
+  uint8_t dummy                     :1;
+  uint8_t section_syntax_indicator  :1;
 
-  unsigned char section_length_lo         :8;
-  unsigned char transport_stream_id_hi    :8;
-  unsigned char transport_stream_id_lo    :8;
+  uint8_t section_length_lo         :8;
+  uint8_t transport_stream_id_hi    :8;
+  uint8_t transport_stream_id_lo    :8;
 
-  unsigned char current_next_indicator    :1;
-  unsigned char version_number            :5;
-  unsigned char dummy2                    :2;
+  uint8_t current_next_indicator    :1;
+  uint8_t version_number            :5;
+  uint8_t dummy2                    :2;
 
-  unsigned char section_number            :8;
-  unsigned char last_section_number       :8;
+  uint8_t section_number            :8;
+  uint8_t last_section_number       :8;
   } pat_t;
 
 #define PAT_PROG_LEN 4
 typedef struct {
-  unsigned char program_number_hi         :8;
-  unsigned char program_number_lo         :8;
+  uint8_t program_number_hi         :8;
+  uint8_t program_number_lo         :8;
 
-  unsigned char network_pid_hi            :5;
-  unsigned char                           :3;
-  unsigned char network_pid_lo            :8;
+  uint8_t network_pid_hi            :5;
+  uint8_t                           :3;
+  uint8_t network_pid_lo            :8;
   /* or program_map_pid (if prog_num=0)*/
   } pat_prog_t;
 //}}}
@@ -165,68 +165,68 @@ typedef struct {
 typedef struct {
    unsigned char table_id                  :8;
 
-   unsigned char section_length_hi         :4;
-   unsigned char                           :2;
-   unsigned char dummy                     :1; // has to be 0
-   unsigned char section_syntax_indicator  :1;
-   unsigned char section_length_lo         :8;
+   uint8_t section_length_hi         :4;
+   uint8_t                           :2;
+   uint8_t dummy                     :1; // has to be 0
+   uint8_t section_syntax_indicator  :1;
+   uint8_t section_length_lo         :8;
 
-   unsigned char program_number_hi         :8;
-   unsigned char program_number_lo         :8;
-   unsigned char current_next_indicator    :1;
-   unsigned char version_number            :5;
-   unsigned char                           :2;
-   unsigned char section_number            :8;
-   unsigned char last_section_number       :8;
-   unsigned char PCR_PID_hi                :5;
-   unsigned char                           :3;
-   unsigned char PCR_PID_lo                :8;
-   unsigned char program_info_length_hi    :4;
-   unsigned char                           :4;
-   unsigned char program_info_length_lo    :8;
+   uint8_t program_number_hi         :8;
+   uint8_t program_number_lo         :8;
+   uint8_t current_next_indicator    :1;
+   uint8_t version_number            :5;
+   uint8_t                           :2;
+   uint8_t section_number            :8;
+   uint8_t last_section_number       :8;
+   uint8_t PCR_PID_hi                :5;
+   uint8_t                           :3;
+   uint8_t PCR_PID_lo                :8;
+   uint8_t program_info_length_hi    :4;
+   uint8_t                           :4;
+   uint8_t program_info_length_lo    :8;
    //descrs
 } pmt_t;
 
 #define PMT_INFO_LEN 5
 typedef struct {
-   unsigned char stream_type        :8;
-   unsigned char elementary_PID_hi  :5;
-   unsigned char                    :3;
-   unsigned char elementary_PID_lo  :8;
-   unsigned char ES_info_length_hi  :4;
-   unsigned char                    :4;
-   unsigned char ES_info_length_lo  :8;
+   uint8_t stream_type        :8;
+   uint8_t elementary_PID_hi  :5;
+   uint8_t                    :3;
+   uint8_t elementary_PID_lo  :8;
+   uint8_t ES_info_length_hi  :4;
+   uint8_t                    :4;
+   uint8_t ES_info_length_lo  :8;
    // descrs
 } pmt_info_t;
 //}}}
 //{{{  nit layout
 #define NIT_LEN 10
 typedef struct {
-   unsigned char table_id                     :8;
+   uint8_t table_id                     :8;
 
-   unsigned char section_length_hi         :4;
-   unsigned char                           :3;
-   unsigned char section_syntax_indicator  :1;
-   unsigned char section_length_lo         :8;
+   uint8_t section_length_hi         :4;
+   uint8_t                           :3;
+   uint8_t section_syntax_indicator  :1;
+   uint8_t section_length_lo         :8;
 
-   unsigned char network_id_hi             :8;
-   unsigned char network_id_lo             :8;
-   unsigned char current_next_indicator    :1;
-   unsigned char version_number            :5;
-   unsigned char                           :2;
-   unsigned char section_number            :8;
-   unsigned char last_section_number       :8;
-   unsigned char network_descr_length_hi   :4;
-   unsigned char                           :4;
-   unsigned char network_descr_length_lo   :8;
+   uint8_t network_id_hi             :8;
+   uint8_t network_id_lo             :8;
+   uint8_t current_next_indicator    :1;
+   uint8_t version_number            :5;
+   uint8_t                           :2;
+   uint8_t section_number            :8;
+   uint8_t last_section_number       :8;
+   uint8_t network_descr_length_hi   :4;
+   uint8_t                           :4;
+   uint8_t network_descr_length_lo   :8;
   /* descrs */
 } nit_t;
 
 #define SIZE_NIT_MID 2
 typedef struct {                                 // after descrs
-   unsigned char transport_stream_loop_length_hi  :4;
-   unsigned char                                  :4;
-   unsigned char transport_stream_loop_length_lo  :8;
+   uint8_t transport_stream_loop_length_hi  :4;
+   uint8_t                                  :4;
+   uint8_t transport_stream_loop_length_lo  :8;
 } nit_mid_t;
 
 #define SIZE_NIT_END 4
@@ -236,77 +236,77 @@ struct nit_end_struct {
 
 #define NIT_TS_LEN 6
 typedef struct {
-   unsigned char transport_stream_id_hi      :8;
-   unsigned char transport_stream_id_lo      :8;
-   unsigned char original_network_id_hi      :8;
-   unsigned char original_network_id_lo      :8;
-   unsigned char transport_descrs_length_hi  :4;
-   unsigned char                             :4;
-   unsigned char transport_descrs_length_lo  :8;
+   uint8_t transport_stream_id_hi      :8;
+   uint8_t transport_stream_id_lo      :8;
+   uint8_t original_network_id_hi      :8;
+   uint8_t original_network_id_lo      :8;
+   uint8_t transport_descrs_length_hi  :4;
+   uint8_t                             :4;
+   uint8_t transport_descrs_length_lo  :8;
    /* descrs  */
 } nit_ts_t;
 //}}}
 //{{{  eit layout
 #define EIT_LEN 14
 typedef struct {
-   unsigned char table_id                    :8;
+   uint8_t table_id                    :8;
 
-   unsigned char section_length_hi           :4;
-   unsigned char                             :3;
-   unsigned char section_syntax_indicator    :1;
-   unsigned char section_length_lo           :8;
+   uint8_t section_length_hi           :4;
+   uint8_t                             :3;
+   uint8_t section_syntax_indicator    :1;
+   uint8_t section_length_lo           :8;
 
-   unsigned char service_id_hi               :8;
-   unsigned char service_id_lo               :8;
-   unsigned char current_next_indicator      :1;
-   unsigned char version_number              :5;
-   unsigned char                             :2;
-   unsigned char section_number              :8;
-   unsigned char last_section_number         :8;
-   unsigned char transport_stream_id_hi      :8;
-   unsigned char transport_stream_id_lo      :8;
-   unsigned char original_network_id_hi      :8;
-   unsigned char original_network_id_lo      :8;
-   unsigned char segment_last_section_number :8;
-   unsigned char segment_last_table_id       :8;
+   uint8_t service_id_hi               :8;
+   uint8_t service_id_lo               :8;
+   uint8_t current_next_indicator      :1;
+   uint8_t version_number              :5;
+   uint8_t                             :2;
+   uint8_t section_number              :8;
+   uint8_t last_section_number         :8;
+   uint8_t transport_stream_id_hi      :8;
+   uint8_t transport_stream_id_lo      :8;
+   uint8_t original_network_id_hi      :8;
+   uint8_t original_network_id_lo      :8;
+   uint8_t segment_last_section_number :8;
+   uint8_t segment_last_table_id       :8;
 } eit_t;
 
 #define EIT_EVENT_LEN 12
 typedef struct {
-   unsigned char event_id_hi                 :8;
-   unsigned char event_id_lo                 :8;
-   unsigned char mjd_hi                      :8;
-   unsigned char mjd_lo                      :8;
-   unsigned char start_time_h                :8;
-   unsigned char start_time_m                :8;
-   unsigned char start_time_s                :8;
-   unsigned char duration_h                  :8;
-   unsigned char duration_m                  :8;
-   unsigned char duration_s                  :8;
-   unsigned char descrs_loop_length_hi       :4;
-   unsigned char free_ca_mode                :1;
-   unsigned char running_status              :3;
-   unsigned char descrs_loop_length_lo       :8;
+   uint8_t event_id_hi                 :8;
+   uint8_t event_id_lo                 :8;
+   uint8_t mjd_hi                      :8;
+   uint8_t mjd_lo                      :8;
+   uint8_t start_time_h                :8;
+   uint8_t start_time_m                :8;
+   uint8_t start_time_s                :8;
+   uint8_t duration_h                  :8;
+   uint8_t duration_m                  :8;
+   uint8_t duration_s                  :8;
+   uint8_t descrs_loop_length_hi       :4;
+   uint8_t free_ca_mode                :1;
+   uint8_t running_status              :3;
+   uint8_t descrs_loop_length_lo       :8;
 } eit_event_t;
 //}}}
 //{{{  sdt layout
 #define SDT_LEN 11
 typedef struct {
-   unsigned char table_id                    :8;
-   unsigned char section_length_hi           :4;
-   unsigned char                             :3;
-   unsigned char section_syntax_indicator    :1;
-   unsigned char section_length_lo           :8;
-   unsigned char transport_stream_id_hi      :8;
-   unsigned char transport_stream_id_lo      :8;
-   unsigned char current_next_indicator      :1;
-   unsigned char version_number              :5;
-   unsigned char                             :2;
-   unsigned char section_number              :8;
-   unsigned char last_section_number         :8;
-   unsigned char original_network_id_hi      :8;
-   unsigned char original_network_id_lo      :8;
-   unsigned char                             :8;
+   uint8_t table_id                    :8;
+   uint8_t section_length_hi           :4;
+   uint8_t                             :3;
+   uint8_t section_syntax_indicator    :1;
+   uint8_t section_length_lo           :8;
+   uint8_t transport_stream_id_hi      :8;
+   uint8_t transport_stream_id_lo      :8;
+   uint8_t current_next_indicator      :1;
+   uint8_t version_number              :5;
+   uint8_t                             :2;
+   uint8_t section_number              :8;
+   uint8_t last_section_number         :8;
+   uint8_t original_network_id_hi      :8;
+   uint8_t original_network_id_lo      :8;
+   uint8_t                             :8;
 } sdt_t;
 
 #define GetSDTTransportStreamId(x) (HILO(((sdt_t*)x)->transport_stream_id))
@@ -314,37 +314,37 @@ typedef struct {
 
 #define SDT_DESCR_LEN 5
 typedef struct {
-   unsigned char service_id_hi                :8;
-   unsigned char service_id_lo                :8;
-   unsigned char eit_present_following_flag   :1;
-   unsigned char eit_schedule_flag            :1;
-   unsigned char                              :6;
-   unsigned char descrs_loop_length_hi        :4;
-   unsigned char free_ca_mode                 :1;
-   unsigned char running_status               :3;
-   unsigned char descrs_loop_length_lo        :8;
+   uint8_t service_id_hi                :8;
+   uint8_t service_id_lo                :8;
+   uint8_t eit_present_following_flag   :1;
+   uint8_t eit_schedule_flag            :1;
+   uint8_t                              :6;
+   uint8_t descrs_loop_length_hi        :4;
+   uint8_t free_ca_mode                 :1;
+   uint8_t running_status               :3;
+   uint8_t descrs_loop_length_lo        :8;
 } sdt_descr_t;
 //}}}
 //{{{  tdt layout
 #define TDT_LEN 8
 typedef struct {
-  unsigned char table_id                  :8;
-  unsigned char section_length_hi         :4;
-  unsigned char                           :3;
-  unsigned char section_syntax_indicator  :1;
-  unsigned char section_length_lo         :8;
-  unsigned char utc_mjd_hi                :8;
-  unsigned char utc_mjd_lo                :8;
-  unsigned char utc_time_h                :8;
-  unsigned char utc_time_m                :8;
-  unsigned char utc_time_s                :8;
+  uint8_t table_id                  :8;
+  uint8_t section_length_hi         :4;
+  uint8_t                           :3;
+  uint8_t section_syntax_indicator  :1;
+  uint8_t section_length_lo         :8;
+  uint8_t utc_mjd_hi                :8;
+  uint8_t utc_mjd_lo                :8;
+  uint8_t utc_time_h                :8;
+  uint8_t utc_time_m                :8;
+  uint8_t utc_time_s                :8;
   } tdt_t;
 //}}}
 
 //{{{
 typedef struct descr_gen_struct {
-  unsigned char descr_tag        :8;
-  unsigned char descr_length     :8;
+  uint8_t descr_tag        :8;
+  uint8_t descr_length     :8;
   } descr_gen_t;
 
 #define CastGenericDescr(x) ((descr_gen_t *)(x))
@@ -357,8 +357,8 @@ typedef struct descr_gen_struct {
 #define DESCR_NETWORK_NAME_LEN 2
 
 typedef struct descr_network_name_struct {
-  unsigned char descr_tag     :8;
-  unsigned char descr_length  :8;
+  uint8_t descr_tag     :8;
+  uint8_t descr_length  :8;
   } descr_network_name_t;
 
 #define CastNetworkNameDescr(x) ((descr_network_name_t *)(x))
@@ -368,8 +368,8 @@ typedef struct descr_network_name_struct {
 #define DESCR_SERVICE_LIST_LEN 2
 
 typedef struct descr_service_list_struct {
-  unsigned char descr_tag     :8;
-  unsigned char descr_length  :8;
+  uint8_t descr_tag     :8;
+  uint8_t descr_length  :8;
   } descr_service_list_t;
 
 #define CastServiceListDescr(x) ((descr_service_list_t *)(x))
@@ -378,9 +378,9 @@ typedef struct descr_service_list_struct {
 #define DESCR_SERVICE_LIST_LOOP_LEN 3
 
 typedef struct descr_service_list_loop_struct {
-  unsigned char service_id_hi  :8;
-  unsigned char service_id_lo  :8;
-  unsigned char service_type   :8;
+  uint8_t service_id_hi  :8;
+  uint8_t service_id_lo  :8;
+  uint8_t service_type   :8;
   } descr_service_list_loop_t;
 
 #define CastServiceListDescrLoop(x) ((descr_service_list_loop_t *)(x))
@@ -389,8 +389,8 @@ typedef struct descr_service_list_loop_struct {
 #define DESCR_BOUQUET_NAME_LEN 2
 
 typedef struct descr_bouquet_name_struct {
-  unsigned char descr_tag    :8;
-  unsigned char descr_length :8;
+  uint8_t descr_tag    :8;
+  uint8_t descr_length :8;
   } descr_bouquet_name_t;
 
 #define CastBouquetNameDescr(x) ((descr_bouquet_name_t *)(x))
@@ -399,10 +399,10 @@ typedef struct descr_bouquet_name_struct {
 #define DESCR_SERVICE_LEN  4
 
 typedef struct descr_service_struct {
-  unsigned char descr_tag             :8;
-  unsigned char descr_length          :8;
-  unsigned char service_type          :8;
-  unsigned char provider_name_length  :8;
+  uint8_t descr_tag             :8;
+  uint8_t descr_length          :8;
+  uint8_t service_type          :8;
+  uint8_t provider_name_length  :8;
   } descr_service_t;
 
 #define CastServiceDescr(x) ((descr_service_t *)(x))
@@ -411,12 +411,12 @@ typedef struct descr_service_struct {
 #define DESCR_SHORT_EVENT_LEN 6
 
 typedef struct descr_short_event_struct {
-  unsigned char descr_tag         :8;
-  unsigned char descr_length      :8;
-  unsigned char lang_code1        :8;
-  unsigned char lang_code2        :8;
-  unsigned char lang_code3        :8;
-  unsigned char event_name_length :8;
+  uint8_t descr_tag         :8;
+  uint8_t descr_length      :8;
+  uint8_t lang_code1        :8;
+  uint8_t lang_code2        :8;
+  uint8_t lang_code3        :8;
+  uint8_t event_name_length :8;
   } descr_short_event_t;
 
 #define CastShortEventDescr(x) ((descr_short_event_t *)(x))
@@ -425,15 +425,15 @@ typedef struct descr_short_event_struct {
 #define DESCR_EXTENDED_EVENT_LEN 7
 
 typedef struct descr_extended_event_struct {
-  unsigned char descr_tag          :8;
-  unsigned char descr_length       :8;
+  uint8_t descr_tag          :8;
+  uint8_t descr_length       :8;
   /* TBD */
-  unsigned char last_descr_number  :4;
-  unsigned char descr_number       :4;
-  unsigned char lang_code1         :8;
-  unsigned char lang_code2         :8;
-  unsigned char lang_code3         :8;
-  unsigned char length_of_items    :8;
+  uint8_t last_descr_number  :4;
+  uint8_t descr_number       :4;
+  uint8_t lang_code1         :8;
+  uint8_t lang_code2         :8;
+  uint8_t lang_code3         :8;
+  uint8_t length_of_items    :8;
   } descr_extended_event_t;
 
 #define CastExtendedEventDescr(x) ((descr_extended_event_t *)(x))
@@ -442,7 +442,7 @@ typedef struct descr_extended_event_struct {
 #define ITEM_EXTENDED_EVENT_LEN 1
 
 typedef struct item_extended_event_struct {
-  unsigned char item_description_length               :8;
+  uint8_t item_description_length               :8;
   } item_extended_event_t;
 
 #define CastExtendedEventItem(x) ((item_extended_event_t *)(x))
@@ -452,15 +452,15 @@ typedef struct item_extended_event_struct {
 #define DESCR_COMPONENT_LEN  8
 
 typedef struct descr_component_struct {
-  unsigned char descr_tag       :8;
-  unsigned char descr_length    :8;
-  unsigned char stream_content  :4;
-  unsigned char reserved        :4;
-  unsigned char component_type  :8;
-  unsigned char component_tag   :8;
-  unsigned char lang_code1      :8;
-  unsigned char lang_code2      :8;
-  unsigned char lang_code3      :8;
+  uint8_t descr_tag       :8;
+  uint8_t descr_length    :8;
+  uint8_t stream_content  :4;
+  uint8_t reserved        :4;
+  uint8_t component_type  :8;
+  uint8_t component_tag   :8;
+  uint8_t lang_code1      :8;
+  uint8_t lang_code2      :8;
+  uint8_t lang_code3      :8;
   } descr_component_t;
 
 #define CastComponentDescr(x) ((descr_component_t *)(x))
@@ -469,18 +469,18 @@ typedef struct descr_component_struct {
 #define DESCR_CONTENT_LEN 2
 
 typedef struct descr_content_struct {
-  unsigned char descr_tag     :8;
-  unsigned char descr_length  :8;
+  uint8_t descr_tag     :8;
+  uint8_t descr_length  :8;
   } descr_content_t;
 
 #define CastContentDescr(x) ((descr_content_t *)(x))
 
 
 typedef struct nibble_content_struct {
-  unsigned char user_nibble_2           :4;
-  unsigned char user_nibble_1           :4;
-  unsigned char content_nibble_level_2  :4;
-  unsigned char content_nibble_level_1  :4;
+  uint8_t user_nibble_2           :4;
+  uint8_t user_nibble_1           :4;
+  uint8_t content_nibble_level_2  :4;
+  uint8_t content_nibble_level_1  :4;
   } nibble_content_t;
 
 #define CastContentNibble(x) ((nibble_content_t *)(x))
@@ -489,8 +489,8 @@ typedef struct nibble_content_struct {
 #define DESCR_SUBTITLING_LEN 2
 
 typedef struct descr_subtitling_struct {
-  unsigned char descr_tag      :8;
-  unsigned char descr_length   :8;
+  uint8_t descr_tag      :8;
+  uint8_t descr_length   :8;
   } descr_subtitling_t;
 
 #define CastSubtitlingDescr(x) ((descr_subtitling_t *)(x))
@@ -498,14 +498,14 @@ typedef struct descr_subtitling_struct {
 #define ITEM_SUBTITLING_LEN 8
 
 typedef struct item_subtitling_struct {
-  unsigned char lang_code1             :8;
-  unsigned char lang_code2             :8;
-  unsigned char lang_code3             :8;
-  unsigned char subtitling_type        :8;
-  unsigned char composition_page_id_hi :8;
-  unsigned char composition_page_id_lo :8;
-  unsigned char ancillary_page_id_hi   :8;
-  unsigned char ancillary_page_id_lo   :8;
+  uint8_t lang_code1             :8;
+  uint8_t lang_code2             :8;
+  uint8_t lang_code3             :8;
+  uint8_t subtitling_type        :8;
+  uint8_t composition_page_id_hi :8;
+  uint8_t composition_page_id_lo :8;
+  uint8_t ancillary_page_id_hi   :8;
+  uint8_t ancillary_page_id_lo   :8;
   } item_subtitling_t;
 
 #define CastSubtitlingItem(x) ((item_subtitling_t *)(x))
@@ -514,29 +514,29 @@ typedef struct item_subtitling_struct {
 #define DESCR_TERRESTRIAL_DELIVERY_SYSTEM_LEN XX
 
 typedef struct descr_terrestrial_delivery_struct {
-  unsigned char descr_tag      :8;
-  unsigned char descr_length   :8;
+  uint8_t descr_tag      :8;
+  uint8_t descr_length   :8;
 
-  unsigned char frequency1            :8;
-  unsigned char frequency2            :8;
-  unsigned char frequency3            :8;
-  unsigned char frequency4            :8;
+  uint8_t frequency1            :8;
+  uint8_t frequency2            :8;
+  uint8_t frequency3            :8;
+  uint8_t frequency4            :8;
 
-  unsigned char reserved1             :5;
-  unsigned char bandwidth             :3;
+  uint8_t reserved1             :5;
+  uint8_t bandwidth             :3;
 
-  unsigned char code_rate_HP          :3;
-  unsigned char hierarchy             :3;
-  unsigned char constellation         :2;
-  unsigned char other_frequency_flag  :1;
-  unsigned char transmission_mode     :2;
-  unsigned char guard_interval        :2;
-  unsigned char code_rate_LP          :3;
+  uint8_t code_rate_HP          :3;
+  uint8_t hierarchy             :3;
+  uint8_t constellation         :2;
+  uint8_t other_frequency_flag  :1;
+  uint8_t transmission_mode     :2;
+  uint8_t guard_interval        :2;
+  uint8_t code_rate_LP          :3;
 
-  unsigned char reserver2             :8;
-  unsigned char reserver3             :8;
-  unsigned char reserver4             :8;
-  unsigned char reserver5             :8;
+  uint8_t reserver2             :8;
+  uint8_t reserver3             :8;
+  uint8_t reserver4             :8;
+  uint8_t reserver5             :8;
   } descr_terrestrial_delivery_system_t;
 
 #define CastTerrestrialDeliverySystemDescr(x) ((descr_terrestrial_delivery_system_t *)(x))
@@ -546,8 +546,8 @@ typedef struct descr_terrestrial_delivery_struct {
 #define DESCR_FREQUENCY_LIST_LEN XX
 
 typedef struct descr_frequency_list_struct {
-  unsigned char descr_tag      :8;
-  unsigned char descr_length   :8;
+  uint8_t descr_tag      :8;
+  uint8_t descr_length   :8;
   /* TBD */
   } descr_frequency_list_t;
 
@@ -1214,7 +1214,7 @@ private:
   //}}}
 
   //{{{
-  unsigned long crc32 (unsigned char* data, int len) {
+  unsigned long crc32 (uint8_t* data, int len) {
 
     unsigned long crc = 0xffffffff;
     for (int i = 0; i < len; i++)
@@ -1224,7 +1224,7 @@ private:
     }
   //}}}
   //{{{
-  void parsePat (unsigned char* buf) {
+  void parsePat (uint8_t* buf) {
   // PAT declares programPid,sid to mPogramMap, recognieses programPid PMT to declare service streams
 
     pat_t* Pat = (pat_t*)buf;
@@ -1244,7 +1244,7 @@ private:
     //int tsid = HILO (Pat->transport_stream_id);
     //printf ("PAT tsid:%d\n", tsid);
 
-    unsigned char* ptr = buf + PAT_LEN;
+    uint8_t* ptr = buf + PAT_LEN;
     int sectionLength = HILO(Pat->section_length) + 3 - PAT_LEN - 4;
     while (sectionLength > 0) {
       pat_prog_t* patProgram = (pat_prog_t*)ptr;
@@ -1263,7 +1263,7 @@ private:
     }
   //}}}
   //{{{
-  void parseNit (unsigned char* buf) {
+  void parseNit (uint8_t* buf) {
 
     nit_t* Nit = (nit_t*)buf;
 
@@ -1284,7 +1284,7 @@ private:
 
     int networkId = HILO (Nit->network_id);
 
-    unsigned char* ptr = buf + NIT_LEN;
+    uint8_t* ptr = buf + NIT_LEN;
     int loopLength = HILO (Nit->network_descr_length);
     int sectionLength = HILO (Nit->section_length) + 3 - NIT_LEN - 4;
     if (loopLength <= sectionLength) {
@@ -1320,7 +1320,7 @@ private:
     }
   //}}}
   //{{{
-  void parseSdt (unsigned char* buf) {
+  void parseSdt (uint8_t* buf) {
   // SDT add new services to mServiceMap declaring serviceType, name
 
     sdt_t* Sdt = (sdt_t*)buf;
@@ -1341,7 +1341,7 @@ private:
 
     //printf ("SDT - tsid:%d onid:%d\n", tsid, onid);
 
-    unsigned char* ptr = buf + SDT_LEN;
+    uint8_t* ptr = buf + SDT_LEN;
     int sectionLength = HILO (Sdt->section_length) + 3 - SDT_LEN - 4;
     while (sectionLength > 0) {
       sdt_descr_t* SdtDescr = (sdt_descr_t*)ptr;
@@ -1376,7 +1376,7 @@ private:
                 char name[100];
                 getDescrName (
                   ptr + DESCR_SERVICE_LEN + CastServiceDescr(ptr)->provider_name_length + 1,
-                  *((unsigned char*)(ptr + DESCR_SERVICE_LEN + CastServiceDescr(ptr)->provider_name_length)),
+                  *((uint8_t*)(ptr + DESCR_SERVICE_LEN + CastServiceDescr(ptr)->provider_name_length)),
                   name);
 
                 // insert new cService, get serviceIt iterator
@@ -1415,7 +1415,7 @@ private:
     }
   //}}}
   //{{{
-  void parseEit (unsigned char* buf) {
+  void parseEit (uint8_t* buf) {
 
     eit_t* Eit = (eit_t*)buf;
     if (crc32 (buf, HILO (Eit->section_length) + 3)) {
@@ -1441,7 +1441,7 @@ private:
       //}}}
 
     // parse Descrs
-    unsigned char* ptr = buf + EIT_LEN;
+    uint8_t* ptr = buf + EIT_LEN;
     int sectionLength = HILO (Eit->section_length) + 3 - EIT_LEN - 4;
     while (sectionLength > 0) {
       eit_event_t* EitEvent = (eit_event_t*)ptr;
@@ -1484,7 +1484,7 @@ private:
               if (shortDescription == NULL) {
                 getDescrText (
                   ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length+1,
-                  *((unsigned char*)(ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length)),
+                  *((uint8_t*)(ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length)),
                   siShortDescription);
                   shortDescription = siShortDescription;
                   }
@@ -1510,20 +1510,20 @@ private:
             //0x4E extended_event_descr
             //#define DESCR_EXTENDED_EVENT_LEN 7
             //typedef struct descr_extended_event_struct {
-            //  unsigned char descr_tag                         :8;
-             // unsigned char descr_length                      :8;
+            //  uint8_t descr_tag                         :8;
+             // uint8_t descr_length                      :8;
             //  /* TBD */
-            //  unsigned char last_descr_number                 :4;
-            //  unsigned char descr_number                      :4;
-            //  unsigned char lang_code1                             :8;
-            //  unsigned char lang_code2                             :8;
-            //  unsigned char lang_code3                             :8;
-            //  unsigned char length_of_items                        :8;
+            //  uint8_t last_descr_number                 :4;
+            //  uint8_t descr_number                      :4;
+            //  uint8_t lang_code1                             :8;
+            //  uint8_t lang_code2                             :8;
+            //  uint8_t lang_code3                             :8;
+            //  uint8_t length_of_items                        :8;
             //  } descr_extended_event_t;
             //#define CastExtendedEventdescr(x) ((descr_extended_event_t *)(x))
             //#define ITEM_EXTENDED_EVENT_LEN 1
             //typedef struct item_extended_event_struct {
-            //  unsigned char item_description_length               :8;
+            //  uint8_t item_description_length               :8;
             //  } item_extended_event_t;
             //#define CastExtendedEventItem(x) ((item_extended_event_t *)(x))
 
@@ -1573,7 +1573,7 @@ private:
     }
   //}}}
   //{{{
-  void parseTdt (unsigned char* buf) {
+  void parseTdt (uint8_t* buf) {
 
     tdt_t* Tdt = (tdt_t*)buf;
     if (Tdt->table_id == TID_TDT) {
@@ -1586,7 +1586,7 @@ private:
     }
   //}}}
   //{{{
-  void parsePmt (int pid, unsigned char* buf) {
+  void parsePmt (int pid, uint8_t* buf) {
   // PMT declares streams for a service
 
     pmt_t* pmt = (pmt_t*)buf;
@@ -1619,7 +1619,7 @@ private:
 
       serviceIt->second.setPcrPid (HILO (pmt->PCR_PID));
 
-      unsigned char* ptr = buf + PMT_LEN;
+      uint8_t* ptr = buf + PMT_LEN;
       int sectionLength = HILO (pmt->section_length) + 3 - 4;
       int programInfoLength = HILO (pmt->program_info_length);
 
@@ -1671,7 +1671,7 @@ private:
     }
   //}}}
   //{{{
-  void parseSection (int pid, unsigned char* buf) {
+  void parseSection (int pid, uint8_t* buf) {
 
     switch (pid) {
       case PID_PAT: parsePat (buf); break;
@@ -1697,7 +1697,7 @@ private:
     }
   //}}}
   //{{{
-  void getDescrText (unsigned char* buf, int len, char* text) {
+  void getDescrText (uint8_t* buf, int len, char* text) {
 
     for (int i = 0; i < len; i++) {
       if (*buf == 0)
@@ -1719,7 +1719,7 @@ private:
     }
   //}}}
   //{{{
-  void getDescrName (unsigned char* buf, int len, char* name) {
+  void getDescrName (uint8_t* buf, int len, char* name) {
 
     for (int i = 0; i < len; i++) {
       if (*buf == 0)
@@ -1738,7 +1738,7 @@ private:
     }
   //}}}
   //{{{
-  void parseDescr (char* sectionName, int key, unsigned char* buf, int tid) {
+  void parseDescr (char* sectionName, int key, uint8_t* buf, int tid) {
 
     switch (GetDescrTag(buf)) {
       case 0x25: // NIT2
@@ -1749,7 +1749,7 @@ private:
         char Text2[400];
 
         getDescrText (buf + DESCR_EXTENDED_EVENT_LEN + CastExtendedEventDescr(buf)->length_of_items + 1,
-                      *((unsigned char*)(buf + DESCR_EXTENDED_EVENT_LEN + CastExtendedEventDescr(buf)->length_of_items)),
+                      *((uint8_t*)(buf + DESCR_EXTENDED_EVENT_LEN + CastExtendedEventDescr(buf)->length_of_items)),
                       Text);
         printf ("extended event - %d %d %c%c%c %s\n",
           CastExtendedEventDescr(buf)->descr_number,
@@ -1759,21 +1759,21 @@ private:
           CastExtendedEventDescr(buf)->lang_code3,
           Text);
 
-        unsigned char* ptr = buf + DESCR_EXTENDED_EVENT_LEN;
+        uint8_t* ptr = buf + DESCR_EXTENDED_EVENT_LEN;
         int length = CastExtendedEventDescr(buf)->length_of_items;
         while ((length > 0) && (length < GetDescrLength (buf))) {
           getDescrText (ptr + ITEM_EXTENDED_EVENT_LEN,
                         CastExtendedEventItem(ptr)->item_description_length, Text);
           getDescrText (ptr + ITEM_EXTENDED_EVENT_LEN + CastExtendedEventItem(ptr)->item_description_length + 1,
-                        *((unsigned char* )(ptr + ITEM_EXTENDED_EVENT_LEN + CastExtendedEventItem(ptr)->item_description_length)),
+                        *((uint8_t* )(ptr + ITEM_EXTENDED_EVENT_LEN + CastExtendedEventItem(ptr)->item_description_length)),
                         Text2);
           printf ("- %s %s\n", Text, Text2);
 
           length -= ITEM_EXTENDED_EVENT_LEN + CastExtendedEventItem(ptr)->item_description_length +
-                      *((unsigned char* )(ptr + ITEM_EXTENDED_EVENT_LEN +
+                      *((uint8_t* )(ptr + ITEM_EXTENDED_EVENT_LEN +
                       CastExtendedEventItem(ptr)->item_description_length)) + 1;
           ptr += ITEM_EXTENDED_EVENT_LEN + CastExtendedEventItem(ptr)->item_description_length +
-                  *((unsigned char* )(ptr + ITEM_EXTENDED_EVENT_LEN +
+                  *((uint8_t* )(ptr + ITEM_EXTENDED_EVENT_LEN +
                    CastExtendedEventItem(ptr)->item_description_length)) + 1;
           }
 
@@ -1814,7 +1814,7 @@ private:
         //}}}
       case DESCR_SERVICE_LIST: {
         //{{{  service list
-        unsigned char* ptr = buf;
+        uint8_t* ptr = buf;
         int length = GetDescrLength(buf);
 
         while (length > 0) {
@@ -1854,9 +1854,9 @@ private:
     }
   //}}}
   //{{{
-  void parseDescrs (char* sectionName, int key, unsigned char* buf, int len, unsigned char tid) {
+  void parseDescrs (char* sectionName, int key, uint8_t* buf, int len, uint8_t tid) {
 
-   unsigned char* ptr = buf;
+   uint8_t* ptr = buf;
    int DescrLength = 0;
 
    while (DescrLength < len) {
@@ -1871,20 +1871,20 @@ private:
     }
   //}}}
 
-  // vars
-  time_t mCurTime;
-  wchar_t wTimeStr[25];
-  wchar_t wNetworkNameStr[20];
-
-  int mPackets = 0;
-  int mDiscontinuity = 0;
-
-  float mLargest = 10000.0f;
-
+  //{{{  private vars
   tPidInfoMap mPidInfoMap;
   tProgramMap mProgramMap;
   tServiceMap mServiceMap;
 
+  int mPackets = 0;
+  int mDiscontinuity = 0;
+  float mLargest = 10000.0f;
+
+  time_t mCurTime;
+  wchar_t wTimeStr[25];
+  wchar_t wNetworkNameStr[20];
+
   int mSelectedVidPid = 0;
   int mSelectedAudPid = 0;
+  //}}}
   };
