@@ -318,8 +318,8 @@ void onMouseProx (bool inClient, int x, int y) {
   bool showChannel = mShowChannel;
   bool transportStream = mShowTransportStream;
 
-  mShowTransportStream = inClient && (x > getClientF().width);
-  mShowChannel = inClient && (x < 80);
+  mShowTransportStream = inClient && (x > getClientF().width - 100);
+  mShowChannel = inClient && (x < 100);
 
   if ((transportStream != mShowTransportStream) || (showChannel != mShowChannel))
     changed();
