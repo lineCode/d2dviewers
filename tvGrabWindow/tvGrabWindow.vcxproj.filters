@@ -18,7 +18,7 @@
     <ClInclude Include="..\common\timer.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cTsSection.h">
+    <ClInclude Include="..\common\cTransportStream.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

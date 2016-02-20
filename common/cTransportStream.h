@@ -1,19 +1,23 @@
-// cTsSection.h
+// cTransportStream.h
 #pragma once
-//#define TSERROR
 //#define EIT_EXTENDED_EVENT_DEBUG
 //{{{  includes
-#include "pch.h"
-
 #include "huffDecoder.h"
 #include "dvbSubtitle.h"
 
 #include <locale>
 #include <time.h>
 //}}}
-//{{{  ts, pid, tid const
-// ts
+//{{{  macros
+#define HILO(x) (x##_hi << 8 | x##_lo)
 
+#define MjdToEpochTime(x) unsigned int((((x##_hi << 8) | x##_lo) - 40587) * 86400)
+
+#define BcdTimeToSeconds(x) ((3600 * ((10*((x##_h & 0xF0)>>4)) + (x##_h & 0xF))) + \
+                               (60 * ((10*((x##_m & 0xF0)>>4)) + (x##_m & 0xF))) + \
+                                     ((10*((x##_s & 0xF0)>>4)) + (x##_s & 0xF)))
+//}}}
+//{{{  pid, tid, serviceType const
 // pid
 #define PID_PAT          0x00   /* Program Association Table */
 #define PID_CAT          0x01   /* Conditional Access Table */
@@ -598,27 +602,7 @@ static unsigned long crcTable[256] = {
   0xbcb4666d, 0xb8757bda, 0xb5365d03, 0xb1f740b4};
 //}}}
 //}}}
-//{{{  macros
-#define HILO(x) (x##_hi << 8 | x##_lo)
 
-#define MjdToEpochTime(x) unsigned int((((x##_hi << 8) | x##_lo) - 40587) * 86400)
-
-#define BcdTimeToSeconds(x) ((3600 * ((10*((x##_h & 0xF0)>>4)) + (x##_h & 0xF))) + \
-                               (60 * ((10*((x##_m & 0xF0)>>4)) + (x##_m & 0xF))) + \
-                                     ((10*((x##_s & 0xF0)>>4)) + (x##_s & 0xF)))
-
-#define BcdTimeToMinutes(x) ((60 * ((10*((x##_h & 0xF0)>>4)) + (x##_h & 0xF))) + \
-                                  (((10*((x##_m & 0xF0)>>4)) + (x##_m & 0xF))))
-
-#define BcdCharToInt(x) (10*((x & 0xF0)>>4) + (x & 0xF))
-
-#define CheckBcdChar(x) ((((x & 0xF0)>>4) <= 9) && \
-                          ((x & 0x0F) <= 9))
-#define CheckBcdSignedChar(x) ((((x & 0xF0)>>4) >= 0) && (((x & 0xF0)>>4) <= 9) && \
-                                ((x & 0x0F) >= 0) && ((x & 0x0F) <= 9))
-
-#define SetRunningStatus(x,s) ((x)|=((s)&RUNNING_STATUS_RUNNING))
-//}}}
 //{{{
 class cPidInfo {
 public:
@@ -721,8 +705,7 @@ class cService {
 public:
   //{{{
   cService (int sid, int tsid, int onid, int type, char* name)
-    : mSid(sid), mTsid(tsid), mOnid(onid), mType(type),
-      mVidPid(-1), mNumAudPids(0), mSubPid(-1), mPcrPid(-1), mProgramPid(-1)  {
+    : mSid(sid), mTsid(tsid), mOnid(onid), mType(type) {
 
     strcpy (mName, name);
 
@@ -805,12 +788,12 @@ private:
   int mOnid;
   int mType;
 
-  int mVidPid;
-  int mNumAudPids;
+  int mVidPid = -1;
+  int mNumAudPids = 0;
   int mAudPids[2];
-  int mSubPid;
-  int mPcrPid;
-  int mProgramPid;
+  int mSubPid = -1;
+  int mPcrPid = -1;
+  int mProgramPid = -1;
 
   char mName[20];
 
@@ -828,38 +811,37 @@ typedef std::map<int,cService> tServiceMap;  // SDT inserts <sid,cService> into 
                                              //     - sets cService ServiceType,Name
                                              // PMT - sets cService stream pids
                                              // EIT - adds cService Now,Epg events
-class cTsSection {
+class cTransportStream {
 public:
+  cTransportStream() {}
+  virtual ~cTransportStream() {}
   //{{{
-  tPidInfoMap* getPidInfoMap() {
-
-    return &mPidInfoMap;
+  int getPackets() {
+    return mPackets;
     }
   //}}}
-
   //{{{
   int getDiscontinuity() {
     return mDiscontinuity;
     }
   //}}}
   //{{{
-  void parseSection (int pid, unsigned char* buf) {
-
-    switch (pid) {
-      case PID_PAT: parsePat (buf); break;
-      case PID_NIT: parseNit (buf); break;
-      case PID_SDT: parseSdt (buf); break;
-      case PID_EIT: parseEit (buf); break;
-      case PID_TDT: parseTdt (buf); break;
-      default:      parsePmt (pid, buf); break;
-      }
+  int getSelectedAudPid() {
+    return mSelectedAudPid;
     }
   //}}}
+  //{{{
+  int getSelectedVidPid() {
+    return mSelectedVidPid;
+    }
+  //}}}
+
   //{{{
   void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
 
     // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
     while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
+      mPackets++;
       //{{{  parse tsFrame start
       //bool tei = *tsPtr & 0x80;
       bool payStart = ((*tsPtr) & 0x40) != 0;
@@ -880,11 +862,11 @@ public:
       bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
                        (mProgramMap.find (pid) != mProgramMap.end());
 
-      tPidInfoMap::iterator pidInfoIt = getPidInfoMap()->find (pid);
-      if (pidInfoIt == getPidInfoMap()->end()) {
+      tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
+      if (pidInfoIt == mPidInfoMap.end()) {
         // new pid, insert new cPidInfo, get pidInfoIt iterator
         pair<tPidInfoMap::iterator, bool> insertPair =
-          getPidInfoMap()->insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
+          mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
         pidInfoIt = insertPair.first;
         }
 
@@ -986,19 +968,17 @@ public:
         }
         //}}}
 
-      else if (pid == mVidPid) {
-        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
+      else if (pid == mSelectedAudPid) {
+        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
+          if (pidInfoIt->second.mBufPtr)
+            decodeAudPes (&pidInfoIt->second);
+          //{{{  start next audPES
           if (!pidInfoIt->second.mBuf) {
-            //{{{  first vidPES, allocate resources
-            pidInfoIt->second.mBufSize = 500000;
+            // first audPES, allocate buffer
+            pidInfoIt->second.mBufSize = 5000;
             pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
-
-            allocateVidResources (&pidInfoIt->second);
             }
-            //}}}
-          else if (pidInfoIt->second.mBufPtr)
-            decodeVid (&pidInfoIt->second);
-          //{{{  start next vidPES
+
           pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
           parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
 
@@ -1010,19 +990,17 @@ public:
         copyPES = true;
         }
 
-      else if (pid == mAudPid) {
-        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
+      else if (pid == mSelectedVidPid) {
+        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
+          if (pidInfoIt->second.mBufPtr)
+            decodeVidPes (&pidInfoIt->second);
+          //{{{  start next vidPES
           if (!pidInfoIt->second.mBuf) {
-            //{{{  first audPES, allocate resources
-            pidInfoIt->second.mBufSize = 5000;
+            // first audPES, allocate buffer
+            pidInfoIt->second.mBufSize = 500000;
             pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
-
-            allocateAudResources (&pidInfoIt->second);
             }
-            //}}}
-          else if (pidInfoIt->second.mBufPtr)
-            decodeAud (&pidInfoIt->second);
-          //{{{  start next audPES
+
           pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
           parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
 
@@ -1049,41 +1027,6 @@ public:
     }
   //}}}
 
-  // public
-  //{{{
-  void renderPidInfo (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
-                      IDWriteTextFormat* textFormat,
-                      ID2D1SolidColorBrush* whiteBrush,
-                      ID2D1SolidColorBrush* blueBrush,
-                      ID2D1SolidColorBrush* blackBrush,
-                      ID2D1SolidColorBrush* greyBrush) {
-
-    if (!mPidInfoMap.empty()) {
-      // title
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
-
-      D2D1_RECT_F textRect = D2D1::RectF(0, 20.0f, (float)1024.0f, (float)client.height);
-      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
-
-      float top = 40.0f;
-      for (auto pidInfo : mPidInfoMap) {
-        float total = (float)pidInfo.second.mTotal;
-        if (total > mLargest)
-          mLargest = total;
-        float len = (total/mLargest) * (client.width-50.0f);
-        D2D1_RECT_F r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
-        d2dContext->FillRectangle (r, blueBrush);
-
-        textRect.top = top;
-        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
-        d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textRect, whiteBrush);
-
-        top += 14.0f;
-        }
-      }
-    }
-  //}}}
   //{{{
   void printServices() {
 
@@ -1108,14 +1051,67 @@ public:
       pidInfo.second.print();
     }
   //}}}
+  //{{{
+  void renderPidInfo (ID2D1DeviceContext* d2dContext, D2D1_SIZE_F client,
+                      IDWriteTextFormat* textFormat,
+                      ID2D1SolidColorBrush* whiteBrush,
+                      ID2D1SolidColorBrush* blueBrush,
+                      ID2D1SolidColorBrush* blackBrush,
+                      ID2D1SolidColorBrush* greyBrush) {
 
-  virtual void allocateVidResources (cPidInfo* pidInfo) {}
-  virtual void decodeVid (cPidInfo* pidInfo) {}
-  virtual void allocateAudResources (cPidInfo* pidInfo) {}
-  virtual void decodeAud (cPidInfo* pidInfo) {}
+    if (!mPidInfoMap.empty()) {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
+      D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, 1024.0f, client.height);
+      d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
 
-  tProgramMap mProgramMap;
-  tServiceMap mServiceMap;
+      float top = 40.0f;
+      for (auto pidInfo : mPidInfoMap) {
+        float total = (float)pidInfo.second.mTotal;
+        if (total > mLargest)
+          mLargest = total;
+        float len = (total/mLargest) * (client.width-50.0f);
+        D2D1_RECT_F r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
+        d2dContext->FillRectangle (r, blueBrush);
+
+        textr.top = top;
+        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
+        d2dContext->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+
+        top += 14.0f;
+        }
+      }
+    }
+  //}}}
+
+protected:
+  //{{{
+  virtual int64_t selectService (int index) {
+
+    int j = 0;
+    for (auto service :mServiceMap) {
+      if (j == index) {
+        int pcrPid = service.second.getPcrPid();
+        tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pcrPid);
+        if (pidInfoIt != mPidInfoMap.end()) {
+          mSelectedVidPid = service.second.getVidPid();
+          mSelectedAudPid = service.second.getAudPid();
+
+          printf ("selectService %d vid:%d aud:%d pcr:%d base:%lld\n",
+                  j, mSelectedVidPid, mSelectedAudPid, pcrPid, pidInfoIt->second.mPcr);
+          return pidInfoIt->second.mPcr;
+          }
+        return 0;
+        }
+      else
+        j++;
+      }
+
+    return 0;
+    }
+  //}}}
+  virtual void decodeAudPes (cPidInfo* pidInfo) {}
+  virtual void decodeVidPes (cPidInfo* pidInfo) {}
 
 private:
   //{{{
@@ -1389,13 +1385,9 @@ private:
 
     eit_t* Eit = (eit_t*)buf;
     if (crc32 (buf, HILO (Eit->section_length) + 3)) {
-      //{{{  badCrc
-      #ifdef TSERROR
       printf ("EIT - bad crc %d\n", HILO (Eit->section_length) + 3);
-      #endif
       return;
       }
-      //}}}
 
     int tid = Eit->table_id;
     int sid = HILO (Eit->service_id);
@@ -1644,6 +1636,19 @@ private:
       }
     }
   //}}}
+  //{{{
+  void parseSection (int pid, unsigned char* buf) {
+
+    switch (pid) {
+      case PID_PAT: parsePat (buf); break;
+      case PID_NIT: parseNit (buf); break;
+      case PID_SDT: parseSdt (buf); break;
+      case PID_EIT: parseEit (buf); break;
+      case PID_TDT: parseTdt (buf); break;
+      default:      parsePmt (pid, buf); break;
+      }
+    }
+  //}}}
 
   //{{{
   int64_t parseTimeStamp (uint8_t* tsPtr) {
@@ -1837,11 +1842,15 @@ private:
   wchar_t wTimeStr[25];
   wchar_t wNetworkNameStr[20];
 
-  float mLargest = 10000.0f;
+  int mPackets = 0;
   int mDiscontinuity = 0;
 
-  int mVidPid = 0;
-  int mAudPid = 0;
+  float mLargest = 10000.0f;
 
   tPidInfoMap mPidInfoMap;
+  tProgramMap mProgramMap;
+  tServiceMap mServiceMap;
+
+  int mSelectedVidPid = 0;
+  int mSelectedAudPid = 0;
   };

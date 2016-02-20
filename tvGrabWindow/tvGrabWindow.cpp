@@ -2,11 +2,11 @@
 //{{{  includes
 #include "pch.h"
 
-#include "../common/cD2dWindow.h"
 #include "../common/timer.h"
+#include "../common/cD2dWindow.h"
 
-#include "../common/cTsSection.h"
 #include "../common/cBda.h"
+#include "../common/cTransportStream.h"
 //}}}
 
 class cTvGrabWindow : public cD2dWindow {
@@ -23,7 +23,7 @@ public:
     if (freq)
       bdaReader (freq);
     else
-      tsFileReader (arg);
+      thread ([=]() { tsFileReader (arg); } ).detach();
 
     messagePump();
     }
@@ -88,17 +88,20 @@ protected:
     dc->Clear (ColorF(ColorF::Black));
 
     wchar_t wStr[200];
-    swprintf(wStr, 200, L"nnnnnnnn %d", mFilePtr);
+    swprintf (wStr, 200, L"%s %4.3fm dis:%d p:%4.3fm",
+              mFileName, mFilePtr / 1000000.0, mTs.getDiscontinuity(), mTs.getPackets()/1000000.0);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
-    mTsSection.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+    mTs.renderPidInfo  (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
     }
   //}}}
 
 private:
   //{{{
   void tsFileReader (wchar_t* wFileName) {
+
+    mFileName = wFileName;
 
     uint8_t tsBuf[256*188];
 
@@ -109,7 +112,7 @@ private:
     while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
         mFilePtr += numberOfBytesRead;
-        mTsSection.tsParser (tsBuf, tsBuf + (256*188));
+        mTs.tsParser (tsBuf, tsBuf + (256*188));
         }
       else
         break;
@@ -120,6 +123,8 @@ private:
   //}}}
   //{{{
   void bdaReader (int freq) {
+
+    mFileName = L"Live Bda";
 
     cBda bda (128*240*188);
     bda.createGraph (freq);
@@ -138,7 +143,7 @@ private:
         if (numberOfBytesWritten != blockLen)
           printf ("writefile error%d %d\n", blockLen, numberOfBytesWritten);
 
-        mTsSection.tsParser (ptr, ptr + blockLen);
+        mTs.tsParser (ptr, ptr + blockLen);
         bda.decommitBlock (blockLen);
         }
 
@@ -148,8 +153,11 @@ private:
     }
   //}}}
 
+  // vars
+  wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
-  cTsSection mTsSection;
+
+  cTransportStream mTs;
   };
 
 //{{{

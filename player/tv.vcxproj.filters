@@ -31,10 +31,10 @@
     <ClInclude Include="..\common\cBda.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cTsSection.h">
+    <ClInclude Include="..\common\timer.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\timer.h">
+    <ClInclude Include="..\common\cTransportStream.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

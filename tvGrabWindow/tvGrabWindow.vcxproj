@@ -31,7 +31,7 @@
   <ItemGroup>
     <ClInclude Include="..\common\cBda.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cTsSection.h" />
+    <ClInclude Include="..\common\cTransportStream.h" />
     <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
