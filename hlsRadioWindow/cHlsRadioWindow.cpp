@@ -66,13 +66,6 @@ public:
 
 protected:
   //{{{
-  int keyInc() {
-  // control = hour
-  // shift   = min
-    return controlKeyDown ? 60*60 : shiftKeyDown ? 60 : 1;
-    }
-  //}}}
-  //{{{
   bool onKey (int key) {
 
     switch (key) {

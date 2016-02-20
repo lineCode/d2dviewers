@@ -45,6 +45,14 @@ protected:
   virtual void onMouseMove (bool right, int x, int y, int xInc, int yInc) {}
   virtual void onMouseUp (bool right, bool mouseMoved, int x, int y) {}
   virtual void onDraw (ID2D1DeviceContext* dc) = 0;
+  //{{{
+  int keyInc() {
+  // control+shift = 1hour
+  // shift   = 5min
+  // control = 1min
+    return controlKeyDown ? (shiftKeyDown ? 60*60 : 60) : (shiftKeyDown ? 5*60 : 1);
+    }
+  //}}}
   //{{{  protected vars
   int keyDown;
   bool shiftKeyDown;
