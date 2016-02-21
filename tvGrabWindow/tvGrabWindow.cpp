@@ -115,7 +115,7 @@ private:
     while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
         mFilePtr += numberOfBytesRead;
-        mTs.demux (tsBuf, tsBuf + (256*188), true);
+        mTs.demux (tsBuf, tsBuf + (256*188), false);
         }
       else
         break;
@@ -146,7 +146,7 @@ private:
         if (numberOfBytesWritten != blockLen)
           printf ("writefile error%d %d\n", blockLen, numberOfBytesWritten);
 
-        mTs.demux (ptr, ptr + blockLen, true);
+        mTs.demux (ptr, ptr + blockLen, false);
         bda.decommitBlock (blockLen);
         }
 

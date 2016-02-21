@@ -29,10 +29,10 @@ public:
   //{{{
   virtual ~cDecodeTransportStream() {
 
-    avcodec_close (audCodecContext);
+    avcodec_close (audContext);
     av_parser_close (audParser);
 
-    avcodec_close (vidCodecContext);
+    avcodec_close (vidContext);
     av_parser_close (vidParser);
     }
   //}}}
@@ -96,27 +96,27 @@ protected:
     if (!audParser) { // allocate decoder
       audParser = av_parser_init (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
       audCodec = avcodec_find_decoder (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
-      audCodecContext = avcodec_alloc_context3 (audCodec);
-      avcodec_open2 (audCodecContext, audCodec, NULL);
+      audContext = avcodec_alloc_context3 (audCodec);
+      avcodec_open2 (audContext, audCodec, NULL);
       }
 
     AVPacket avPacket;
     av_init_packet (&avPacket);
-    avPacket.data = pidInfo->mBuf;
+    avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
 
     int64_t pts = pidInfo->mPts;
-    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuf);
-    pidInfo->mBufPtr = pidInfo->mBuf;
+    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+    pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
-      int lenUsed = av_parser_parse2 (audParser, audCodecContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      int lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pidInfo->mBufPtr += lenUsed;
       pesLen -= lenUsed;
 
       if (avPacket.data) {
         int got = 0;
         AVFrame* avFrame = av_frame_alloc();
-        int bytesUsed = avcodec_decode_audio4 (audCodecContext, avFrame, &got, &avPacket);
+        int bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
         avPacket.data += bytesUsed;
         avPacket.size -= bytesUsed;
 
@@ -125,7 +125,7 @@ protected:
           //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
           pts += (avFrame->nb_samples * 90) / 48; // really 90000/48000
           short* samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
-          if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
+          if (audContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
             //{{{  16bit signed planar
             short* leftPtr = (short*)avFrame->data[0];
             short* rightPtr = (short*)avFrame->data[1];
@@ -135,7 +135,7 @@ protected:
               }
             }
             //}}}
-          else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
+          else if (audContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
             //{{{  32bit float planar
             float* leftPtr = (float*)avFrame->data[0];
             float* rightPtr = (float*)avFrame->data[1];
@@ -158,38 +158,37 @@ protected:
     if (!vidParser) { // allocate decoder
       vidParser = av_parser_init (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
       vidCodec = avcodec_find_decoder (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
-      vidCodecContext = avcodec_alloc_context3 (vidCodec);
-      avcodec_open2 (vidCodecContext, vidCodec, NULL);
+      vidContext = avcodec_alloc_context3 (vidCodec);
+      avcodec_open2 (vidContext, vidCodec, NULL);
       }
 
     AVPacket avPacket;
     av_init_packet (&avPacket);
-    avPacket.data = pidInfo->mBuf;
+    avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
 
-    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuf);
-    pidInfo->mBufPtr = pidInfo->mBuf;
+    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+    pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
-      int lenUsed = av_parser_parse2 (vidParser, vidCodecContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      int lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pidInfo->mBufPtr += lenUsed;
       pesLen -= lenUsed;
 
       if (avPacket.data) {
         AVFrame* avFrame = av_frame_alloc();
         int got = 0;
-        int bytesUsed = avcodec_decode_video2 (vidCodecContext, avFrame, &got, &avPacket);
+        int bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
         avPacket.data += bytesUsed;
         avPacket.size -= bytesUsed;
         if (got) {
           //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
           if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
-              (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use pts
-            mVidPts = pidInfo->mPts;
-          else // fake pts
-            mVidPts += 3600;
-          mYuvFrames[mNextFreeVidFrame].set (
-            mVidPts, avFrame->data, avFrame->linesize, vidCodecContext->width, vidCodecContext->height);
-          mNextFreeVidFrame = (mNextFreeVidFrame + 1) % maxVidFrames;
+              (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
+            mVidFakePts = pidInfo->mPts;
+          else // use fake pts
+            mVidFakePts += 90000/25;
+          mYuvFrames[mVidFrame].set (mVidFakePts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
+          mVidFrame = (mVidFrame + 1) % maxVidFrames;
           }
         av_frame_free (&avFrame);
         }
@@ -198,20 +197,20 @@ protected:
   //}}}
 
 private:
-  int64_t mVidPts = 0;
+  int64_t mVidFakePts = 0;
   int mLoadAudFrame = 0;
-
-  AVCodecParserContext* vidParser = nullptr;
-  AVCodec* vidCodec = nullptr;
-  AVCodecContext* vidCodecContext = nullptr;
 
   AVCodecParserContext* audParser  = nullptr;
   AVCodec* audCodec = nullptr;
-  AVCodecContext* audCodecContext = nullptr;
+  AVCodecContext* audContext = nullptr;
+
+  AVCodecParserContext* vidParser = nullptr;
+  AVCodec* vidCodec = nullptr;
+  AVCodecContext* vidContext = nullptr;
 
   cAudFrame mAudFrames[maxAudFrames];
 
-  int mNextFreeVidFrame = 0;
+  int mVidFrame = 0;
   cYuvFrame mYuvFrames[maxVidFrames];
   };
 //}}}
@@ -232,7 +231,7 @@ public:
 
     if (arg) {
       // launch loaderThread
-      thread ([=](){tsFileLoader(arg);}).detach();
+      thread ([=](){loader(arg);}).detach();
 
       // launch playerThread
       auto playerThread = std::thread ([=](){player();});
@@ -397,21 +396,26 @@ private:
   //}}}
 
   //{{{
-  void tsFileLoader (wchar_t* wFileName) {
+  void loader (wchar_t* wFileName) {
 
     av_register_all();
 
-    mFilePtr = 0;
-    int lastTs = 0;
     uint8_t tsBuf[0x100*188];
 
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
+    mFilePtr = 0;
+    int lastFilePtr = 0;
     DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 0x100*188, &numberOfBytesRead, NULL)) {
+    while (true) {
+      bool skipped = mFilePtr != lastFilePtr;
+      if (skipped)
+        SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
+      ReadFile(readFile, tsBuf, 0x100 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
-        mTs.demux (tsBuf, tsBuf + numberOfBytesRead, mFilePtr == lastTs);
-        lastTs = mFilePtr + numberOfBytesRead;
+        mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skipped);
+        mFilePtr += numberOfBytesRead;
+        lastFilePtr = mFilePtr;
 
         while (mTs.hasLoadedAud (mPlayAudFrame))
           Sleep (1);
@@ -419,9 +423,6 @@ private:
         if (mTs.getSelectedAudPid() <= 0)
          selectService (0);
         }
-
-      mFilePtr += numberOfBytesRead;
-      SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
       }
 
     CloseHandle (readFile);

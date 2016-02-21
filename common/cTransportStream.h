@@ -630,8 +630,8 @@ public:
     }
   //}}}
 
-  int  mPid;
-  int  mSid = -1;
+  int mPid;
+  int mSid = -1;
   bool mIsSection;
 
   int mStreamType = 0;
@@ -644,10 +644,10 @@ public:
 
   // content buffer
   int mSectionLength = 0;
-  size_t mBufBytes = 0;
-  uint8_t* mBufPtr = nullptr;
   int mBufSize = 0;
-  uint8_t* mBuf = nullptr;
+  uint8_t* mBuffer = nullptr;
+  uint8_t* mBufPtr = nullptr;
+  size_t mBufBytes = 0;
 
   // render text for speed,locking
   wchar_t mInfo[100];
@@ -839,9 +839,9 @@ public:
   //}}}
 
   //{{{
-  void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool continuous) {
+  void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool skipped) {
 
-    if (!continuous)
+    if (skipped)
       //{{{  reset pid continuity and buffers
       for (auto pidInfo : mPidInfoMap) {
         pidInfo.second.mContinuity = -1;
@@ -913,11 +913,11 @@ public:
               if (pointerField && (pidInfoIt->second.mBufBytes > 0)) {
                 //{{{  packet has end of last section
                 //printf ("PayStart- buffering end of last section len:%d %d\n", pointerField, (int)pidInfoIt->second.mBufBytes);
-                memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr+1, pointerField);
+                memcpy (pidInfoIt->second.mBuffer+ pidInfoIt->second.mBufBytes, tsPtr+1, pointerField);
                 pidInfoIt->second.mBufBytes += pointerField;
                 if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength+3) {
                   //printf ("  - parsed buf len:%d\n", (int)pidInfoIt->second.mBufBytes);
-                  parseSection (pid, pidInfoIt->second.mBuf);
+                  parseSection (pid, pidInfoIt->second.mBuffer);
                   }
 
                 else if (pidInfoIt->second.mBufBytes) {
@@ -946,11 +946,11 @@ public:
                     pointerField += pidInfoIt->second.mSectionLength+3;
                     }
                   else { // next section straddles packets, start buffering
-                    if (!pidInfoIt->second.mBuf) {
+                    if (!pidInfoIt->second.mBuffer) {
                       pidInfoIt->second.mBufSize = 4096;
-                      pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                      pidInfoIt->second.mBuffer= (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                       }
-                    memcpy (pidInfoIt->second.mBuf, tsPtr + pointerField + 1, 183 - pointerField);
+                    memcpy (pidInfoIt->second.mBuffer, tsPtr + pointerField + 1, 183 - pointerField);
                     pidInfoIt->second.mBufBytes = 183 - pointerField;
                     //printf ("  - buffered next section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
                     break;
@@ -960,12 +960,12 @@ public:
                 //}}}
               else {
                 //{{{  1st section straddles packets, start buffering
-                if (!pidInfoIt->second.mBuf) {
+                if (!pidInfoIt->second.mBuffer) {
                   pidInfoIt->second.mBufSize = 4096;
-                  pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                  pidInfoIt->second.mBuffer= (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                   }
 
-                memcpy (pidInfoIt->second.mBuf, tsPtr+pointerField+1, 183 - pointerField);
+                memcpy (pidInfoIt->second.mBuffer, tsPtr+pointerField+1, 183 - pointerField);
                 pidInfoIt->second.mBufBytes = 183 - pointerField;
                 //printf ("  - buffered 1st section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
                 }
@@ -974,7 +974,7 @@ public:
 
             else if (pidInfoIt->second.mBufBytes > 0) {
               // add to buffered section
-              memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr, tsFrameBytesLeft);
+              memcpy (pidInfoIt->second.mBuffer+ pidInfoIt->second.mBufBytes, tsPtr, tsFrameBytesLeft);
               pidInfoIt->second.mBufBytes += tsFrameBytesLeft;
               if (pidInfoIt->second.mBufBytes > pidInfoIt->second.mBufSize)
                 printf ("sectionBuf overflow %d\n", (int)pidInfoIt->second.mBufBytes);
@@ -983,7 +983,7 @@ public:
 
               if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength + 3) { // enough bytes to parse a section
                 //printf ("    -  parse buffered section\n");
-                parseSection (pid, pidInfoIt->second.mBuf);
+                parseSection (pid, pidInfoIt->second.mBuffer);
                 pidInfoIt->second.mBufBytes = 0;
                 }
               }
@@ -998,13 +998,13 @@ public:
                 decodeAudPes (&pidInfoIt->second);
 
               //  start next audPES
-              if (!pidInfoIt->second.mBuf) {
+              if (!pidInfoIt->second.mBuffer) {
                 // first audPES, allocate buffer
                 pidInfoIt->second.mBufSize = 5000;
-                pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                pidInfoIt->second.mBuffer= (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                 }
 
-              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
+              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuffer;
               parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
 
               int pesHeaderBytes = 9 + *(tsPtr+8);
@@ -1022,13 +1022,13 @@ public:
                 decodeVidPes (&pidInfoIt->second);
 
               //  start next vidPES
-              if (!pidInfoIt->second.mBuf) {
+              if (!pidInfoIt->second.mBuffer) {
                 // first audPES, allocate buffer
                 pidInfoIt->second.mBufSize = 500000;
-                pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                pidInfoIt->second.mBuffer= (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                 }
 
-              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
+              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuffer;
               parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
 
               int pesHeaderBytes = 9 + *(tsPtr+8);
@@ -1045,9 +1045,9 @@ public:
             memcpy (pidInfoIt->second.mBufPtr, tsPtr, tsFrameBytesLeft);
             pidInfoIt->second.mBufPtr += tsFrameBytesLeft;
 
-            if (pidInfoIt->second.mBufPtr > pidInfoIt->second.mBuf + pidInfoIt->second.mBufSize)
+            if (pidInfoIt->second.mBufPtr > pidInfoIt->second.mBuffer+ pidInfoIt->second.mBufSize)
               printf ("cTransportStream::demux *** PES overflow - %d %d\n",
-                      int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuf), pidInfoIt->second.mBufSize);
+                      int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuffer), pidInfoIt->second.mBufSize);
             }
             //}}}
           tsPtr += tsFrameBytesLeft;
