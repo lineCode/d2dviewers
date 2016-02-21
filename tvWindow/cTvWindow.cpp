@@ -38,6 +38,21 @@ public:
   //}}}
 
   //{{{
+  int64_t getAudPts() {
+    return mAudPts;
+    }
+  //}}}
+  //{{{
+  int64_t getVidPts() {
+    return mVidPts;
+    }
+  //}}}
+  //{{{
+  int64_t getAvDiff() {
+    return mAudPts - mVidPts;
+    }
+  //}}}
+  //{{{
   int64_t selectService (int index) {
   // select service by index, return basePts of pts when switched
 
@@ -105,7 +120,9 @@ protected:
     avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
 
-    int64_t pts = pidInfo->mPts;
+    mAudPts = pidInfo->mPts;
+    int64_t interpolatedPts = pidInfo->mPts;
+
     int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
     pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
@@ -121,9 +138,10 @@ protected:
         avPacket.size -= bytesUsed;
 
         if (got) {
-          mAudFrames[mLoadAudFrame % maxAudFrames].set (pts, 2, 48000, avFrame->nb_samples);
+          mAudFrames[mLoadAudFrame % maxAudFrames].set (interpolatedPts, 2, 48000, avFrame->nb_samples);
           //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
-          pts += (avFrame->nb_samples * 90) / 48; // really 90000/48000
+          interpolatedPts += (avFrame->nb_samples * 90000) / 48000;
+
           short* samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
           if (audContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
             //{{{  16bit signed planar
@@ -184,11 +202,10 @@ protected:
           //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
           if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
               (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
-            mVidFakePts = pidInfo->mPts;
+            mVidPts = pidInfo->mPts;
           else // use fake pts
-            mVidFakePts += 90000/25;
-          mYuvFrames[mVidFrame].set (mVidFakePts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
-          mVidFrame = (mVidFrame + 1) % maxVidFrames;
+            mVidPts += 90000/25;
+          bestLoadVidFrame()->set (mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
           }
         av_frame_free (&avFrame);
         }
@@ -197,7 +214,25 @@ protected:
   //}}}
 
 private:
-  int64_t mVidFakePts = 0;
+  //{{{
+  cYuvFrame* bestLoadVidFrame() {
+  // find first unused or oldest yuvFrame
+
+    cYuvFrame* yuvFrame = nullptr;
+    for (int i = 0; i < maxVidFrames; i++)
+      if (!mYuvFrames[i].mPts)
+        return &mYuvFrames[i];
+      else if (!yuvFrame || (yuvFrame->mPts > mYuvFrames[i].mPts))
+        yuvFrame = &mYuvFrames[i];
+
+    return yuvFrame;
+    }
+  //}}}
+
+  // vars
+  int64_t mAudPts = 0;
+  int64_t mVidPts = 0;
+
   int mLoadAudFrame = 0;
 
   AVCodecParserContext* audParser  = nullptr;
@@ -209,8 +244,6 @@ private:
   AVCodecContext* vidContext = nullptr;
 
   cAudFrame mAudFrames[maxAudFrames];
-
-  int mVidFrame = 0;
   cYuvFrame mYuvFrames[maxVidFrames];
   };
 //}}}
@@ -297,11 +330,17 @@ void onMouseProx (bool inClient, int x, int y) {
 //{{{
 void onMouseDown (bool right, int x, int y) {
 
-  if (x < 80) {
+  if (y > getClientF().height - 20.0f) {
+    mFilePtr = 188 * (int64_t)((x / getClientF().width) * (mFileSize / 188));
+    changed();
+    }
+
+  else if (x < 80) {
     int channel = (y / 20) - 1;
     if (channel >= 0)
       selectService (channel);
     }
+
   }
 //}}}
 //{{{
@@ -328,13 +367,19 @@ void onDraw (ID2D1DeviceContext* dc) {
   // draw title
   wchar_t wStr[200];
   D2D1_RECT_F textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
-  swprintf (wStr, 200, L"%4.1f filePtr:%4.3fm dis:%d", (mAudPts- mBasePts)/90000.0f, mFilePtr/1000000.0f, mTs.getDiscontinuity());
+  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%d av:%d",
+            (mAudPts- mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
+            (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff());
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), textr, getWhiteBrush());
 
   if (mShowChannel)
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+
+  float x = getClientF().width * (float)mFilePtr / (float)mFileSize;
+  D2D1_RECT_F r = D2D1::RectF(0, getClientF().height-10.0f, x, getClientF().height);
+  dc->FillRectangle (r, getYellowBrush());
   }
 //}}}
 
@@ -405,12 +450,15 @@ private:
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
     mFilePtr = 0;
-    int lastFilePtr = 0;
+    int64_t lastFilePtr = 0;
     DWORD numberOfBytesRead = 0;
     while (true) {
       bool skipped = mFilePtr != lastFilePtr;
-      if (skipped)
-        SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
+      if (skipped) {
+        LARGE_INTEGER large;
+        large.QuadPart = mFilePtr;
+        SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
+        }
       ReadFile(readFile, tsBuf, 0x100 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skipped);
@@ -423,6 +471,10 @@ private:
         if (mTs.getSelectedAudPid() <= 0)
          selectService (0);
         }
+
+      LARGE_INTEGER large;
+      GetFileSizeEx (readFile, &large);
+      mFileSize = large.QuadPart;
       }
 
     CloseHandle (readFile);
@@ -440,11 +492,14 @@ private:
       int16_t* samples;
       int numSampleBytes;
       mTs.getAudPlay (mPlayAudFrame, samples, numSampleBytes, mAudPts);
-      winAudioPlay ((mPlaying && samples) ? samples : mSilence, numSampleBytes, 1.0f);
+
       if (mPlaying && samples) {
+        winAudioPlay (samples, numSampleBytes, 1.0f);
         mPlayAudFrame++;
         changed();
         }
+      else
+        winAudioPlay (mSilence, 4096, 1.0f);
       }
 
     CoUninitialize();
@@ -466,7 +521,8 @@ private:
 
   int mPlayAudFrame = 0;
 
-  long mFilePtr = 0;
+  int64_t mFilePtr = 0;
+  int64_t mFileSize = 0;
 
   int64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
