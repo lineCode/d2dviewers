@@ -104,6 +104,8 @@ public:
     }
   //}}}
 
+  int mChannelSelector = -1;
+
 protected:
   //{{{
   void decodeAudPes (cPidInfo* pidInfo) {
@@ -115,13 +117,13 @@ protected:
       avcodec_open2 (audContext, audCodec, NULL);
       }
 
+    mAudPts = pidInfo->mPts;
+    int64_t interpolatedPts = pidInfo->mPts;
+
     AVPacket avPacket;
     av_init_packet (&avPacket);
     avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
-
-    mAudPts = pidInfo->mPts;
-    int64_t interpolatedPts = pidInfo->mPts;
 
     int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
     pidInfo->mBufPtr = pidInfo->mBuffer;
@@ -155,8 +157,15 @@ protected:
             //}}}
           else if (audContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
             //{{{  32bit float planar
-            float* leftPtr = (float*)avFrame->data[0];
-            float* rightPtr = (float*)avFrame->data[1];
+            int leftChan = 0;
+            int rightChan = 0;
+            if ((mChannelSelector > -1) && (mChannelSelector < avFrame->channels)) {
+              leftChan = mChannelSelector;
+              rightChan = mChannelSelector;
+              }
+
+            float* leftPtr = (float*)avFrame->data[leftChan];
+            float* rightPtr = (float*)avFrame->data[rightChan];
             for (int i = 0; i < avFrame->nb_samples; i++) {
               *samplePtr++ = (short)(*leftPtr++ * 0x8000);
               *samplePtr++ = (short)(*rightPtr++ * 0x8000);
@@ -203,7 +212,7 @@ protected:
           if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
               (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
             mVidPts = pidInfo->mPts;
-          else // use fake pts
+          else // fake pts
             mVidPts += 90000/25;
           bestLoadVidFrame()->set (mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
           }
@@ -295,8 +304,8 @@ bool onKey (int key) {
     case 0x26 : mPlaying = false; mPlayAudFrame -= 2; changed(); break;
     case 0x28 : mPlaying = false;  mPlayAudFrame += 2; changed(); break;
 
-    case 0x2d : break;
-    case 0x2e : break;
+    case 0x2d : mTs.mChannelSelector++; break;
+    case 0x2e : mTs.mChannelSelector--; break;
 
     case 0x30 :
     case 0x31 :
@@ -367,9 +376,9 @@ void onDraw (ID2D1DeviceContext* dc) {
   // draw title
   wchar_t wStr[200];
   D2D1_RECT_F textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
-  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%d av:%d",
-            (mAudPts- mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
-            (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff());
+  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
+            (mAudPts - mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
+            (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mTs.mChannelSelector);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), textr, getWhiteBrush());
 
   if (mShowChannel)
@@ -445,7 +454,7 @@ private:
 
     av_register_all();
 
-    uint8_t tsBuf[512*188]; // 94k buffer, about a frame
+    uint8_t tsBuf[1024*188]; // 192k buffer, about a frame
 
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -461,7 +470,7 @@ private:
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
         //}}}
-      ReadFile (readFile, tsBuf, 512 * 188, &numberOfBytesRead, NULL);
+      ReadFile (readFile, tsBuf, 1024 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
