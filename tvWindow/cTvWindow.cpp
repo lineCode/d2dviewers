@@ -69,16 +69,25 @@ public:
     }
   //}}}
 
-  unsigned char mChannels = 2;
-  unsigned long mSampleRate = 48000;
-  int mSamplesPerAacFrame = 0;
-  float mAudFramesPerSec = 40;
+  //{{{
+  bool hasLoadedAud (int playFrame) {
+    return (mLoadAudFrame - playFrame) > 8;
+    }
+  //}}}
+  //{{{
+  void getAudPlay (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
 
-  int mLoadAudFrame = 0;
-  cAudFrame mAudFrames[maxAudFrames];
-
-  int mNextFreeVidFrame = 0;
-  cYuvFrame mYuvFrames[maxVidFrames];
+    if (playFrame < mLoadAudFrame) {
+      samples = mAudFrames[playFrame % maxAudFrames].mSamples;
+      numSampleBytes = mAudFrames[playFrame % maxAudFrames].mNumSampleBytes;
+      pts = mAudFrames[playFrame % maxAudFrames].mPts;
+      }
+    else {
+      samples = nullptr;
+      numSampleBytes = 0;
+      }
+    }
+  //}}}
 
 protected:
   //{{{
@@ -112,17 +121,15 @@ protected:
         avPacket.size -= bytesUsed;
 
         if (got) {
-          mSamplesPerAacFrame = avFrame->nb_samples;
-          mAudFramesPerSec = (float)mSampleRate / mSamplesPerAacFrame;
-          mAudFrames[mLoadAudFrame % maxAudFrames].set (pts, 2, mSamplesPerAacFrame);
+          mAudFrames[mLoadAudFrame % maxAudFrames].set (pts, 2, 48000, avFrame->nb_samples);
           //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
-          pts += (mSamplesPerAacFrame * 90) / 48; // really 90000/48000
+          pts += (avFrame->nb_samples * 90) / 48; // really 90000/48000
           short* samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
           if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
             //{{{  16bit signed planar
             short* leftPtr = (short*)avFrame->data[0];
             short* rightPtr = (short*)avFrame->data[1];
-            for (int i = 0; i < mSamplesPerAacFrame; i++) {
+            for (int i = 0; i < avFrame->nb_samples; i++) {
               *samplePtr++ = *leftPtr++;
               *samplePtr++ = *rightPtr++;
               }
@@ -132,7 +139,7 @@ protected:
             //{{{  32bit float planar
             float* leftPtr = (float*)avFrame->data[0];
             float* rightPtr = (float*)avFrame->data[1];
-            for (int i = 0; i < mSamplesPerAacFrame; i++) {
+            for (int i = 0; i < avFrame->nb_samples; i++) {
               *samplePtr++ = (short)(*leftPtr++ * 0x8000);
               *samplePtr++ = (short)(*rightPtr++ * 0x8000);
               }
@@ -192,6 +199,7 @@ protected:
 
 private:
   int64_t mVidPts = 0;
+  int mLoadAudFrame = 0;
 
   AVCodecParserContext* vidParser = nullptr;
   AVCodec* vidCodec = nullptr;
@@ -200,6 +208,11 @@ private:
   AVCodecParserContext* audParser  = nullptr;
   AVCodec* audCodec = nullptr;
   AVCodecContext* audCodecContext = nullptr;
+
+  cAudFrame mAudFrames[maxAudFrames];
+
+  int mNextFreeVidFrame = 0;
+  cYuvFrame mYuvFrames[maxVidFrames];
   };
 //}}}
 
@@ -218,8 +231,13 @@ public:
     initialise (title, width, height);
 
     if (arg) {
+      // launch loaderThread
       thread ([=](){tsFileLoader(arg);}).detach();
-      thread ([=](){player();}).detach();
+
+      // launch playerThread
+      auto playerThread = std::thread ([=](){player();});
+      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
+      playerThread.detach();
 
       // loop till quit
       messagePump();
@@ -236,16 +254,12 @@ bool onKey (int key) {
     case 0x1B : return true;
 
     case 0x20 : mPlaying = !mPlaying; break;
-
-    case 0x21 : mFilePtr -= 5 * 64*256*188; break;
-    case 0x22 : mFilePtr += 5 * 64*256*188; break;
-
+    case 0x21 : mFilePtr -= 5 * 0x4000*188; changed(); break;
+    case 0x22 : mFilePtr += 5 * 0x4000*188; changed(); break;
     case 0x23 : break; // home
     case 0x24 : break; // end
-
-    case 0x25 : mFilePtr -= keyInc() * 64*256*188; break;
-    case 0x27 : mFilePtr += keyInc() * 64*256*188; break;
-
+    case 0x25 : mFilePtr -= keyInc() * 0x4000*188; changed(); break;
+    case 0x27 : mFilePtr += keyInc() * 0x4000*188; changed(); break;
     case 0x26 : mPlaying = false; mPlayAudFrame -= 2; changed(); break;
     case 0x28 : mPlaying = false;  mPlayAudFrame += 2; changed(); break;
 
@@ -385,56 +399,50 @@ private:
   //{{{
   void tsFileLoader (wchar_t* wFileName) {
 
-    CoInitialize (NULL);
-
     av_register_all();
 
-    uint8_t tsBuf[256*188];
+    mFilePtr = 0;
+    int lastTs = 0;
+    uint8_t tsBuf[0x100*188];
 
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
-    mFilePtr = 0;
     DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
+    while (ReadFile (readFile, tsBuf, 0x100*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
-        mTs.tsParser (tsBuf, tsBuf + numberOfBytesRead);
-        while (mTs.mLoadAudFrame - mPlayAudFrame > 8)
+        mTs.demux (tsBuf, tsBuf + numberOfBytesRead, mFilePtr == lastTs);
+        lastTs = mFilePtr + numberOfBytesRead;
+
+        while (mTs.hasLoadedAud (mPlayAudFrame))
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)
          selectService (0);
-
-        mFilePtr += numberOfBytesRead;
-        SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
         }
+
+      mFilePtr += numberOfBytesRead;
+      SetFilePointer (readFile, mFilePtr, NULL, FILE_BEGIN);
       }
 
     CloseHandle (readFile);
-
-    CoUninitialize();
     }
   //}}}
   //{{{
   void player() {
 
-    CoInitialize (NULL);
+    CoInitialize (NULL);  // for winAudio
 
-    while (mTs.mLoadAudFrame < 1)
-      Sleep (40);
-
-    winAudioOpen (mTs.mSampleRate, 16, mTs.mChannels);
+    winAudioOpen (48000, 16, 2);
 
     mPlayAudFrame = 0;
     while (true) {
-      winAudioPlay ((mPlaying && (mPlayAudFrame < mTs.mLoadAudFrame)) ?
-        mTs.mAudFrames[mPlayAudFrame % maxAudFrames].mSamples : mSilence, mTs.mChannels*mTs.mSamplesPerAacFrame*2, 1.0f);
-
-      if (mPlayAudFrame < mTs.mLoadAudFrame) {
-        mAudPts = mTs.mAudFrames[mPlayAudFrame % maxAudFrames].mPts;
-        if (mPlaying) {
-          mPlayAudFrame++;
-          changed();
-          }
+      int16_t* samples;
+      int numSampleBytes;
+      mTs.getAudPlay (mPlayAudFrame, samples, numSampleBytes, mAudPts);
+      winAudioPlay ((mPlaying && samples) ? samples : mSilence, numSampleBytes, 1.0f);
+      if (mPlaying && samples) {
+        mPlayAudFrame++;
+        changed();
         }
       }
 
@@ -450,11 +458,12 @@ private:
   cDecodeTransportStream mTs;
 
   int16_t* mSilence;
+
+  int64_t mBasePts = 0;
   int64_t mAudPts = 0;
+  bool mPlaying = true;
 
   int mPlayAudFrame = 0;
-  bool mPlaying = true;
-  int64_t mBasePts = 0;
 
   long mFilePtr = 0;
 

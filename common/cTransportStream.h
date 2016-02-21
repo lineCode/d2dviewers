@@ -17,8 +17,8 @@
                                (60 * ((10*((x##_m & 0xF0)>>4)) + (x##_m & 0xF))) + \
                                      ((10*((x##_s & 0xF0)>>4)) + (x##_s & 0xF)))
 //}}}
-//{{{  pid, tid, serviceType const
-// pid
+//{{{  const, struct
+//{{{  pid const
 #define PID_PAT          0x00   /* Program Association Table */
 #define PID_CAT          0x01   /* Conditional Access Table */
 #define PID_NIT          0x10   /* Network Information Table */
@@ -30,8 +30,8 @@
 #define PID_TOT          0x14   /* Time Offset Table */
 #define PID_STF          0x14   /* Stuffing Table */
 #define PID_SYN          0x15   /* Network sync */
-
-// tid
+//}}}
+//{{{  tid const
 #define TID_PAT          0x00   /* Program Association Section */
 #define TID_CAT          0x01   /* Conditional Access Section */
 #define TID_PMT          0x02   /* Conditional Access Section */
@@ -49,13 +49,14 @@
 #define TID_RST          0x71   /* Running Status Section */
 #define TID_ST           0x72   /* Stuffing Section */
 #define TID_TOT          0x73   /* Time Offset Section */
-
-// serviceType
+//}}}
+//{{{  serviceType const
 #define kServiceTypeTV            0x01
 #define kServiceTypeRadio         0x02
 #define kServiceTypeAdvancedSDTV  0x16
 #define kServiceTypeAdvancedHDTV  0x19
 //}}}
+
 //{{{  descr const
 #define DESCR_VIDEO_STREAM          0x02
 #define DESCR_AUDIO_STREAM          0x03
@@ -126,8 +127,8 @@
 #define DESCR_CELL_FREQ_LINK        0x6D
 #define DESCR_ANNOUNCEMENT_SUPPORT  0x6E
 //}}}
-//{{{  table, descr structs
-//{{{  pat layout
+
+//{{{  pat struct
 #define PAT_LEN 8
 typedef struct {
   uint8_t table_id                  :8;
@@ -160,7 +161,7 @@ typedef struct {
   /* or program_map_pid (if prog_num=0)*/
   } pat_prog_t;
 //}}}
-//{{{  pmt layout
+//{{{  pmt struct
 #define PMT_LEN 12
 typedef struct {
    unsigned char table_id                  :8;
@@ -199,7 +200,7 @@ typedef struct {
    // descrs
 } pmt_info_t;
 //}}}
-//{{{  nit layout
+//{{{  nit struct
 #define NIT_LEN 10
 typedef struct {
    uint8_t table_id                     :8;
@@ -246,7 +247,7 @@ typedef struct {
    /* descrs  */
 } nit_ts_t;
 //}}}
-//{{{  eit layout
+//{{{  eit struct
 #define EIT_LEN 14
 typedef struct {
    uint8_t table_id                    :8;
@@ -289,7 +290,7 @@ typedef struct {
    uint8_t descrs_loop_length_lo       :8;
 } eit_event_t;
 //}}}
-//{{{  sdt layout
+//{{{  sdt struct
 #define SDT_LEN 11
 typedef struct {
    uint8_t table_id                    :8;
@@ -325,7 +326,7 @@ typedef struct {
    uint8_t descrs_loop_length_lo        :8;
 } sdt_descr_t;
 //}}}
-//{{{  tdt layout
+//{{{  tdt struct
 #define TDT_LEN 8
 typedef struct {
   uint8_t table_id                  :8;
@@ -602,7 +603,6 @@ static unsigned long crcTable[256] = {
   0xbcb4666d, 0xb8757bda, 0xb5365d03, 0xb1f740b4};
 //}}}
 //}}}
-
 //{{{
 class cPidInfo {
 public:
@@ -839,192 +839,222 @@ public:
   //}}}
 
   //{{{
-  void tsParser (uint8_t* tsPtr, uint8_t* tsEnd) {
+  void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool continuous) {
 
-    // iterate over tsFrames, start marked by syncCode until tsPtr reaches tsEnd
-    while ((tsPtr+188 <= tsEnd) && (*tsPtr++ == 0x47) && ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47))) {
-      mPackets++;
-      //{{{  parse tsFrame start
-      //bool tei = *tsPtr & 0x80;
-      bool payStart = ((*tsPtr) & 0x40) != 0;
-      auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
-      bool adaption = (*(tsPtr+2) & 0x20) != 0;
-      //bool payload = *(tsPtr+2) & 0x10;
-      auto headerBytes = adaption ? (4 + *(tsPtr+3)) : 3;
-      auto continuity = *(tsPtr+2) & 0x0F;
-      //if ((adaption && (*(tsPtr+4) & 0x80)) discontinuity = true;
-      bool hasPcr = adaption && (*(tsPtr+4) & 0x10);
-      int64_t pcr = hasPcr ? ((*(tsPtr+5)<<25) | (*(tsPtr+6)<<17)  | (*(tsPtr+7)<<9) | (*(tsPtr+8)<<1) | (*(tsPtr+9)>>7)) : 0;
-
-      bool copyPES = false;
-
-      tsPtr += headerBytes;
-      auto tsFrameBytesLeft = 187 - headerBytes;
-
-      bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
-                       (mProgramMap.find (pid) != mProgramMap.end());
-
-      tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
-      if (pidInfoIt == mPidInfoMap.end()) {
-        // new pid, insert new cPidInfo, get pidInfoIt iterator
-        pair<tPidInfoMap::iterator, bool> insertPair =
-          mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
-        pidInfoIt = insertPair.first;
+    if (!continuous)
+      //{{{  reset pid continuity and buffers
+      for (auto pidInfo : mPidInfoMap) {
+        pidInfo.second.mContinuity = -1;
+        pidInfo.second.mBufBytes = 0;
+        pidInfo.second.mBufPtr = nullptr;
         }
-
-      else if (continuity != ((pidInfoIt->second.mContinuity+1) & 0x0f)) {
-        mDiscontinuity++;
-        if (isSection) //  only report section/program discontinuity
-          printf ("continuity error pid:%d - %x:%x\n", pid, continuity, pidInfoIt->second.mContinuity);
-
-        // reset content buffers
-        pidInfoIt->second.mBufBytes = 0;
-        pidInfoIt->second.mBufPtr = nullptr;
-        }
-
-      if (hasPcr)
-        pidInfoIt->second.mPcr = pcr;
-      pidInfoIt->second.mContinuity = continuity;
-      pidInfoIt->second.mTotal++;
       //}}}
-      if (isSection) {
-        //{{{  parse sections
-        if (payStart) {
-          // parse sectionStart
-          int pointerField = *tsPtr;
-          if (pointerField && (pidInfoIt->second.mBufBytes > 0)) {
-            //{{{  packet has end of last section
-            //printf ("PayStart- buffering end of last section len:%d %d\n", pointerField, (int)pidInfoIt->second.mBufBytes);
-            memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr+1, pointerField);
-            pidInfoIt->second.mBufBytes += pointerField;
-            if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength+3) {
-              //printf ("  - parsed buf len:%d\n", (int)pidInfoIt->second.mBufBytes);
-              parseSection (pid, pidInfoIt->second.mBuf);
-              }
 
-            else if (pidInfoIt->second.mBufBytes) {
-              //printf ("  - end of last section mismatch buf %d unused:%d sectionLen:%d *****************\n",
-              //        pid, (int)pidInfoIt->second.mBufBytes, pidInfoIt->second.mSectionLength);
-              }
+    // while full packet
+    while (tsPtr+188 <= tsEnd) {
+      if (*tsPtr++ == 0x47) {
+        // full packet with start syncCode
+        if ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47)) {
+          // last packet or succeeded by syncCode
+          mPackets++;
+          //{{{  parse ts packet
+          //bool tei = *tsPtr & 0x80;
+          bool payStart = ((*tsPtr) & 0x40) != 0;
+          auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
+          bool adaption = (*(tsPtr+2) & 0x20) != 0;
+          //bool payload = *(tsPtr+2) & 0x10;
+          auto headerBytes = adaption ? (4 + *(tsPtr+3)) : 3;
+          auto continuity = *(tsPtr+2) & 0x0F;
+          //if ((adaption && (*(tsPtr+4) & 0x80)) discontinuity = true;
 
-            // consumed buffer
+          bool hasPcr = adaption && (*(tsPtr+4) & 0x10);
+          int64_t pcr = hasPcr ? ((*(tsPtr+5)<<25) | (*(tsPtr+6)<<17)  | (*(tsPtr+7)<<9) | (*(tsPtr+8)<<1) | (*(tsPtr+9)>>7)) : 0;
+
+          tsPtr += headerBytes;
+          auto tsFrameBytesLeft = 187 - headerBytes;
+
+          bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
+                           (mProgramMap.find (pid) != mProgramMap.end());
+
+          // find or create pidInfo
+          tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
+          if (pidInfoIt == mPidInfoMap.end()) {
+            // new pid, insert new cPidInfo, get pidInfoIt iterator
+            pair<tPidInfoMap::iterator, bool> insertPair =
+              mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
+            pidInfoIt = insertPair.first;
+            }
+
+          // count packets per pid
+          pidInfoIt->second.mTotal++;
+
+          // test continuity, reset buffers if fail
+          if ((pidInfoIt->second.mContinuity >= 0) && (pidInfoIt->second.mContinuity != ((continuity-1) & 0x0F))) {
+            // test continuity
+            mDiscontinuity++;
             pidInfoIt->second.mBufBytes = 0;
+            pidInfoIt->second.mBufPtr = nullptr;
+            if (isSection)
+              printf ("continuity pid:%d %d:%d\n", pid, pidInfoIt->second.mContinuity, continuity);
             }
-            //}}}
+          pidInfoIt->second.mContinuity = continuity;
 
-          pidInfoIt->second.mSectionLength = ((*(tsPtr+pointerField+2) & 0x0F) << 8) | *(tsPtr+pointerField+3);
-          //printf ("PayStart:%d pointerField:%d, sectionLen:%d\n", pid, pointerField, pidInfoIt->second.mSectionLength);
+          // use ts pcr
+          if (hasPcr)
+            pidInfoIt->second.mPcr = pcr;
+          //}}}
 
-          if (pointerField > 183 - (pidInfoIt->second.mSectionLength+3)) { // 1st section straddles packets, start buffering
-            if (!pidInfoIt->second.mBuf) {
-              pidInfoIt->second.mBufSize = 4096;
-              pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
-              }
-            memcpy (pidInfoIt->second.mBuf, tsPtr+pointerField+1, 183 - pointerField);
-            pidInfoIt->second.mBufBytes = 183 - pointerField;
-            //printf ("  - buffered 1st section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
-            }
-          else { // 1st section in packet, parse it
-            //printf ("- parse 1st section in packet - off:%d\n", pointerField+1);
-            parseSection (pid, tsPtr+pointerField+1);
-            pointerField += pidInfoIt->second.mSectionLength+3;
+          bool bufferRestOfTsPacket = false;
+          if (isSection) {
+            //{{{  parse section pids
+            if (payStart) {
+              // parse sectionStart
+              int pointerField = *tsPtr;
+              if (pointerField && (pidInfoIt->second.mBufBytes > 0)) {
+                //{{{  packet has end of last section
+                //printf ("PayStart- buffering end of last section len:%d %d\n", pointerField, (int)pidInfoIt->second.mBufBytes);
+                memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr+1, pointerField);
+                pidInfoIt->second.mBufBytes += pointerField;
+                if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength+3) {
+                  //printf ("  - parsed buf len:%d\n", (int)pidInfoIt->second.mBufBytes);
+                  parseSection (pid, pidInfoIt->second.mBuf);
+                  }
 
-            while (*(tsPtr+pointerField+1) != 0xFF) { // more sections
-              pidInfoIt->second.mSectionLength = ((*(tsPtr+pointerField+2) & 0x0F) << 8) | *(tsPtr+pointerField+3);
-              //printf ("- next section in packet sectionLen:%d\n", pidInfoIt->second.mSectionLength);
-              if (pointerField < 183 - (pidInfoIt->second.mSectionLength+3)) { // parse next section in packet
-                //printf ("  - parse next section in packet - off:%d\n", pointerField+1);
-                parseSection (pid, tsPtr + pointerField+1);
-                pointerField += pidInfoIt->second.mSectionLength+3;
+                else if (pidInfoIt->second.mBufBytes) {
+                  //printf ("  - end of last section mismatch buf %d unused:%d sectionLen:%d *****************\n",
+                  //        pid, (int)pidInfoIt->second.mBufBytes, pidInfoIt->second.mSectionLength);
+                  }
+                pidInfoIt->second.mBufBytes = 0;
                 }
-              else { // next section straddles packets, start buffering
+                //}}}
+
+              pidInfoIt->second.mSectionLength = ((*(tsPtr+pointerField+2) & 0x0F) << 8) | *(tsPtr+pointerField+3);
+              //printf ("PayStart:%d pointerField:%d, sectionLen:%d\n", pid, pointerField, pidInfoIt->second.mSectionLength);
+
+              if (pointerField <= 183 - (pidInfoIt->second.mSectionLength+3)) {
+                //{{{  1st section in packet, parse it
+                //printf ("- parse 1st section in packet - off:%d\n", pointerField+1);
+                parseSection (pid, tsPtr+pointerField+1);
+                pointerField += pidInfoIt->second.mSectionLength+3;
+
+                while (*(tsPtr+pointerField+1) != 0xFF) { // more sections
+                  pidInfoIt->second.mSectionLength = ((*(tsPtr+pointerField+2) & 0x0F) << 8) | *(tsPtr+pointerField+3);
+                  //printf ("- next section in packet sectionLen:%d\n", pidInfoIt->second.mSectionLength);
+                  if (pointerField < 183 - (pidInfoIt->second.mSectionLength+3)) { // parse next section in packet
+                    //printf ("  - parse next section in packet - off:%d\n", pointerField+1);
+                    parseSection (pid, tsPtr + pointerField+1);
+                    pointerField += pidInfoIt->second.mSectionLength+3;
+                    }
+                  else { // next section straddles packets, start buffering
+                    if (!pidInfoIt->second.mBuf) {
+                      pidInfoIt->second.mBufSize = 4096;
+                      pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                      }
+                    memcpy (pidInfoIt->second.mBuf, tsPtr + pointerField + 1, 183 - pointerField);
+                    pidInfoIt->second.mBufBytes = 183 - pointerField;
+                    //printf ("  - buffered next section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
+                    break;
+                    }
+                  }
+                }
+                //}}}
+              else {
+                //{{{  1st section straddles packets, start buffering
                 if (!pidInfoIt->second.mBuf) {
                   pidInfoIt->second.mBufSize = 4096;
                   pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                   }
-                memcpy (pidInfoIt->second.mBuf, tsPtr + pointerField + 1, 183 - pointerField);
+
+                memcpy (pidInfoIt->second.mBuf, tsPtr+pointerField+1, 183 - pointerField);
                 pidInfoIt->second.mBufBytes = 183 - pointerField;
-                //printf ("  - buffered next section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
-                break;
+                //printf ("  - buffered 1st section - off:%d len:%d\n", pointerField + 1, 183 - pointerField);
+                }
+                //}}}
+              }
+
+            else if (pidInfoIt->second.mBufBytes > 0) {
+              // add to buffered section
+              memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr, tsFrameBytesLeft);
+              pidInfoIt->second.mBufBytes += tsFrameBytesLeft;
+              if (pidInfoIt->second.mBufBytes > pidInfoIt->second.mBufSize)
+                printf ("sectionBuf overflow %d\n", (int)pidInfoIt->second.mBufBytes);
+              //printf ("- buffered section continuation packet %d - buf:%d sectionLen:%d\n",
+              //        pid, (int)pidInfoIt->second.mBufBytes, pidInfoIt->second.mSectionLength);
+
+              if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength + 3) { // enough bytes to parse a section
+                //printf ("    -  parse buffered section\n");
+                parseSection (pid, pidInfoIt->second.mBuf);
+                pidInfoIt->second.mBufBytes = 0;
                 }
               }
+            else
+              printf ("------- buffering section continuation packet discarded, no buffer started %d\n", pid);
             }
-          }
-        else if (pidInfoIt->second.mBufBytes > 0) { // add to buffered section
-          memcpy (pidInfoIt->second.mBuf + pidInfoIt->second.mBufBytes, tsPtr, tsFrameBytesLeft);
-          pidInfoIt->second.mBufBytes += tsFrameBytesLeft;
-          if (pidInfoIt->second.mBufBytes > pidInfoIt->second.mBufSize)
-            printf ("sectionBuf overflow %d\n", (int)pidInfoIt->second.mBufBytes);
-          //printf ("- buffered section continuation packet %d - buf:%d sectionLen:%d\n",
-          //        pid, (int)pidInfoIt->second.mBufBytes, pidInfoIt->second.mSectionLength);
+            //}}}
+          else if (pid == mSelectedAudPid) {
+            //{{{  parse aud pid
+            if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
+              if (pidInfoIt->second.mBufPtr)
+                decodeAudPes (&pidInfoIt->second);
 
-          if (pidInfoIt->second.mBufBytes >= pidInfoIt->second.mSectionLength + 3) { // enough bytes to parse a section
-            //printf ("    -  parse buffered section\n");
-            parseSection (pid, pidInfoIt->second.mBuf);
-            // consumed buffer
-            pidInfoIt->second.mBufBytes = 0;
+              //  start next audPES
+              if (!pidInfoIt->second.mBuf) {
+                // first audPES, allocate buffer
+                pidInfoIt->second.mBufSize = 5000;
+                pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                }
+
+              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
+              parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+
+              int pesHeaderBytes = 9 + *(tsPtr+8);
+              tsPtr += pesHeaderBytes;
+              tsFrameBytesLeft -= pesHeaderBytes;
+              }
+
+            bufferRestOfTsPacket = true;
             }
-          }
-        else
-          printf ("------- buffering section continuation packet discarded, no buffer started %d\n", pid);
-        }
-        //}}}
+            //}}}
+          else if (pid == mSelectedVidPid) {
+            //{{{  parse vid pid
+            if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
+              if (pidInfoIt->second.mBufPtr)
+                decodeVidPes (&pidInfoIt->second);
 
-      else if (pid == mSelectedAudPid) {
-        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
-          if (pidInfoIt->second.mBufPtr)
-            decodeAudPes (&pidInfoIt->second);
-          //{{{  start next audPES
-          if (!pidInfoIt->second.mBuf) {
-            // first audPES, allocate buffer
-            pidInfoIt->second.mBufSize = 5000;
-            pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+              //  start next vidPES
+              if (!pidInfoIt->second.mBuf) {
+                // first audPES, allocate buffer
+                pidInfoIt->second.mBufSize = 500000;
+                pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+                }
+
+              pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
+              parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+
+              int pesHeaderBytes = 9 + *(tsPtr+8);
+              tsPtr += pesHeaderBytes;
+              tsFrameBytesLeft -= pesHeaderBytes;
+              }
+
+            bufferRestOfTsPacket = true;
             }
+            //}}}
 
-          pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
-          parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
+          if (bufferRestOfTsPacket && pidInfoIt->second.mBufPtr) {
+            //{{{  copy tsFrameBytesLeft bytes to buffer, only PES for now
+            memcpy (pidInfoIt->second.mBufPtr, tsPtr, tsFrameBytesLeft);
+            pidInfoIt->second.mBufPtr += tsFrameBytesLeft;
 
-          int pesHeaderBytes = 9 + *(tsPtr+8);
-          tsPtr += pesHeaderBytes;
-          tsFrameBytesLeft -= pesHeaderBytes;
-          //}}}
-          }
-        copyPES = true;
-        }
-
-      else if (pid == mSelectedVidPid) {
-        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
-          if (pidInfoIt->second.mBufPtr)
-            decodeVidPes (&pidInfoIt->second);
-          //{{{  start next vidPES
-          if (!pidInfoIt->second.mBuf) {
-            // first audPES, allocate buffer
-            pidInfoIt->second.mBufSize = 500000;
-            pidInfoIt->second.mBuf = (uint8_t*)malloc (pidInfoIt->second.mBufSize);
+            if (pidInfoIt->second.mBufPtr > pidInfoIt->second.mBuf + pidInfoIt->second.mBufSize)
+              printf ("cTransportStream::demux *** PES overflow - %d %d\n",
+                      int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuf), pidInfoIt->second.mBufSize);
             }
-
-          pidInfoIt->second.mBufPtr = pidInfoIt->second.mBuf;
-          parseTimeStamps (tsPtr, pidInfoIt->second.mPts, pidInfoIt->second.mDts);
-
-          int pesHeaderBytes = 9 + *(tsPtr+8);
-          tsPtr += pesHeaderBytes;
-          tsFrameBytesLeft -= pesHeaderBytes;
-          //}}}
+            //}}}
+          tsPtr += tsFrameBytesLeft;
           }
-        copyPES = true;
         }
-
-      if (copyPES && pidInfoIt->second.mBufPtr) {
-        //{{{  copy rest of tsFrame to pesBuf
-        memcpy (pidInfoIt->second.mBufPtr, tsPtr, tsFrameBytesLeft);
-        pidInfoIt->second.mBufPtr += tsFrameBytesLeft;
-
-        if (pidInfoIt->second.mBufPtr > pidInfoIt->second.mBuf + pidInfoIt->second.mBufSize)
-          printf ("************* PES overflow - %d %d\n",
-                 int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuf), pidInfoIt->second.mBufSize);
-        }
-        //}}}
-      tsPtr += tsFrameBytesLeft;
+      else
+        printf ("cTransportStream::demux *** sync alignment ***\n");
       }
     }
   //}}}

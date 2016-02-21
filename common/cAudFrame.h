@@ -3,7 +3,7 @@
 
 class cAudFrame  {
 public:
-  cAudFrame() : mPts(0), mNumSamples(0), mSamples(nullptr), mPowerLeft(0), mPowerRight(0) {}
+  cAudFrame() {}
   //{{{
   ~cAudFrame() {
     if (mSamples)
@@ -12,25 +12,32 @@ public:
   //}}}
 
   //{{{
-  void set (int64_t pts, int channels, int numSamples) {
+  void set (int64_t pts, int channels, int sampleRate, int numSamples) {
 
     mPts = pts;
+    mChannels = channels;
+    mSampleRate = sampleRate;
 
-    if ((numSamples != mNumSamples) && mSamples) {
+    if ((channels * numSamples* 2 != mNumSampleBytes) && mSamples) {
       free (mSamples);
       mSamples = nullptr;
+      mNumSampleBytes = 0;
       }
 
-    if (!mSamples)
-      mSamples = (int16_t*)malloc (channels * numSamples* 2);
+    if (!mSamples) {
+      mNumSampleBytes = channels * numSamples* 2;
+      mSamples = (int16_t*)malloc (mNumSampleBytes);
+      }
     }
   //}}}
   //{{{
   void freeResources() {
 
     mPts = 0;
-    mNumSamples = 0;
+    mChannels = 0;
+    mSampleRate = 0;
 
+    mNumSampleBytes = 0;
     if (mSamples)
       free (mSamples);
     mSamples = nullptr;
@@ -40,12 +47,18 @@ public:
   void invalidate() {
 
     mPts = 0;
+    mChannels = 0;
+    mSampleRate = 0;
     }
   //}}}
 
-  int64_t mPts;
-  int mNumSamples;
-  int16_t* mSamples;
-  float mPowerLeft;
-  float mPowerRight;
+  int64_t mPts = 0;
+
+  int mChannels = 0;
+  int mSampleRate = 48000;
+
+  int mNumSampleBytes = 0;
+  int16_t* mSamples = nullptr;
+  float mPowerLeft = 0;
+  float mPowerRight = 0;
   };

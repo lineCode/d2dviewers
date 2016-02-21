@@ -20,8 +20,11 @@ public:
 
     int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
 
-    if (freq)
-      bdaReader (freq);
+    if (freq) {
+      auto bdaReaderThread = std::thread ([=]() {  bdaReader (freq); });
+      SetThreadPriority (bdaReaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+      bdaReaderThread.detach();
+      }
     else
       thread ([=]() { tsFileReader (arg); } ).detach();
 
@@ -112,7 +115,7 @@ private:
     while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
         mFilePtr += numberOfBytesRead;
-        mTs.tsParser (tsBuf, tsBuf + (256*188));
+        mTs.demux (tsBuf, tsBuf + (256*188), true);
         }
       else
         break;
@@ -143,7 +146,7 @@ private:
         if (numberOfBytesWritten != blockLen)
           printf ("writefile error%d %d\n", blockLen, numberOfBytesWritten);
 
-        mTs.tsParser (ptr, ptr + blockLen);
+        mTs.demux (ptr, ptr + blockLen, true);
         bda.decommitBlock (blockLen);
         }
 
