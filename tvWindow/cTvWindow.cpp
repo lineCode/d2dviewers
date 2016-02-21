@@ -445,7 +445,7 @@ private:
 
     av_register_all();
 
-    uint8_t tsBuf[0x100*188];
+    uint8_t tsBuf[512*188]; // 94k buffer, about a frame
 
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -453,15 +453,17 @@ private:
     int64_t lastFilePtr = 0;
     DWORD numberOfBytesRead = 0;
     while (true) {
-      bool skipped = mFilePtr != lastFilePtr;
-      if (skipped) {
+      bool skip = mFilePtr != lastFilePtr;
+      if (skip) {
+        //{{{  skip file to new filePtr
         LARGE_INTEGER large;
         large.QuadPart = mFilePtr;
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
-      ReadFile(readFile, tsBuf, 0x100 * 188, &numberOfBytesRead, NULL);
+        //}}}
+      ReadFile (readFile, tsBuf, 512 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
-        mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skipped);
+        mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
 
@@ -472,9 +474,7 @@ private:
          selectService (0);
         }
 
-      LARGE_INTEGER large;
-      GetFileSizeEx (readFile, &large);
-      mFileSize = large.QuadPart;
+      GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
       }
 
     CloseHandle (readFile);
