@@ -21,12 +21,13 @@ public:
     int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
 
     if (freq) {
+      SetPriorityClass (GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
       auto bdaReaderThread = std::thread ([=]() {  bdaReader (freq); });
       SetThreadPriority (bdaReaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       bdaReaderThread.detach();
       }
     else
-      thread ([=]() { tsFileReader (arg); } ).detach();
+      thread ([=]() { fileReader (arg); } ).detach();
 
     messagePump();
     }
@@ -102,20 +103,20 @@ protected:
 
 private:
   //{{{
-  void tsFileReader (wchar_t* wFileName) {
+  void fileReader (wchar_t* wFileName) {
 
     mFileName = wFileName;
 
-    uint8_t tsBuf[256*188];
+    uint8_t tsBuf[240*188];
 
     HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
     mFilePtr = 0;
     DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 256*188, &numberOfBytesRead, NULL)) {
+    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
       if (numberOfBytesRead) {
         mFilePtr += numberOfBytesRead;
-        mTs.demux (tsBuf, tsBuf + (256*188), false);
+        mTs.demux (tsBuf, tsBuf + (240*188), false);
         }
       else
         break;
@@ -126,6 +127,8 @@ private:
   //}}}
   //{{{
   void bdaReader (int freq) {
+
+    CoInitialize (NULL);
 
     mFileName = L"Live Bda";
 
@@ -153,22 +156,19 @@ private:
       else
         Sleep (1);
       }
+
+    CoUninitialize();
     }
   //}}}
 
   // vars
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
-
   cTransportStream mTs;
   };
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
-
-  CoInitialize (NULL);
-
-  //SetPriorityClass (GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
 
   #ifndef _DEBUG
     //FreeConsole();
@@ -176,7 +176,5 @@ int wmain (int argc, wchar_t* argv[]) {
 
   cTvGrabWindow tvGrabWindow;
   tvGrabWindow.run (L"tvGrabWindow", 896, 504, argv[1]);
-
-  CoUninitialize();
   }
 //}}}

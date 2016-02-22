@@ -490,6 +490,164 @@ private:
     }
   //}}}
   //{{{
+  //void ffmpegFileLoader (wchar_t* wFileName) {
+
+    //CoInitialize (NULL);
+    //av_register_all();
+    //avformat_network_init();
+
+    //char filename[100];
+    //wcstombs (filename, wFileName, 100);
+    //AVCodecParserContext* vidParser = nullptr;
+    //AVCodec* vidCodec = nullptr;
+    //AVCodecContext* vidCodecContext = nullptr;
+
+    //AVCodecParserContext* audParser  = nullptr;
+    //AVCodec* audCodec = nullptr;
+    //AVCodecContext* audCodecContext = nullptr;
+
+    //AVCodecContext* subCodecContext = nullptr;
+    //AVCodec* subCodec = nullptr;
+    //{{{  av init
+    //AVFormatContext* avFormatContext;
+    //avformat_open_input (&avFormatContext, filename, NULL, NULL);
+    //avformat_find_stream_info (avFormatContext, NULL);
+
+    //int vidStream = -1;
+    //int audStream = -1;
+    //int subStream = -1;
+    //for (unsigned int i = 0; i < avFormatContext->nb_streams; i++)
+      //if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) && (vidStream == -1))
+        //vidStream = i;
+      //else if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) && (audStream == -1))
+        //audStream = i;
+      //else if ((avFormatContext->streams[i]->codec->codec_type == AVMEDIA_TYPE_SUBTITLE) && (subStream == -1))
+        //subStream = i;
+
+    //if (audStream >= 0) {
+      //mTs.mChannels = avFormatContext->streams[audStream]->codec->channels;
+      //mTs.mSampleRate = avFormatContext->streams[audStream]->codec->sample_rate;
+      //}
+
+    //printf ("filename:%s sampleRate:%d channels:%d streams:%d aud:%d vid:%d sub:%d\n",
+            //filename, mTs.mSampleRate, mTs.mChannels, avFormatContext->nb_streams, audStream, vidStream, subStream);
+    ////av_dump_format (avFormatContext, 0, filename, 0);
+
+    //if (mTs.mChannels > 2)
+      //mTs.mChannels = 2;
+    //}}}
+    //{{{  aud init
+    //if (audStream >= 0) {
+      //audCodecContext = avFormatContext->streams[audStream]->codec;
+      //audCodec = avcodec_find_decoder (audCodecContext->codec_id);
+      //avcodec_open2 (audCodecContext, audCodec, NULL);
+      //}
+    //}}}
+    //{{{  vid init
+    //if (vidStream >= 0) {
+      //vidCodecContext = avFormatContext->streams[vidStream]->codec;
+      //vidCodec = avcodec_find_decoder (vidCodecContext->codec_id);
+      //avcodec_open2 (vidCodecContext, vidCodec, NULL);
+      //}
+    //}}}
+    //{{{  sub init
+    //if (subStream >= 0) {
+      //subCodecContext = avFormatContext->streams[subStream]->codec;
+      //subCodec = avcodec_find_decoder (subCodecContext->codec_id);
+      //avcodec_open2 (subCodecContext, subCodec, NULL);
+      //}
+    //}}}
+
+    //AVFrame* audFrame = av_frame_alloc();
+    //AVFrame* vidFrame = av_frame_alloc();
+
+    //AVSubtitle sub;
+    //memset (&sub, 0, sizeof(AVSubtitle));
+
+    //AVPacket avPacket;
+    //while (true) {
+      //while (av_read_frame (avFormatContext, &avPacket) >= 0) {
+
+        ////while (mAudFramesLoaded > int(mPlayTime) + maxAudFrames/2)
+        ////  Sleep (40);
+
+        //if (avPacket.stream_index == audStream) {
+          //{{{  aud packet
+          //int got = 0;
+          //avcodec_decode_audio4 (audCodecContext, audFrame, &got, &avPacket);
+
+          //if (got) {
+            //mTs.mSamplesPerAacFrame = audFrame->nb_samples;
+            //mTs.mAudFramesPerSec = (float)mTs.mSampleRate / mTs.mSamplesPerAacFrame;
+            //mTs.mAudFrames[mTs.mAudFramesLoaded % maxAudFrames].set (0, 2, mTs.mSamplesPerAacFrame);
+
+            //double valueL = 0;
+            //double valueR = 0;
+            //short* ptr = (short*)mTs.mAudFrames[mTs.mAudFramesLoaded % maxAudFrames].mSamples;
+            //if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
+              //{{{  16bit signed planar
+              //short* lptr = (short*)audFrame->data[0];
+              //short* rptr = (short*)audFrame->data[1];
+              //for (int i = 0; i < mTs.mSamplesPerAacFrame; i++) {
+                //*ptr = *lptr++;
+                //valueL += pow(*ptr++, 2);
+                //*ptr = *rptr++;
+                //valueR += pow(*ptr++, 2);
+                //}
+              //}
+              //}}}
+            //else if (audCodecContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
+              //{{{  32bit float planar
+              //float* lptr = (float*)audFrame->data[0];
+              //float* rptr = (float*)audFrame->data[1];
+              //for (int i = 0; i < mTs.mSamplesPerAacFrame; i++) {
+                //*ptr = (short)(*lptr++ * 0x8000);
+                //valueL += pow(*ptr++, 2);
+                //*ptr = (short)(*rptr++ * 0x8000);
+                //valueR += pow(*ptr++, 2);
+                //}
+              //}
+              //}}}
+            //mTs.mAudFrames[mTs.mAudFramesLoaded % maxAudFrames].mPowerLeft = (float)sqrt (valueL) / (mTs.mSamplesPerAacFrame * 2.0f);
+            //mTs.mAudFrames[mTs.mAudFramesLoaded % maxAudFrames].mPowerRight = (float)sqrt (valueR) / (mTs.mSamplesPerAacFrame * 2.0f);
+
+            //mTs.mAudFramesLoaded++;
+            //}
+          //}
+          //}}}
+        //else if (avPacket.stream_index == vidStream) {
+          //{{{  vid packet
+          //int got = 0;
+          //avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &avPacket);
+
+          //if (got) {
+            //mTs.mYuvFrames[mTs.mNextFreeVidFrame].set (0, vidFrame->data, vidFrame->linesize, vidCodecContext->width, vidCodecContext->height);
+            //mTs.mNextFreeVidFrame = (mTs.mNextFreeVidFrame + 1) % maxVidFrames;
+            //}
+          //}
+          //}}}
+        //else if (avPacket.stream_index == subStream) {
+          //{{{  sub packet
+          //int got = 0;
+          //avsubtitle_free (&sub);
+          //avcodec_decode_subtitle2 (subCodecContext, &sub, &got, &avPacket);
+          //}
+          //}}}
+        //av_free_packet (&avPacket);
+        //}
+      //}
+
+    //av_free (vidFrame);
+    //av_free (audFrame);
+
+    //avcodec_close (vidCodecContext);
+    //avcodec_close (audCodecContext);
+
+    //avformat_close_input (&avFormatContext);
+    //CoUninitialize();
+    //}
+  //}}}
+  //{{{
   void player() {
 
     CoInitialize (NULL);  // for winAudio
