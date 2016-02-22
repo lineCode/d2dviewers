@@ -18,7 +18,7 @@ public:
 
     initialise (title, width, height);
 
-    int freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
+    auto freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
 
     if (freq) {
       SetPriorityClass (GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
@@ -76,6 +76,11 @@ protected:
   //}}}
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
+
+    auto showChannel = mShowChannel;
+    mShowChannel = inClient && (x < 100);
+    if (showChannel != mShowChannel)
+      changed();
     }
   //}}}
   //{{{
@@ -97,7 +102,8 @@ protected:
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
-    mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+    if (mShowChannel)
+      mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
     }
   //}}}
 
@@ -109,7 +115,7 @@ private:
 
     uint8_t tsBuf[240*188];
 
-    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
     mFilePtr = 0;
     DWORD numberOfBytesRead = 0;
@@ -140,9 +146,9 @@ private:
     swprintf (fileName, 100, L"C:/Users/colin/Desktop/%d.ts", freq);
     HANDLE file = CreateFile (fileName, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
 
-    int blockLen = 0;
+    auto blockLen = 0;
     while (true) {
-      uint8_t* ptr = bda.getContiguousBlock (blockLen);
+      auto ptr = bda.getContiguousBlock (blockLen);
       if (blockLen) {
         DWORD numberOfBytesWritten;
         WriteFile (file, ptr, blockLen, &numberOfBytesWritten, NULL);
@@ -162,6 +168,7 @@ private:
   //}}}
 
   // vars
+  bool mShowChannel = false;
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
   cTransportStream mTs;

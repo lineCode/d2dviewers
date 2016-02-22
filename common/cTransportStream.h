@@ -842,7 +842,7 @@ public:
   void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool skipped) {
 
     if (skipped)
-      //{{{  reset pid continuity and buffers
+      //{{{  reset pid continuity, buffers
       for (auto pidInfo : mPidInfoMap) {
         pidInfo.second.mContinuity = -1;
         pidInfo.second.mBufBytes = 0;
@@ -856,7 +856,6 @@ public:
         // full packet with start syncCode
         if ((tsPtr+187 == tsEnd) || (*(tsPtr+187) == 0x47)) {
           // last packet or succeeded by syncCode
-          mPackets++;
           //{{{  parse ts packet
           //bool tei = *tsPtr & 0x80;
           bool payStart = ((*tsPtr) & 0x40) != 0;
@@ -873,15 +872,14 @@ public:
           tsPtr += headerBytes;
           auto tsFrameBytesLeft = 187 - headerBytes;
 
-          bool isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
+          auto isSection = (pid == PID_PAT) || (pid == PID_SDT) || (pid == PID_EIT) || (pid == PID_TDT) ||
                            (mProgramMap.find (pid) != mProgramMap.end());
 
           // find or create pidInfo
-          tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
+          auto pidInfoIt = mPidInfoMap.find (pid);
           if (pidInfoIt == mPidInfoMap.end()) {
             // new pid, insert new cPidInfo, get pidInfoIt iterator
-            pair<tPidInfoMap::iterator, bool> insertPair =
-              mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
+            auto insertPair = mPidInfoMap.insert (tPidInfoMap::value_type (pid, cPidInfo(pid, isSection)));
             pidInfoIt = insertPair.first;
             }
 
@@ -904,7 +902,7 @@ public:
             pidInfoIt->second.mPcr = pcr;
           //}}}
 
-          bool bufferRestOfTsPacket = false;
+          auto bufferRestOfTsPacket = false;
           if (isSection) {
             //{{{  parse section pids
             if (payStart) {
@@ -1050,7 +1048,9 @@ public:
                       int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuffer), pidInfoIt->second.mBufSize);
             }
             //}}}
+
           tsPtr += tsFrameBytesLeft;
+          mPackets++;
           }
         }
       else
@@ -1070,16 +1070,16 @@ public:
     if (!mPidInfoMap.empty()) {
       wchar_t wStr[200];
       swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
-      D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+      auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
 
-      float top = 40.0f;
+      auto top = 40.0f;
       for (auto pidInfo : mPidInfoMap) {
-        float total = (float)pidInfo.second.mTotal;
+        auto total = (float)pidInfo.second.mTotal;
         if (total > mLargest)
           mLargest = total;
-        float len = (total/mLargest) * (client.width-50.0f);
-        D2D1_RECT_F r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
+        auto len = (total/mLargest) * (client.width-50.0f);
+        auto r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
         dc->FillRectangle (r, blueBrush);
 
         textr.top = top;
@@ -1099,7 +1099,7 @@ public:
                       ID2D1SolidColorBrush* blackBrush,
                       ID2D1SolidColorBrush* greyBrush) {
 
-    D2D1_RECT_F textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+    auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
     for (auto service : mServiceMap) {
       wchar_t wStr[200];
       swprintf (wStr, 200, L"%hs - %hs", service.second.getName(), service.second.getNow()->mTitle);
@@ -1137,7 +1137,7 @@ protected:
   //{{{
   virtual int64_t selectService (int index) {
 
-    int j = 0;
+    auto j = 0;
     for (auto service :mServiceMap) {
       if (j == index) {
         int pcrPid = service.second.getPcrPid();
@@ -1166,18 +1166,18 @@ private:
   //{{{
   void recordChange (int sid) {
 
-    tServiceMap::iterator it = mServiceMap.find (sid);
+    auto it = mServiceMap.find (sid);
     if (it != mServiceMap.end()) {
-      tm curTime = *localtime (&mCurTime);
+      auto curTime = *localtime (&mCurTime);
       wchar_t fileName[100];
       std::locale loc1 ("English");
-      const char* str1 = it->second.getNow()->mTitle;
+      auto str1 = it->second.getNow()->mTitle;
       wchar_t str2[100];
-      std::use_facet <std::ctype <wchar_t> >(loc1).widen (str1, str1 + strlen(str1), &str2[0]);
+      std::use_facet<std::ctype <wchar_t>>(loc1).widen (str1, str1 + strlen(str1), &str2[0]);
       str2[strlen(str1)] = '\0';
 
       // cull illegal chars
-      for (unsigned int i = 0; i < strlen(str1); i++)
+      for (auto i = 0; i < strlen(str1); i++)
         if ((str2[i] == ':') || (str2[i] == '?') || (str2[i] == '\'?'))
           str2[i] = ' ';
 
@@ -1197,23 +1197,19 @@ private:
   // update pid cPidInfo UI text for speed, lock avoidance
 
     // cPidInfo from pid using mPidInfoMap
-    tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pid);
+    auto pidInfoIt = mPidInfoMap.find (pid);
     if (pidInfoIt != mPidInfoMap.end()) {
 
       // cService from cPidInfo.sid using mServiceMap
-      tServiceMap::iterator serviceIt = mServiceMap.find (pidInfoIt->second.mSid);
+      auto serviceIt = mServiceMap.find (pidInfoIt->second.mSid);
       if (serviceIt != mServiceMap.end()) {
 
         size_t size = 0;
         wchar_t name[100];
-        mbstowcs_s (&size, name,
-                    strlen (serviceIt->second.getName())+1,
-                    serviceIt->second.getName(), _TRUNCATE);
+        mbstowcs_s (&size, name, strlen (serviceIt->second.getName())+1, serviceIt->second.getName(), _TRUNCATE);
 
         wchar_t title[100];
-        mbstowcs_s (&size, title,
-                    strlen (serviceIt->second.getNow()->mTitle)+1,
-                    serviceIt->second.getNow()->mTitle, _TRUNCATE);
+        mbstowcs_s (&size, title, strlen (serviceIt->second.getNow()->mTitle)+1, serviceIt->second.getNow()->mTitle, _TRUNCATE);
 
         if (pid == serviceIt->second.getVidPid())
           swprintf (pidInfoIt->second.mInfo, 100, L"vid %ls %ls ", name, title);
@@ -1231,8 +1227,8 @@ private:
   //{{{
   unsigned long crc32 (uint8_t* data, int len) {
 
-    unsigned long crc = 0xffffffff;
-    for (int i = 0; i < len; i++)
+    auto crc = 0xffffffff;
+    for (auto i = 0; i < len; i++)
       crc = (crc << 8) ^ crcTable[((crc >> 24) ^ *data++) & 0xff];
 
     return crc;
@@ -1242,7 +1238,7 @@ private:
   void parsePat (uint8_t* buf) {
   // PAT declares programPid,sid to mPogramMap, recognieses programPid PMT to declare service streams
 
-    pat_t* Pat = (pat_t*)buf;
+    auto Pat = (pat_t*)buf;
     if (crc32 (buf, HILO(Pat->section_length) + 3)) {
       //{{{  bad crc
       printf ("parsePAT - bad crc %d\n", HILO(Pat->section_length) + 3);
@@ -1259,14 +1255,14 @@ private:
     //int tsid = HILO (Pat->transport_stream_id);
     //printf ("PAT tsid:%d\n", tsid);
 
-    uint8_t* ptr = buf + PAT_LEN;
-    int sectionLength = HILO(Pat->section_length) + 3 - PAT_LEN - 4;
+    auto ptr = buf + PAT_LEN;
+    auto sectionLength = HILO(Pat->section_length) + 3 - PAT_LEN - 4;
     while (sectionLength > 0) {
       pat_prog_t* patProgram = (pat_prog_t*)ptr;
-      int sid = HILO (patProgram->program_number);
-      int pid = HILO (patProgram->network_pid);
+      auto sid = HILO (patProgram->program_number);
+      auto pid = HILO (patProgram->network_pid);
       if (pid != 0) {
-        tProgramMap::iterator it = mProgramMap.find (pid);
+        auto it = mProgramMap.find (pid);
         if (it == mProgramMap.end()) {
           mProgramMap.insert (tProgramMap::value_type (pid, sid));
           printf ("parsePAT - new program pid:%d sid:%d\n", pid, sid);
@@ -1280,7 +1276,7 @@ private:
   //{{{
   void parseNit (uint8_t* buf) {
 
-    nit_t* Nit = (nit_t*)buf;
+    auto Nit = (nit_t*)buf;
 
     if (crc32 (buf, HILO (Nit->section_length) + 3)) {
       //{{{  bad crc
@@ -1297,18 +1293,18 @@ private:
       }
       //}}}
 
-    int networkId = HILO (Nit->network_id);
+    auto networkId = HILO (Nit->network_id);
 
-    uint8_t* ptr = buf + NIT_LEN;
-    int loopLength = HILO (Nit->network_descr_length);
-    int sectionLength = HILO (Nit->section_length) + 3 - NIT_LEN - 4;
+    auto ptr = buf + NIT_LEN;
+    auto loopLength = HILO (Nit->network_descr_length);
+    auto sectionLength = HILO (Nit->section_length) + 3 - NIT_LEN - 4;
     if (loopLength <= sectionLength) {
       if (sectionLength >= 0)
         parseDescrs ("parseNIT1", networkId, ptr, loopLength, Nit->table_id);
       sectionLength -= loopLength;
 
       ptr += loopLength;
-      nit_mid_t* NitMid = (nit_mid_t*) ptr;
+      auto NitMid = (nit_mid_t*) ptr;
       loopLength = HILO (NitMid->transport_stream_loop_length);
       if ((sectionLength > 0) && (loopLength <= sectionLength)) {
         // iterate nitMids
@@ -1316,11 +1312,11 @@ private:
         ptr += SIZE_NIT_MID;
 
         while (loopLength > 0) {
-          nit_ts_t* TSDesc = (nit_ts_t*)ptr;
-          int tsid = HILO (TSDesc->transport_stream_id);
-          int onid = HILO (TSDesc->original_network_id);
+          auto TSDesc = (nit_ts_t*)ptr;
+          auto tsid = HILO (TSDesc->transport_stream_id);
+          auto onid = HILO (TSDesc->original_network_id);
 
-          int loop2Length = HILO (TSDesc->transport_descrs_length);
+          auto loop2Length = HILO (TSDesc->transport_descrs_length);
           ptr += NIT_TS_LEN;
           if (loop2Length <= loopLength)
             if (loopLength >= 0)
@@ -1338,7 +1334,7 @@ private:
   void parseSdt (uint8_t* buf) {
   // SDT add new services to mServiceMap declaring serviceType, name
 
-    sdt_t* Sdt = (sdt_t*)buf;
+    auto Sdt = (sdt_t*)buf;
     if (crc32 (buf, HILO (Sdt->section_length) + 3)) {
       //{{{  wrong crc
       printf ("parseSDT - bad crc %d\n", HILO (Sdt->section_length) + 3);
@@ -1356,18 +1352,18 @@ private:
 
     //printf ("SDT - tsid:%d onid:%d\n", tsid, onid);
 
-    uint8_t* ptr = buf + SDT_LEN;
-    int sectionLength = HILO (Sdt->section_length) + 3 - SDT_LEN - 4;
+    auto ptr = buf + SDT_LEN;
+    auto sectionLength = HILO (Sdt->section_length) + 3 - SDT_LEN - 4;
     while (sectionLength > 0) {
-      sdt_descr_t* SdtDescr = (sdt_descr_t*)ptr;
-      int sid = HILO (SdtDescr->service_id);
-      int free_ca_mode = SdtDescr->free_ca_mode;
-      int running_status = SdtDescr->running_status;
+      auto SdtDescr = (sdt_descr_t*)ptr;
+      auto sid = HILO (SdtDescr->service_id);
+      auto free_ca_mode = SdtDescr->free_ca_mode;
+      auto running_status = SdtDescr->running_status;
 
-      int loopLength = HILO (SdtDescr->descrs_loop_length);
+      auto loopLength = HILO (SdtDescr->descrs_loop_length);
       ptr += SDT_DESCR_LEN;
 
-      int DescrLength = 0;
+      auto DescrLength = 0;
       while ((DescrLength < loopLength) &&
              (GetDescrLength (ptr) > 0) &&
              (GetDescrLength (ptr) <= loopLength - DescrLength)) {
@@ -1375,18 +1371,18 @@ private:
         switch (GetDescrTag (ptr)) {
           case DESCR_SERVICE: { // 0x48
             //{{{  service
-            int serviceType = CastServiceDescr(ptr)->service_type;
+            auto serviceType = CastServiceDescr(ptr)->service_type;
             if ((free_ca_mode == 0) &&
                 ((serviceType == kServiceTypeTV)  ||
                  (serviceType == kServiceTypeRadio) ||
                  (serviceType == kServiceTypeAdvancedHDTV) ||
                  (serviceType == kServiceTypeAdvancedSDTV))) {
 
-              tServiceMap::iterator it = mServiceMap.find (sid);
+              auto it = mServiceMap.find (sid);
               if (it == mServiceMap.end()) {
                 // new service
-                int tsid = HILO (Sdt->transport_stream_id);
-                int onid = HILO (Sdt->original_network_id);
+                auto tsid = HILO (Sdt->transport_stream_id);
+                auto onid = HILO (Sdt->original_network_id);
 
                 char name[100];
                 getDescrName (
@@ -1395,10 +1391,8 @@ private:
                   name);
 
                 // insert new cService, get serviceIt iterator
-                std::pair<tServiceMap::iterator, bool> resultPair =
-                  mServiceMap.insert (
-                    tServiceMap::value_type (sid, cService (sid, tsid, onid, serviceType, name)));
-                tServiceMap::iterator serviceIt = resultPair.first;
+                auto pair = mServiceMap.insert (tServiceMap::value_type (sid, cService (sid, tsid, onid, serviceType, name)));
+                auto serviceIt = pair.first;
                 printf ("SDT new cService tsid:%d sid:%d %s name<%s>\n", tsid, sid, serviceIt->second.getTypeStr(), name);
                 }
               }
@@ -1432,21 +1426,21 @@ private:
   //{{{
   void parseEit (uint8_t* buf) {
 
-    eit_t* Eit = (eit_t*)buf;
+    auto Eit = (eit_t*)buf;
     if (crc32 (buf, HILO (Eit->section_length) + 3)) {
       printf ("parseEIT - bad crc %d\n", HILO (Eit->section_length) + 3);
       return;
       }
 
-    int tid = Eit->table_id;
-    int sid = HILO (Eit->service_id);
+    auto tid = Eit->table_id;
+    auto sid = HILO (Eit->service_id);
     //int tsid = HILO (Eit->transport_stream_id);
     //int onid = HILO (Eit->original_network_id);
     //printf ("parseEIT - tid:%x sid:%d\n", tid, sid);
 
-    bool now = (tid == TID_EIT_ACT);
-    bool next = (tid == TID_EIT_OTH);
-    bool epg = (tid == TID_EIT_ACT_SCH) || (tid == TID_EIT_OTH_SCH) ||
+    auto now = (tid == TID_EIT_ACT);
+    auto next = (tid == TID_EIT_OTH);
+    auto epg = (tid == TID_EIT_ACT_SCH) || (tid == TID_EIT_OTH_SCH) ||
                (tid == TID_EIT_ACT_SCH+1) || (tid == TID_EIT_OTH_SCH+1);
     if (!now && !next && !epg) {
       //{{{  unexpected tid
@@ -1456,17 +1450,17 @@ private:
       //}}}
 
     // parse Descrs
-    uint8_t* ptr = buf + EIT_LEN;
-    int sectionLength = HILO (Eit->section_length) + 3 - EIT_LEN - 4;
+    auto ptr = buf + EIT_LEN;
+    auto sectionLength = HILO (Eit->section_length) + 3 - EIT_LEN - 4;
     while (sectionLength > 0) {
-      eit_event_t* EitEvent = (eit_event_t*)ptr;
+      auto EitEvent = (eit_event_t*)ptr;
 
-      int loopLength = HILO (EitEvent->descrs_loop_length);
+      auto loopLength = HILO (EitEvent->descrs_loop_length);
       if (loopLength > sectionLength - EIT_EVENT_LEN)
         return;
       ptr += EIT_EVENT_LEN;
 
-      int DescrLength = 0;
+      auto DescrLength = 0;
       while ((DescrLength < loopLength) &&
              (GetDescrLength (ptr) > 0) &&
              (GetDescrLength (ptr) <= loopLength - DescrLength)) {
@@ -1474,26 +1468,23 @@ private:
         switch (GetDescrTag(ptr)) {
           case DESCR_SHORT_EVENT: {
             //{{{  shortEvent
-            tServiceMap::iterator it = mServiceMap.find (sid);
+            auto it = mServiceMap.find (sid);
             if (it != mServiceMap.end()) {
               // recognised service
-              time_t startTime = MjdToEpochTime (EitEvent->mjd) + BcdTimeToSeconds (EitEvent->start_time);
-              int duration = BcdTimeToSeconds (EitEvent->duration);
-              bool running = (EitEvent->running_status == 0x04);
+              auto startTime = MjdToEpochTime (EitEvent->mjd) + BcdTimeToSeconds (EitEvent->start_time);
+              auto duration = BcdTimeToSeconds (EitEvent->duration);
+              auto running = (EitEvent->running_status == 0x04);
 
-              char* title = huffDecode (ptr + DESCR_SHORT_EVENT_LEN,
-                                        CastShortEventDescr(ptr)->event_name_length);
+              auto title = huffDecode (ptr + DESCR_SHORT_EVENT_LEN, CastShortEventDescr(ptr)->event_name_length);
 
               char siTitle[400];
               if (title == NULL) {
-                getDescrName (ptr + DESCR_SHORT_EVENT_LEN,
-                                     CastShortEventDescr(ptr)->event_name_length, siTitle);
+                getDescrName (ptr + DESCR_SHORT_EVENT_LEN, CastShortEventDescr(ptr)->event_name_length, siTitle);
                 title = siTitle;
                 }
 
-              char* shortDescription = huffDecode (
-                ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length+1,
-                size_t(ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length));
+              auto shortDescription = huffDecode (ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length+1,
+                                                  size_t(ptr + DESCR_SHORT_EVENT_LEN + CastShortEventDescr(ptr)->event_name_length));
 
               char siShortDescription[400];
               if (shortDescription == NULL) {
@@ -1549,7 +1540,7 @@ private:
                     CastExtendedEventDescr(ptr)->descr_number,
                     CastExtendedEventDescr(ptr)->length_of_items);
 
-            for (int i = 0; i < GetDescrLength (ptr) -2; i++) {
+            for (auto i = 0; i < GetDescrLength (ptr) -2; i++) {
               char c = *(ptr + 2 + i);
               if ((c >= 0x20) && (c <= 0x7F))
                 printf ("%c", c);
@@ -1590,11 +1581,11 @@ private:
   //{{{
   void parseTdt (uint8_t* buf) {
 
-    tdt_t* Tdt = (tdt_t*)buf;
+    auto Tdt = (tdt_t*)buf;
     if (Tdt->table_id == TID_TDT) {
       mCurTime = MjdToEpochTime (Tdt->utc_mjd) + BcdTimeToSeconds (Tdt->utc_time);
 
-      struct tm when = *localtime (&mCurTime);
+      auto when = *localtime (&mCurTime);
       size_t size = 0;
       mbstowcs_s (&size, wTimeStr, 25, asctime (&when), _TRUNCATE);
       }
@@ -1604,7 +1595,7 @@ private:
   void parsePmt (int pid, uint8_t* buf) {
   // PMT declares streams for a service
 
-    pmt_t* pmt = (pmt_t*)buf;
+    auto pmt = (pmt_t*)buf;
     if (crc32 (buf, HILO (pmt->section_length) + 3)) {
       //{{{  bad crc
       printf ("parsePMT - pid:%d bad crc %d\n", pid, HILO(pmt->section_length) + 3);
@@ -1618,37 +1609,37 @@ private:
       }
       //}}}
 
-    int sid = HILO (pmt->program_number);
+    auto sid = HILO (pmt->program_number);
     //printf ("PMT - pid:%d sid:%d\n", pid, sid);
 
-    tServiceMap::iterator serviceIt = mServiceMap.find (sid);
+    auto serviceIt = mServiceMap.find (sid);
     if (serviceIt != mServiceMap.end()) {
       // service declared by SMT
       serviceIt->second.setProgramPid (pid);
 
       // point programPid to service by sid
-      tPidInfoMap::iterator sectionIt = mPidInfoMap.find (pid);
+      auto sectionIt = mPidInfoMap.find (pid);
       if (sectionIt != mPidInfoMap.end())
         sectionIt->second.mSid = sid;
       updatePidInfo (pid);
 
       serviceIt->second.setPcrPid (HILO (pmt->PCR_PID));
 
-      uint8_t* ptr = buf + PMT_LEN;
-      int sectionLength = HILO (pmt->section_length) + 3 - 4;
-      int programInfoLength = HILO (pmt->program_info_length);
+      auto ptr = buf + PMT_LEN;
+      auto sectionLength = HILO (pmt->section_length) + 3 - 4;
+      auto programInfoLength = HILO (pmt->program_info_length);
 
-      int streamLength = sectionLength - programInfoLength - PMT_LEN;
+      auto streamLength = sectionLength - programInfoLength - PMT_LEN;
       if (streamLength >= 0)
         parseDescrs ("parsePMT1", sid, ptr, programInfoLength, pmt->table_id);
 
       ptr += programInfoLength;
       while (streamLength > 0) {
-        pmt_info_t* pmtInfo = (pmt_info_t*)ptr;
-        int streamType = pmtInfo->stream_type;
-        int esPid = HILO (pmtInfo->elementary_PID);
+        auto pmtInfo = (pmt_info_t*)ptr;
+        auto streamType = pmtInfo->stream_type;
+        auto esPid = HILO (pmtInfo->elementary_PID);
 
-        bool recognised = true;
+        auto recognised = true;
         switch (streamType) {
           case 2:  serviceIt->second.setVidPid (esPid); break; // ISO 13818-2 video
           case 3:  serviceIt->second.setAudPid (esPid); break; // ISO 11172-3 audio
@@ -1667,7 +1658,7 @@ private:
 
         if (recognised) {
           // set sid for each stream pid
-          tPidInfoMap::iterator sectionIt = mPidInfoMap.find (esPid);
+          auto sectionIt = mPidInfoMap.find (esPid);
           if (sectionIt != mPidInfoMap.end()) {
             sectionIt->second.mSid = sid;
             sectionIt->second.mStreamType = streamType;
@@ -1675,7 +1666,7 @@ private:
           updatePidInfo (esPid);
           }
 
-        int loopLength = HILO (pmtInfo->ES_info_length);
+        auto loopLength = HILO (pmtInfo->ES_info_length);
         parseDescrs ("parsePMT2", sid, ptr, loopLength, pmt->table_id);
 
         ptr += PMT_INFO_LEN;
@@ -1714,7 +1705,7 @@ private:
   //{{{
   void getDescrText (uint8_t* buf, int len, char* text) {
 
-    for (int i = 0; i < len; i++) {
+    for (auto i = 0; i < len; i++) {
       if (*buf == 0)
         break;
 
@@ -1736,7 +1727,7 @@ private:
   //{{{
   void getDescrName (uint8_t* buf, int len, char* name) {
 
-    for (int i = 0; i < len; i++) {
+    for (auto i = 0; i < len; i++) {
       if (*buf == 0)
         break;
 
@@ -1774,8 +1765,8 @@ private:
           CastExtendedEventDescr(buf)->lang_code3,
           Text);
 
-        uint8_t* ptr = buf + DESCR_EXTENDED_EVENT_LEN;
-        int length = CastExtendedEventDescr(buf)->length_of_items;
+        auto ptr = buf + DESCR_EXTENDED_EVENT_LEN;
+        auto length = CastExtendedEventDescr(buf)->length_of_items;
         while ((length > 0) && (length < GetDescrLength (buf))) {
           getDescrText (ptr + ITEM_EXTENDED_EVENT_LEN,
                         CastExtendedEventItem(ptr)->item_description_length, Text);
@@ -1814,7 +1805,6 @@ private:
                       GetDescrLength (buf) - DESCR_BOUQUET_NAME_LEN, networkName);
         size_t size = 0;
         mbstowcs_s (&size, wNetworkNameStr, strlen (networkName) + 1, networkName, _TRUNCATE);
-
         break;
         }
         //}}}
@@ -1829,12 +1819,12 @@ private:
         //}}}
       case DESCR_SERVICE_LIST: {
         //{{{  service list
-        uint8_t* ptr = buf;
-        int length = GetDescrLength(buf);
+        auto ptr = buf;
+        auto length = GetDescrLength(buf);
 
         while (length > 0) {
-          int sid = HILO (CastServiceListDescrLoop(ptr)->service_id);
-          int serviceType = CastServiceListDescrLoop(ptr)->service_type;
+          auto sid = HILO (CastServiceListDescrLoop(ptr)->service_id);
+          auto serviceType = CastServiceListDescrLoop(ptr)->service_type;
           //printf ("serviceList sid:%5d type:%d\n", sid, serviceType);
           length -= DESCR_SERVICE_LIST_LEN;
           ptr += DESCR_SERVICE_LIST_LEN;
@@ -1871,8 +1861,8 @@ private:
   //{{{
   void parseDescrs (char* sectionName, int key, uint8_t* buf, int len, uint8_t tid) {
 
-   uint8_t* ptr = buf;
-   int DescrLength = 0;
+   auto ptr = buf;
+   auto DescrLength = 0;
 
    while (DescrLength < len) {
      if ((GetDescrLength (ptr) <= 0) || (GetDescrLength (ptr) > len - DescrLength))

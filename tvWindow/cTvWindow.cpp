@@ -19,7 +19,7 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxAudFrames 16
+#define maxAudFrames 32
 #define maxVidFrames 32
 
 //{{{
@@ -118,24 +118,24 @@ protected:
       }
 
     mAudPts = pidInfo->mPts;
-    int64_t interpolatedPts = pidInfo->mPts;
+    auto interpolatedPts = pidInfo->mPts;
 
     AVPacket avPacket;
     av_init_packet (&avPacket);
     avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
 
-    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+    auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
     pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
-      int lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pidInfo->mBufPtr += lenUsed;
       pesLen -= lenUsed;
 
       if (avPacket.data) {
-        int got = 0;
-        AVFrame* avFrame = av_frame_alloc();
-        int bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
+        auto got = 0;
+        auto avFrame = av_frame_alloc();
+        auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
         avPacket.data += bytesUsed;
         avPacket.size -= bytesUsed;
 
@@ -144,7 +144,7 @@ protected:
           //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
           interpolatedPts += (avFrame->nb_samples * 90000) / 48000;
 
-          short* samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
+          auto samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
           if (audContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
             //{{{  16bit signed planar
             short* leftPtr = (short*)avFrame->data[0];
@@ -194,17 +194,17 @@ protected:
     avPacket.data = pidInfo->mBuffer;
     avPacket.size = 0;
 
-    int pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+    auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
     pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
-      int lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pidInfo->mBufPtr += lenUsed;
       pesLen -= lenUsed;
 
       if (avPacket.data) {
-        AVFrame* avFrame = av_frame_alloc();
-        int got = 0;
-        int bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+        auto avFrame = av_frame_alloc();
+        auto got = 0;
+        auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
         avPacket.data += bytesUsed;
         avPacket.size -= bytesUsed;
         if (got) {
@@ -326,8 +326,8 @@ bool onKey (int key) {
 //{{{
 void onMouseProx (bool inClient, int x, int y) {
 
-  bool showChannel = mShowChannel;
-  bool transportStream = mShowTransportStream;
+  auto showChannel = mShowChannel;
+  auto transportStream = mShowTransportStream;
 
   mShowTransportStream = inClient && (x > getClientF().width - 100);
   mShowChannel = inClient && (x < 100);
@@ -345,7 +345,7 @@ void onMouseDown (bool right, int x, int y) {
     }
 
   else if (x < 80) {
-    int channel = (y / 20) - 1;
+    auto channel = (y / 20) - 1;
     if (channel >= 0)
       selectService (channel);
     }
@@ -375,7 +375,7 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   // draw title
   wchar_t wStr[200];
-  D2D1_RECT_F textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
+  auto textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
   swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
             (mAudPts - mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
             (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mTs.mChannelSelector);
@@ -386,8 +386,8 @@ void onDraw (ID2D1DeviceContext* dc) {
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
 
-  float x = getClientF().width * (float)mFilePtr / (float)mFileSize;
-  D2D1_RECT_F r = D2D1::RectF(0, getClientF().height-10.0f, x, getClientF().height);
+  auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
+  auto r = D2D1::RectF(0, getClientF().height-10.0f, x, getClientF().height);
   dc->FillRectangle (r, getYellowBrush());
   }
 //}}}
@@ -396,7 +396,7 @@ private:
   //{{{
   void selectService (int index) {
 
-    int64_t basePts = mTs.selectService (index);
+    auto basePts = mTs.selectService (index);
     if (basePts)
       mBasePts = basePts;
     }
@@ -456,13 +456,13 @@ private:
 
     uint8_t tsBuf[1024*188]; // 192k buffer, about a frame
 
-    HANDLE readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
     mFilePtr = 0;
     int64_t lastFilePtr = 0;
     DWORD numberOfBytesRead = 0;
     while (true) {
-      bool skip = mFilePtr != lastFilePtr;
+      auto skip = mFilePtr != lastFilePtr;
       if (skip) {
         //{{{  skip file to new filePtr
         LARGE_INTEGER large;
@@ -567,10 +567,6 @@ private:
     //AVPacket avPacket;
     //while (true) {
       //while (av_read_frame (avFormatContext, &avPacket) >= 0) {
-
-        ////while (mAudFramesLoaded > int(mPlayTime) + maxAudFrames/2)
-        ////  Sleep (40);
-
         //if (avPacket.stream_index == audStream) {
           //{{{  aud packet
           //int got = 0;

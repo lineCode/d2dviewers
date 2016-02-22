@@ -161,42 +161,65 @@ public:
 
 private:
   //{{{
-  void pesFromTs (uint8_t* ptr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes) {
+  int64_t parseTimeStamp (uint8_t* tsPtr) {
+    return (((*tsPtr) & 0x0E) << 29) | (*(tsPtr+1) << 22) | ((*(tsPtr+2) & 0xFE) << 14) | (*(tsPtr+3) << 7)  | (*(tsPtr+4) >> 1);
+    }
+  //}}}
+  //{{{
+  void parseTimeStamps (uint8_t* tsPtr, int64_t& pts, int64_t& dts) {
+
+    pts = ((*(tsPtr+8) >= 5) && (*(tsPtr+7) & 0x80)) ? parseTimeStamp (tsPtr+9) : 0;
+    dts = ((*(tsPtr+8) >= 10) && (*(tsPtr+7) & 0x40)) ? parseTimeStamp (tsPtr+14) : 0;
+    }
+  //}}}
+  //{{{
+  void pesFromTs (uint8_t* tsPtr, uint8_t* endPtr, int audPid, int audPes, int vidPid, int vidPes) {
   // aud and vid pes from ts
 
-    auto audStartPtr = ptr;
-    auto audPtr = ptr;
+    auto audStartPtr = tsPtr;
+    auto audPtr = tsPtr;
     auto vidStartPtr = mVidPtr;
     auto vidPtr = mVidPtr;
 
-    while ((ptr < endPtr) && (*ptr++ == 0x47)) {
-      auto payStart = *ptr & 0x40;
-      auto pid = ((*ptr & 0x1F) << 8) | *(ptr+1);
-      auto headerBytes = (*(ptr+2) & 0x20) ? (4 + *(ptr+3)) : 3;
-      ptr += headerBytes;
+    while ((tsPtr < endPtr) && (*tsPtr++ == 0x47)) {
+      auto payStart = *tsPtr & 0x40;
+      auto pid = ((*tsPtr & 0x1F) << 8) | *(tsPtr+1);
+      auto adaption = (*(tsPtr+2) & 0x20) != 0;
+      auto hasPcr = adaption && (*(tsPtr+4) & 0x10);
+      int64_t pcr = hasPcr ? ((*(tsPtr+5)<<25) | (*(tsPtr+6)<<17)  | (*(tsPtr+7)<<9) | (*(tsPtr+8)<<1) | (*(tsPtr+9)>>7)) : 0;
+      auto headerBytes = adaption ? (4 + *(tsPtr+3)) : 3;
+      tsPtr += headerBytes;
       auto tsFrameBytesLeft = 187 - headerBytes;
 
       if (pid == audPid) {
-        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == audPes)) {
-          int pesHeaderBytes = 9 + *(ptr+8);
-          ptr += pesHeaderBytes;
+        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == audPes)) {
+          int64_t pts;
+          int64_t dts;
+          parseTimeStamps (tsPtr, pts, dts);
+
+          int pesHeaderBytes = 9 + *(tsPtr+8);
+          tsPtr += pesHeaderBytes;
           tsFrameBytesLeft -= pesHeaderBytes;
           }
-        memcpy (audPtr, ptr, tsFrameBytesLeft);
+        memcpy (audPtr, tsPtr, tsFrameBytesLeft);
         audPtr += tsFrameBytesLeft;
         }
 
       else if (vidPtr && (pid == vidPid)) {
-        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == vidPes)) {
-          int pesHeaderBytes = 9 + *(ptr+8);
-          ptr += pesHeaderBytes;
+        if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == vidPes)) {
+          int64_t pts;
+          int64_t dts;
+          parseTimeStamps (tsPtr, pts, dts);
+
+          int pesHeaderBytes = 9 + *(tsPtr+8);
+          tsPtr += pesHeaderBytes;
           tsFrameBytesLeft -= pesHeaderBytes;
           }
-        memcpy (vidPtr, ptr, tsFrameBytesLeft);
+        memcpy (vidPtr, tsPtr, tsFrameBytesLeft);
         vidPtr += tsFrameBytesLeft;
         }
 
-      ptr += tsFrameBytesLeft;
+      tsPtr += tsFrameBytesLeft;
       }
 
     mVidLen = vidPtr - vidStartPtr;
@@ -226,28 +249,28 @@ private:
     NeAACDecInit (mAudDecoder, mAudPtr, 2048, &sampleRate, &chans);
 
     NeAACDecFrameInfo frameInfo;
-    int16_t* buffer = mAudSamples;
+    auto buffer = mAudSamples;
 
-    int actualSamplesPerAacFrame = aacHE ? samplesPerAacFrame*2 :samplesPerAacFrame;
+    auto actualSamplesPerAacFrame = aacHE ? samplesPerAacFrame*2 :samplesPerAacFrame;
     NeAACDecDecode2 (mAudDecoder, &frameInfo, mAudPtr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
 
-    uint8_t* powerPtr = mAudPower;
+    auto powerPtr = mAudPower;
     auto ptr = mAudPtr;
     while (ptr < mAudPtr + mAudLen) {
       NeAACDecDecode2 (mAudDecoder, &frameInfo, ptr, 2048, (void**)(&buffer), actualSamplesPerAacFrame * 2 * 2);
       ptr += frameInfo.bytesconsumed;
-      for (int i = 0; i < (aacHE ? 2 : 1); i++) {
+      for (auto i = 0; i < (aacHE ? 2 : 1); i++) {
         // calc left, right power
         int valueL = 0;
         int valueR = 0;
-        for (int j = 0; j < samplesPerAacFrame; j++) {
-          short sample = (*buffer++) >> 4;
+        for (auto j = 0; j < samplesPerAacFrame; j++) {
+          auto sample = (*buffer++) >> 4;
           valueL += sample * sample;
           sample = (*buffer++) >> 4;
           valueR += sample * sample;
           }
 
-        uint8_t leftPix = (uint8_t)sqrt(valueL / (samplesPerAacFrame * 32.0f));
+        auto leftPix = (uint8_t)sqrt(valueL / (samplesPerAacFrame * 32.0f));
         *powerPtr++ = (272/2) - leftPix;
         *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (samplesPerAacFrame * 32.0f));
 
@@ -325,10 +348,9 @@ private:
         avRegistered = true;
         }
 
-      AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_H264);
-
-      AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);
-      AVCodecContext* vidCodecContext = avcodec_alloc_context3 (vidCodec);
+      auto vidParser = av_parser_init (AV_CODEC_ID_H264);
+      auto vidCodec = avcodec_find_decoder (AV_CODEC_ID_H264);
+      auto vidCodecContext = avcodec_alloc_context3 (vidCodec);
       avcodec_open2 (vidCodecContext, vidCodec, NULL);
 
       AVPacket vidPacket;
@@ -336,14 +358,14 @@ private:
       vidPacket.data = mVidPtr;
       vidPacket.size = 0;
 
-      int packetUsed = 0;
-      int vidLen = (int)mVidLen;
-      AVFrame* vidFrame = av_frame_alloc();
+      auto packetUsed = 0;
+      auto vidLen = (int)mVidLen;
+      auto vidFrame = av_frame_alloc();
       while (packetUsed || vidLen) {
         uint8_t* data = NULL;
         av_parser_parse2 (vidParser, vidCodecContext, &data, &vidPacket.size, vidPacket.data, vidLen, 0, 0, AV_NOPTS_VALUE);
 
-        int got = 0;
+        auto got = 0;
         packetUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &vidPacket);
         if (got)
           mYuvFrames[mVidFramesLoaded++].set (fakeVidPts++, vidFrame->data, vidFrame->linesize,
@@ -362,7 +384,7 @@ private:
   //{{{
   void saveToFile (cRadioChan* radioChan, int audBitrate) {
 
-    bool changeChan = chan != radioChan->getChannel();
+    auto changeChan = chan != radioChan->getChannel();
     chan = radioChan->getChannel();
 
     if (mAudLen > 0) {

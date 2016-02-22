@@ -112,7 +112,7 @@ protected:
   //{{{
   void onMouseWheel (int delta) {
 
-    float ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+    auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
     if (delta > 0)
       ratio = 1.0f/ratio;
 
@@ -124,20 +124,21 @@ protected:
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
 
-    bool showChannel = mShowChannel;
+    auto showChannel = mShowChannel;
     mShowChannel = inClient && (x < 80);
     if (showChannel != mShowChannel)
       changed();
 
     if (x < 80) {
-      int channel = (y / 20) - 1;
+      auto channel = (y / 20) - 1;
       }
     }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
+
     if (x < 80) {
-      int channel = (y / 20) - 1;
+      auto channel = (y / 20) - 1;
       if (channel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
         if (hlsRadio)
@@ -177,18 +178,18 @@ protected:
       dc->Clear (ColorF(ColorF::Black));
 
     // grey mid line
-    D2D1_RECT_F rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
+    auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
     dc->FillRectangle (rMid, getGreyBrush());
 
     // yellow vol bar
-    D2D1_RECT_F rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * getClientF().height/100);
+    auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * getClientF().height/100);
     dc->FillRectangle (rVol, getYellowBrush());
 
     // waveform
-    double secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
+    auto secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
     uint8_t* power = nullptr;
-    int frames = 0;
-    D2D1_RECT_F rWave = RectF (0,0,1,0);
+    auto frames = 0;
+    auto rWave = RectF (0,0,1,0);
     for (; rWave.left < getClientF().width; rWave.left++, rWave.right++) {
       if (!frames)
         power = mPlayer->getPower (secs, frames);
@@ -318,7 +319,7 @@ private:
     CoInitialize (NULL);
     winAudioOpen (mPlayer->getAudSampleRate(), 16, 2);
 
-    int lastSeqNum = 0;
+    auto lastSeqNum = 0;
     while (true) {
       int seqNum;
       int16_t* audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
