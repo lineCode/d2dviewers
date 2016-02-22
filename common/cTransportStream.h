@@ -817,26 +817,11 @@ class cTransportStream {
 public:
   cTransportStream() {}
   virtual ~cTransportStream() {}
-  //{{{
-  int getPackets() {
-    return mPackets;
-    }
-  //}}}
-  //{{{
-  int getDiscontinuity() {
-    return mDiscontinuity;
-    }
-  //}}}
-  //{{{
-  int getSelectedAudPid() {
-    return mSelectedAudPid;
-    }
-  //}}}
-  //{{{
-  int getSelectedVidPid() {
-    return mSelectedVidPid;
-    }
-  //}}}
+
+  int getPackets() { return mPackets; }
+  int getDiscontinuity() { return mDiscontinuity; }
+  int getSelectedAudPid() { return mSelectedAudPid; }
+  int getSelectedVidPid() { return mSelectedVidPid; }
 
   //{{{
   void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool skipped) {

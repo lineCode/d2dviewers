@@ -37,21 +37,10 @@ public:
     }
   //}}}
 
-  //{{{
-  int64_t getAudPts() {
-    return mAudPts;
-    }
-  //}}}
-  //{{{
-  int64_t getVidPts() {
-    return mVidPts;
-    }
-  //}}}
-  //{{{
-  int64_t getAvDiff() {
-    return mAudPts - mVidPts;
-    }
-  //}}}
+  int64_t getAudPts() { return mAudPts; }
+  int64_t getVidPts() { return mVidPts; }
+  int64_t getAvDiff() { return mAudPts - mVidPts; }
+
   //{{{
   int64_t selectService (int index) {
   // select service by index, return basePts of pts when switched
@@ -84,11 +73,7 @@ public:
     }
   //}}}
 
-  //{{{
-  bool hasLoadedAud (int playFrame) {
-    return (mLoadAudFrame - playFrame) > 8;
-    }
-  //}}}
+  bool hasLoadedAud (int playFrame) { return (mLoadAudFrame - playFrame) > 8; }
   //{{{
   void getAudPlay (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
 
@@ -369,13 +354,13 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   makeBitmap (mTs.findNearestVidFrame (mAudPts));
   if (mBitmap)
-    dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+    dc->DrawBitmap (mBitmap, RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
   else
     dc->Clear (ColorF(ColorF::Black));
 
   // draw title
   wchar_t wStr[200];
-  auto textr = D2D1::RectF(0, 0, getClientF().width, getClientF().height);
+  auto textr = RectF(0, 0, getClientF().width, getClientF().height);
   swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
             (mAudPts - mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
             (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mTs.mChannelSelector);
@@ -387,8 +372,7 @@ void onDraw (ID2D1DeviceContext* dc) {
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
 
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
-  auto r = D2D1::RectF(0, getClientF().height-10.0f, x, getClientF().height);
-  dc->FillRectangle (r, getYellowBrush());
+  dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
   }
 //}}}
 
