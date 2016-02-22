@@ -59,6 +59,5 @@ public:
 
   int mNumSampleBytes = 0;
   int16_t* mSamples = nullptr;
-  float mPowerLeft = 0;
-  float mPowerRight = 0;
+  float mPower[6] = { 0,0,0,0,0,0 };
   };

@@ -657,15 +657,14 @@ public:
 class cEpgItem {
 public:
   //{{{
-  cEpgItem() : mStartTime(0), mDuration(0) {
+  cEpgItem() {
 
     mTitle[0] = 0;
     mShortDescription[0] = 0;
     }
   //}}}
   //{{{
-  cEpgItem (time_t startTime, int duration, char* title, char* shortDescription)
-      : mStartTime(startTime), mDuration(duration) {
+  cEpgItem (time_t startTime, int duration, char* title, char* shortDescription) : mStartTime(startTime), mDuration(duration) {
 
     strcpy (mTitle, title);
     strcpy (mShortDescription, shortDescription);
@@ -694,8 +693,9 @@ public:
     }
   //}}}
 
-  time_t mStartTime;
-  int mDuration;
+  time_t mStartTime = 0;
+  int mDuration = 0;
+
   char mTitle[100];
   char mShortDescription[400];
   };

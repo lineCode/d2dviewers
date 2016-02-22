@@ -150,7 +150,7 @@ private:
     while (true) {
       auto ptr = bda.getContiguousBlock (blockLen);
 
-      if (blockLen) 
+      if (blockLen)
         mTs.demux (ptr, ptr + blockLen, false);
 
       if (blockLen) {
@@ -169,12 +169,12 @@ private:
     CoUninitialize();
     }
   //}}}
-
-  // vars
+  //{{{  vars
   bool mShowChannel = false;
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
   cTransportStream mTs;
+  //}}}
   };
 
 //{{{
