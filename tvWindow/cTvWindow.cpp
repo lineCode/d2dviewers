@@ -73,9 +73,16 @@ public:
     }
   //}}}
 
-  bool hasLoadedAud (int playFrame) { return (mLoadAudFrame - playFrame) > 8; }
   //{{{
-  void getAudPlay (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
+  bool hasLoadedAudFrame (int playAudFrame) { 
+  // return true if mLoadAudFrame > maxAudFrames/2 ahead of playAudFrame
+  // - enough audio but need vid read and decoded
+  // - winAudio actual play is probably 8 audFrames ahead of playAudFrame
+    return (mLoadAudFrame - playAudFrame) > maxAudFrames/2;
+    }
+  //}}}
+  //{{{
+  void getAudSamples (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
 
     if (playFrame < mLoadAudFrame) {
       samples = mAudFrames[playFrame % maxAudFrames].mSamples;
@@ -199,7 +206,7 @@ protected:
             mVidPts = pidInfo->mPts;
           else // fake pts
             mVidPts += 90000/25;
-          bestLoadVidFrame()->set (mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
+          getBestLoadVidFrame (mVidPts)->set (mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
           }
         av_frame_free (&avFrame);
         }
@@ -209,14 +216,16 @@ protected:
 
 private:
   //{{{
-  cYuvFrame* bestLoadVidFrame() {
+  cYuvFrame* getBestLoadVidFrame (int64_t vidPts) {
   // find first unused or oldest yuvFrame
 
     cYuvFrame* yuvFrame = nullptr;
     for (int i = 0; i < maxVidFrames; i++)
-      if (!mYuvFrames[i].mPts)
+      if (!mYuvFrames[i].mPts) // unused, use it
         return &mYuvFrames[i];
-      else if (!yuvFrame || (yuvFrame->mPts > mYuvFrames[i].mPts))
+      else if ((abs(mYuvFrames[i].mPts - vidPts) * 25 / 90000) > maxVidFrames) // > maxVidFrames away from target, use it
+        return &mYuvFrames[i];
+      else if (!yuvFrame || (mYuvFrames[i].mPts < yuvFrame->mPts)) // first or older
         yuvFrame = &mYuvFrames[i];
 
     return yuvFrame;
@@ -228,6 +237,7 @@ private:
   int64_t mVidPts = 0;
 
   int mLoadAudFrame = 0;
+  int mLoadVidFrame = 0;
 
   AVCodecParserContext* audParser  = nullptr;
   AVCodec* audCodec = nullptr;
@@ -460,7 +470,7 @@ private:
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
 
-        while (mTs.hasLoadedAud (mPlayAudFrame))
+        while (mTs.hasLoadedAudFrame (mPlayAudFrame))
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)
@@ -638,7 +648,7 @@ private:
     while (true) {
       int16_t* samples;
       int numSampleBytes;
-      mTs.getAudPlay (mPlayAudFrame, samples, numSampleBytes, mAudPts);
+      mTs.getAudSamples (mPlayAudFrame, samples, numSampleBytes, mAudPts);
 
       if (mPlaying && samples) {
         winAudioPlay (samples, numSampleBytes, 1.0f);
