@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="h264.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="..\ldecod\header.c">
       <Filter>h264lib</Filter>
@@ -163,12 +162,10 @@
     <ClCompile Include="..\ldecod\fmo.c">
       <Filter>h264lib</Filter>
     </ClCompile>
+    <ClCompile Include="h264window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cD2dWindow.h">

@@ -18,16 +18,16 @@ public:
 
     initialise (title, width, height);
 
-    auto freq = arg ? _wtoi (arg) : 674000; // 650000 674000 706000
+    auto freq = arg ? _wtoi (arg) : 674000; // default 650000 674000 706000
 
     if (freq) {
       SetPriorityClass (GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-      auto bdaReaderThread = std::thread ([=]() {  bdaReader (freq); });
+      auto bdaReaderThread = std::thread ([=]() { bdaReader (freq); });
       SetThreadPriority (bdaReaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       bdaReaderThread.detach();
       }
     else
-      thread ([=]() { fileReader (arg); } ).detach();
+      thread ([=]() { fileReader (arg); }).detach();
 
     messagePump();
     }
@@ -149,13 +149,16 @@ private:
     auto blockLen = 0;
     while (true) {
       auto ptr = bda.getContiguousBlock (blockLen);
+
+      if (blockLen) 
+        mTs.demux (ptr, ptr + blockLen, false);
+
       if (blockLen) {
         DWORD numberOfBytesWritten;
         WriteFile (file, ptr, blockLen, &numberOfBytesWritten, NULL);
         if (numberOfBytesWritten != blockLen)
           printf ("writefile error%d %d\n", blockLen, numberOfBytesWritten);
 
-        mTs.demux (ptr, ptr + blockLen, false);
         bda.decommitBlock (blockLen);
         }
 
