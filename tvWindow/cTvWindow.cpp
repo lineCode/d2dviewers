@@ -100,13 +100,13 @@ public:
 
     wchar_t wStr[200];
     for (auto i = 0; i < maxAudFrames; i++) {
-      swprintf (wStr, 200, L"a%d::%lld", i, (mAudFrames[i].mPts - mBasePts) / 2160);
+      swprintf (wStr, 200, L"a%2d::%lld", i, (mAudFrames[i].mPts - mBasePts) / 2160);
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
                     RectF (100.0f + (i/32)*100.0f, (1+(i%32))*15.0f, client.width, client.height), whiteBrush);
       }
 
     for (auto i = 0; i < maxVidFrames; i++) {
-      swprintf (wStr, 200, L"v:%d:%lld", i, (mYuvFrames[i].mPts - mBasePts) / 2160);
+      swprintf (wStr, 200, L"v:%2d:%lld", i, (mYuvFrames[i].mPts - mBasePts) / 2160);
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
                     RectF (300.0f, (1+i)*15.0f, client.width, client.height), whiteBrush);
       }
@@ -402,7 +402,7 @@ void onDraw (ID2D1DeviceContext* dc) {
   swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
             (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
             (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mChannelSelector);
-  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), 
+  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowChannel)
