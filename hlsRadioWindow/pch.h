@@ -13,10 +13,7 @@
 #include <tchar.h>
 #include <io.h>
 
-#include <map>
-#include <vector>
 #include <thread>
-#include <mutex>
 
 // direct2d
 #include <d3d11.h>

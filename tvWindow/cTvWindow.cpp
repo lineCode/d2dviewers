@@ -48,7 +48,7 @@ public:
 
     mBasePts = cTransportStream::selectService (index);
 
-    for (int i= 0; i < maxVidFrames; i++)
+    for (auto i= 0; i < maxVidFrames; i++)
       mYuvFrames[i].invalidate();
 
     return mBasePts;
@@ -94,24 +94,21 @@ public:
     }
   //}}}
   //{{{
-  void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client,
-                      IDWriteTextFormat* textFormat,
-                      ID2D1SolidColorBrush* whiteBrush,
-                      ID2D1SolidColorBrush* blueBrush,
-                      ID2D1SolidColorBrush* blackBrush,
-                      ID2D1SolidColorBrush* greyBrush) {
+  void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                  ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                  ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
 
     wchar_t wStr[200];
     for (auto i = 0; i < maxAudFrames; i++) {
-      swprintf (wStr, 200, L"a%d::%ld", i, (mAudFrames[i].mPts - mBasePts) / 2160);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, 
-                    RectF(100.0f + (i/32)*100.0f, (1+(i%32))*15, client.width, client.height), whiteBrush);
+      swprintf (wStr, 200, L"a%d::%lld", i, (mAudFrames[i].mPts - mBasePts) / 2160);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
+                    RectF (100.0f + (i/32)*100.0f, (1+(i%32))*15.0f, client.width, client.height), whiteBrush);
       }
 
     for (auto i = 0; i < maxVidFrames; i++) {
-      swprintf (wStr, 200, L"v:%d:%ld", i, (mYuvFrames[i].mPts - mBasePts) / 2160);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, 
-                    RectF(300.0f, (1+i)*15, client.width, client.height), whiteBrush);
+      swprintf (wStr, 200, L"v:%d:%lld", i, (mYuvFrames[i].mPts - mBasePts) / 2160);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
+                    RectF (300.0f, (1+i)*15.0f, client.width, client.height), whiteBrush);
       }
     }
   //}}}
@@ -249,7 +246,8 @@ private:
   // find first unused or oldest yuvFrame
 
     cYuvFrame* yuvFrame = nullptr;
-    for (int i = 0; i < maxVidFrames; i++)
+
+    for (auto i = 0; i < maxVidFrames; i++)
       if (!mYuvFrames[i].mPts) // unused, use it
         return &mYuvFrames[i];
       else if ((abs(mYuvFrames[i].mPts - vidPts) * 25 / 90000) > maxVidFrames) // > maxVidFrames away from target, use it
@@ -395,17 +393,17 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   makeBitmap (mTs.findNearestVidFrame (mAudPts));
   if (mBitmap)
-    dc->DrawBitmap (mBitmap, RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+    dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
   else
     dc->Clear (ColorF(ColorF::Black));
 
   // draw title
   wchar_t wStr[200];
-  auto textr = RectF(0, 0, getClientF().width, getClientF().height);
   swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
-            (mAudPts - mBasePts)/90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
+            (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
             (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mChannelSelector);
-  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), textr, getWhiteBrush());
+  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), 
+                RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowChannel)
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());

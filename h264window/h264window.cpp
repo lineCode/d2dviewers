@@ -95,22 +95,21 @@ protected:
     if (vidFrame) {
       // convert to mD2D1Bitmap 32bit BGRA
       IWICFormatConverter* wicFormatConverter;
-      getWicImagingFactory()->CreateFormatConverter(&wicFormatConverter);
-      wicFormatConverter->Initialize(vidFrame,
-        GUID_WICPixelFormat32bppPBGRA,
-        WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
+      getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
+      wicFormatConverter->Initialize (vidFrame, GUID_WICPixelFormat32bppPBGRA,
+                                      WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
       if (mD2D1Bitmap)
         mD2D1Bitmap->Release();
 
       if (getDeviceContext())
-        getDeviceContext()->CreateBitmapFromWicBitmap(wicFormatConverter, NULL, &mD2D1Bitmap);
+        getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
 
-      dc->DrawBitmap(mD2D1Bitmap, RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
+      dc->DrawBitmap (mD2D1Bitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
       }
     else
       dc->Clear (ColorF(ColorF::Black));
 
-    dc->FillRectangle (RectF((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height), getGreyBrush());
+    dc->FillRectangle (RectF ((getClientF().width/2.0f)-1.0f, 0.0f, (getClientF().width/2.0f)+1.0f, getClientF().height), getGreyBrush());
 
     wchar_t wStr[200];
     swprintf (wStr, 200, L"helloColin");

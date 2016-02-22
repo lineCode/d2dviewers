@@ -214,7 +214,7 @@ protected:
                       RectF(0, (i+1)*20.0f, getClientF().width, (i+2)*20.0f), getWhiteBrush());
         }
 
-    cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
+    auto hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
     if (hlsRadio) {
       //{{{  has hlsRadio interface, show hlsRadioInfo
       if (mShowChannel) {
@@ -322,7 +322,7 @@ private:
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
-      int16_t* audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
+      auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
       if (audSamples && (getVolume() != 80))
         for (auto i = 0; i < 4096; i++)
           audSamples[i] = (audSamples[i] * getVolume()) / 80;
