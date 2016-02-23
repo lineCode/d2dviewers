@@ -19,7 +19,7 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxAudFrames 64
+#define maxAudFrames 48
 #define maxVidFrames 32
 
 //{{{
@@ -39,7 +39,6 @@ public:
 
   int64_t getAudPts() { return mAudPts; }
   int64_t getVidPts() { return mVidPts; }
-  int64_t getAvDiff() { return mAudPts - mVidPts; }
   int getLoadAudFrame() { return mLoadAudFrame; }
 
   //{{{
@@ -59,6 +58,8 @@ public:
   // find nearestVidFrame to pts
   // - can return nullPtr if no frame loaded yet
 
+    mFindAudPts = pts;
+
     cYuvFrame* yuvFrame = nullptr;
 
     int64_t nearest = 0;
@@ -71,6 +72,8 @@ public:
         }
       }
 
+    if (yuvFrame)
+      mFindVidPts = yuvFrame->mPts;
     return yuvFrame;
     }
   //}}}
@@ -96,20 +99,36 @@ public:
   //{{{
   void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                   ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
-                  ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
+                  ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush,
+                  ID2D1SolidColorBrush* yellowBrush,
+                  int64_t playAudPts) {
 
-    wchar_t wStr[200];
+    textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
+    float d = 18.0f;
+    float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
+    float vidFrameWidthPts = 90000.0f / 25.0f;
+    float pixPerPts = d / audFrameWidthPts;
+    float g = 1.0f;
+
+    wchar_t wStr[10];
     for (auto i = 0; i < maxAudFrames; i++) {
-      swprintf (wStr, 200, L"a%2d::%lld", i, (mAudFrames[i].mPts - mBasePts) / 2160);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
-                    RectF (100.0f + (i/32)*100.0f, (1+(i%32))*15.0f, client.width, client.height), whiteBrush);
+      float x = (client.width/2.0f) + float(mAudFrames[i].mPts - playAudPts) * pixPerPts;
+      float w = d * audFrameWidthPts / audFrameWidthPts;
+
+      dc->FillRectangle (RectF(x, d, x+w-g, d+d), blueBrush);
+      swprintf (wStr, 10, L"%d", i);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, d, x+w, d+d), blackBrush);
       }
 
     for (auto i = 0; i < maxVidFrames; i++) {
-      swprintf (wStr, 200, L"v:%2d:%lld", i, (mYuvFrames[i].mPts - mBasePts) / 2160);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat,
-                    RectF (300.0f, (1+i)*15.0f, client.width, client.height), whiteBrush);
+      float x = (client.width/2.0f) + float(mYuvFrames[i].mPts - playAudPts) * pixPerPts;
+      float w = d * vidFrameWidthPts / audFrameWidthPts;
+
+      dc->FillRectangle (RectF(x, d+d+g, x+w-g, d+d+g+d), yellowBrush);
+      swprintf (wStr, 10, L"%d", i);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, d+d+g, x+w, d+d+g+d), blackBrush);
       }
+    textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
     }
   //}}}
 
@@ -264,6 +283,9 @@ private:
   int64_t mVidPts = 0;
   int64_t mBasePts = 0;
 
+  int64_t mFindAudPts = 0;
+  int64_t mFindVidPts = 0;
+
   int mLoadAudFrame = 0;
   int mLoadVidFrame = 0;
 
@@ -324,8 +346,10 @@ bool onKey (int key) {
     case 0x24 : break; // end
     case 0x25 : mFilePtr -= keyInc() * 0x4000*188; mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
     case 0x27 : mFilePtr += keyInc() * 0x4000*188; mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
-    case 0x26 : mPlaying = false; mPlayAudFrame -= 2; changed(); break;
-    case 0x28 : mPlaying = false;  mPlayAudFrame += 2; changed(); break;
+    //case 0x26 : mPlaying = false; mPlayAudFrame -= 2; changed(); break;
+    //case 0x28 : mPlaying = false;  mPlayAudFrame += 2; changed(); break;
+    case 0x26 : mPlaying = false; mPlayAudFrame -= 1; changed(); break;
+    case 0x28 : mPlaying = false;  mPlayAudFrame += 1; changed(); break;
 
     case 0x2d : mChannelSelector++; break;
     case 0x2e : mChannelSelector--; break;
@@ -397,11 +421,15 @@ void onDraw (ID2D1DeviceContext* dc) {
   else
     dc->Clear (ColorF(ColorF::Black));
 
+  auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
+  dc->FillRectangle (rMid, getGreyBrush());
+
   // draw title
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d av:%6d chan:%d",
+  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d va:%6d chan:%d",
             (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
-            (int)(mTs.getAudPts() - mAudPts), (int)mTs.getAvDiff(), mChannelSelector);
+            (int)(mTs.getAudPts() - mAudPts), (int)(mTs.getVidPts() - mTs.getAudPts()),
+            mChannelSelector);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -409,7 +437,8 @@ void onDraw (ID2D1DeviceContext* dc) {
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
-  mTs.drawDebug (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
+  mTs.drawDebug (dc, getClientF(), getTextFormat(),
+                 getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush(), getYellowBrush(), mAudPts);
 
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
   dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
@@ -481,7 +510,7 @@ private:
 
     av_register_all();
 
-    uint8_t tsBuf[1024*188]; // 192k buffer, about a frame
+    uint8_t tsBuf[256*188]; // 192k buffer, about a frame
 
     auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -497,13 +526,13 @@ private:
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
         //}}}
-      ReadFile (readFile, tsBuf, 1024 * 188, &numberOfBytesRead, NULL);
+      ReadFile (readFile, tsBuf, 256 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
 
-        while (mPlayAudFrame <= mTs.getLoadAudFrame() - (maxAudFrames/2))
+        while (mPlayAudFrame < mTs.getLoadAudFrame() - maxAudFrames/2)
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)

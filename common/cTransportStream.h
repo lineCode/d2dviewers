@@ -1044,12 +1044,9 @@ public:
   //}}}
 
   //{{{
-  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client,
-                      IDWriteTextFormat* textFormat,
-                      ID2D1SolidColorBrush* whiteBrush,
-                      ID2D1SolidColorBrush* blueBrush,
-                      ID2D1SolidColorBrush* blackBrush,
-                      ID2D1SolidColorBrush* greyBrush) {
+  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                 ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                 ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
 
     if (!mPidInfoMap.empty()) {
       wchar_t wStr[200];
@@ -1063,8 +1060,7 @@ public:
         if (total > mLargest)
           mLargest = total;
         auto len = (total/mLargest) * (client.width-50.0f);
-        auto r = D2D1::RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f);
-        dc->FillRectangle (r, blueBrush);
+        dc->FillRectangle (RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f), blueBrush);
 
         textr.top = top;
         swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
@@ -1076,12 +1072,9 @@ public:
     }
   //}}}
   //{{{
-  void drawServices (ID2D1DeviceContext* dc, D2D1_SIZE_F client,
-                      IDWriteTextFormat* textFormat,
-                      ID2D1SolidColorBrush* whiteBrush,
-                      ID2D1SolidColorBrush* blueBrush,
-                      ID2D1SolidColorBrush* blackBrush,
-                      ID2D1SolidColorBrush* greyBrush) {
+  void drawServices (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                     ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                     ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
 
     auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
     for (auto service : mServiceMap) {
