@@ -20,7 +20,7 @@
 #pragma comment(lib,"avformat.lib")
 //}}}
 #define maxAudFrames 48
-#define maxVidFrames 32
+#define maxVidFrames 48
 
 //{{{
 class cDecodeTransportStream : public cTransportStream {
@@ -103,32 +103,44 @@ public:
                   ID2D1SolidColorBrush* yellowBrush,
                   int64_t playAudPts) {
 
-    textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
-    float d = 18.0f;
+    float y = 40.0f;
+    float h = 13.0f;
+    float u = 16.0f;
     float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
     float vidFrameWidthPts = 90000.0f / 25.0f;
-    float pixPerPts = d / audFrameWidthPts;
+    float pixPerPts = u / audFrameWidthPts;
     float g = 1.0f;
 
     wchar_t wStr[10];
     for (auto i = 0; i < maxAudFrames; i++) {
       float x = (client.width/2.0f) + float(mAudFrames[i].mPts - playAudPts) * pixPerPts;
-      float w = d * audFrameWidthPts / audFrameWidthPts;
+      float w = u * audFrameWidthPts / audFrameWidthPts;
 
-      dc->FillRectangle (RectF(x, d, x+w-g, d+d), blueBrush);
+      for (auto j = 0; j < mAudFrames[i].mChannels; j++) {
+        float v = mAudFrames[i].mPower[j] / 2.0f;
+        dc->FillRectangle (RectF(x + ((j*w)/ mAudFrames[i].mChannels), y-g-v , x+(((j+1)*w)/mAudFrames[i].mChannels)-g, y-g), blueBrush);
+        }
+
+      dc->FillRectangle (RectF(x, y, x+w-g, y+h), blueBrush);
       swprintf (wStr, 10, L"%d", i);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, d, x+w, d+d), blackBrush);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y, x+w-g, y+h), blackBrush);
       }
 
     for (auto i = 0; i < maxVidFrames; i++) {
       float x = (client.width/2.0f) + float(mYuvFrames[i].mPts - playAudPts) * pixPerPts;
-      float w = d * vidFrameWidthPts / audFrameWidthPts;
+      float w = u * vidFrameWidthPts / audFrameWidthPts;
 
-      dc->FillRectangle (RectF(x, d+d+g, x+w-g, d+d+g+d), yellowBrush);
+      dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellowBrush);
       swprintf (wStr, 10, L"%d", i);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, d+d+g, x+w, d+d+g+d), blackBrush);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
+
+      dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), whiteBrush);
+      swprintf (wStr, 10, L"%d", mYuvFrames[i].mPictType);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
+
+      float l = mYuvFrames[i].mLen / 1000.0f;
+      dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
       }
-    textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
     }
   //}}}
 
@@ -251,7 +263,8 @@ protected:
             mVidPts = pidInfo->mPts;
           else // fake pts
             mVidPts += 90000/25;
-          getBestLoadVidFrame (mVidPts)->set (mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height);
+          getBestLoadVidFrame (mVidPts)->set (
+            mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
           }
         av_frame_free (&avFrame);
         }
@@ -315,6 +328,15 @@ public:
   void run (wchar_t* title, int width, int height, wchar_t* arg) {
 
     initialise (title, width, height);
+
+    getDwriteFactory()->CreateTextFormat (L"Consolas", NULL,
+                                          DWRITE_FONT_WEIGHT_REGULAR,
+                                          DWRITE_FONT_STYLE_NORMAL,
+                                          DWRITE_FONT_STRETCH_NORMAL,
+                                          12.0f, L"en-us", &mSmallTextFormat);
+
+    mSmallTextFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
+    //textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
 
     if (arg) {
       // launch loaderThread
@@ -437,8 +459,9 @@ void onDraw (ID2D1DeviceContext* dc) {
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
-  mTs.drawDebug (dc, getClientF(), getTextFormat(),
+  mTs.drawDebug (dc, getClientF(), mSmallTextFormat,
                  getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush(), getYellowBrush(), mAudPts);
+
 
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
   dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
@@ -746,6 +769,8 @@ private:
 
   int64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
+
+  IDWriteTextFormat* mSmallTextFormat = nullptr;
   //}}}
   };
 

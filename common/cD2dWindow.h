@@ -13,12 +13,9 @@ public:
 
   void initialise (wchar_t* title, int width, int height);
 
-  bool getMouseDown() { return mouseDown; }
-
   // gets
   D2D1_SIZE_F getClientF() { return clientF; }
 
-  ComPtr<IWICImagingFactory> getWicImagingFactory() { return wicImagingFactory; }
   ID2D1DeviceContext* getDeviceContext() { return mDeviceContext.Get(); }
   IDWriteTextFormat* getTextFormat() { return textFormat; }
   ID2D1SolidColorBrush* getBlueBrush() { return blueBrush; }
@@ -27,6 +24,11 @@ public:
   ID2D1SolidColorBrush* getGreyBrush() { return greyBrush; }
   ID2D1SolidColorBrush* getWhiteBrush() { return whiteBrush; }
   ID2D1SolidColorBrush* getYellowBrush() { return yellowBrush; }
+
+  bool getMouseDown() { return mouseDown; }
+
+  IDWriteFactory* getDwriteFactory() { return DWriteFactory; }
+  ComPtr<IWICImagingFactory> getWicImagingFactory() { return wicImagingFactory; }
 
   void changed() { mChanged = true; }
   void setChangeRate (int changeRate) { mChangeRate = changeRate; }

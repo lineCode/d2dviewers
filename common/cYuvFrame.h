@@ -3,16 +3,14 @@
 
 class cYuvFrame  {
 public:
-  cYuvFrame() : mPts(0), mWidth(0), mHeight(0), mYStride(0), mUVStride(0),
-                mYbuf(nullptr), mUbuf(nullptr), mVbuf(nullptr),
-                mYbufUnaligned(nullptr), mUbufUnaligned(nullptr), mVbufUnaligned(nullptr) {}
-
   //{{{
-  void set (int64_t pts, uint8_t** yuv, int* strides, int width, int height) {
+  void set (int64_t pts, uint8_t** yuv, int* strides, int width, int height, int len, int pictType) {
 
     bool sizeChanged = (mWidth != width) || (mHeight != height) || (mYStride != strides[0]) || (mUVStride != strides[1]);
     mWidth = width;
     mHeight = height;
+    mLen = len;
+    mPictType = pictType;
 
     mYStride = strides[0];
     mUVStride = strides[1];
@@ -53,6 +51,7 @@ public:
     mPts = 0;
     mWidth = 0;
     mHeight = 0;
+    mLen = 0;
 
     mYStride = 0;
     mUVStride = 0;
@@ -77,20 +76,25 @@ public:
   void invalidate() {
 
     mPts = 0;
+    mLen = 0;
     }
   //}}}
 
-  int64_t mPts;
-  int mWidth;
-  int mHeight;
-  int mYStride;
-  int mUVStride;
-  uint8_t* mYbuf;
-  uint8_t* mUbuf;
-  uint8_t* mVbuf;
+  int64_t mPts = 0;
+  int mWidth = 0;
+  int mHeight = 0;
+  int mLen = 0;
+  int mPictType = 0;
+
+  int mYStride = 0;
+  int mUVStride= 0;
+
+  uint8_t* mYbuf = nullptr;
+  uint8_t* mUbuf = nullptr;
+  uint8_t* mVbuf = nullptr;
 
 private:
-  uint8_t* mYbufUnaligned;
-  uint8_t* mUbufUnaligned;
-  uint8_t* mVbufUnaligned;
+  uint8_t* mYbufUnaligned = nullptr;
+  uint8_t* mUbufUnaligned = nullptr;
+  uint8_t* mVbufUnaligned = nullptr;
   };

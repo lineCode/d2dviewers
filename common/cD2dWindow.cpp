@@ -360,6 +360,7 @@ void cD2dWindow::createDirect2d() {
                                    DWRITE_FONT_STYLE_NORMAL,
                                    DWRITE_FONT_STRETCH_NORMAL,
                                    16.0f, L"en-us", &textFormat);
+
   // create solid brushes
   mDeviceContext->CreateSolidColorBrush (ColorF (ColorF::CornflowerBlue), &blueBrush);
   mDeviceContext->CreateSolidColorBrush (ColorF (0x000000), &blackBrush);
