@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="header">
+      <UniqueIdentifier>{42121a2f-fc92-44c4-be36-5d51751f342f}</UniqueIdentifier>
+      <Extensions>.h</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="mpeg2dec.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="global.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="getvlc.h">
+      <Filter>header</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="systems.c" />
+    <ClCompile Include="subspic.c" />
+    <ClCompile Include="store.c" />
+    <ClCompile Include="spatscal.c" />
+    <ClCompile Include="recon.c" />
+    <ClCompile Include="mpeg2dec.c" />
+    <ClCompile Include="motion.c" />
+    <ClCompile Include="idctref.c" />
+    <ClCompile Include="idct.c" />
+    <ClCompile Include="getvlc.c" />
+    <ClCompile Include="getpic.c" />
+    <ClCompile Include="gethdr.c" />
+    <ClCompile Include="getblk.c" />
+    <ClCompile Include="getbits.c" />
+    <ClCompile Include="display.c" />
+  </ItemGroup>
+</Project>

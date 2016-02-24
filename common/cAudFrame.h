@@ -16,16 +16,17 @@ public:
 
     mPts = pts;
     mChannels = channels;
+    mNumSamples = numSamples;
     mSampleRate = sampleRate;
 
-    if ((channels * numSamples* 2 != mNumSampleBytes) && mSamples) {
+    if ((mChannels * mNumSamples * 2 != mNumSampleBytes) && mSamples) {
       free (mSamples);
       mSamples = nullptr;
       mNumSampleBytes = 0;
       }
 
     if (!mSamples) {
-      mNumSampleBytes = channels * numSamples* 2;
+      mNumSampleBytes = mChannels * mNumSamples* 2;
       mSamples = (int16_t*)malloc (mNumSampleBytes);
       }
     }
@@ -35,6 +36,7 @@ public:
 
     mPts = 0;
     mChannels = 0;
+    mNumSamples = 0;
     mSampleRate = 0;
 
     mNumSampleBytes = 0;
@@ -48,6 +50,7 @@ public:
 
     mPts = 0;
     mChannels = 0;
+    mNumSamples = 0;
     mSampleRate = 0;
     }
   //}}}
@@ -55,6 +58,7 @@ public:
   int64_t mPts = 0;
 
   int mChannels = 0;
+  int mNumSamples = 0;
   int mSampleRate = 48000;
 
   int mNumSampleBytes = 0;

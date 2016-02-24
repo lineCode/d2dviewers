@@ -19,8 +19,8 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxAudFrames 48
-#define maxVidFrames 48
+#define maxAudFrames 40
+#define maxVidFrames 40
 
 //{{{
 class cDecodeTransportStream : public cTransportStream {
@@ -37,28 +37,12 @@ public:
     }
   //}}}
 
-  int64_t getAudPts() { return mAudPts; }
-  int64_t getVidPts() { return mVidPts; }
   int getLoadAudFrame() { return mLoadAudFrame; }
 
   //{{{
-  int64_t selectService (int index) {
-  // select service by index, return basePts of pts when switched
-
-    mBasePts = cTransportStream::selectService (index);
-
-    for (auto i= 0; i < maxVidFrames; i++)
-      mYuvFrames[i].invalidate();
-
-    return mBasePts;
-    }
-  //}}}
-  //{{{
-  cYuvFrame* findNearestVidFrame (int64_t pts) {
+  cYuvFrame* getNearestVidFrame (int64_t pts) {
   // find nearestVidFrame to pts
   // - can return nullPtr if no frame loaded yet
-
-    mFindAudPts = pts;
 
     cYuvFrame* yuvFrame = nullptr;
 
@@ -71,13 +55,9 @@ public:
           }
         }
       }
-
-    if (yuvFrame)
-      mFindVidPts = yuvFrame->mPts;
     return yuvFrame;
     }
   //}}}
-
   //{{{
   void getAudSamples (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
 
@@ -96,6 +76,30 @@ public:
       }
     }
   //}}}
+
+  //{{{
+  int64_t selectService (int index) {
+  // select service by index, return basePts of pts when switched
+
+    mBasePts = cTransportStream::selectService (index);
+    return mBasePts;
+    }
+  //}}}
+  //{{{
+  int invalidate() {
+
+    for (auto i= 0; i < maxAudFrames; i++)
+      mAudFrames[i].invalidate();
+    for (auto i= 0; i < maxVidFrames; i++)
+      mYuvFrames[i].invalidate();
+
+    mLoadAudFrame = 0;
+    mLoadVidFrame = 0;
+
+    return 0;
+    }
+  //}}}
+
   //{{{
   void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                   ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
@@ -105,20 +109,26 @@ public:
 
     float y = 40.0f;
     float h = 13.0f;
-    float u = 16.0f;
-    float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
+    float u = 18.0f;
     float vidFrameWidthPts = 90000.0f / 25.0f;
+    float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
     float pixPerPts = u / audFrameWidthPts;
     float g = 1.0f;
 
     wchar_t wStr[10];
     for (auto i = 0; i < maxAudFrames; i++) {
-      float x = (client.width/2.0f) + float(mAudFrames[i].mPts - playAudPts) * pixPerPts;
-      float w = u * audFrameWidthPts / audFrameWidthPts;
+      if (mAudFrames[i].mNumSamples) {
+        audFrameWidthPts = 90000.0f * mAudFrames[i].mNumSamples / 48000.0f;
+        pixPerPts = u / audFrameWidthPts;
+        }
 
-      for (auto j = 0; j < mAudFrames[i].mChannels; j++) {
+      int channels = mAudFrames[i].mChannels;
+      float x = (client.width/2.0f) + float(mAudFrames[i].mPts - playAudPts) * pixPerPts;
+      float w = u;
+
+      for (auto j = 0; j < channels; j++) {
         float v = mAudFrames[i].mPower[j] / 2.0f;
-        dc->FillRectangle (RectF(x + ((j*w)/ mAudFrames[i].mChannels), y-g-v , x+(((j+1)*w)/mAudFrames[i].mChannels)-g, y-g), blueBrush);
+        dc->FillRectangle (RectF(x + j*(w/channels), y-g-v , x+(j+1)*(w/channels)-g, y-g), blueBrush);
         }
 
       dc->FillRectangle (RectF(x, y, x+w-g, y+h), blueBrush);
@@ -263,8 +273,9 @@ protected:
             mVidPts = pidInfo->mPts;
           else // fake pts
             mVidPts += 90000/25;
-          getBestLoadVidFrame (mVidPts)->set (
+          mYuvFrames [mLoadVidFrame % maxVidFrames].set (
             mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+          mLoadVidFrame++;
           }
         av_frame_free (&avFrame);
         }
@@ -273,31 +284,11 @@ protected:
   //}}}
 
 private:
-  //{{{
-  cYuvFrame* getBestLoadVidFrame (int64_t vidPts) {
-  // find first unused or oldest yuvFrame
-
-    cYuvFrame* yuvFrame = nullptr;
-
-    for (auto i = 0; i < maxVidFrames; i++)
-      if (!mYuvFrames[i].mPts) // unused, use it
-        return &mYuvFrames[i];
-      else if ((abs(mYuvFrames[i].mPts - vidPts) * 25 / 90000) > maxVidFrames) // > maxVidFrames away from target, use it
-        return &mYuvFrames[i];
-      else if (!yuvFrame || (mYuvFrames[i].mPts < yuvFrame->mPts)) // first or older
-        yuvFrame = &mYuvFrames[i];
-
-    return yuvFrame;
-    }
-  //}}}
 
   // vars
   int64_t mAudPts = 0;
   int64_t mVidPts = 0;
   int64_t mBasePts = 0;
-
-  int64_t mFindAudPts = 0;
-  int64_t mFindVidPts = 0;
 
   int mLoadAudFrame = 0;
   int mLoadVidFrame = 0;
@@ -336,7 +327,6 @@ public:
                                           12.0f, L"en-us", &mSmallTextFormat);
 
     mSmallTextFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
-    //textFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_JUSTIFIED);
 
     if (arg) {
       // launch loaderThread
@@ -360,21 +350,19 @@ bool onKey (int key) {
   switch (key) {
     case 0x00 : break;
     case 0x1B : return true;
+    case 0x20 : mPlaying = !mPlaying; break;  // space
 
-    case 0x20 : mPlaying = !mPlaying; break;
-    case 0x21 : mFilePtr -= 5 * 0x4000*188; mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
-    case 0x22 : mFilePtr += 5 * 0x4000*188;  mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
+    case 0x21 : incPlayFrame (-5 * 0x4000*188); break; // page up
+    case 0x22 : incPlayFrame (5 * 0x4000*188); break;  // page down
+    case 0x25 : incPlayFrame (-keyInc() * 0x4000*188); break; // left arrow
+    case 0x27 : incPlayFrame (keyInc() * 0x4000*188); break;  // right arrow
+    case 0x26 : mPlaying = false; mPlayAudFrame -= 1; changed(); break;  // up arrow
+    case 0x28 : mPlaying = false;  mPlayAudFrame += 1; changed(); break; // down arrow
+
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x25 : mFilePtr -= keyInc() * 0x4000*188; mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
-    case 0x27 : mFilePtr += keyInc() * 0x4000*188; mPlayAudFrame = mTs.getLoadAudFrame(); changed(); break;
-    //case 0x26 : mPlaying = false; mPlayAudFrame -= 2; changed(); break;
-    //case 0x28 : mPlaying = false;  mPlayAudFrame += 2; changed(); break;
-    case 0x26 : mPlaying = false; mPlayAudFrame -= 1; changed(); break;
-    case 0x28 : mPlaying = false;  mPlayAudFrame += 1; changed(); break;
-
-    case 0x2d : mChannelSelector++; break;
-    case 0x2e : mChannelSelector--; break;
+    case 0x2d : mChannelSelector++; break; // insert
+    case 0x2e : mChannelSelector--; break; // delete
 
     case 0x30 :
     case 0x31 :
@@ -401,7 +389,10 @@ void onMouseProx (bool inClient, int x, int y) {
   auto transportStream = mShowTransportStream;
   mShowTransportStream = inClient && (x > getClientF().width - 100);
 
-  if ((showChannel != mShowChannel) || (transportStream != mShowTransportStream))
+  auto showDebug = mShowDebug;
+  mShowDebug = inClient;
+
+  if ((showChannel != mShowChannel) || (showDebug != mShowDebug) || (transportStream != mShowTransportStream))
     changed();
   }
 //}}}
@@ -410,22 +401,28 @@ void onMouseDown (bool right, int x, int y) {
 
   if (y > getClientF().height - 20.0f) {
     mFilePtr = 188 * (int64_t)((x / getClientF().width) * (mFileSize / 188));
-    mPlayAudFrame = mTs.getLoadAudFrame();
+    mPlayAudFrame = mTs.invalidate();
     changed();
+    mDownConsumed = true;
     }
 
   else if (x < 80) {
     auto channel = (y / 20) - 1;
     if (channel >= 0)
       selectService (channel);
+    mDownConsumed = true;
     }
-
+  else
+    mDownConsumed = false;
   }
 //}}}
 //{{{
 void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
-  if (!mouseMoved) {}
+  if (!mouseMoved && !mDownConsumed)
+    mPlaying = !mPlaying;
+
+  mDownConsumed = true;
   }
 //}}}
 //{{{
@@ -437,7 +434,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  makeBitmap (mTs.findNearestVidFrame (mAudPts));
+  makeBitmap (mTs.getNearestVidFrame (mAudPts));
   if (mBitmap)
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
   else
@@ -448,19 +445,19 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   // draw title
   wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d - aud:%6d va:%6d chan:%d",
-            (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(),
-            (int)(mTs.getAudPts() - mAudPts), (int)(mTs.getVidPts() - mTs.getAudPts()),
-            mChannelSelector);
+  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d chan:%d",
+            (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(), mChannelSelector);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+
+  if (mShowDebug)
+    mTs.drawDebug (dc, getClientF(), mSmallTextFormat,
+                   getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush(), getYellowBrush(), mAudPts);
 
   if (mShowChannel)
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
-  mTs.drawDebug (dc, getClientF(), mSmallTextFormat,
-                 getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush(), getYellowBrush(), mAudPts);
 
 
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
@@ -470,14 +467,22 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
+  void incPlayFrame (int64_t inc) {
+
+    mFilePtr += inc;
+    mPlayAudFrame = mTs.invalidate();
+    changed();
+    }
+  //}}}
+  //{{{
   void selectService (int index) {
 
     auto basePts = mTs.selectService (index);
-    if (basePts)
+    if (basePts) {
       mBasePts = basePts;
+      }
 
-    mPlayAudFrame = mTs.getLoadAudFrame();
-    mPlaying = true;
+    mPlayAudFrame = mTs.invalidate();
     }
   //}}}
   //{{{
@@ -533,7 +538,7 @@ private:
 
     av_register_all();
 
-    uint8_t tsBuf[256*188]; // 192k buffer, about a frame
+    uint8_t tsBuf[128*188];
 
     auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
@@ -549,13 +554,13 @@ private:
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
         //}}}
-      ReadFile (readFile, tsBuf, 256 * 188, &numberOfBytesRead, NULL);
+      ReadFile (readFile, tsBuf, 128 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
 
-        while (mPlayAudFrame < mTs.getLoadAudFrame() - maxAudFrames/2)
+        while (mPlayAudFrame < mTs.getLoadAudFrame() - (maxAudFrames-8))
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)
@@ -764,6 +769,8 @@ private:
   int64_t mFilePtr = 0;
   int64_t mFileSize = 0;
 
+  bool mDownConsumed = false;
+  bool mShowDebug = false;
   bool mShowChannel = false;
   bool mShowTransportStream = false;
 

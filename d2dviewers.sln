@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "h264window", "h264Window\h2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tstools", "tstools\tstools.vcxproj", "{352C8135-6AF5-42FF-B01D-EE9142A72245}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mpeg2dec", "mpeg2dec\mpeg2dec.vcxproj", "{83FD11DB-0A56-4B81-AA00-947845813482}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,6 +63,14 @@ Global
 		{352C8135-6AF5-42FF-B01D-EE9142A72245}.Release|x64.Build.0 = Release|x64
 		{352C8135-6AF5-42FF-B01D-EE9142A72245}.Release|x86.ActiveCfg = Release|Win32
 		{352C8135-6AF5-42FF-B01D-EE9142A72245}.Release|x86.Build.0 = Release|Win32
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Debug|x64.ActiveCfg = Debug|x64
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Debug|x64.Build.0 = Debug|x64
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Debug|x86.ActiveCfg = Debug|Win32
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Debug|x86.Build.0 = Debug|Win32
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Release|x64.ActiveCfg = Release|x64
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Release|x64.Build.0 = Release|x64
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Release|x86.ActiveCfg = Release|Win32
+		{83FD11DB-0A56-4B81-AA00-947845813482}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
