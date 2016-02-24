@@ -5,19 +5,42 @@
 #include <ctype.h>
 #include <fcntl.h>
 
+#define GLOBAL
+#ifndef GLOBAL
+  #define EXTERN extern
+#else
+  #define EXTERN
+#endif
+
+#ifdef NON_ANSI_COMPILER
+  #define _ANSI_ARGS_(x) ()
+#else
+  #define _ANSI_ARGS_(x) x
+#endif
 
 #define RB "rb"
 #define WB "wb"
 
 
 /* global variables */
-char Version[] ="mpeg2decode V1.2a, 96/07/19";
+EXTERN char Version[]
+#ifdef GLOBAL
+  ="mpeg2decode V1.2a, 96/07/19"
+#endif
+;
 
-char Author[] ="(C) 1996, MPEG Software Simulation Group";
+EXTERN char Author[]
+#ifdef GLOBAL
+  ="(C) 1996, MPEG Software Simulation Group"
+#endif
+;
 
 /* zig-zag and alternate scan patterns */
 /*{{{*/
-unsigned char scan[2][64] = {
+EXTERN unsigned char scan[2][64]
+#ifdef GLOBAL
+=
+{
   { /* Zig-Zag scan pattern  */
     0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,
     12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,
@@ -29,11 +52,15 @@ unsigned char scan[2][64] = {
     41,33,26,18,3,11,4,12,19,27,34,42,50,58,35,43,
     51,59,20,28,5,13,6,14,21,29,36,44,52,60,37,45,
     53,61,22,30,7,15,23,31,38,46,54,62,39,47,55,63
-  }} ;
+  }
+}
+#endif
+;
 /*}}}*/
 /*{{{*/
 /* default intra quantization matrix */
-unsigned char default_intra_quantizer_matrix[64]
+EXTERN unsigned char default_intra_quantizer_matrix[64]
+#ifdef GLOBAL
 =
 {
   8, 16, 19, 22, 26, 27, 29, 34,
@@ -45,11 +72,13 @@ unsigned char default_intra_quantizer_matrix[64]
   26, 27, 29, 34, 38, 46, 56, 69,
   27, 29, 35, 38, 46, 56, 69, 83
 }
+#endif
 ;
 /*}}}*/
 /*{{{*/
 /* non-linear quantization coefficient table */
-unsigned char Non_Linear_quantizer_scale[32]
+EXTERN unsigned char Non_Linear_quantizer_scale[32]
+#ifdef GLOBAL
 =
 {
    0, 1, 2, 3, 4, 5, 6, 7,
@@ -57,6 +86,7 @@ unsigned char Non_Linear_quantizer_scale[32]
   24,28,32,36,40,44,48,52,
   56,64,72,80,88,96,104,112
 }
+#endif
 ;
 /*}}}*/
 /*{{{*/
@@ -75,7 +105,8 @@ unsigned char Non_Linear_quantizer_scale[32]
 
 /* ISO/IEC 13818-2 section 6.3.6 sequence_display_extension() */
 
-int Inverse_Table_6_9[8][4]
+EXTERN int Inverse_Table_6_9[8][4]
+#ifdef GLOBAL
 =
 {
   {117504, 138453, 13954, 34903}, /* no sequence_display_extension */
@@ -87,6 +118,7 @@ int Inverse_Table_6_9[8][4]
   {104597, 132201, 25675, 53279}, /* SMPTE 170M */
   {117579, 136230, 16907, 35559}  /* SMPTE 240M (1987) */
 }
+#endif
 ;
 /*}}}*/
 
@@ -99,160 +131,160 @@ int Inverse_Table_6_9[8][4]
 #define T_X11HIQ 5
 
 /* decoder operation control variables */
-int Output_Type;
-int hiQdither;
+EXTERN int Output_Type;
+EXTERN int hiQdither;
 
 /* decoder operation control flags */
-int Quiet_Flag;
-int Trace_Flag;
-int Fault_Flag;
-int Verbose_Flag;
-int Spatial_Flag;
-int Reference_IDCT_Flag;
-int Frame_Store_Flag;
-int System_Stream_Flag;
-int Display_Progressive_Flag;
-int Ersatz_Flag;
-int Big_Picture_Flag;
-int Stats_Flag;
-int User_Data_Flag;
-int Main_Bitstream_Flag;
+EXTERN int Quiet_Flag;
+EXTERN int Trace_Flag;
+EXTERN int Fault_Flag;
+EXTERN int Verbose_Flag;
+EXTERN int Spatial_Flag;
+EXTERN int Reference_IDCT_Flag;
+EXTERN int Frame_Store_Flag;
+EXTERN int System_Stream_Flag;
+EXTERN int Display_Progressive_Flag;
+EXTERN int Ersatz_Flag;
+EXTERN int Big_Picture_Flag;
+EXTERN int Stats_Flag;
+EXTERN int User_Data_Flag;
+EXTERN int Main_Bitstream_Flag;
 
 /* filenames */
-char *Output_Picture_Filename;
-char *Substitute_Picture_Filename;
-char *Main_Bitstream_Filename;
-char *Enhancement_Layer_Bitstream_Filename;
+EXTERN char *Output_Picture_Filename;
+EXTERN char *Substitute_Picture_Filename;
+EXTERN char *Main_Bitstream_Filename;
+EXTERN char *Enhancement_Layer_Bitstream_Filename;
 
 /* buffers for multiuse purposes */
-char Error_Text[256];
-unsigned char *Clip;
+EXTERN char Error_Text[256];
+EXTERN unsigned char *Clip;
 
 /* pointers to generic picture buffers */
-unsigned char *backward_reference_frame[3];
-unsigned char *forward_reference_frame[3];
+EXTERN unsigned char *backward_reference_frame[3];
+EXTERN unsigned char *forward_reference_frame[3];
 
-unsigned char *auxframe[3];
-unsigned char *current_frame[3];
-unsigned char *substitute_frame[3];
+EXTERN unsigned char *auxframe[3];
+EXTERN unsigned char *current_frame[3];
+EXTERN unsigned char *substitute_frame[3];
 
 /* pointers to scalability picture buffers */
-unsigned char *llframe0[3];
-unsigned char *llframe1[3];
+EXTERN unsigned char *llframe0[3];
+EXTERN unsigned char *llframe1[3];
 
-short *lltmp;
-char *Lower_Layer_Picture_Filename;
+EXTERN short *lltmp;
+EXTERN char *Lower_Layer_Picture_Filename;
 
 /* non-normative variables derived from normative elements */
-int Coded_Picture_Width;
-int Coded_Picture_Height;
-int Chroma_Width;
-int Chroma_Height;
-int block_count;
-int Second_Field;
-int profile, level;
+EXTERN int Coded_Picture_Width;
+EXTERN int Coded_Picture_Height;
+EXTERN int Chroma_Width;
+EXTERN int Chroma_Height;
+EXTERN int block_count;
+EXTERN int Second_Field;
+EXTERN int profile, level;
 
 /* normative derived variables (as per ISO/IEC 13818-2) */
-int horizontal_size;
-int vertical_size;
-int mb_width;
-int mb_height;
-double bit_rate;
-double frame_rate;
+EXTERN int horizontal_size;
+EXTERN int vertical_size;
+EXTERN int mb_width;
+EXTERN int mb_height;
+EXTERN double bit_rate;
+EXTERN double frame_rate;
 
 /* headers */
 /* ISO/IEC 13818-2 section 6.2.2.1:  sequence_header() */
-int aspect_ratio_information;
-int frame_rate_code;
-int bit_rate_value;
-int vbv_buffer_size;
-int constrained_parameters_flag;
+EXTERN int aspect_ratio_information;
+EXTERN int frame_rate_code;
+EXTERN int bit_rate_value;
+EXTERN int vbv_buffer_size;
+EXTERN int constrained_parameters_flag;
 
 /* ISO/IEC 13818-2 section 6.2.2.3:  sequence_extension() */
-int profile_and_level_indication;
-int progressive_sequence;
-int chroma_format;
-int low_delay;
-int frame_rate_extension_n;
-int frame_rate_extension_d;
+EXTERN int profile_and_level_indication;
+EXTERN int progressive_sequence;
+EXTERN int chroma_format;
+EXTERN int low_delay;
+EXTERN int frame_rate_extension_n;
+EXTERN int frame_rate_extension_d;
 
 /* ISO/IEC 13818-2 section 6.2.2.4:  sequence_display_extension() */
-int video_format;
-int color_description;
-int color_primaries;
-int transfer_characteristics;
-int matrix_coefficients;
-int display_horizontal_size;
-int display_vertical_size;
+EXTERN int video_format;
+EXTERN int color_description;
+EXTERN int color_primaries;
+EXTERN int transfer_characteristics;
+EXTERN int matrix_coefficients;
+EXTERN int display_horizontal_size;
+EXTERN int display_vertical_size;
 
 /* ISO/IEC 13818-2 section 6.2.3: picture_header() */
-int temporal_reference;
-int picture_coding_type;
-int vbv_delay;
-int full_pel_forward_vector;
-int forward_f_code;
-int full_pel_backward_vector;
-int backward_f_code;
+EXTERN int temporal_reference;
+EXTERN int picture_coding_type;
+EXTERN int vbv_delay;
+EXTERN int full_pel_forward_vector;
+EXTERN int forward_f_code;
+EXTERN int full_pel_backward_vector;
+EXTERN int backward_f_code;
 
 /* ISO/IEC 13818-2 section 6.2.3.1: picture_coding_extension() header */
-int f_code[2][2];
-int intra_dc_precision;
-int picture_structure;
-int top_field_first;
-int frame_pred_frame_dct;
-int concealment_motion_vectors;
-int intra_vlc_format;
-int repeat_first_field;
-int chroma_420_type;
-int progressive_frame;
-int composite_display_flag;
-int v_axis;
-int field_sequence;
-int sub_carrier;
-int burst_amplitude;
-int sub_carrier_phase;
+EXTERN int f_code[2][2];
+EXTERN int intra_dc_precision;
+EXTERN int picture_structure;
+EXTERN int top_field_first;
+EXTERN int frame_pred_frame_dct;
+EXTERN int concealment_motion_vectors;
+EXTERN int intra_vlc_format;
+EXTERN int repeat_first_field;
+EXTERN int chroma_420_type;
+EXTERN int progressive_frame;
+EXTERN int composite_display_flag;
+EXTERN int v_axis;
+EXTERN int field_sequence;
+EXTERN int sub_carrier;
+EXTERN int burst_amplitude;
+EXTERN int sub_carrier_phase;
 
 /* ISO/IEC 13818-2 section 6.2.3.3: picture_display_extension() header */
-int frame_center_horizontal_offset[3];
-int frame_center_vertical_offset[3];
+EXTERN int frame_center_horizontal_offset[3];
+EXTERN int frame_center_vertical_offset[3];
 
 /* ISO/IEC 13818-2 section 6.2.2.5: sequence_scalable_extension() header */
-int layer_id;
-int lower_layer_prediction_horizontal_size;
-int lower_layer_prediction_vertical_size;
-int horizontal_subsampling_factor_m;
-int horizontal_subsampling_factor_n;
-int vertical_subsampling_factor_m;
-int vertical_subsampling_factor_n;
+EXTERN int layer_id;
+EXTERN int lower_layer_prediction_horizontal_size;
+EXTERN int lower_layer_prediction_vertical_size;
+EXTERN int horizontal_subsampling_factor_m;
+EXTERN int horizontal_subsampling_factor_n;
+EXTERN int vertical_subsampling_factor_m;
+EXTERN int vertical_subsampling_factor_n;
 
 /* ISO/IEC 13818-2 section 6.2.3.5: picture_spatial_scalable_extension() header */
-int lower_layer_temporal_reference;
-int lower_layer_horizontal_offset;
-int lower_layer_vertical_offset;
-int spatial_temporal_weight_code_table_index;
-int lower_layer_progressive_frame;
-int lower_layer_deinterlaced_field_select;
+EXTERN int lower_layer_temporal_reference;
+EXTERN int lower_layer_horizontal_offset;
+EXTERN int lower_layer_vertical_offset;
+EXTERN int spatial_temporal_weight_code_table_index;
+EXTERN int lower_layer_progressive_frame;
+EXTERN int lower_layer_deinterlaced_field_select;
 
 /* ISO/IEC 13818-2 section 6.2.3.6: copyright_extension() header */
-int copyright_flag;
-int copyright_identifier;
-int original_or_copy;
-int copyright_number_1;
-int copyright_number_2;
-int copyright_number_3;
+EXTERN int copyright_flag;
+EXTERN int copyright_identifier;
+EXTERN int original_or_copy;
+EXTERN int copyright_number_1;
+EXTERN int copyright_number_2;
+EXTERN int copyright_number_3;
 
 /* ISO/IEC 13818-2 section 6.2.2.6: group_of_pictures_header()  */
-int drop_flag;
-int hour;
-int minute;
-int sec;
-int frame;
-int closed_gop;
-int broken_link;
+EXTERN int drop_flag;
+EXTERN int hour;
+EXTERN int minute;
+EXTERN int sec;
+EXTERN int frame;
+EXTERN int closed_gop;
+EXTERN int broken_link;
 
 /*{{{*/
 /* layer specific variables (needed for SNR and DP scalability) */
-struct layer_data {
+EXTERN struct layer_data {
   /* bit input */
   int Infile;
   unsigned char Rdbfr[2048];
@@ -290,11 +322,12 @@ struct layer_data {
   } base, enhan, *ld;
 /*}}}*/
 
-int Decode_Layer;
+EXTERN int Decode_Layer;
 
-int global_MBA;
-int global_pic;
-int True_Framenum;
+EXTERN int global_MBA;
+EXTERN int global_pic;
+EXTERN int True_Framenum;
+
 /*}}}*/
 #define RESERVED    -1
 /*{{{  stuct VLCtab*/
@@ -897,9 +930,14 @@ static int Temporal_Reference_Base = 0;
 static int True_Framenum_max  = -1;
 static int Temporal_Reference_GOP_Reset = 0;
 
-DCTtab DCTtabfirst[],DCTtabnext[],DCTtab0[],DCTtab1[];
-DCTtab DCTtab2[],DCTtab3[],DCTtab4[],DCTtab5[],DCTtab6[];
-DCTtab DCTtab0a[],DCTtab1a[];
+extern DCTtab DCTtabfirst[],DCTtabnext[],DCTtab0[],DCTtab1[];
+extern DCTtab DCTtab2[],DCTtab3[],DCTtab4[],DCTtab5[],DCTtab6[];
+extern DCTtab DCTtab0a[],DCTtab1a[];
+
+#define OBFRSIZE 4096
+static unsigned char obfr[OBFRSIZE];
+static unsigned char *optr;
+static int outfile;
 
 /*{{{*/
 void Error(text)
@@ -1225,6 +1263,7 @@ unsigned int Get_Bits1()
 
 /*{{{*/
 /* align to start of next next_start_code */
+
 void next_start_code()
 {
   /* byte align */
@@ -1330,10 +1369,6 @@ int slice_header()
 /*}}}*/
 
 // write and store
-#define OBFRSIZE 4096
-static unsigned char obfr[OBFRSIZE];
-static unsigned char *optr;
-static int outfile;
 /*{{{*/
 static void putbyte(c)
 int c;
@@ -4645,7 +4680,7 @@ int stwtype;
 }
 /*}}}*/
 
-/*{{{  fast idct*/
+// fast idct
 #ifndef PI
   #ifdef M_PI
     #define PI M_PI
@@ -4816,8 +4851,8 @@ void Initialize_Fast_IDCT()
     iclp[i] = (i<-256) ? -256 : ((i>255) ? 255 : i);
 }
 /*}}}*/
-/*}}}*/
-/*{{{  reference IDCT*/
+
+// reference IDCT
 static double c[8][8];
 /*{{{*/
 void Initialize_Reference_IDCT()
@@ -4869,7 +4904,6 @@ short *block;
       block[8*i+j] = (v<-256) ? -256 : ((v>255) ? 255 : v);
     }
 }
-/*}}}*/
 /*}}}*/
 
 /*{{{*/
@@ -6524,8 +6558,10 @@ int llx0,lly0,llw,llh,horizontal_size,vertical_size,vm,vn,hm,hn,aperture;
   Subsample_Horizontal(tmp,dst,x0,w,llw,horizontal_size,h,hm,hn);
 }
 /*}}}*/
+
 /*{{{*/
-void Spatial_Prediction() {
+void Spatial_Prediction ()
+{
 
   if(Frame_Store_Flag)
   {
@@ -6577,6 +6613,7 @@ void Spatial_Prediction() {
      horizontal_size>>1,vertical_size>>1,vertical_subsampling_factor_m,
      vertical_subsampling_factor_n,horizontal_subsampling_factor_m,
      horizontal_subsampling_factor_n,1);
+
 }
 /*}}}*/
 

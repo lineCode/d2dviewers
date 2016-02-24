@@ -19,27 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
-    <ClInclude Include="getvlc.h" />
-    <ClInclude Include="global.h" />
-    <ClInclude Include="mpeg2dec.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="display.c" />
-    <ClCompile Include="getbits.c" />
-    <ClCompile Include="getblk.c" />
-    <ClCompile Include="gethdr.c" />
-    <ClCompile Include="getpic.c" />
-    <ClCompile Include="getvlc.c" />
-    <ClCompile Include="idct.c" />
-    <ClCompile Include="idctref.c" />
-    <ClCompile Include="motion.c" />
     <ClCompile Include="mpeg2dec.c" />
-    <ClCompile Include="recon.c" />
-    <ClCompile Include="spatscal.c" />
-    <ClCompile Include="store.c" />
-    <ClCompile Include="subspic.c" />
-    <ClCompile Include="systems.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{83FD11DB-0A56-4B81-AA00-947845813482}</ProjectGuid>

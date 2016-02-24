@@ -19,7 +19,7 @@
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
-#define maxAudFrames 40
+#define maxAudFrames 32
 #define maxVidFrames 40
 
 //{{{
@@ -471,7 +471,6 @@ private:
 
     mFilePtr += inc;
     mPlayAudFrame = mTs.invalidate();
-    changed();
     }
   //}}}
   //{{{
@@ -560,7 +559,7 @@ private:
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
 
-        while (mPlayAudFrame < mTs.getLoadAudFrame() - (maxAudFrames-8))
+        while (mPlayAudFrame < mTs.getLoadAudFrame() - (maxAudFrames-6))
           Sleep (1);
 
         if (mTs.getSelectedAudPid() <= 0)

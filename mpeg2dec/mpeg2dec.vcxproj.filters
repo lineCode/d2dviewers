@@ -11,34 +11,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="mpeg2dec.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="global.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="config.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="getvlc.h">
-      <Filter>header</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="systems.c" />
-    <ClCompile Include="subspic.c" />
-    <ClCompile Include="store.c" />
-    <ClCompile Include="spatscal.c" />
-    <ClCompile Include="recon.c" />
     <ClCompile Include="mpeg2dec.c" />
-    <ClCompile Include="motion.c" />
-    <ClCompile Include="idctref.c" />
-    <ClCompile Include="idct.c" />
-    <ClCompile Include="getvlc.c" />
-    <ClCompile Include="getpic.c" />
-    <ClCompile Include="gethdr.c" />
-    <ClCompile Include="getblk.c" />
-    <ClCompile Include="getbits.c" />
-    <ClCompile Include="display.c" />
   </ItemGroup>
 </Project>
