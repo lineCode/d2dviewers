@@ -282,3 +282,5 @@ $RECYCLE.BIN/
 *.~cpp
 *.~asm
 *.~~h
+*.~c
+mpeg2dec/sample_mpeg2.m2v

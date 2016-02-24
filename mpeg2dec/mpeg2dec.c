@@ -4,308 +4,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
-
-
-#define RB "rb"
-#define WB "wb"
-
-
-/* global variables */
-char Version[] ="mpeg2decode V1.2a, 96/07/19";
-
-char Author[] ="(C) 1996, MPEG Software Simulation Group";
-
-/* zig-zag and alternate scan patterns */
-/*{{{*/
-unsigned char scan[2][64] = {
-  { /* Zig-Zag scan pattern  */
-    0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,
-    12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,
-    35,42,49,56,57,50,43,36,29,22,15,23,30,37,44,51,
-    58,59,52,45,38,31,39,46,53,60,61,54,47,55,62,63
-  },
-  { /* Alternate scan pattern */
-    0,8,16,24,1,9,2,10,17,25,32,40,48,56,57,49,
-    41,33,26,18,3,11,4,12,19,27,34,42,50,58,35,43,
-    51,59,20,28,5,13,6,14,21,29,36,44,52,60,37,45,
-    53,61,22,30,7,15,23,31,38,46,54,62,39,47,55,63
-  }} ;
-/*}}}*/
-/*{{{*/
-/* default intra quantization matrix */
-unsigned char default_intra_quantizer_matrix[64]
-=
-{
-  8, 16, 19, 22, 26, 27, 29, 34,
-  16, 16, 22, 24, 27, 29, 34, 37,
-  19, 22, 26, 27, 29, 34, 34, 38,
-  22, 22, 26, 27, 29, 34, 37, 40,
-  22, 26, 27, 29, 32, 35, 40, 48,
-  26, 27, 29, 32, 35, 40, 48, 58,
-  26, 27, 29, 34, 38, 46, 56, 69,
-  27, 29, 35, 38, 46, 56, 69, 83
-}
-;
-/*}}}*/
-/*{{{*/
-/* non-linear quantization coefficient table */
-unsigned char Non_Linear_quantizer_scale[32]
-=
-{
-   0, 1, 2, 3, 4, 5, 6, 7,
-   8,10,12,14,16,18,20,22,
-  24,28,32,36,40,44,48,52,
-  56,64,72,80,88,96,104,112
-}
-;
-/*}}}*/
-/*{{{*/
-/* color space conversion coefficients
- * for YCbCr -> RGB mapping
- *
- * entries are {crv,cbu,cgu,cgv}
- *
- * crv=(255/224)*65536*(1-cr)/0.5
- * cbu=(255/224)*65536*(1-cb)/0.5
- * cgu=(255/224)*65536*(cb/cg)*(1-cb)/0.5
- * cgv=(255/224)*65536*(cr/cg)*(1-cr)/0.5
- *
- * where Y=cr*R+cg*G+cb*B (cr+cg+cb=1)
- */
-
-/* ISO/IEC 13818-2 section 6.3.6 sequence_display_extension() */
-
-int Inverse_Table_6_9[8][4]
-=
-{
-  {117504, 138453, 13954, 34903}, /* no sequence_display_extension */
-  {117504, 138453, 13954, 34903}, /* ITU-R Rec. 709 (1990) */
-  {104597, 132201, 25675, 53279}, /* unspecified */
-  {104597, 132201, 25675, 53279}, /* reserved */
-  {104448, 132798, 24759, 53109}, /* FCC */
-  {104597, 132201, 25675, 53279}, /* ITU-R Rec. 624-4 System B, G */
-  {104597, 132201, 25675, 53279}, /* SMPTE 170M */
-  {117579, 136230, 16907, 35559}  /* SMPTE 240M (1987) */
-}
-;
-/*}}}*/
-
-/* output types (Output_Type) */
-#define T_YUV   0
-#define T_SIF   1
-#define T_TGA   2
-#define T_PPM   3
-#define T_X11   4
-#define T_X11HIQ 5
-
-/* decoder operation control variables */
-int Output_Type;
-int hiQdither;
-
-/* decoder operation control flags */
-int Quiet_Flag;
-int Trace_Flag;
-int Fault_Flag;
-int Verbose_Flag;
-int Spatial_Flag;
-int Reference_IDCT_Flag;
-int Frame_Store_Flag;
-int System_Stream_Flag;
-int Display_Progressive_Flag;
-int Ersatz_Flag;
-int Big_Picture_Flag;
-int Stats_Flag;
-int User_Data_Flag;
-int Main_Bitstream_Flag;
-
-/* filenames */
-char *Output_Picture_Filename;
-char *Substitute_Picture_Filename;
-char *Main_Bitstream_Filename;
-char *Enhancement_Layer_Bitstream_Filename;
-
-/* buffers for multiuse purposes */
-char Error_Text[256];
-unsigned char *Clip;
-
-/* pointers to generic picture buffers */
-unsigned char *backward_reference_frame[3];
-unsigned char *forward_reference_frame[3];
-
-unsigned char *auxframe[3];
-unsigned char *current_frame[3];
-unsigned char *substitute_frame[3];
-
-/* pointers to scalability picture buffers */
-unsigned char *llframe0[3];
-unsigned char *llframe1[3];
-
-short *lltmp;
-char *Lower_Layer_Picture_Filename;
-
-/* non-normative variables derived from normative elements */
-int Coded_Picture_Width;
-int Coded_Picture_Height;
-int Chroma_Width;
-int Chroma_Height;
-int block_count;
-int Second_Field;
-int profile, level;
-
-/* normative derived variables (as per ISO/IEC 13818-2) */
-int horizontal_size;
-int vertical_size;
-int mb_width;
-int mb_height;
-double bit_rate;
-double frame_rate;
-
-/* headers */
-/* ISO/IEC 13818-2 section 6.2.2.1:  sequence_header() */
-int aspect_ratio_information;
-int frame_rate_code;
-int bit_rate_value;
-int vbv_buffer_size;
-int constrained_parameters_flag;
-
-/* ISO/IEC 13818-2 section 6.2.2.3:  sequence_extension() */
-int profile_and_level_indication;
-int progressive_sequence;
-int chroma_format;
-int low_delay;
-int frame_rate_extension_n;
-int frame_rate_extension_d;
-
-/* ISO/IEC 13818-2 section 6.2.2.4:  sequence_display_extension() */
-int video_format;
-int color_description;
-int color_primaries;
-int transfer_characteristics;
-int matrix_coefficients;
-int display_horizontal_size;
-int display_vertical_size;
-
-/* ISO/IEC 13818-2 section 6.2.3: picture_header() */
-int temporal_reference;
-int picture_coding_type;
-int vbv_delay;
-int full_pel_forward_vector;
-int forward_f_code;
-int full_pel_backward_vector;
-int backward_f_code;
-
-/* ISO/IEC 13818-2 section 6.2.3.1: picture_coding_extension() header */
-int f_code[2][2];
-int intra_dc_precision;
-int picture_structure;
-int top_field_first;
-int frame_pred_frame_dct;
-int concealment_motion_vectors;
-int intra_vlc_format;
-int repeat_first_field;
-int chroma_420_type;
-int progressive_frame;
-int composite_display_flag;
-int v_axis;
-int field_sequence;
-int sub_carrier;
-int burst_amplitude;
-int sub_carrier_phase;
-
-/* ISO/IEC 13818-2 section 6.2.3.3: picture_display_extension() header */
-int frame_center_horizontal_offset[3];
-int frame_center_vertical_offset[3];
-
-/* ISO/IEC 13818-2 section 6.2.2.5: sequence_scalable_extension() header */
-int layer_id;
-int lower_layer_prediction_horizontal_size;
-int lower_layer_prediction_vertical_size;
-int horizontal_subsampling_factor_m;
-int horizontal_subsampling_factor_n;
-int vertical_subsampling_factor_m;
-int vertical_subsampling_factor_n;
-
-/* ISO/IEC 13818-2 section 6.2.3.5: picture_spatial_scalable_extension() header */
-int lower_layer_temporal_reference;
-int lower_layer_horizontal_offset;
-int lower_layer_vertical_offset;
-int spatial_temporal_weight_code_table_index;
-int lower_layer_progressive_frame;
-int lower_layer_deinterlaced_field_select;
-
-/* ISO/IEC 13818-2 section 6.2.3.6: copyright_extension() header */
-int copyright_flag;
-int copyright_identifier;
-int original_or_copy;
-int copyright_number_1;
-int copyright_number_2;
-int copyright_number_3;
-
-/* ISO/IEC 13818-2 section 6.2.2.6: group_of_pictures_header()  */
-int drop_flag;
-int hour;
-int minute;
-int sec;
-int frame;
-int closed_gop;
-int broken_link;
-
-/*{{{*/
-/* layer specific variables (needed for SNR and DP scalability) */
-struct layer_data {
-  /* bit input */
-  int Infile;
-  unsigned char Rdbfr[2048];
-  unsigned char *Rdptr;
-  unsigned char Inbfr[16];
-  /* from mpeg2play */
-  unsigned int Bfr;
-  unsigned char *Rdmax;
-  int Incnt;
-  int Bitcnt;
-  /* sequence header and quant_matrix_extension() */
-  int intra_quantizer_matrix[64];
-  int non_intra_quantizer_matrix[64];
-  int chroma_intra_quantizer_matrix[64];
-  int chroma_non_intra_quantizer_matrix[64];
-
-  int load_intra_quantizer_matrix;
-  int load_non_intra_quantizer_matrix;
-  int load_chroma_intra_quantizer_matrix;
-  int load_chroma_non_intra_quantizer_matrix;
-
-  int MPEG2_Flag;
-  /* sequence scalable extension */
-  int scalable_mode;
-  /* picture coding extension */
-  int q_scale_type;
-  int alternate_scan;
-  /* picture spatial scalable extension */
-  int pict_scal;
-  /* slice/macroblock */
-  int priority_breakpoint;
-  int quantizer_scale;
-  int intra_slice;
-  short block[12][64];
-  } base, enhan, *ld;
-/*}}}*/
-
-int Decode_Layer;
-
-int global_MBA;
-int global_pic;
-int True_Framenum;
-/*}}}*/
-#define RESERVED    -1
-/*{{{  stuct VLCtab*/
-typedef struct {
-  char val, len;
-  } VLCtab;
-/*}}}*/
-/*{{{  struct DCTtab*/
-typedef struct {
-  char run, level, len;
-  } DCTtab;
 /*}}}*/
 /*{{{  const*/
 #define ERROR (-1)
@@ -355,7 +53,6 @@ typedef struct {
 #define SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG       32
 #define PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS 64
 
-
 /* motion_type */
 #define MC_FIELD 1
 #define MC_FRAME 2
@@ -372,7 +69,6 @@ typedef struct {
 #define CHROMA444 3
 
 /* extension start code IDs */
-
 #define SEQUENCE_EXTENSION_ID                    1
 #define SEQUENCE_DISPLAY_EXTENSION_ID            2
 #define QUANT_MATRIX_EXTENSION_ID                3
@@ -404,6 +100,54 @@ typedef struct {
 #define MB_CLASS4                  64
 /*}}}*/
 /*{{{  tables*/
+/* zig-zag and alternate scan patterns */
+/*{{{*/
+unsigned char scan[2][64] = {
+  { /* Zig-Zag scan pattern  */
+    0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,
+    12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,
+    35,42,49,56,57,50,43,36,29,22,15,23,30,37,44,51,
+    58,59,52,45,38,31,39,46,53,60,61,54,47,55,62,63
+  },
+  { /* Alternate scan pattern */
+    0,8,16,24,1,9,2,10,17,25,32,40,48,56,57,49,
+    41,33,26,18,3,11,4,12,19,27,34,42,50,58,35,43,
+    51,59,20,28,5,13,6,14,21,29,36,44,52,60,37,45,
+    53,61,22,30,7,15,23,31,38,46,54,62,39,47,55,63
+  }} ;
+/*}}}*/
+/*{{{*/
+/* default intra quantization matrix */
+unsigned char default_intra_quantizer_matrix[64] = {
+  8, 16, 19, 22, 26, 27, 29, 34,
+  16, 16, 22, 24, 27, 29, 34, 37,
+  19, 22, 26, 27, 29, 34, 34, 38,
+  22, 22, 26, 27, 29, 34, 37, 40,
+  22, 26, 27, 29, 32, 35, 40, 48,
+  26, 27, 29, 32, 35, 40, 48, 58,
+  26, 27, 29, 34, 38, 46, 56, 69,
+  27, 29, 35, 38, 46, 56, 69, 83 } ;
+/*}}}*/
+/*{{{*/
+/* non-linear quantization coefficient table */
+unsigned char Non_Linear_quantizer_scale[32] = {
+   0, 1, 2, 3, 4, 5, 6, 7,
+   8,10,12,14,16,18,20,22,
+  24,28,32,36,40,44,48,52,
+  56,64,72,80,88,96,104,112 } ;
+/*}}}*/
+
+/*{{{*/
+static double frame_rate_Table[16] = {
+  0.0, ((23.0*1000.0)/1001.0), 24.0, 25.0,
+  ((30.0*1000.0)/1001.0), 30.0, 50.0, ((60.0*1000.0)/1001.0), 60.0, -1, -1, -1, -1, -1, -1, -1 };
+/*}}}*/
+
+/*{{{  struct VLCtab*/
+typedef struct {
+  char val, len;
+  } VLCtab;
+/*}}}*/
 /*{{{*/
 /* Table B-3, macroblock_type in P-pictures, codes 001..1xx */
 static VLCtab PMBtab0[8] = {
@@ -695,6 +439,11 @@ static VLCtab DCchromtab1[32] =
 };
 /*}}}*/
 
+/*{{{  struct DCTtab*/
+typedef struct {
+  char run, level, len;
+  } DCTtab;
+/*}}}*/
 /*{{{*/
 /* Table B-14, DCT coefficients table zero,
  * codes 0100 ... 1xxx (used for first (DC) coefficient)
@@ -892,47 +641,420 @@ DCTtab DCTtab6[16] =
 };
 /*}}}*/
 /*}}}*/
+/*{{{  vars*/
+int True_Framenum;
+int True_Framenum_max  = -1;
+int Temporal_Reference_Base = 0;
+int Temporal_Reference_GOP_Reset = 0;
 
-static int Temporal_Reference_Base = 0;
-static int True_Framenum_max  = -1;
-static int Temporal_Reference_GOP_Reset = 0;
+/* decoder operation control flags */
+int Quiet_Flag;
+int Trace_Flag;
+int Fault_Flag;
+int Verbose_Flag;
+int Spatial_Flag;
+int System_Stream_Flag;
+int Display_Progressive_Flag;
+int Ersatz_Flag;
+int Stats_Flag;
+int User_Data_Flag;
 
-DCTtab DCTtabfirst[],DCTtabnext[],DCTtab0[],DCTtab1[];
-DCTtab DCTtab2[],DCTtab3[],DCTtab4[],DCTtab5[],DCTtab6[];
-DCTtab DCTtab0a[],DCTtab1a[];
+/* filenames */
+char *Substitute_Picture_Filename;
+char *Enhancement_Layer_Bitstream_Filename;
+
+/* buffers for multiuse purposes */
+char Error_Text[256];
+unsigned char* Clip;
+
+/* pointers to generic picture buffers */
+unsigned char* backward_reference_frame[3];
+unsigned char* forward_reference_frame[3];
+unsigned char* auxframe[3];
+unsigned char* current_frame[3];
+unsigned char* substitute_frame[3];
+
+/* pointers to scalability picture buffers */
+unsigned char* llframe0[3];
+unsigned char* llframe1[3];
+
+short* lltmp;
+char* Lower_Layer_Picture_Filename;
+/*{{{  non-normative variables derived from normative elements */
+int Coded_Picture_Width;
+int Coded_Picture_Height;
+int Chroma_Width;
+int Chroma_Height;
+int block_count;
+int Second_Field;
+int profile, level;
+/*}}}*/
+/*{{{  normative derived variables (as per ISO/IEC 13818-2)*/
+int horizontal_size;
+int vertical_size;
+int mb_width;
+int mb_height;
+double bit_rate;
+double frame_rate;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.2.1:  sequence_header()*/
+int aspect_ratio_information;
+int frame_rate_code;
+int bit_rate_value;
+int vbv_buffer_size;
+int constrained_parameters_flag;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.2.3:  sequence_extension()*/
+int profile_and_level_indication;
+int progressive_sequence;
+int chroma_format;
+int low_delay;
+int frame_rate_extension_n;
+int frame_rate_extension_d;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.2.4:  sequence_display_extension()*/
+int video_format;
+int color_description;
+int color_primaries;
+int transfer_characteristics;
+int matrix_coefficients;
+int display_horizontal_size;
+int display_vertical_size;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.3: picture_header()*/
+int temporal_reference;
+int picture_coding_type;
+int vbv_delay;
+int full_pel_forward_vector;
+int forward_f_code;
+int full_pel_backward_vector;
+int backward_f_code;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.3.1: picture_coding_extension() header*/
+int f_code[2][2];
+int intra_dc_precision;
+int picture_structure;
+int top_field_first;
+int frame_pred_frame_dct;
+int concealment_motion_vectors;
+int intra_vlc_format;
+int repeat_first_field;
+int chroma_420_type;
+int progressive_frame;
+int composite_display_flag;
+int v_axis;
+int field_sequence;
+int sub_carrier;
+int burst_amplitude;
+int sub_carrier_phase;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.3.3: picture_display_extension() header*/
+int frame_center_horizontal_offset[3];
+int frame_center_vertical_offset[3];
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.2.5: sequence_scalable_extension() header*/
+int layer_id;
+int lower_layer_prediction_horizontal_size;
+int lower_layer_prediction_vertical_size;
+int horizontal_subsampling_factor_m;
+int horizontal_subsampling_factor_n;
+int vertical_subsampling_factor_m;
+int vertical_subsampling_factor_n;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.3.5: picture_spatial_scalable_extension() header*/
+int lower_layer_temporal_reference;
+int lower_layer_horizontal_offset;
+int lower_layer_vertical_offset;
+int spatial_temporal_weight_code_table_index;
+int lower_layer_progressive_frame;
+int lower_layer_deinterlaced_field_select;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.3.6: copyright_extension() header*/
+int copyright_flag;
+int copyright_identifier;
+int original_or_copy;
+int copyright_number_1;
+int copyright_number_2;
+int copyright_number_3;
+/*}}}*/
+/*{{{  ISO/IEC 13818-2 section 6.2.2.6: group_of_pictures_header()*/
+int drop_flag;
+int hour;
+int minute;
+int sec;
+int frame;
+int closed_gop;
+int broken_link;
+/*}}}*/
+
+/*{{{  struct layer_data*/
+/* layer specific variables (needed for SNR and DP scalability) */
+struct layer_data {
+  /* bit input */
+  int Infile;
+  unsigned char Rdbfr[2048];
+  unsigned char *Rdptr;
+  unsigned char Inbfr[16];
+
+  /* from mpeg2play */
+  unsigned int Bfr;
+  unsigned char *Rdmax;
+  int Incnt;
+  int Bitcnt;
+
+  /* sequence header and quant_matrix_extension() */
+  int intra_quantizer_matrix[64];
+  int non_intra_quantizer_matrix[64];
+  int chroma_intra_quantizer_matrix[64];
+  int chroma_non_intra_quantizer_matrix[64];
+
+  int load_intra_quantizer_matrix;
+  int load_non_intra_quantizer_matrix;
+  int load_chroma_intra_quantizer_matrix;
+  int load_chroma_non_intra_quantizer_matrix;
+
+  int MPEG2_Flag;
+
+  /* sequence scalable extension */
+  int scalable_mode;
+
+  /* picture coding extension */
+  int q_scale_type;
+  int alternate_scan;
+
+  /* picture spatial scalable extension */
+  int pict_scal;
+
+  /* slice/macroblock */
+  int priority_breakpoint;
+  int quantizer_scale;
+  int intra_slice;
+  short block[12][64];
+  } base, enhan, *ld;
+/*}}}*/
+int Decode_Layer;
+/*}}}*/
 
 /*{{{*/
-void Error(text)
-char *text;
-{
-  fprintf(stderr,text);
-  exit(1);
-}
+void Error (char *text) {
 
+  printf (text);
+  exit (1);
+  }
+/*}}}*/
+
+/*{{{  fast idct*/
+#ifndef PI
+  #ifdef M_PI
+    #define PI M_PI
+  #else
+    #define PI 3.14159265358979323846
+  #endif
+#endif
+
+#define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
+#define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */
+#define W3 2408 /* 2048*sqrt(2)*cos(3*pi/16) */
+#define W5 1609 /* 2048*sqrt(2)*cos(5*pi/16) */
+#define W6 1108 /* 2048*sqrt(2)*cos(6*pi/16) */
+#define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
+
+static short iclip[1024]; /* clipping table */
+static short *iclp;
+
+/*{{{*/
+/* row (horizontal) IDCT
+ *
+ *           7                       pi         1
+ * dst[k] = sum c[l] * src[l] * cos( -- * ( k + - ) * l )
+ *          l=0                      8          2
+ *
+ * where: c[0]    = 128
+ *        c[1..7] = 128*sqrt(2)
+ */
+
+static void idctrow (blk)
+short *blk;
+{
+  int x0, x1, x2, x3, x4, x5, x6, x7, x8;
+
+  /* shortcut */
+  if (!((x1 = blk[4]<<11) | (x2 = blk[6]) | (x3 = blk[2]) |
+        (x4 = blk[1]) | (x5 = blk[7]) | (x6 = blk[5]) | (x7 = blk[3])))
+  {
+    blk[0]=blk[1]=blk[2]=blk[3]=blk[4]=blk[5]=blk[6]=blk[7]=blk[0]<<3;
+    return;
+  }
+
+  x0 = (blk[0]<<11) + 128; /* for proper rounding in the fourth stage */
+
+  /* first stage */
+  x8 = W7*(x4+x5);
+  x4 = x8 + (W1-W7)*x4;
+  x5 = x8 - (W1+W7)*x5;
+  x8 = W3*(x6+x7);
+  x6 = x8 - (W3-W5)*x6;
+  x7 = x8 - (W3+W5)*x7;
+
+  /* second stage */
+  x8 = x0 + x1;
+  x0 -= x1;
+  x1 = W6*(x3+x2);
+  x2 = x1 - (W2+W6)*x2;
+  x3 = x1 + (W2-W6)*x3;
+  x1 = x4 + x6;
+  x4 -= x6;
+  x6 = x5 + x7;
+  x5 -= x7;
+
+  /* third stage */
+  x7 = x8 + x3;
+  x8 -= x3;
+  x3 = x0 + x2;
+  x0 -= x2;
+  x2 = (181*(x4+x5)+128)>>8;
+  x4 = (181*(x4-x5)+128)>>8;
+
+  /* fourth stage */
+  blk[0] = (x7+x1)>>8;
+  blk[1] = (x3+x2)>>8;
+  blk[2] = (x0+x4)>>8;
+  blk[3] = (x8+x6)>>8;
+  blk[4] = (x8-x6)>>8;
+  blk[5] = (x0-x4)>>8;
+  blk[6] = (x3-x2)>>8;
+  blk[7] = (x7-x1)>>8;
+}
+/*}}}*/
+/*{{{*/
+/* column (vertical) IDCT
+ *
+ *             7                         pi         1
+ * dst[8*k] = sum c[l] * src[8*l] * cos( -- * ( k + - ) * l )
+ *            l=0                        8          2
+ *
+ * where: c[0]    = 1/1024
+ *        c[1..7] = (1/1024)*sqrt(2)
+ */
+static void idctcol (blk)
+short *blk;
+{
+  int x0, x1, x2, x3, x4, x5, x6, x7, x8;
+
+  /* shortcut */
+  if (!((x1 = (blk[8*4]<<8)) | (x2 = blk[8*6]) | (x3 = blk[8*2]) |
+        (x4 = blk[8*1]) | (x5 = blk[8*7]) | (x6 = blk[8*5]) | (x7 = blk[8*3])))
+  {
+    blk[8*0]=blk[8*1]=blk[8*2]=blk[8*3]=blk[8*4]=blk[8*5]=blk[8*6]=blk[8*7]=
+      iclp[(blk[8*0]+32)>>6];
+    return;
+  }
+
+  x0 = (blk[8*0]<<8) + 8192;
+
+  /* first stage */
+  x8 = W7*(x4+x5) + 4;
+  x4 = (x8+(W1-W7)*x4)>>3;
+  x5 = (x8-(W1+W7)*x5)>>3;
+  x8 = W3*(x6+x7) + 4;
+  x6 = (x8-(W3-W5)*x6)>>3;
+  x7 = (x8-(W3+W5)*x7)>>3;
+
+  /* second stage */
+  x8 = x0 + x1;
+  x0 -= x1;
+  x1 = W6*(x3+x2) + 4;
+  x2 = (x1-(W2+W6)*x2)>>3;
+  x3 = (x1+(W2-W6)*x3)>>3;
+  x1 = x4 + x6;
+  x4 -= x6;
+  x6 = x5 + x7;
+  x5 -= x7;
+
+  /* third stage */
+  x7 = x8 + x3;
+  x8 -= x3;
+  x3 = x0 + x2;
+  x0 -= x2;
+  x2 = (181*(x4+x5)+128)>>8;
+  x4 = (181*(x4-x5)+128)>>8;
+
+  /* fourth stage */
+  blk[8*0] = iclp[(x7+x1)>>14];
+  blk[8*1] = iclp[(x3+x2)>>14];
+  blk[8*2] = iclp[(x0+x4)>>14];
+  blk[8*3] = iclp[(x8+x6)>>14];
+  blk[8*4] = iclp[(x8-x6)>>14];
+  blk[8*5] = iclp[(x0-x4)>>14];
+  blk[8*6] = iclp[(x3-x2)>>14];
+  blk[8*7] = iclp[(x7-x1)>>14];
+}
+/*}}}*/
+/*{{{*/
+/* two dimensional inverse discrete cosine transform */
+void Fast_IDCT (block)
+short *block;
+{
+  int i;
+
+  for (i=0; i<8; i++)
+    idctrow(block+8*i);
+
+  for (i=0; i<8; i++)
+    idctcol(block+i);
+}
+/*}}}*/
+/*{{{*/
+void Initialize_Fast_IDCT()
+{
+  int i;
+
+  iclp = iclip+512;
+  for (i= -512; i<512; i++)
+    iclp[i] = (i<-256) ? -256 : ((i>255) ? 255 : i);
+}
+/*}}}*/
+/*}}}*/
+
+/*{{{*/
+void Write_Frame (unsigned char*src[], int frame) {
+
+  if (progressive_sequence || progressive_frame)
+    printf ("writeFrame prog %d, %d %d\n", frame,Coded_Picture_Width, Coded_Picture_Height);
+  else
+    printf ("writeFrame interlaced %d, %d %d\n", frame,Coded_Picture_Width, Coded_Picture_Height);
+}
 /*}}}*/
 
 // getBits
 /*{{{*/
-
-/* MPEG-1 system layer demultiplexer */
-
-int Get_Byte()
+/* Trace_Flag output */
+void Print_Bits(code,bits,len)
+int code,bits,len;
 {
-  while(ld->Rdptr >= ld->Rdbfr+2048)
-  {
+  int i;
+  for (i=0; i<len; i++)
+    printf("%d",(code>>(bits-1-i))&1);
+}
+/*}}}*/
+/*{{{*/
+/* MPEG-1 system layer demultiplexer */
+int Get_Byte() {
+
+  while(ld->Rdptr >= ld->Rdbfr+2048) {
     read(ld->Infile,ld->Rdbfr,2048);
     ld->Rdptr -= 2048;
     ld->Rdmax -= 2048;
-  }
+    }
+
   return *ld->Rdptr++;
-}
+  }
 /*}}}*/
 /*{{{*/
 /* extract a 16-bit word from the bitstream buffer */
 int Get_Word()
 {
   int Val;
-
   Val = Get_Byte();
   return (Val<<8) | Get_Byte();
 }
@@ -948,108 +1070,104 @@ int Get_Long()
 /*}}}*/
 /*{{{*/
 /* parse system layer, ignore everything we don't need */
-void Next_Packet()
-{
+void Next_Packet() {
+
   unsigned int code;
   int l;
-
-  for(;;)
-  {
+  for(;;) {
     code = Get_Long();
 
     /* remove system layer byte stuffing */
     while ((code & 0xffffff00) != 0x100)
       code = (code<<8) | Get_Byte();
 
-    switch(code)
-    {
-    case PACK_START_CODE: /* pack header */
-      /* skip pack header (system_clock_reference and mux_rate) */
-      ld->Rdptr += 8;
-      break;
-    case VIDEO_ELEMENTARY_STREAM:
-      code = Get_Word();             /* packet_length */
-      ld->Rdmax = ld->Rdptr + code;
+    switch(code) {
+      /*{{{*/
+      case PACK_START_CODE: /* pack header */
+        /* skip pack header (system_clock_reference and mux_rate) */
+        ld->Rdptr += 8;
+        break;
+      /*}}}*/
+      /*{{{*/
+      case VIDEO_ELEMENTARY_STREAM:
+        code = Get_Word();             /* packet_length */
+        ld->Rdmax = ld->Rdptr + code;
 
-      code = Get_Byte();
-
-      if((code>>6)==0x02)
-      {
-        ld->Rdptr++;
-        code=Get_Byte();  /* parse PES_header_data_length */
-        ld->Rdptr+=code;    /* advance pointer by PES_header_data_length */
-        printf("MPEG-2 PES packet\n");
-        return;
-      }
-      else if(code==0xff)
-      {
-        /* parse MPEG-1 packet header */
-        while((code=Get_Byte())== 0xFF);
-      }
-
-      /* stuffing bytes */
-      if(code>=0x40)
-      {
-        if(code>=0x80)
-        {
-          fprintf(stderr,"Error in packet header\n");
-          exit(1);
-        }
-        /* skip STD_buffer_scale */
-        ld->Rdptr++;
         code = Get_Byte();
-      }
+        if((code>>6)==0x02) {
+          ld->Rdptr++;
+          code = Get_Byte();  /* parse PES_header_data_length */
+          ld->Rdptr += code;    /* advance pointer by PES_header_data_length */
+          printf ("MPEG-2 PES packet\n");
+          return;
+          }
+        else if(code==0xff) {
+          /* parse MPEG-1 packet header */
+          while ((code = Get_Byte()) == 0xFF);
+          }
 
-      if(code>=0x30)
-      {
-        if(code>=0x40)
-        {
+        /* stuffing bytes */
+        if (code >= 0x40) {
+          if (code >= 0x80) {
+            fprintf (stderr,"Error in packet header\n");
+            exit(1);
+            }
+
+          /* skip STD_buffer_scale */
+          ld->Rdptr++;
+          code = Get_Byte();
+        }
+
+        if (code >= 0x30) {
+          if (code >= 0x40) {
+            fprintf (stderr,"Error in packet header\n");
+            exit (1);
+            }
+          /* skip presentation and decoding time stamps */
+          ld->Rdptr += 9;
+          }
+
+        else if (code>=0x20) {
+          /* skip presentation time stamps */
+          ld->Rdptr += 4;
+          }
+
+        else if (code!=0x0f) {
           fprintf(stderr,"Error in packet header\n");
           exit(1);
-        }
-        /* skip presentation and decoding time stamps */
-        ld->Rdptr += 9;
+          }
+
+        return;
+      /*}}}*/
+      /*{{{*/
+      case ISO_END_CODE: /* end */
+        /* simulate a buffer full of sequence end codes */
+        l = 0;
+        while (l<2048) {
+          ld->Rdbfr[l++] = SEQUENCE_END_CODE>>24;
+          ld->Rdbfr[l++] = SEQUENCE_END_CODE>>16;
+          ld->Rdbfr[l++] = SEQUENCE_END_CODE>>8;
+          ld->Rdbfr[l++] = SEQUENCE_END_CODE&0xff;
+          }
+
+        ld->Rdptr = ld->Rdbfr;
+        ld->Rdmax = ld->Rdbfr + 2048;
+        return;
+      /*}}}*/
+      default:
+        if (code>=SYSTEM_START_CODE) {
+          /* skip system headers and non-video packets*/
+          code = Get_Word();
+          ld->Rdptr += code;
+          }
+        else {
+          fprintf(stderr,"Unexpected startcode %08x in system layer\n",code);
+          exit(1);
+          }
+        break;
       }
-      else if(code>=0x20)
-      {
-        /* skip presentation time stamps */
-        ld->Rdptr += 4;
-      }
-      else if(code!=0x0f)
-      {
-        fprintf(stderr,"Error in packet header\n");
-        exit(1);
-      }
-      return;
-    case ISO_END_CODE: /* end */
-      /* simulate a buffer full of sequence end codes */
-      l = 0;
-      while (l<2048)
-      {
-        ld->Rdbfr[l++] = SEQUENCE_END_CODE>>24;
-        ld->Rdbfr[l++] = SEQUENCE_END_CODE>>16;
-        ld->Rdbfr[l++] = SEQUENCE_END_CODE>>8;
-        ld->Rdbfr[l++] = SEQUENCE_END_CODE&0xff;
-      }
-      ld->Rdptr = ld->Rdbfr;
-      ld->Rdmax = ld->Rdbfr + 2048;
-      return;
-    default:
-      if(code>=SYSTEM_START_CODE)
-      {
-        /* skip system headers and non-video packets*/
-        code = Get_Word();
-        ld->Rdptr += code;
-      }
-      else
-      {
-        fprintf(stderr,"Unexpected startcode %08x in system layer\n",code);
-        exit(1);
-      }
-      break;
     }
   }
-}
 /*}}}*/
 /*{{{*/
 void Fill_Buffer()
@@ -1171,7 +1289,6 @@ void Flush_Buffer32()
 /*}}}*/
 /*{{{*/
 /* return next n bits (right adjusted) without advancing */
-
 unsigned int Show_Bits(N)
 int N;
 {
@@ -1216,7 +1333,6 @@ void Initialize_Buffer()
 /*}}}*/
 /*{{{*/
 /* return next bit (could be made faster than Get_Bits(1)) */
-
 unsigned int Get_Bits1()
 {
   return Get_Bits(1);
@@ -1237,7 +1353,7 @@ void next_start_code()
 /* ISO/IEC 13818-2 section 5.3 */
 /* Purpose: this function is mainly designed to aid in bitstream conformance
    testing.  A simple Flush_Buffer(1) would do */
-void marker_bit(text)
+void marker_bit (text)
 char *text;
 {
   int marker;
@@ -1262,604 +1378,6 @@ static int extra_bit_information()
   return(Byte_Count);
 }
 
-/*}}}*/
-/*{{{*/
-/* decode slice header */
-
-/* ISO/IEC 13818-2 section 6.2.4 */
-int slice_header()
-{
-  int slice_vertical_position_extension;
-  int quantizer_scale_code;
-  int pos;
-  int slice_picture_id_enable = 0;
-  int slice_picture_id = 0;
-  int extra_information_slice = 0;
-
-  pos = ld->Bitcnt;
-
-  slice_vertical_position_extension =
-    (ld->MPEG2_Flag && vertical_size>2800) ? Get_Bits(3) : 0;
-
-  if (ld->scalable_mode==SC_DP)
-    ld->priority_breakpoint = Get_Bits(7);
-
-  quantizer_scale_code = Get_Bits(5);
-  ld->quantizer_scale =
-    ld->MPEG2_Flag ? (ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1) : quantizer_scale_code;
-
-  /* slice_id introduced in March 1995 as part of the video corridendum
-     (after the IS was drafted in November 1994) */
-  if (Get_Bits(1))
-  {
-    ld->intra_slice = Get_Bits(1);
-
-    slice_picture_id_enable = Get_Bits(1);
-  slice_picture_id = Get_Bits(6);
-
-    extra_information_slice = extra_bit_information();
-  }
-  else
-    ld->intra_slice = 0;
-
-#ifdef VERBOSE
-  if (Verbose_Flag>PICTURE_LAYER)
-  {
-    printf("slice header (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SLICE_LAYER)
-    {
-      if (ld->MPEG2_Flag && vertical_size>2800)
-        printf("  slice_vertical_position_extension=%d\n",slice_vertical_position_extension);
-
-      if (ld->scalable_mode==SC_DP)
-        printf("  priority_breakpoint=%d\n",ld->priority_breakpoint);
-
-      printf("  quantizer_scale_code=%d\n",quantizer_scale_code);
-
-      printf("  slice_picture_id_enable = %d\n", slice_picture_id_enable);
-
-      if(slice_picture_id_enable)
-        printf("  slice_picture_id = %d\n", slice_picture_id);
-
-    }
-  }
-#endif /* VERBOSE */
-
-  return slice_vertical_position_extension;
-}
-/*}}}*/
-
-// write and store
-#define OBFRSIZE 4096
-static unsigned char obfr[OBFRSIZE];
-static unsigned char *optr;
-static int outfile;
-/*{{{*/
-static void putbyte(c)
-int c;
-{
-  *optr++ = c;
-
-  if (optr == obfr+OBFRSIZE)
-  {
-    write(outfile,obfr,OBFRSIZE);
-    optr = obfr;
-  }
-}
-/*}}}*/
-/*{{{*/
-static void putword(w)
-int w;
-{
-  putbyte(w); putbyte(w>>8);
-}
-/*}}}*/
-/*{{{*/
-/* horizontal 1:2 interpolation filter */
-static void conv422to444(src,dst)
-unsigned char *src,*dst;
-{
-  int i, i2, w, j, im3, im2, im1, ip1, ip2, ip3;
-
-  w = Coded_Picture_Width>>1;
-
-  if (base.MPEG2_Flag)
-  {
-    for (j=0; j<Coded_Picture_Height; j++)
-    {
-      for (i=0; i<w; i++)
-      {
-        i2 = i<<1;
-        im2 = (i<2) ? 0 : i-2;
-        im1 = (i<1) ? 0 : i-1;
-        ip1 = (i<w-1) ? i+1 : w-1;
-        ip2 = (i<w-2) ? i+2 : w-1;
-        ip3 = (i<w-3) ? i+3 : w-1;
-
-        /* FIR filter coefficients (*256): 21 0 -52 0 159 256 159 0 -52 0 21 */
-        /* even samples (0 0 256 0 0) */
-        dst[i2] = src[i];
-
-        /* odd samples (21 -52 159 159 -52 21) */
-        dst[i2+1] = Clip[(int)(21*(src[im2]+src[ip3])
-                        -52*(src[im1]+src[ip2])
-                       +159*(src[i]+src[ip1])+128)>>8];
-      }
-      src+= w;
-      dst+= Coded_Picture_Width;
-    }
-  }
-  else
-  {
-    for (j=0; j<Coded_Picture_Height; j++)
-    {
-      for (i=0; i<w; i++)
-      {
-
-        i2 = i<<1;
-        im3 = (i<3) ? 0 : i-3;
-        im2 = (i<2) ? 0 : i-2;
-        im1 = (i<1) ? 0 : i-1;
-        ip1 = (i<w-1) ? i+1 : w-1;
-        ip2 = (i<w-2) ? i+2 : w-1;
-        ip3 = (i<w-3) ? i+3 : w-1;
-
-        /* FIR filter coefficients (*256): 5 -21 70 228 -37 11 */
-        dst[i2] =   Clip[(int)(  5*src[im3]
-                         -21*src[im2]
-                         +70*src[im1]
-                        +228*src[i]
-                         -37*src[ip1]
-                         +11*src[ip2]+128)>>8];
-
-       dst[i2+1] = Clip[(int)(  5*src[ip3]
-                         -21*src[ip2]
-                         +70*src[ip1]
-                        +228*src[i]
-                         -37*src[im1]
-                         +11*src[im2]+128)>>8];
-      }
-      src+= w;
-      dst+= Coded_Picture_Width;
-    }
-  }
-}
-/*}}}*/
-/*{{{*/
-/* vertical 1:2 interpolation filter */
-static void conv420to422(src,dst)
-unsigned char *src,*dst;
-{
-  int w, h, i, j, j2;
-  int jm6, jm5, jm4, jm3, jm2, jm1, jp1, jp2, jp3, jp4, jp5, jp6, jp7;
-
-  w = Coded_Picture_Width>>1;
-  h = Coded_Picture_Height>>1;
-
-  if (progressive_frame)
-  {
-    /* intra frame */
-    for (i=0; i<w; i++)
-    {
-      for (j=0; j<h; j++)
-      {
-        j2 = j<<1;
-        jm3 = (j<3) ? 0 : j-3;
-        jm2 = (j<2) ? 0 : j-2;
-        jm1 = (j<1) ? 0 : j-1;
-        jp1 = (j<h-1) ? j+1 : h-1;
-        jp2 = (j<h-2) ? j+2 : h-1;
-        jp3 = (j<h-3) ? j+3 : h-1;
-
-        /* FIR filter coefficients (*256): 5 -21 70 228 -37 11 */
-        /* New FIR filter coefficients (*256): 3 -16 67 227 -32 7 */
-        dst[w*j2] =     Clip[(int)(  3*src[w*jm3]
-                             -16*src[w*jm2]
-                             +67*src[w*jm1]
-                            +227*src[w*j]
-                             -32*src[w*jp1]
-                             +7*src[w*jp2]+128)>>8];
-
-        dst[w*(j2+1)] = Clip[(int)(  3*src[w*jp3]
-                             -16*src[w*jp2]
-                             +67*src[w*jp1]
-                            +227*src[w*j]
-                             -32*src[w*jm1]
-                             +7*src[w*jm2]+128)>>8];
-      }
-      src++;
-      dst++;
-    }
-  }
-  else
-  {
-    /* intra field */
-    for (i=0; i<w; i++)
-    {
-      for (j=0; j<h; j+=2)
-      {
-        j2 = j<<1;
-
-        /* top field */
-        jm6 = (j<6) ? 0 : j-6;
-        jm4 = (j<4) ? 0 : j-4;
-        jm2 = (j<2) ? 0 : j-2;
-        jp2 = (j<h-2) ? j+2 : h-2;
-        jp4 = (j<h-4) ? j+4 : h-2;
-        jp6 = (j<h-6) ? j+6 : h-2;
-
-        /* Polyphase FIR filter coefficients (*256): 2 -10 35 242 -18 5 */
-        /* New polyphase FIR filter coefficients (*256): 1 -7 30 248 -21 5 */
-        dst[w*j2] = Clip[(int)(  1*src[w*jm6]
-                         -7*src[w*jm4]
-                         +30*src[w*jm2]
-                        +248*src[w*j]
-                         -21*src[w*jp2]
-                          +5*src[w*jp4]+128)>>8];
-
-        /* Polyphase FIR filter coefficients (*256): 11 -38 192 113 -30 8 */
-        /* New polyphase FIR filter coefficients (*256):7 -35 194 110 -24 4 */
-        dst[w*(j2+2)] = Clip[(int)( 7*src[w*jm4]
-                             -35*src[w*jm2]
-                            +194*src[w*j]
-                            +110*src[w*jp2]
-                             -24*src[w*jp4]
-                              +4*src[w*jp6]+128)>>8];
-
-        /* bottom field */
-        jm5 = (j<5) ? 1 : j-5;
-        jm3 = (j<3) ? 1 : j-3;
-        jm1 = (j<1) ? 1 : j-1;
-        jp1 = (j<h-1) ? j+1 : h-1;
-        jp3 = (j<h-3) ? j+3 : h-1;
-        jp5 = (j<h-5) ? j+5 : h-1;
-        jp7 = (j<h-7) ? j+7 : h-1;
-
-        /* Polyphase FIR filter coefficients (*256): 11 -38 192 113 -30 8 */
-        /* New polyphase FIR filter coefficients (*256):7 -35 194 110 -24 4 */
-        dst[w*(j2+1)] = Clip[(int)( 7*src[w*jp5]
-                             -35*src[w*jp3]
-                            +194*src[w*jp1]
-                            +110*src[w*jm1]
-                             -24*src[w*jm3]
-                              +4*src[w*jm5]+128)>>8];
-
-        dst[w*(j2+3)] = Clip[(int)(  1*src[w*jp7]
-                             -7*src[w*jp5]
-                             +30*src[w*jp3]
-                            +248*src[w*jp1]
-                             -21*src[w*jm1]
-                              +5*src[w*jm3]+128)>>8];
-      }
-      src++;
-      dst++;
-    }
-  }
-}
-/*}}}*/
-/*{{{*/
-/* auxiliary routine */
-static void store_yuv1(name,src,offset,incr,width,height)
-char *name;
-unsigned char *src;
-int offset,incr,width,height;
-{
-  int i, j;
-  unsigned char *p;
-
-  if (!Quiet_Flag)
-    fprintf(stderr,"saving %s\n",name);
-
-  if ((outfile = open(name,O_CREAT|O_TRUNC|O_WRONLY|O_BINARY,0666))==-1)
-  {
-    sprintf(Error_Text,"Couldn't create %s\n",name);
-    Error(Error_Text);
-  }
-
-  optr=obfr;
-
-  for (i=0; i<height; i++)
-  {
-    p = src + offset + incr*i;
-    for (j=0; j<width; j++)
-      putbyte(*p++);
-  }
-
-  if (optr!=obfr)
-    write(outfile,obfr,optr-obfr);
-
-  close(outfile);
-}
-/*}}}*/
-/*{{{*/
-/* separate headerless files for y, u and v */
-static void store_yuv(outname,src,offset,incr,height)
-char *outname;
-unsigned char *src[];
-int offset,incr,height;
-{
-  int hsize;
-  char tmpname[FILENAME_LENGTH];
-
-  hsize = horizontal_size;
-
-  sprintf(tmpname,"%s.Y",outname);
-  store_yuv1(tmpname,src[0],offset,incr,hsize,height);
-
-  if (chroma_format!=CHROMA444)
-  {
-    offset>>=1; incr>>=1; hsize>>=1;
-  }
-
-  if (chroma_format==CHROMA420)
-  {
-    height>>=1;
-  }
-
-  sprintf(tmpname,"%s.U",outname);
-  store_yuv1(tmpname,src[1],offset,incr,hsize,height);
-
-  sprintf(tmpname,"%s.V",outname);
-  store_yuv1(tmpname,src[2],offset,incr,hsize,height);
-}
-/*}}}*/
-/*{{{*/
-/*
- * store as headerless file in U,Y,V,Y format
- */
-static void store_sif (outname,src,offset,incr,height)
-char *outname;
-unsigned char *src[];
-int offset, incr, height;
-{
-  int i,j;
-  unsigned char *py, *pu, *pv;
-  static unsigned char *u422, *v422;
-
-  if (chroma_format==CHROMA444)
-    Error("4:4:4 not supported for SIF format");
-
-  if (chroma_format==CHROMA422)
-  {
-    u422 = src[1];
-    v422 = src[2];
-  }
-  else
-  {
-    if (!u422)
-    {
-      if (!(u422 = (unsigned char *)malloc((Coded_Picture_Width>>1)
-                                           *Coded_Picture_Height)))
-        Error("malloc failed");
-      if (!(v422 = (unsigned char *)malloc((Coded_Picture_Width>>1)
-                                           *Coded_Picture_Height)))
-        Error("malloc failed");
-    }
-
-    conv420to422(src[1],u422);
-    conv420to422(src[2],v422);
-  }
-
-  strcat(outname,".SIF");
-
-  if (!Quiet_Flag)
-    fprintf(stderr,"saving %s\n",outname);
-
-  if ((outfile = open(outname,O_CREAT|O_TRUNC|O_WRONLY|O_BINARY,0666))==-1)
-  {
-    sprintf(Error_Text,"Couldn't create %s\n",outname);
-    Error(Error_Text);
-  }
-
-  optr = obfr;
-
-  for (i=0; i<height; i++)
-  {
-    py = src[0] + offset + incr*i;
-    pu = u422 + (offset>>1) + (incr>>1)*i;
-    pv = v422 + (offset>>1) + (incr>>1)*i;
-
-    for (j=0; j<horizontal_size; j+=2)
-    {
-      putbyte(*pu++);
-      putbyte(*py++);
-      putbyte(*pv++);
-      putbyte(*py++);
-    }
-  }
-
-  if (optr!=obfr)
-    write(outfile,obfr,optr-obfr);
-
-  close(outfile);
-}
-/*}}}*/
-/*{{{*/
-/*
- * store as PPM (PBMPLUS) or uncompressed Truevision TGA ('Targa') file
- */
-static void store_ppm_tga(outname,src,offset,incr,height,tgaflag)
-char *outname;
-unsigned char *src[];
-int offset, incr, height;
-int tgaflag;
-{
-  int i, j;
-  int y, u, v, r, g, b;
-  int crv, cbu, cgu, cgv;
-  unsigned char *py, *pu, *pv;
-  static unsigned char tga24[14] = {0,0,2,0,0,0,0, 0,0,0,0,0,24,32};
-  char header[FILENAME_LENGTH];
-  static unsigned char *u422, *v422, *u444, *v444;
-
-  if (chroma_format==CHROMA444)
-  {
-    u444 = src[1];
-    v444 = src[2];
-  }
-  else
-  {
-    if (!u444)
-    {
-      if (chroma_format==CHROMA420)
-      {
-        if (!(u422 = (unsigned char *)malloc((Coded_Picture_Width>>1)
-                                             *Coded_Picture_Height)))
-          Error("malloc failed");
-        if (!(v422 = (unsigned char *)malloc((Coded_Picture_Width>>1)
-                                             *Coded_Picture_Height)))
-          Error("malloc failed");
-      }
-
-      if (!(u444 = (unsigned char *)malloc(Coded_Picture_Width
-                                           *Coded_Picture_Height)))
-        Error("malloc failed");
-
-      if (!(v444 = (unsigned char *)malloc(Coded_Picture_Width
-                                           *Coded_Picture_Height)))
-        Error("malloc failed");
-    }
-
-    if (chroma_format==CHROMA420)
-    {
-      conv420to422(src[1],u422);
-      conv420to422(src[2],v422);
-      conv422to444(u422,u444);
-      conv422to444(v422,v444);
-    }
-    else
-    {
-      conv422to444(src[1],u444);
-      conv422to444(src[2],v444);
-    }
-  }
-
-  strcat(outname,tgaflag ? ".tga" : ".ppm");
-
-  if (!Quiet_Flag)
-    fprintf(stderr,"saving %s\n",outname);
-
-  if ((outfile = open(outname,O_CREAT|O_TRUNC|O_WRONLY|O_BINARY,0666))==-1)
-  {
-    sprintf(Error_Text,"Couldn't create %s\n",outname);
-    Error(Error_Text);
-  }
-
-  optr = obfr;
-
-  if (tgaflag)
-  {
-    /* TGA header */
-    for (i=0; i<12; i++)
-      putbyte(tga24[i]);
-
-    putword(horizontal_size); putword(height);
-    putbyte(tga24[12]); putbyte(tga24[13]);
-  }
-  else
-  {
-    /* PPM header */
-    sprintf(header,"P6\n%d %d\n255\n",horizontal_size,height);
-
-    for (i=0; header[i]!=0; i++)
-      putbyte(header[i]);
-  }
-
-  /* matrix coefficients */
-  crv = Inverse_Table_6_9[matrix_coefficients][0];
-  cbu = Inverse_Table_6_9[matrix_coefficients][1];
-  cgu = Inverse_Table_6_9[matrix_coefficients][2];
-  cgv = Inverse_Table_6_9[matrix_coefficients][3];
-
-  for (i=0; i<height; i++)
-  {
-    py = src[0] + offset + incr*i;
-    pu = u444 + offset + incr*i;
-    pv = v444 + offset + incr*i;
-
-    for (j=0; j<horizontal_size; j++)
-    {
-      u = *pu++ - 128;
-      v = *pv++ - 128;
-      y = 76309 * (*py++ - 16); /* (255/219)*65536 */
-      r = Clip[(y + crv*v + 32768)>>16];
-      g = Clip[(y - cgu*u - cgv*v + 32768)>>16];
-      b = Clip[(y + cbu*u + 32786)>>16];
-
-      if (tgaflag)
-      {
-        putbyte(b); putbyte(g); putbyte(r);
-      }
-      else
-      {
-        putbyte(r); putbyte(g); putbyte(b);
-      }
-    }
-  }
-
-  if (optr!=obfr)
-    write(outfile,obfr,optr-obfr);
-
-  close(outfile);
-}
-/*}}}*/
-/*{{{*/
-/*
- * store one frame or one field
- */
-static void store_one(outname,src,offset,incr,height)
-char *outname;
-unsigned char *src[];
-int offset, incr, height;
-{
-  switch (Output_Type)
-  {
-  case T_YUV:
-    store_yuv(outname,src,offset,incr,height);
-    break;
-  case T_SIF:
-    store_sif(outname,src,offset,incr,height);
-    break;
-  case T_TGA:
-    store_ppm_tga(outname,src,offset,incr,height,1);
-    break;
-  case T_PPM:
-    store_ppm_tga(outname,src,offset,incr,height,0);
-    break;
-#ifdef DISPLAY
-  case T_X11:
-    dither(src);
-    break;
-#endif
-  default:
-    break;
-  }
-}
-/*}}}*/
-/*{{{*/
-void Write_Frame(src,frame)
-unsigned char *src[];
-int frame;
-{
-  char outname[FILENAME_LENGTH];
-
-  if (progressive_sequence || progressive_frame || Frame_Store_Flag)
-  {
-    /* progressive */
-    sprintf(outname,Output_Picture_Filename,frame,'f');
-    store_one(outname,src,0,Coded_Picture_Width,vertical_size);
-  }
-  else
-  {
-    /* interlaced */
-    sprintf(outname,Output_Picture_Filename,frame,'a');
-    store_one(outname,src,0,Coded_Picture_Width<<1,vertical_size>>1);
-
-    sprintf(outname,Output_Picture_Filename,frame,'b');
-    store_one(outname,src,
-      Coded_Picture_Width,Coded_Picture_Width<<1,vertical_size>>1);
-  }
-}
 /*}}}*/
 
 /*{{{*/
@@ -1895,7 +1413,7 @@ static int Get_I_macroblock_type()
 }
 /*}}}*/
 /*{{{*/
-static char *MBdescr[]={
+static char* MBdescr[]={
   "",                  "Intra",        "No MC, Coded",         "",
   "Bwd, Not Coded",    "",             "Bwd, Coded",           "",
   "Fwd, Not Coded",    "",             "Fwd, Coded",           "",
@@ -2256,8 +1774,6 @@ int Get_motion_code()
   if ((code-=12)<0)
   {
     if (!Quiet_Flag)
-/* HACK */
-      printf("Invalid motion_vector code (MBA %d, pic %d)\n", global_MBA, global_pic);
     Fault_Flag=1;
     return 0;
   }
@@ -2632,28 +2148,6 @@ int Get_Chroma_DC_dct_diff()
 /*}}}*/
 
 /*{{{*/
-static double frame_rate_Table[16] =
-{
-  0.0,
-  ((23.0*1000.0)/1001.0),
-  24.0,
-  25.0,
-  ((30.0*1000.0)/1001.0),
-  30.0,
-  50.0,
-  ((60.0*1000.0)/1001.0),
-  60.0,
-
-  RESERVED,
-  RESERVED,
-  RESERVED,
-  RESERVED,
-  RESERVED,
-  RESERVED,
-  RESERVED
-};
-/*}}}*/
-/*{{{*/
 /* decode sequence display extension */
 
 static void sequence_display_extension()
@@ -2785,7 +2279,7 @@ static void sequence_scalable_extension()
   }
 
   if (ld->scalable_mode==SC_TEMP)
-    Error("temporal scalability not implemented\n");
+    Error ("temporal scalability not implemented\n");
 
 #ifdef VERBOSE
   if (Verbose_Flag>NO_LAYER)
@@ -2964,7 +2458,6 @@ static void picture_coding_extension()
 }
 /*}}}*/
 /*{{{*/
-
 /* decode picture spatial scalable extension */
 /* ISO/IEC 13818-2 section 6.2.3.5. */
 static void picture_spatial_scalable_extension()
@@ -3015,7 +2508,7 @@ static void picture_spatial_scalable_extension()
 /* ISO/IEC 13818-2 section 6.2.3.4. */
 static void picture_temporal_scalable_extension()
 {
-  Error("temporal scalability not supported\n");
+  Error ("temporal scalability not supported\n");
 
 }
 
@@ -3032,8 +2525,6 @@ static void user_data()
 /* Copyright extension */
 /* ISO/IEC 13818-2 section 6.2.3.6. */
 /* (header added in November, 1994 to the IS document) */
-
-
 static void copyright_extension()
 {
   int pos;
@@ -3110,14 +2601,12 @@ static void Update_Temporal_Reference_Tacking_Data()
     if (temporal_reference_wrap && temporal_reference <= temporal_reference_old)
       True_Framenum += 1024;
 
-    True_Framenum_max = (True_Framenum > True_Framenum_max) ?
-                        True_Framenum : True_Framenum_max;
+    True_Framenum_max = (True_Framenum > True_Framenum_max) ? True_Framenum : True_Framenum_max;
   }
 }
 /*}}}*/
 /*{{{*/
 /* decode sequence extension */
-
 /* ISO/IEC 13818-2 section 6.2.2.3 */
 static void sequence_extension()
 {
@@ -3282,11 +2771,11 @@ static void group_of_pictures_header()
 {
   int pos;
 
-  if (ld == &base)
-  {
+  if (ld == &base) {
     Temporal_Reference_Base = True_Framenum_max + 1;  /* *CH* */
     Temporal_Reference_GOP_Reset = 1;
-  }
+    }
+
   pos = ld->Bitcnt;
   drop_flag   = Get_Bits(1);
   hour        = Get_Bits(5);
@@ -3317,7 +2806,6 @@ static void group_of_pictures_header()
 /*}}}*/
 /*{{{*/
 /* decode picture header */
-
 /* ISO/IEC 13818-2 section 6.2.3 */
 static void picture_header()
 {
@@ -3377,7 +2865,6 @@ static void picture_header()
 /*}}}*/
 /*{{{*/
 /* decode sequence header */
-
 static void sequence_header()
 {
   int i;
@@ -3449,43 +2936,41 @@ static void sequence_header()
 /*}}}*/
 
 /*{{{*/
-/*
- * decode headers from one input stream
- * until an End of Sequence or picture start code
- * is found
- */
-int Get_Hdr()
-{
-  unsigned int code;
+/* decode headers from one input stream until an End of Sequence or picture start code is found */
+int Get_Hdr() {
 
-  for (;;)
-  {
+  unsigned int code;
+  for (;;) {
     /* look for next_start_code */
     next_start_code();
     code = Get_Bits32();
 
-    switch (code)
-    {
-    case SEQUENCE_HEADER_CODE:
-      sequence_header();
-      break;
-    case GROUP_START_CODE:
-      group_of_pictures_header();
-      break;
-    case PICTURE_START_CODE:
-      picture_header();
-      return 1;
-      break;
-    case SEQUENCE_END_CODE:
-      return 0;
-      break;
-    default:
-      if (!Quiet_Flag)
-        fprintf(stderr,"Unexpected next_start_code %08x (ignored)\n",code);
-      break;
+    switch (code) {
+      case SEQUENCE_HEADER_CODE:
+        sequence_header();
+        break;
+
+      case GROUP_START_CODE:
+        group_of_pictures_header();
+        break;
+
+      case PICTURE_START_CODE:
+        picture_header();
+        return 1;
+        break;
+
+      case SEQUENCE_END_CODE:
+        return 0;
+        break;
+
+      default:
+        if (!Quiet_Flag)
+          fprintf(stderr,"Unexpected next_start_code %08x (ignored)\n",code);
+        break;
+      }
+
     }
   }
-}
 /*}}}*/
 
 /*{{{*/
@@ -3691,7 +3176,6 @@ int comp;
 /*}}}*/
 /*{{{*/
 /* decode one intra coded MPEG-2 block */
-
 void Decode_MPEG2_Intra_Block(comp,dc_dct_pred)
 int comp;
 int dc_dct_pred[];
@@ -3863,7 +3347,6 @@ int dc_dct_pred[];
 /*}}}*/
 /*{{{*/
 /* decode one non-intra coded MPEG-2 block */
-
 void Decode_MPEG2_Non_Intra_Block(comp)
 int comp;
 {
@@ -4019,8 +3502,7 @@ int comp;
 /* ISO/IEC 13818-2 section 7.6.3.1: Decoding the motion vectors */
 /* Note: the arithmetic here is more elegant than that which is shown
    in 7.6.3.1.  The end results (PMV[][][]) should, however, be the same.  */
-
-static void decode_motion_vector(pred,r_size,motion_code,motion_residual,full_pel_vector)
+static void decode_motion_vector (pred,r_size,motion_code,motion_residual,full_pel_vector)
 int *pred;
 int r_size, motion_code, motion_residual;
 int full_pel_vector; /* MPEG-1 (ISO/IEC 11172-1) support */
@@ -4047,7 +3529,7 @@ int full_pel_vector; /* MPEG-1 (ISO/IEC 11172-1) support */
 /*}}}*/
 /*{{{*/
 /* get and decode motion vector and differential motion vector for one prediction */
-void motion_vector (PMV,dmvector, h_r_size,v_r_size,dmv,mvscale,full_pel_vector)
+void motion_vector (PMV, dmvector, h_r_size,v_r_size,dmv,mvscale,full_pel_vector)
 int *PMV;
 int *dmvector;
 int h_r_size;
@@ -4118,7 +3600,7 @@ int full_pel_vector; /* MPEG-1 only */
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 sections 6.2.5.2, 6.3.17.2, and 7.6.3: Motion vectors */
-void motion_vectors (PMV,dmvector, motion_vertical_field_select,s,motion_vector_count,mv_format,h_r_size,v_r_size,dmv,mvscale)
+void motion_vectors (PMV, dmvector, motion_vertical_field_select,s,motion_vector_count,mv_format,h_r_size,v_r_size,dmv,mvscale)
 
 int PMV[2][2][2];
 int dmvector[2];
@@ -4172,7 +3654,7 @@ int s, motion_vector_count, mv_format, h_r_size, v_r_size, dmv, mvscale;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 7.6.3.6: Dual prime additional arithmetic */
-void Dual_Prime_Arithmetic (DMV,dmvector,mvx,mvy)
+void Dual_Prime_Arithmetic (DMV, dmvector, mvx, mvy)
 int DMV[][2];
 int *dmvector; /* differential motion vector */
 int mvx, mvy;  /* decoded mv components (always in field format) */
@@ -4241,7 +3723,7 @@ int mvx, mvy;  /* decoded mv components (always in field format) */
  *  was chosen for its elegance.
 */
 
-static void form_component_prediction (src,dst,lx,lx2,w,h,x,y,dx,dy,average_flag)
+static void form_component_prediction (src, dst, lx, lx2, w, h, x, y, dx, dy, average_flag)
 unsigned char *src;
 unsigned char *dst;
 int lx;          /* raster line increment */
@@ -4398,7 +3880,7 @@ int average_flag;      /* flag that signals bi-directional or Dual-Prime
 }
 /*}}}*/
 /*{{{*/
-static void form_prediction (src,sfield,dst,dfield,lx,lx2,w,h,x,y,dx,dy,average_flag)
+static void form_prediction (src, sfield, dst, dfield, lx, lx2, w, h, x, y, dx, dy, average_flag)
 unsigned char *src[]; /* prediction source buffer */
 int sfield;           /* prediction source field number (0 or 1) */
 unsigned char *dst[]; /* prediction destination buffer */
@@ -4433,7 +3915,7 @@ int average_flag;     /* add prediction error to prediction ? */
 }
 /*}}}*/
 /*{{{*/
-void form_predictions (bx,by,macroblock_type,motion_type,PMV,motion_vertical_field_select,dmvector,stwtype)
+void form_predictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector,stwtype)
 int bx, by;
 int macroblock_type;
 int motion_type;
@@ -4645,231 +4127,54 @@ int stwtype;
 }
 /*}}}*/
 
-/*{{{  fast idct*/
-#ifndef PI
-  #ifdef M_PI
-    #define PI M_PI
-  #else
-    #define PI 3.14159265358979323846
-  #endif
-#endif
-
-#define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
-#define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */
-#define W3 2408 /* 2048*sqrt(2)*cos(3*pi/16) */
-#define W5 1609 /* 2048*sqrt(2)*cos(5*pi/16) */
-#define W6 1108 /* 2048*sqrt(2)*cos(6*pi/16) */
-#define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
-
-static short iclip[1024]; /* clipping table */
-static short *iclp;
-
 /*{{{*/
-/* row (horizontal) IDCT
- *
- *           7                       pi         1
- * dst[k] = sum c[l] * src[l] * cos( -- * ( k + - ) * l )
- *          l=0                      8          2
- *
- * where: c[0]    = 128
- *        c[1..7] = 128*sqrt(2)
- */
+/* ISO/IEC 13818-2 section 6.2.4 */
+int slice_header() {
 
-static void idctrow (blk)
-short *blk;
-{
-  int x0, x1, x2, x3, x4, x5, x6, x7, x8;
+  int slice_vertical_position_extension;
+  int quantizer_scale_code;
+  int pos;
+  int slice_picture_id_enable = 0;
+  int slice_picture_id = 0;
+  int extra_information_slice = 0;
 
-  /* shortcut */
-  if (!((x1 = blk[4]<<11) | (x2 = blk[6]) | (x3 = blk[2]) |
-        (x4 = blk[1]) | (x5 = blk[7]) | (x6 = blk[5]) | (x7 = blk[3])))
-  {
-    blk[0]=blk[1]=blk[2]=blk[3]=blk[4]=blk[5]=blk[6]=blk[7]=blk[0]<<3;
-    return;
-  }
+  pos = ld->Bitcnt;
+  slice_vertical_position_extension = (ld->MPEG2_Flag && vertical_size>2800) ? Get_Bits(3) : 0;
+  if (ld->scalable_mode == SC_DP)
+    ld->priority_breakpoint = Get_Bits(7);
 
-  x0 = (blk[0]<<11) + 128; /* for proper rounding in the fourth stage */
+  quantizer_scale_code = Get_Bits(5);
+  ld->quantizer_scale = ld->MPEG2_Flag ? (ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1) : quantizer_scale_code;
 
-  /* first stage */
-  x8 = W7*(x4+x5);
-  x4 = x8 + (W1-W7)*x4;
-  x5 = x8 - (W1+W7)*x5;
-  x8 = W3*(x6+x7);
-  x6 = x8 - (W3-W5)*x6;
-  x7 = x8 - (W3+W5)*x7;
-
-  /* second stage */
-  x8 = x0 + x1;
-  x0 -= x1;
-  x1 = W6*(x3+x2);
-  x2 = x1 - (W2+W6)*x2;
-  x3 = x1 + (W2-W6)*x3;
-  x1 = x4 + x6;
-  x4 -= x6;
-  x6 = x5 + x7;
-  x5 -= x7;
-
-  /* third stage */
-  x7 = x8 + x3;
-  x8 -= x3;
-  x3 = x0 + x2;
-  x0 -= x2;
-  x2 = (181*(x4+x5)+128)>>8;
-  x4 = (181*(x4-x5)+128)>>8;
-
-  /* fourth stage */
-  blk[0] = (x7+x1)>>8;
-  blk[1] = (x3+x2)>>8;
-  blk[2] = (x0+x4)>>8;
-  blk[3] = (x8+x6)>>8;
-  blk[4] = (x8-x6)>>8;
-  blk[5] = (x0-x4)>>8;
-  blk[6] = (x3-x2)>>8;
-  blk[7] = (x7-x1)>>8;
-}
-/*}}}*/
-/*{{{*/
-/* column (vertical) IDCT
- *
- *             7                         pi         1
- * dst[8*k] = sum c[l] * src[8*l] * cos( -- * ( k + - ) * l )
- *            l=0                        8          2
- *
- * where: c[0]    = 1/1024
- *        c[1..7] = (1/1024)*sqrt(2)
- */
-static void idctcol (blk)
-short *blk;
-{
-  int x0, x1, x2, x3, x4, x5, x6, x7, x8;
-
-  /* shortcut */
-  if (!((x1 = (blk[8*4]<<8)) | (x2 = blk[8*6]) | (x3 = blk[8*2]) |
-        (x4 = blk[8*1]) | (x5 = blk[8*7]) | (x6 = blk[8*5]) | (x7 = blk[8*3])))
-  {
-    blk[8*0]=blk[8*1]=blk[8*2]=blk[8*3]=blk[8*4]=blk[8*5]=blk[8*6]=blk[8*7]=
-      iclp[(blk[8*0]+32)>>6];
-    return;
-  }
-
-  x0 = (blk[8*0]<<8) + 8192;
-
-  /* first stage */
-  x8 = W7*(x4+x5) + 4;
-  x4 = (x8+(W1-W7)*x4)>>3;
-  x5 = (x8-(W1+W7)*x5)>>3;
-  x8 = W3*(x6+x7) + 4;
-  x6 = (x8-(W3-W5)*x6)>>3;
-  x7 = (x8-(W3+W5)*x7)>>3;
-
-  /* second stage */
-  x8 = x0 + x1;
-  x0 -= x1;
-  x1 = W6*(x3+x2) + 4;
-  x2 = (x1-(W2+W6)*x2)>>3;
-  x3 = (x1+(W2-W6)*x3)>>3;
-  x1 = x4 + x6;
-  x4 -= x6;
-  x6 = x5 + x7;
-  x5 -= x7;
-
-  /* third stage */
-  x7 = x8 + x3;
-  x8 -= x3;
-  x3 = x0 + x2;
-  x0 -= x2;
-  x2 = (181*(x4+x5)+128)>>8;
-  x4 = (181*(x4-x5)+128)>>8;
-
-  /* fourth stage */
-  blk[8*0] = iclp[(x7+x1)>>14];
-  blk[8*1] = iclp[(x3+x2)>>14];
-  blk[8*2] = iclp[(x0+x4)>>14];
-  blk[8*3] = iclp[(x8+x6)>>14];
-  blk[8*4] = iclp[(x8-x6)>>14];
-  blk[8*5] = iclp[(x0-x4)>>14];
-  blk[8*6] = iclp[(x3-x2)>>14];
-  blk[8*7] = iclp[(x7-x1)>>14];
-}
-/*}}}*/
-/*{{{*/
-/* two dimensional inverse discrete cosine transform */
-void Fast_IDCT (block)
-short *block;
-{
-  int i;
-
-  for (i=0; i<8; i++)
-    idctrow(block+8*i);
-
-  for (i=0; i<8; i++)
-    idctcol(block+i);
-}
-/*}}}*/
-/*{{{*/
-void Initialize_Fast_IDCT()
-{
-  int i;
-
-  iclp = iclip+512;
-  for (i= -512; i<512; i++)
-    iclp[i] = (i<-256) ? -256 : ((i>255) ? 255 : i);
-}
-/*}}}*/
-/*}}}*/
-/*{{{  reference IDCT*/
-static double c[8][8];
-/*{{{*/
-void Initialize_Reference_IDCT()
-{
-  int freq, time;
-  double scale;
-
-  for (freq=0; freq < 8; freq++)
-  {
-    scale = (freq == 0) ? sqrt(0.125) : 0.5;
-    for (time=0; time<8; time++)
-      c[freq][time] = scale*cos((PI/8.0)*freq*(time + 0.5));
-  }
-}
-/*}}}*/
-/*{{{*/
-/* perform IDCT matrix multiply for 8x8 coefficient block */
-
-void Reference_IDCT (block)
-short *block;
-{
-  int i, j, k, v;
-  double partial_product;
-  double tmp[64];
-
-  for (i=0; i<8; i++)
-    for (j=0; j<8; j++)
-    {
-      partial_product = 0.0;
-
-      for (k=0; k<8; k++)
-        partial_product+= c[k][j]*block[8*i+k];
-
-      tmp[8*i+j] = partial_product;
+  /* slice_id introduced in March 1995 as part of the video corridendum (after the IS was drafted in November 1994) */
+  if (Get_Bits(1)) {
+    ld->intra_slice = Get_Bits(1);
+    slice_picture_id_enable = Get_Bits(1);
+    slice_picture_id = Get_Bits(6);
+    extra_information_slice = extra_bit_information();
     }
+  else
+    ld->intra_slice = 0;
 
-  /* Transpose operation is integrated into address mapping by switching
-     loop order of i and j */
-
-  for (j=0; j<8; j++)
-    for (i=0; i<8; i++)
-    {
-      partial_product = 0.0;
-
-      for (k=0; k<8; k++)
-        partial_product+= c[k][i]*tmp[8*k+j];
-
-      v = (int) floor(partial_product+0.5);
-      block[8*i+j] = (v<-256) ? -256 : ((v>255) ? 255 : v);
+#ifdef VERBOSE
+  if (Verbose_Flag>PICTURE_LAYER)
+  {
+    printf ("slice header (byte %d)\n",(pos>>3)-4);
+    if (Verbose_Flag > SLICE_LAYER) {
+      if (ld->MPEG2_Flag && vertical_size>2800)
+        printf ("  slice_vertical_position_extension=%d\n",slice_vertical_position_extension);
+      if (ld->scalable_mode==SC_DP)
+        printf ("  priority_breakpoint=%d\n",ld->priority_breakpoint);
+      printf ("  quantizer_scale_code=%d\n",quantizer_scale_code);
+      printf ("  slice_picture_id_enable = %d\n", slice_picture_id_enable);
+      if (slice_picture_id_enable)
+        printf("  slice_picture_id = %d\n", slice_picture_id);
     }
+  }
+#endif /* VERBOSE */
+
+  return slice_vertical_position_extension;
 }
-/*}}}*/
 /*}}}*/
 
 /*{{{*/
@@ -4880,7 +4185,7 @@ short *block;
  *   - ISO/IEC 13818-2 section 7.6.7: Combining predictions
  *   - ISO/IEC 13818-2 section 6.1.3: Macroblock
 */
-static void Add_Block(comp,bx,by,dct_type,addflag)
+static void Add_Block (comp,bx,by,dct_type,addflag)
 int comp,bx,by,dct_type,addflag;
 {
   int cc,i, j, iincr;
@@ -4983,7 +4288,7 @@ int comp,bx,by,dct_type,addflag;
 /*}}}*/
 /*{{{*/
 /* IMPLEMENTATION: set scratch pad macroblock to zero */
-static void Clear_Block(comp)
+static void Clear_Block (comp)
 int comp;
 {
   short *Block_Ptr;
@@ -4997,7 +4302,7 @@ int comp;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
-static void macroblock_modes(pmacroblock_type,pstwtype,pstwclass,
+static void macroblock_modes (pmacroblock_type,pstwtype,pstwclass,
   pmotion_type,pmotion_vector_count,pmv_format,pdmv,pmvscale,pdct_type)
   int *pmacroblock_type, *pstwtype, *pstwclass;
   int *pmotion_type, *pmotion_vector_count, *pmv_format, *pdmv, *pmvscale;
@@ -5143,7 +4448,7 @@ static void macroblock_modes(pmacroblock_type,pstwtype,pstwclass,
 /* return==-1 means go to next picture */
 /* the expression "start of slice" is used throughout the normative
    body of the MPEG specification */
-static int start_of_slice(MBAmax, MBA, MBAinc,
+static int start_of_slice (MBAmax, MBA, MBAinc,
   dc_dct_pred, PMV)
 int MBAmax;
 int *MBA;
@@ -5230,7 +4535,7 @@ int PMV[2][2][2];
 }
 /*}}}*/
 /*{{{*/
-static void frame_reorder(Bitstream_Framenum, Sequence_Framenum)
+static void frame_reorder (Bitstream_Framenum, Sequence_Framenum)
 int Bitstream_Framenum, Sequence_Framenum;
 {
   /* tracking variables to insure proper output in spatial scalability */
@@ -5241,24 +4546,15 @@ int Bitstream_Framenum, Sequence_Framenum;
     if (picture_structure==FRAME_PICTURE || Second_Field)
     {
       if (picture_coding_type==B_TYPE)
-        Write_Frame(auxframe,Bitstream_Framenum-1);
+        Write_Frame (auxframe, Bitstream_Framenum-1);
       else
       {
         Newref_progressive_frame = progressive_frame;
         progressive_frame = Oldref_progressive_frame;
-
-        Write_Frame(forward_reference_frame,Bitstream_Framenum-1);
-
+        Write_Frame (forward_reference_frame, Bitstream_Framenum-1);
         Oldref_progressive_frame = progressive_frame = Newref_progressive_frame;
       }
     }
-#ifdef DISPLAY
-    else if (Output_Type==T_X11)
-    {
-      if(!Display_Progressive_Flag)
-        Display_Second_Field();
-    }
-#endif
   }
   else
     Oldref_progressive_frame = progressive_frame;
@@ -5267,7 +4563,7 @@ int Bitstream_Framenum, Sequence_Framenum;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 7.6 */
-static void motion_compensation(MBA, macroblock_type, motion_type, PMV,
+static void motion_compensation (MBA, macroblock_type, motion_type, PMV,
   motion_vertical_field_select, dmvector, stwtype, dct_type)
 int MBA;
 int macroblock_type;
@@ -5299,10 +4595,7 @@ int dct_type;
   for (comp=0; comp<block_count; comp++)
   {
     /* ISO/IEC 13818-2 section Annex A: inverse DCT */
-    if (Reference_IDCT_Flag)
-      Reference_IDCT(ld->block[comp]);
-    else
-      Fast_IDCT(ld->block[comp]);
+    Fast_IDCT(ld->block[comp]);
 
     /* ISO/IEC 13818-2 section 7.6.8: Adding prediction and coefficient data */
     Add_Block(comp,bx,by,dct_type,(macroblock_type & MACROBLOCK_INTRA)==0);
@@ -5312,7 +4605,7 @@ int dct_type;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 7.6.6 */
-static void skipped_macroblock(dc_dct_pred, PMV, motion_type,
+static void skipped_macroblock (dc_dct_pred, PMV, motion_type,
   motion_vertical_field_select, stwtype, macroblock_type)
 int dc_dct_pred[3];
 int PMV[2][2][2];
@@ -5365,7 +4658,7 @@ int *macroblock_type;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 sections 7.2 through 7.5 */
-static int decode_macroblock(macroblock_type, stwtype, stwclass,
+static int decode_macroblock (macroblock_type, stwtype, stwclass,
   motion_type, dct_type, PMV, dc_dct_pred,
   motion_vertical_field_select, dmvector)
 int *macroblock_type;
@@ -5389,8 +4682,7 @@ int dmvector[2];
   int coded_block_pattern;
 
   /* SCALABILITY: Data Patitioning */
-  if (base.scalable_mode==SC_DP)
-  {
+  if (base.scalable_mode==SC_DP) {
     if (base.priority_breakpoint<=2)
       ld = &enhan;
     else
@@ -5404,13 +4696,11 @@ int dmvector[2];
 
   if (Fault_Flag) return(0);  /* trigger: go to next slice */
 
-  if (*macroblock_type & MACROBLOCK_QUANT)
-  {
+  if (*macroblock_type & MACROBLOCK_QUANT) {
     quantizer_scale_code = Get_Bits(5);
 
 #ifdef TRACE
-    if (Trace_Flag)
-    {
+    if (Trace_Flag) {
       printf("quantiser_scale_code (");
       Print_Bits(quantizer_scale_code,5,5);
       printf("): %d\n",quantizer_scale_code);
@@ -5419,9 +4709,7 @@ int dmvector[2];
 
     /* ISO/IEC 13818-2 section 7.4.2.2: Quantizer scale factor */
     if (ld->MPEG2_Flag)
-      ld->quantizer_scale =
-      ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code]
-       : (quantizer_scale_code << 1);
+      ld->quantizer_scale = ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : (quantizer_scale_code << 1);
     else
       ld->quantizer_scale = quantizer_scale_code;
 
@@ -5432,15 +4720,9 @@ int dmvector[2];
   }
 
   /* motion vectors */
-
-
   /* ISO/IEC 13818-2 section 6.3.17.2: Motion vectors */
-
   /* decode forward motion vectors */
-  if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD)
-    || ((*macroblock_type & MACROBLOCK_INTRA)
-    && concealment_motion_vectors))
-  {
+  if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD) || ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)) {
     if (ld->MPEG2_Flag)
       motion_vectors(PMV,dmvector,motion_vertical_field_select,
         0,motion_vector_count,mv_format,f_code[0][0]-1,f_code[0][1]-1,
@@ -5453,8 +4735,7 @@ int dmvector[2];
   if (Fault_Flag) return(0);  /* trigger: go to next slice */
 
   /* decode backward motion vectors */
-  if (*macroblock_type & MACROBLOCK_MOTION_BACKWARD)
-  {
+  if (*macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
     if (ld->MPEG2_Flag)
       motion_vectors(PMV,dmvector,motion_vertical_field_select,
         1,motion_vector_count,mv_format,f_code[1][0]-1,f_code[1][1]-1,0,
@@ -5474,32 +4755,27 @@ int dmvector[2];
 
   /* macroblock_pattern */
   /* ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern */
-  if (*macroblock_type & MACROBLOCK_PATTERN)
-  {
+  if (*macroblock_type & MACROBLOCK_PATTERN) {
     coded_block_pattern = Get_coded_block_pattern();
 
-    if (chroma_format==CHROMA422)
-    {
+    if (chroma_format==CHROMA422) {
       /* coded_block_pattern_1 */
       coded_block_pattern = (coded_block_pattern<<2) | Get_Bits(2);
 
 #ifdef TRACE
-       if (Trace_Flag)
-       {
+       if (Trace_Flag) {
          printf("coded_block_pattern_1: ");
          Print_Bits(coded_block_pattern,2,2);
          printf(" (%d)\n",coded_block_pattern&3);
        }
 #endif /* TRACE */
      }
-     else if (chroma_format==CHROMA444)
-     {
+     else if (chroma_format==CHROMA444) {
       /* coded_block_pattern_2 */
       coded_block_pattern = (coded_block_pattern<<6) | Get_Bits(6);
 
 #ifdef TRACE
-      if (Trace_Flag)
-      {
+      if (Trace_Flag) {
         printf("coded_block_pattern_2: ");
         Print_Bits(coded_block_pattern,6,6);
         printf(" (%d)\n",coded_block_pattern&63);
@@ -5514,8 +4790,7 @@ int dmvector[2];
   if (Fault_Flag) return(0);  /* trigger: go to next slice */
 
   /* decode blocks */
-  for (comp=0; comp<block_count; comp++)
-  {
+  for (comp=0; comp<block_count; comp++) {
     /* SCALABILITY: Data Partitioning */
     if (base.scalable_mode==SC_DP)
     ld = &base;
@@ -5524,15 +4799,13 @@ int dmvector[2];
 
     if (coded_block_pattern & (1<<(block_count-1-comp)))
     {
-      if (*macroblock_type & MACROBLOCK_INTRA)
-      {
+      if (*macroblock_type & MACROBLOCK_INTRA) {
         if (ld->MPEG2_Flag)
           Decode_MPEG2_Intra_Block(comp,dc_dct_pred);
         else
           Decode_MPEG1_Intra_Block(comp,dc_dct_pred);
       }
-      else
-      {
+      else {
         if (ld->MPEG2_Flag)
           Decode_MPEG2_Non_Intra_Block(comp);
         else
@@ -5543,8 +4816,7 @@ int dmvector[2];
     }
   }
 
-  if(picture_coding_type==D_TYPE)
-  {
+  if(picture_coding_type==D_TYPE) {
     /* remove end_of_macroblock (always 1, prevents startcode emulation) */
     /* ISO/IEC 11172-2 section 2.4.2.7 and 2.4.3.6 */
     marker_bit("D picture end_of_macroblock bit");
@@ -5556,8 +4828,7 @@ int dmvector[2];
     dc_dct_pred[0]=dc_dct_pred[1]=dc_dct_pred[2]=0;
 
   /* reset motion vector predictors */
-  if ((*macroblock_type & MACROBLOCK_INTRA) && !concealment_motion_vectors)
-  {
+  if ((*macroblock_type & MACROBLOCK_INTRA) && !concealment_motion_vectors) {
     /* intra mb without concealment motion vectors */
     /* ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors */
     PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
@@ -5567,8 +4838,7 @@ int dmvector[2];
   /* special "No_MC" macroblock_type case */
   /* ISO/IEC 13818-2 section 7.6.3.5: Prediction in P pictures */
   if ((picture_coding_type==P_TYPE)
-    && !(*macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_INTRA)))
-  {
+    && !(*macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_INTRA))) {
     /* non-intra mb without forward mv in a P picture */
     /* ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors */
     PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
@@ -5577,16 +4847,14 @@ int dmvector[2];
     /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes, frame_motion_type */
     if (picture_structure==FRAME_PICTURE)
       *motion_type = MC_FRAME;
-    else
-    {
+    else {
       *motion_type = MC_FIELD;
       /* predict from field of same parity */
       motion_vertical_field_select[0][0] = (picture_structure==BOTTOM_FIELD);
     }
   }
 
-  if (*stwclass==4)
-  {
+  if (*stwclass==4) {
     /* purely spatially predicted macroblock */
     /* ISO/IEC 13818-2 section 7.7.5.1: Resetting motion vector predictions */
     PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
@@ -5601,7 +4869,7 @@ int dmvector[2];
 /*{{{*/
 /* decode all macroblocks of the current picture */
 /* ISO/IEC 13818-2 section 6.3.16 */
-static int slice(framenum, MBAmax)
+static int slice (framenum, MBAmax)
 int framenum, MBAmax;
 {
   int MBA;
@@ -5631,15 +4899,6 @@ int framenum, MBAmax;
     if (Trace_Flag)
       printf("frame %d, MB %d\n",framenum,MBA);
 #endif /* TRACE */
-
-#ifdef DISPLAY
-    if (!progressive_frame && picture_structure==FRAME_PICTURE
-      && MBA==(MBAmax>>1) && framenum!=0 && Output_Type==T_X11
-       && !Display_Progressive_Flag)
-    {
-      Display_Second_Field();
-    }
-#endif
 
     ld = &base;
 
@@ -5711,7 +4970,7 @@ resync: /* if Fault_Flag: resynchronize to next next_start_code */
 /*{{{*/
 /* decode all macroblocks of the current picture */
 /* stages described in ISO/IEC 13818-2 section 7 */
-static void picture_data(framenum)
+static void picture_data (framenum)
 int framenum;
 {
   int MBAmax;
@@ -5733,7 +4992,7 @@ int framenum;
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 7.8 */
-static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
+static void Decode_SNR_Macroblock (SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
   int *SNRMBA, *SNRMBAinc;
   int MBA, MBAmax;
   int *dct_type;
@@ -5745,13 +5004,11 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
 
   if (*SNRMBAinc==0)
   {
-    if (!Show_Bits(23)) /* next_start_code */
-    {
+    if (!Show_Bits(23)) /* next_start_code */ {
       next_start_code();
       code = Show_Bits(32);
 
-      if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX)
-      {
+      if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX) {
         /* only slice headers are allowed in picture_data */
         if (!Quiet_Flag)
           printf("SNR: Premature end of picture\n");
@@ -5767,15 +5024,13 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
       *SNRMBAinc = Get_macroblock_address_increment();
 
       /* set current location */
-      *SNRMBA =
-        ((slice_vert_pos_ext<<7) + (code&255) - 1)*mb_width + *SNRMBAinc - 1;
+      *SNRMBA = ((slice_vert_pos_ext<<7) + (code&255) - 1)*mb_width + *SNRMBAinc - 1;
 
       *SNRMBAinc = 1; /* first macroblock in slice: not skipped */
     }
     else /* not next_start_code */
     {
-      if (*SNRMBA>=MBAmax)
-      {
+      if (*SNRMBA>=MBAmax) {
         if (!Quiet_Flag)
           printf("Too many macroblocks in picture\n");
         return;
@@ -5786,16 +5041,14 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
     }
   }
 
-  if (*SNRMBA!=MBA)
-  {
+  if (*SNRMBA!=MBA) {
     /* streams out of sync */
     if (!Quiet_Flag)
       printf("Cant't synchronize streams\n");
     return;
   }
 
-  if (*SNRMBAinc==1) /* not skipped */
-  {
+  if (*SNRMBAinc==1) /* not skipped */ {
     macroblock_modes(&SNRmacroblock_type, &dummy, &dummy,
       &dummy, &dummy, &dummy, &dummy, &dummy,
       &SNRdct_type);
@@ -5803,16 +5056,14 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
     if (SNRmacroblock_type & MACROBLOCK_PATTERN)
       *dct_type = SNRdct_type;
 
-    if (SNRmacroblock_type & MACROBLOCK_QUANT)
-    {
+    if (SNRmacroblock_type & MACROBLOCK_QUANT) {
       quantizer_scale_code = Get_Bits(5);
       ld->quantizer_scale =
         ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1;
     }
 
     /* macroblock_pattern */
-    if (SNRmacroblock_type & MACROBLOCK_PATTERN)
-    {
+    if (SNRmacroblock_type & MACROBLOCK_PATTERN) {
       SNRcoded_block_pattern = Get_coded_block_pattern();
 
       if (chroma_format==CHROMA422)
@@ -5824,16 +5075,14 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
       SNRcoded_block_pattern = 0;
 
     /* decode blocks */
-    for (comp=0; comp<block_count; comp++)
-    {
+    for (comp=0; comp<block_count; comp++) {
       Clear_Block(comp);
 
       if (SNRcoded_block_pattern & (1<<(block_count-1-comp)))
         Decode_MPEG2_Non_Intra_Block(comp);
     }
   }
-  else /* SNRMBAinc!=1: skipped macroblock */
-  {
+  else /* SNRMBAinc!=1: skipped macroblock */ {
     for (comp=0; comp<block_count; comp++)
       Clear_Block(comp);
   }
@@ -5844,7 +5093,7 @@ static void Decode_SNR_Macroblock(SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
 /*{{{*/
 /* SCALABILITY: add SNR enhancement layer block data to base layer */
 /* ISO/IEC 13818-2 section 7.8.3.4: Addition of coefficients from the two layes */
-static void Sum_Block(comp)
+static void Sum_Block (comp)
 int comp;
 {
   short *Block_Ptr1, *Block_Ptr2;
@@ -5861,7 +5110,7 @@ int comp;
 /*{{{*/
 /* limit coefficients to -2048..2047 */
 /* ISO/IEC 13818-2 section 7.4.3 and 7.4.4: Saturation and Mismatch control */
-static void Saturate(Block_Ptr)
+static void Saturate (Block_Ptr)
 short *Block_Ptr;
 {
   int i, sum, val;
@@ -5889,25 +5138,19 @@ short *Block_Ptr;
 }
 /*}}}*/
 /*{{{*/
-/* reuse old picture buffers as soon as they are no longer needed
-   based on life-time axioms of MPEG */
-static void Update_Picture_Buffers()
-{
+/* reuse old picture buffers as soon as they are no longer needed based on life-time axioms of MPEG */
+static void Update_Picture_Buffers() {
+
   int cc;              /* color component index */
   unsigned char *tmp;  /* temporary swap pointer */
 
-  for (cc=0; cc<3; cc++)
-  {
+  for (cc=0; cc<3; cc++) {
     /* B pictures do not need to be save for future reference */
     if (picture_coding_type==B_TYPE)
-    {
       current_frame[cc] = auxframe[cc];
-    }
-    else
-    {
+    else {
       /* only update at the beginning of the coded frame */
-      if (!Second_Field)
-      {
+      if (!Second_Field) {
         tmp = forward_reference_frame[cc];
 
         /* the previously decoded reference frame is stored
@@ -5918,13 +5161,13 @@ static void Update_Picture_Buffers()
 
         /* update pointer for potential future B pictures */
         backward_reference_frame[cc] = tmp;
-      }
+       }
 
       /* can erase over old backward reference frame since it is not used
          in a P picture, and since any subsequent B pictures will use the
          previously decoded I or P frame as the backward_reference_frame */
       current_frame[cc] = backward_reference_frame[cc];
-    }
+      }
 
     /* IMPLEMENTATION:
        one-time folding of a line offset into the pointer which stores the
@@ -5932,14 +5175,13 @@ static void Update_Picture_Buffers()
        branches throughout the remainder of the picture processing loop */
     if (picture_structure==BOTTOM_FIELD)
       current_frame[cc]+= (cc==0) ? Coded_Picture_Width : Chroma_Width;
+    }
   }
-}
 /*}}}*/
 
 /*{{{*/
 /* optimization: do not open the big file each time. Open once at start
    of decoder, and close at the very last frame */
-
 /* Note: "big" files were used in E-mail exchanges almost exclusively by the
    MPEG Committee's syntax validation and conformance ad-hoc groups from
    the year 1993 until 1995 */
@@ -6033,16 +5275,12 @@ int field_mode;    /* 0 = frame, 1 = field                      */
       s += width;
   }
   else
-  {
     incr = 1;
-  }
 
   for(row=0; row<height; row+=incr)
   {
     for(col=0; col<width; col++)
-    {
       dst[d+col] = src[s+col];
-    }
 
     d += (width*incr);
     s += (width*incr);
@@ -6064,19 +5302,15 @@ int Height;
 
   printf("SUBS: reading %s\n", Filename);
 
-  if(!(Infile=open(Filename,O_RDONLY|O_BINARY))<0)
-  {
+  if (!(Infile=open(Filename,O_RDONLY|O_BINARY))<0) {
     printf("ERROR: unable to open reference filename (%s)\n", Filename);
-  return(-1);
-  }
+    return(-1);
+    }
 
   Bytes_Read = read(Infile, Frame, Size);
 
   if(Bytes_Read!=Size)
-  {
-    printf("was able to read only %d bytes of %d of file %s\n",
-      Bytes_Read, Size, Filename);
-  }
+    printf("was able to read only %d bytes of %d of file %s\n", Bytes_Read, Size, Filename);
 
   close(Infile);
   return(0);
@@ -6109,8 +5343,7 @@ int framenum;
 }
 /*}}}*/
 /*{{{*/
-/* Note: fields are only read to serve as the same-frame reference for
-   a second field */
+/* Note: fields are only read to serve as the same-frame reference for a second field */
 static void Read_Frame (fname,frame,framenum)
 char *fname;
 unsigned char *frame[];
@@ -6123,16 +5356,9 @@ int framenum;
   if(framenum<0)
     printf("ERROR: framenum (%d) is less than zero\n", framenum);
 
-
-  if(Big_Picture_Flag)
-    rerr = Extract_Components(fname, substitute_frame, framenum);
-  else
-    rerr = Read_Components(fname, substitute_frame, framenum);
-
+  rerr = Read_Components(fname, substitute_frame, framenum);
   if(rerr!=0)
-  {
     printf("was unable to substitute frame\n");
-  }
 
   /* now copy to the appropriate buffer */
   /* first field (which we are attempting to substitute) must be
@@ -6167,9 +5393,7 @@ int framenum;
       (field_mode ? (parity?"bottom field":"bottom field"):"frame"), framenum);
 #endif
 }
-
 /*}}}*/
-
 /*{{{*/
 void Substitute_Frame_Buffer (bitstream_framenum, sequence_framenum)
 int bitstream_framenum;
@@ -6192,13 +5416,10 @@ int sequence_framenum;
     picture_structure, picture_coding_type);
 
   /* we don't substitute at the first picture of a sequence */
-  if((sequence_framenum!=0)||(Second_Field))
-  {
+  if((sequence_framenum!=0)||(Second_Field)) {
     /* only at the start of the frame */
-    if ((picture_structure==FRAME_PICTURE)||(!Second_Field))
-    {
-      if(picture_coding_type==P_TYPE)
-      {
+    if ((picture_structure==FRAME_PICTURE)||(!Second_Field)) {
+      if(picture_coding_type==P_TYPE) {
         /* the most recently decoded reference frame needs substituting */
         substitute_display_framenum = bitstream_framenum - 1;
 
@@ -6208,8 +5429,7 @@ int sequence_framenum;
       /* only the first B frame in a consequitve set of B pictures
          loads a substitute backward_reference_frame since all subsequent
          B frames predict from the same reference pictures */
-      else if((picture_coding_type==B_TYPE)&&(bgate!=1))
-      {
+      else if((picture_coding_type==B_TYPE)&&(bgate!=1)) {
         substitute_display_framenum =
           (previous_temporal_reference - temporal_reference)
             + bitstream_framenum - 1;
@@ -6219,27 +5439,18 @@ int sequence_framenum;
       }
     } /* P fields can predict from the two most recently decoded fields, even
          from the first field of the same frame being decoded */
-    else if(Second_Field && (picture_coding_type==P_TYPE))
-    {
+    else if(Second_Field && (picture_coding_type==P_TYPE)) {
       /* our favourite case: the IP field picture pair */
       if((previous_picture_coding_type==I_TYPE)&&(picture_coding_type==P_TYPE))
-      {
         substitute_display_framenum = bitstream_framenum;
-      }
       else /* our more generic P field picture pair */
-      {
-        substitute_display_framenum =
-          (temporal_reference - previous_anchor_temporal_reference)
-            + bitstream_framenum - 1;
-      }
+        substitute_display_framenum = (temporal_reference - previous_anchor_temporal_reference) + bitstream_framenum - 1;
 
       Read_Frame(Substitute_Picture_Filename, current_frame, substitute_display_framenum);
-    }
+      }
     else if((picture_coding_type!=B_TYPE)||(picture_coding_type!=D_TYPE))
-    {
       printf("NO SUBS FOR THIS PICTURE\n");
     }
-  }
 
 
   /* set b gate so we don't redundantly load next time around */
@@ -6249,23 +5460,19 @@ int sequence_framenum;
     bgate = 0;
 
   /* update general tracking variables */
-  if((picture_structure==FRAME_PICTURE)||(!Second_Field))
-  {
+  if((picture_structure==FRAME_PICTURE)||(!Second_Field)) {
     previous_temporal_reference  = temporal_reference;
     previous_bitstream_framenum  = bitstream_framenum;
-  }
+    }
 
   /* update reference frame tracking variables */
-  if((picture_coding_type!=B_TYPE) &&
-    ((picture_structure==FRAME_PICTURE)||Second_Field))
-  {
+  if((picture_coding_type!=B_TYPE) && ((picture_structure==FRAME_PICTURE)||Second_Field)) {
     previous_anchor_temporal_reference  = temporal_reference;
     previous_anchor_bitstream_framenum  = bitstream_framenum;
-  }
+    }
 
   previous_picture_coding_type = picture_coding_type;
-
-}
+  }
 /*}}}*/
 
 /*{{{*/
@@ -6279,8 +5486,8 @@ static void Read_Lower_Layer_Component_Framewise (comp,lw,lh)
 /*  char *ext = {".Y",".U",".V"}; */
   int i,j;
 
-  sprintf(fname,Lower_Layer_Picture_Filename,True_Framenum);
-  strcat(fname,ext[comp]);
+  sprintf (fname,Lower_Layer_Picture_Filename, True_Framenum);
+  strcat (fname,ext[comp]);
 #ifdef VERBOSE
   if (Verbose_Flag>1)
     printf("reading %s\n",fname);
@@ -6310,8 +5517,8 @@ static void Read_Lower_Layer_Component_Fieldwise (comp,lw,lh)
 /*  char *ext = {".Y",".U",".V"}; */
   int i,j;
 
-  sprintf(fname,Lower_Layer_Picture_Filename,True_Framenum,lower_layer_progressive_frame ? 'f':'a');
-  strcat(fname,ext[comp]);
+  sprintf (fname, Lower_Layer_Picture_Filename, True_Framenum, lower_layer_progressive_frame ? 'f':'a');
+  strcat (fname, ext[comp]);
 #ifdef VERBOSE
   if (Verbose_Flag>1)
     printf("reading %s\n",fname);
@@ -6324,17 +5531,18 @@ static void Read_Lower_Layer_Component_Fieldwise (comp,lw,lh)
   fclose(fd);
 
   if (! lower_layer_progressive_frame) {
-    sprintf(fname,Lower_Layer_Picture_Filename,True_Framenum,'b');
-    strcat(fname,ext[comp]);
+    sprintf (fname, Lower_Layer_Picture_Filename, True_Framenum,'b');
+    strcat (fname, ext[comp]);
 #ifdef VERBOSE
-    if (Verbose_Flag>1)
-      printf("reading %s\n",fname);
+    if (Verbose_Flag > 1)
+      printf ("reading %s\n",fname);
 #endif VERBOSE
-    fd=fopen(fname,"rb");
-    if (fd==NULL) exit(-1);
-    for (j=1; j<lh; j+=2)
-      for (i=0; i<lw; i++)
-        llframe1[comp][lw*j+i]=getc(fd);
+    fd = fopen (fname, "rb");
+    if (fd == NULL)
+      exit(-1);
+    for (j = 1; j < lh; j += 2)
+      for (i = 0; i < lw; i++)
+        llframe1[comp][lw*j+i] = getc(fd);
     fclose(fd);
   }
 }
@@ -6527,16 +5735,6 @@ int llx0,lly0,llw,llh,horizontal_size,vertical_size,vm,vn,hm,hn,aperture;
 /*{{{*/
 void Spatial_Prediction() {
 
-  if(Frame_Store_Flag)
-  {
-    Read_Lower_Layer_Component_Framewise(0,lower_layer_prediction_horizontal_size,
-      lower_layer_prediction_vertical_size);      /* Y */
-    Read_Lower_Layer_Component_Framewise(1,lower_layer_prediction_horizontal_size>>1,
-      lower_layer_prediction_vertical_size>>1);   /* Cb ("U") */
-    Read_Lower_Layer_Component_Framewise(2,lower_layer_prediction_horizontal_size>>1,
-      lower_layer_prediction_vertical_size>>1);   /* Cr ("V") */
-  }
-  else
   {
     Read_Lower_Layer_Component_Fieldwise(0,lower_layer_prediction_horizontal_size,
       lower_layer_prediction_vertical_size);      /* Y */
@@ -6582,14 +5780,11 @@ void Spatial_Prediction() {
 
 /*{{{*/
 /* decode one frame or field picture */
-void Decode_Picture(bitstream_framenum, sequence_framenum)
-int bitstream_framenum, sequence_framenum;
-{
+void Decode_Picture (int bitstream_framenum, int sequence_framenum) {
 
-  if (picture_structure==FRAME_PICTURE && Second_Field)
-  {
+  if (picture_structure==FRAME_PICTURE && Second_Field) {
     /* recover from illegal number of field pictures */
-    printf("odd number of field pictures\n");
+    printf ("odd number of field pictures\n");
     Second_Field = 0;
   }
 
@@ -6597,170 +5792,135 @@ int bitstream_framenum, sequence_framenum;
   Update_Picture_Buffers();
 
   /* ISO/IEC 13818-4 section 2.4.5.4 "frame buffer intercept method" */
-  /* (section number based on November 1995 (Dallas) draft of the
-      conformance document) */
+  /* (section number based on November 1995 (Dallas) draft of the conformance document) */
   if(Ersatz_Flag)
-    Substitute_Frame_Buffer(bitstream_framenum, sequence_framenum);
-
-  /* form spatial scalable picture */
+    Substitute_Frame_Buffer (bitstream_framenum, sequence_framenum);
 
   /* form spatial scalable picture */
   /* ISO/IEC 13818-2 section 7.7: Spatial scalability */
   if (base.pict_scal && !Second_Field)
-  {
     Spatial_Prediction();
-  }
 
   /* decode picture data ISO/IEC 13818-2 section 6.2.3.7 */
-  picture_data(bitstream_framenum);
+  picture_data (bitstream_framenum);
 
   /* write or display current or previously decoded reference frame */
   /* ISO/IEC 13818-2 section 6.1.1.11: Frame reordering */
-  frame_reorder(bitstream_framenum, sequence_framenum);
+  frame_reorder (bitstream_framenum, sequence_framenum);
 
   if (picture_structure!=FRAME_PICTURE)
     Second_Field = !Second_Field;
-}
+  }
 /*}}}*/
 /*{{{*/
-/* store last frame */
+void Output_Last_Frame_of_Sequence (int Framenum) {
 
-void Output_Last_Frame_of_Sequence(Framenum)
-int Framenum;
-{
   if (Second_Field)
-    printf("last frame incomplete, not stored\n");
+    printf ("last frame incomplete, not stored\n");
   else
-    Write_Frame(backward_reference_frame,Framenum-1);
-}
+    Write_Frame (backward_reference_frame,Framenum-1);
+  }
 /*}}}*/
-
 /*{{{*/
-static void Deinitialize_Sequence()
-{
+static void Deinitialize_Sequence() {
+
   int i;
 
   /* clear flags */
   base.MPEG2_Flag=0;
 
-  for(i=0;i<3;i++)
-  {
+  for (i=0;i<3;i++) {
     free(backward_reference_frame[i]);
     free(forward_reference_frame[i]);
     free(auxframe[i]);
 
-    if (base.scalable_mode==SC_SPAT)
-    {
-     free(llframe0[i]);
-     free(llframe1[i]);
+    if (base.scalable_mode==SC_SPAT) {
+      free(llframe0[i]);
+      free(llframe1[i]);
+      }
     }
-  }
 
   if (base.scalable_mode==SC_SPAT)
-    free(lltmp);
-
-#ifdef DISPLAY
-  if (Output_Type==T_X11)
-    Terminate_Display_Process();
-#endif
-}
+    free (lltmp);
+  }
 /*}}}*/
 /*{{{*/
 /* mostly IMPLEMENTAION specific rouintes */
-static void Initialize_Sequence()
-{
+static void Initialize_Sequence() {
+
   int cc, size;
   static int Table_6_20[3] = {6,8,12};
 
-  /* force MPEG-1 parameters for proper decoder behavior */
-  /* see ISO/IEC 13818-2 section D.9.14 */
-  if (!base.MPEG2_Flag)
-  {
+  /* force MPEG-1 parameters for proper decoder behavior see ISO/IEC 13818-2 section D.9.14 */
+  if (!base.MPEG2_Flag) {
     progressive_sequence = 1;
     progressive_frame = 1;
     picture_structure = FRAME_PICTURE;
     frame_pred_frame_dct = 1;
     chroma_format = CHROMA420;
     matrix_coefficients = 5;
-  }
+    }
 
-  /* round to nearest multiple of coded macroblocks */
-  /* ISO/IEC 13818-2 section 6.3.3 sequence_header() */
+  /* round to nearest multiple of coded macroblocks  ISO/IEC 13818-2 section 6.3.3 sequence_header() */
   mb_width = (horizontal_size+15)/16;
-  mb_height = (base.MPEG2_Flag && !progressive_sequence) ? 2*((vertical_size+31)/32)
-                                        : (vertical_size+15)/16;
+  mb_height = (base.MPEG2_Flag && !progressive_sequence) ? 2*((vertical_size+31)/32) : (vertical_size+15)/16;
 
   Coded_Picture_Width = 16*mb_width;
   Coded_Picture_Height = 16*mb_height;
 
   /* ISO/IEC 13818-2 sections 6.1.1.8, 6.1.1.9, and 6.1.1.10 */
-  Chroma_Width = (chroma_format==CHROMA444) ? Coded_Picture_Width
-                                           : Coded_Picture_Width>>1;
-  Chroma_Height = (chroma_format!=CHROMA420) ? Coded_Picture_Height
-                                            : Coded_Picture_Height>>1;
+  Chroma_Width = (chroma_format==CHROMA444) ? Coded_Picture_Width : Coded_Picture_Width>>1;
+  Chroma_Height = (chroma_format!=CHROMA420) ? Coded_Picture_Height : Coded_Picture_Height>>1;
 
   /* derived based on Table 6-20 in ISO/IEC 13818-2 section 6.3.17 */
   block_count = Table_6_20[chroma_format-1];
 
-  for (cc=0; cc<3; cc++)
-  {
+  for (cc=0; cc<3; cc++) {
     if (cc==0)
       size = Coded_Picture_Width*Coded_Picture_Height;
     else
       size = Chroma_Width*Chroma_Height;
 
     if (!(backward_reference_frame[cc] = (unsigned char *)malloc(size)))
-      Error("backward_reference_frame[] malloc failed\n");
+      Error ("backward_reference_frame[] malloc failed\n");
 
     if (!(forward_reference_frame[cc] = (unsigned char *)malloc(size)))
-      Error("forward_reference_frame[] malloc failed\n");
+      Error ("forward_reference_frame[] malloc failed\n");
 
     if (!(auxframe[cc] = (unsigned char *)malloc(size)))
-      Error("auxframe[] malloc failed\n");
+      Error ("auxframe[] malloc failed\n");
 
     if(Ersatz_Flag)
       if (!(substitute_frame[cc] = (unsigned char *)malloc(size)))
-        Error("substitute_frame[] malloc failed\n");
+        Error ("substitute_frame[] malloc failed\n");
 
-
-    if (base.scalable_mode==SC_SPAT)
-    {
+    if (base.scalable_mode==SC_SPAT) {
       /* this assumes lower layer is 4:2:0 */
       if (!(llframe0[cc] = (unsigned char *)malloc((lower_layer_prediction_horizontal_size*lower_layer_prediction_vertical_size)/(cc?4:1))))
-        Error("llframe0 malloc failed\n");
+        Error ("llframe0 malloc failed\n");
       if (!(llframe1[cc] = (unsigned char *)malloc((lower_layer_prediction_horizontal_size*lower_layer_prediction_vertical_size)/(cc?4:1))))
-        Error("llframe1 malloc failed\n");
+        Error ("llframe1 malloc failed\n");
+      }
     }
-  }
 
   /* SCALABILITY: Spatial */
-  if (base.scalable_mode==SC_SPAT)
-  {
+  if (base.scalable_mode==SC_SPAT) {
     if (!(lltmp = (short *)malloc(lower_layer_prediction_horizontal_size*((lower_layer_prediction_vertical_size*vertical_subsampling_factor_n)/vertical_subsampling_factor_m)*sizeof(short))))
-      Error("lltmp malloc failed\n");
+      Error ("lltmp malloc failed\n");
+    }
   }
-
-#ifdef DISPLAY
-  if (Output_Type==T_X11)
-  {
-    Initialize_Display_Process("");
-    Initialize_Dither_Matrix();
-  }
-#endif /* DISPLAY */
-
-}
 /*}}}*/
 
 /*{{{*/
-static int Headers()
-{
+static int Headers() {
+
   int ret;
   ld = &base;
 
   /* return when end of sequence (0) or picture header has been parsed (1) */
   ret = Get_Hdr();
   return ret;
-}
+  }
 /*}}}*/
 /*{{{*/
 static int video_sequence (int* Bitstream_Framenumber) {
@@ -6784,8 +5944,8 @@ static int video_sequence (int* Bitstream_Framenumber) {
     }
 
   /* loop through the rest of the pictures in the sequence */
-  while ((Return_Value=Headers())) {
-    Decode_Picture(Bitstream_Framenum, Sequence_Framenum);
+  while ((Return_Value = Headers())) {
+    Decode_Picture (Bitstream_Framenum, Sequence_Framenum);
     if (!Second_Field) {
       Bitstream_Framenum++;
       Sequence_Framenum++;
@@ -6799,7 +5959,7 @@ static int video_sequence (int* Bitstream_Framenumber) {
   Deinitialize_Sequence();
 
   *Bitstream_Framenumber = Bitstream_Framenum;
-  return(Return_Value);
+  return (Return_Value);
   }
 /*}}}*/
 /*{{{*/
@@ -6825,18 +5985,14 @@ static void Initialize_Decoder() {
   int i;
 
   /* Clip table */
-  if (!(Clip=(unsigned char *)malloc(1024)))
-    Error("Clip[] malloc failed\n");
+  if (!(Clip = (unsigned char *)malloc(1024)))
+    Error ("Clip[] malloc failed\n");
 
   Clip += 384;
   for (i=-384; i<640; i++)
     Clip[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
 
-  /* IDCT */
-  if (Reference_IDCT_Flag)
-    Initialize_Reference_IDCT();
-  else
-    Initialize_Fast_IDCT();
+  Initialize_Fast_IDCT();
   }
 /*}}}*/
 
@@ -6844,321 +6000,42 @@ static void Initialize_Decoder() {
 static void Clear_Options()
 {
   Verbose_Flag = 0;
-  Output_Type = 0;
-  Output_Picture_Filename = " ";
-  hiQdither  = 0;
-  Output_Type = 0;
-  Frame_Store_Flag = 0;
   Spatial_Flag = 0;
   Lower_Layer_Picture_Filename = " ";
-  Reference_IDCT_Flag = 0;
   Trace_Flag = 0;
   Quiet_Flag = 0;
   Ersatz_Flag = 0;
   Substitute_Picture_Filename  = " ";
   Enhancement_Layer_Bitstream_Filename = " ";
-  Big_Picture_Flag = 0;
-  Main_Bitstream_Flag = 0;
-  Main_Bitstream_Filename = " ";
   Stats_Flag  = 0;
   User_Data_Flag = 0;
 }
 /*}}}*/
 /*{{{*/
-static void Print_Options()
-{
-  printf("Verbose_Flag                         = %d\n", Verbose_Flag);
-  printf("Output_Type                          = %d\n", Output_Type);
-  printf("Output_Picture_Filename              = %s\n", Output_Picture_Filename);
-  printf("hiQdither                            = %d\n", hiQdither);
-  printf("Output_Type                          = %d\n", Output_Type);
-  printf("Frame_Store_Flag                     = %d\n", Frame_Store_Flag);
-  printf("Spatial_Flag                         = %d\n", Spatial_Flag);
-  printf("Lower_Layer_Picture_Filename         = %s\n", Lower_Layer_Picture_Filename);
-  printf("Reference_IDCT_Flag                  = %d\n", Reference_IDCT_Flag);
-  printf("Trace_Flag                           = %d\n", Trace_Flag);
-  printf("Quiet_Flag                           = %d\n", Quiet_Flag);
-  printf("Ersatz_Flag                          = %d\n", Ersatz_Flag);
-  printf("Substitute_Picture_Filename          = %s\n", Substitute_Picture_Filename);
-  printf("Enhancement_Layer_Bitstream_Filename = %s\n", Enhancement_Layer_Bitstream_Filename);
-  printf("Big_Picture_Flag                     = %d\n", Big_Picture_Flag);
-  printf("Main_Bitstream_Flag                  = %d\n", Main_Bitstream_Flag);
-  printf("Main_Bitstream_Filename              = %s\n", Main_Bitstream_Filename);
-  printf("Stats_Flag                           = %d\n", Stats_Flag);
-  printf("User_Data_Flag                       = %d\n", User_Data_Flag);
-}
-/*}}}*/
-/*{{{*/
-/* option processing */
-static void Process_Options (int argc, char* argv[]) {
-
-  int i, LastArg, NextArg;
-
-  /* at least one argument should be present */
-  if (argc<2)
-  {
-    printf("\n%s, %s\n",Version,Author);
-    printf("Usage:  mpeg2decode {options}\n\
-Options: -b  file  main bitstream (base or spatial enhancement layer)\n\
-         -cn file  conformance report (n: level)\n\
-         -e  file  enhancement layer bitstream (SNR or Data Partitioning)\n\
-         -f        store/display interlaced video in frame format\n\
-         -g        concatenated file format for substitution method (-x)\n\
-         -in file  information & statistics report  (n: level)\n\
-         -l  file  file name pattern for lower layer sequence\n\
-                   (for spatial scalability)\n\
-         -on file  output format (0:YUV 1:SIF 2:TGA 3:PPM 4:X11 5:X11HiQ)\n\
-         -q        disable warnings to stderr\n\
-         -r        use double precision reference IDCT\n\
-         -t        enable low level tracing to stdout\n\
-         -u  file  print user_data to stdio or file\n\
-         -vn       verbose output (n: level)\n\
-         -x  file  filename pattern of picture substitution sequence\n\n\
-File patterns:  for sequential filenames, \"printf\" style, e.g. rec%%d\n\
-                 or rec%%d%%c for fieldwise storage\n\
-Levels:        0:none 1:sequence 2:picture 3:slice 4:macroblock 5:block\n\n\
-Example:       mpeg2decode -b bitstream.mpg -f -r -o0 rec%%d\n\
-         \n");
-    exit(0);
-  }
-
-
-  Output_Type = -1;
-  i = 1;
-
-  /* command-line options are proceeded by '-' */
-  while(i < argc)
-  {
-    /* check if this is the last argument */
-    LastArg = ((argc-i)==1);
-
-    /* parse ahead to see if another flag immediately follows current
-       argument (this is used to tell if a filename is missing) */
-    if(!LastArg)
-      NextArg = (argv[i+1][0]=='-');
-    else
-      NextArg = 0;
-
-    /* second character, [1], after '-' is the switch */
-    if(argv[i][0]=='-')
-    {
-      switch(toupper(argv[i][1]))
-      {
-        /* third character. [2], is the value */
-      case 'B':
-        Main_Bitstream_Flag = 1;
-
-        if(NextArg || LastArg)
-        {
-          printf("ERROR: -b must be followed the main bitstream filename\n");
-  }
-        else
-          Main_Bitstream_Filename = argv[++i];
-
-        break;
-
-
-      case 'F':
-        Frame_Store_Flag = 1;
-        break;
-
-      case 'G':
-        Big_Picture_Flag = 1;
-        break;
-
-
-      case 'I':
-        printf("WARNING: This program not compiled for -i option\n");
-        break;
-
-      case 'L':  /* spatial scalability flag */
-        Spatial_Flag = 1;
-
-       if(NextArg || LastArg)
-       {
-         printf("ERROR: -l must be followed by filename\n");
-         exit(ERROR);
-       }
-       else
-         Lower_Layer_Picture_Filename = argv[++i];
-
-        break;
-
-      case 'O':
-
-        Output_Type = atoi(&argv[i][2]);
-
-        if((Output_Type==4) || (Output_Type==5))
-          Output_Picture_Filename = "";  /* no need of filename */
-        else if(NextArg || LastArg)
-        {
-          printf("ERROR: -o must be followed by filename\n");
-          exit(ERROR);
-        }
-        else
-        /* filename is separated by space, so it becomes the next argument */
-          Output_Picture_Filename = argv[++i];
-
-#ifdef DISPLAY
-        if (Output_Type==T_X11HIQ)
-        {
-          hiQdither = 1;
-          Output_Type=T_X11;
-        }
-#endif /* DISPLAY */
-        break;
-
-      case 'Q':
-        Quiet_Flag = 1;
-        break;
-
-      case 'R':
-        Reference_IDCT_Flag = 1;
-        break;
-
-      case 'T':
-#ifdef TRACE
-        Trace_Flag = 1;
-#else /* TRACE */
-        printf("WARNING: This program not compiled for -t option\n");
-#endif /* TRACE */
-        break;
-
-      case 'U':
-        User_Data_Flag = 1;
-
-      case 'V':
-#ifdef VERBOSE
-        Verbose_Flag = atoi(&argv[i][2]);
-#else /* VERBOSE */
-        printf("This program not compiled for -v option\n");
-#endif /* VERBOSE */
-        break;
-
-
-      case 'X':
-        Ersatz_Flag = 1;
-
-       if(NextArg || LastArg)
-       {
-         printf("ERROR: -x must be followed by filename\n");
-         exit(ERROR);
-       }
-       else
-        Substitute_Picture_Filename = argv[++i];
-
-        break;
-
-
-
-      default:
-        fprintf(stderr,"undefined option -%c ignored. Exiting program\n",
-          argv[i][1]);
-
-        exit(ERROR);
-
-      } /* switch() */
-    } /* if argv[i][0] == '-' */
-
-    i++;
-
-    /* check for bitstream filename argument (there must always be one, at the very end
-     of the command line arguments */
-
-  } /* while() */
-
-
-  /* options sense checking */
-
-  if(Main_Bitstream_Flag!=1)
-  {
-    printf("There must be a main bitstream specified (-b filename)\n");
-  }
-
-  /* force display process to show frame pictures */
-  if((Output_Type==4 || Output_Type==5) && Frame_Store_Flag)
-    Display_Progressive_Flag = 1;
-  else
-    Display_Progressive_Flag = 0;
-
-  /* no output type specified */
-  if(Output_Type==-1)
-  {
-    Output_Type = 9;
-    Output_Picture_Filename = "";
-  }
-
-
-#ifdef DISPLAY
-  if (Output_Type==T_X11)
-  {
-    if(Frame_Store_Flag)
-      Display_Progressive_Flag = 1;
-    else
-      Display_Progressive_Flag = 0;
-
-    Frame_Store_Flag = 1; /* to avoid calling dither() twice */
-  }
-#endif
-}
-/*}}}*/
-
-/*{{{*/
-/* Trace_Flag output */
-void Print_Bits(code,bits,len)
-int code,bits,len;
-{
-  int i;
-  for (i=0; i<len; i++)
-    printf("%d",(code>>(bits-1-i))&1);
-}
-/*}}}*/
-
-/*{{{*/
-int main (int argc, char *argv[]) {
+int main (int argc, char* argv[]) {
 
   int ret, code;
   Clear_Options();
 
-  /* decode command line arguments */
-  Process_Options(argc,argv);
-  Print_Options();
-
-  ld = &base; /* select base layer context */
-
-  /* open MPEG base layer bitstream file(s) */
-  /* NOTE: this is either a base layer stream or a spatial enhancement stream */
-  if ((base.Infile=open(Main_Bitstream_Filename,O_RDONLY|O_BINARY))<0)
-  {
-    fprintf(stderr,"Base layer input file %s not found\n", Main_Bitstream_Filename);
-    exit(1);
-  }
-
-
-  if(base.Infile != 0)
-  {
+  ld = &base;
+  base.Infile = open (argv[1], O_RDONLY | O_BINARY);
+  if (base.Infile != 0) {
     Initialize_Buffer();
-    if (Show_Bits(8)==0x47) {
-      sprintf(Error_Text,"Decoder currently does not parse transport streams\n");
-      Error(Error_Text);
-    }
-
     next_start_code();
     code = Show_Bits(32);
-
     switch(code) {
-    case SEQUENCE_HEADER_CODE:
-      break;
-    case PACK_START_CODE:
-      System_Stream_Flag = 1;
-    case VIDEO_ELEMENTARY_STREAM:
-      System_Stream_Flag = 1;
-      break;
-    default:
-      sprintf(Error_Text,"Unable to recognize stream type\n");
-      Error(Error_Text);
-      break;
-      }
+      case SEQUENCE_HEADER_CODE:
+        break;
+      case PACK_START_CODE:
+        System_Stream_Flag = 1;
+      case VIDEO_ELEMENTARY_STREAM:
+        System_Stream_Flag = 1;
+        break;
+      default:
+        sprintf(Error_Text,"Unable to recognize stream type\n");
+        Error (Error_Text);
+        break;
+        }
 
     lseek (base.Infile, 0l, 0);
     Initialize_Buffer();
@@ -7170,9 +6047,7 @@ int main (int argc, char *argv[]) {
   Initialize_Buffer();
   Initialize_Decoder();
   ret = Decode_Bitstream();
-
-  close(base.Infile);
-
+  close (base.Infile);
   return 0;
-}
+  }
 /*}}}*/
