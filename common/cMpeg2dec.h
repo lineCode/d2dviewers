@@ -695,7 +695,7 @@ public:
   void decodeBitstream() {
 
     int Bitstream_Framenum = 0;
-    if (GetHeader()) {
+    if (getHeader()) {
       int Sequence_Framenum = 0;
       initSequence();
       decodePicture (Bitstream_Framenum, Sequence_Framenum);
@@ -705,7 +705,7 @@ public:
         }
 
       /* loop through the rest of the pictures in the sequence */
-      while (GetHeader()) {
+      while (getHeader()) {
         decodePicture (Bitstream_Framenum, Sequence_Framenum);
         if (!Second_Field) {
           Bitstream_Framenum++;
@@ -1121,7 +1121,7 @@ private:
 
   //{{{
   /* align to start of next next_start_code */
-  void next_start_code() {
+  void nextStartCode() {
 
     /* byte align */
     flushBuffer (Incnt & 7);
@@ -1131,7 +1131,7 @@ private:
   //}}}
   //{{{
   /* decode extra bit information ISO/IEC 13818-2 section 6.2.3.4. */
-  int extra_bit_information() {
+  int extraBitInformation() {
 
     int Byte_Count = 0;
     while (getBits1()) {
@@ -1417,7 +1417,7 @@ private:
      MPEG-2:  ISO/IEC 13818-2 section 7.2.1
      Note: the arithmetic here is presented more elegantly than
      the spec, yet the results, dct_diff, are the same. */
-  int getLuma_DC_dct_diff() {
+  int getLumaDCdctDiff() {
 
     int size, dct_diff;
 
@@ -1445,7 +1445,7 @@ private:
     }
   //}}}
   //{{{
-  int getChroma_DC_dct_diff() {
+  int getChromaDCdctDiff() {
 
     int size, dct_diff;
 
@@ -1735,7 +1735,7 @@ private:
   /* ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 */
   void user_data() {
     /* skip ahead to the next start code */
-    next_start_code();
+    nextStartCode();
     }
   //}}}
   //{{{
@@ -1820,7 +1820,7 @@ private:
   void extension_and_user_data() {
 
     int code,ext_ID;
-    next_start_code();
+    nextStartCode();
 
     while ((code = showBits(32))==EXTENSION_START_CODE || code==USER_DATA_START_CODE) {
       if (code == EXTENSION_START_CODE) {
@@ -1858,7 +1858,7 @@ private:
           printf ("reserved extension start code ID %d\n",ext_ID);
           break;
           }
-        next_start_code();
+        nextStartCode();
         }
       else {
         flushBuffer32();
@@ -1899,7 +1899,7 @@ private:
   //}}}
 
   //{{{
-  void sequence_header() {
+  void sequenceHeader() {
 
     int i;
     int pos = Bitcnt;
@@ -1942,7 +1942,7 @@ private:
   //}}}
   //{{{
   /* decode group of pictures header  ISO/IEC 13818-2 section 6.2.2.6 */
-  void group_of_pictures_header() {
+  void groupOfPicturesHeader() {
 
     Temporal_Reference_Base = True_Framenum_max + 1;  /* *CH* */
     Temporal_Reference_GOP_Reset = 1;
@@ -1962,7 +1962,7 @@ private:
   //}}}
   //{{{
   /* decode picture header ISO/IEC 13818-2 section 6.2.3 */
-  void picture_header() {
+  void pictureHeader() {
 
     /* unless later overwritten by picture_spatial_scalable_extension() */
     pict_scal = 0;
@@ -1982,7 +1982,7 @@ private:
       backward_f_code = getBits(3);
       }
 
-    int Extra_Information_Byte_Count = extra_bit_information();
+    int Extra_Information_Byte_Count = extraBitInformation();
     extension_and_user_data();
 
     /* update tracking information used to assist spatial scalability */
@@ -1991,24 +1991,24 @@ private:
   //}}}
   //{{{
   /* decode headers from one input stream until an End of Sequence or picture start code is found */
-  int GetHeader() {
+  int getHeader() {
 
     for (;;) {
-      next_start_code();
+      nextStartCode();
       unsigned int code = getBits32();
       printf ("getHeader %x\n", code);
 
       switch (code) {
         case SEQUENCE_HEADER_CODE:
-          sequence_header();
+          sequenceHeader();
           break;
 
         case GROUP_START_CODE:
-          group_of_pictures_header();
+          groupOfPicturesHeader();
           break;
 
         case PICTURE_START_CODE:
-          picture_header();
+          pictureHeader();
           return 1;
           break;
 
@@ -2037,11 +2037,11 @@ private:
     /* ISO/IEC 11172-2 section 2.4.3.7: Block layer. */
     /* decode DC coefficients */
     if (comp<4)
-      bp[0] = (dc_dct_pred[0]+=getLuma_DC_dct_diff()) << 3;
+      bp[0] = (dc_dct_pred[0]+=getLumaDCdctDiff()) << 3;
     else if (comp==4)
-      bp[0] = (dc_dct_pred[1]+=getChroma_DC_dct_diff()) << 3;
+      bp[0] = (dc_dct_pred[1]+=getChromaDCdctDiff()) << 3;
     else
-      bp[0] = (dc_dct_pred[2]+=getChroma_DC_dct_diff()) << 3;
+      bp[0] = (dc_dct_pred[2]+=getChromaDCdctDiff()) << 3;
 
     if (Fault_Flag)
       return;
@@ -2222,11 +2222,11 @@ private:
 
     /* ISO/IEC 13818-2 section 7.2.1: decode DC coefficients */
     if (cc==0)
-      val = (dc_dct_pred[0]+= getLuma_DC_dct_diff());
+      val = (dc_dct_pred[0]+= getLumaDCdctDiff());
     else if (cc==1)
-      val = (dc_dct_pred[1]+= getChroma_DC_dct_diff());
+      val = (dc_dct_pred[1]+= getChromaDCdctDiff());
     else
-      val = (dc_dct_pred[2]+= getChroma_DC_dct_diff());
+      val = (dc_dct_pred[2]+= getChromaDCdctDiff());
 
     if (Fault_Flag)
       return;
@@ -2514,7 +2514,7 @@ private:
    *  line stride variables lx and lx2, the block dimension variables (w,h),
    *  average_flag, and by the very order in which Predict() is called.
    *  This implementation design (implicitly different than the spec) was chosen for its elegance. */
-  void form_component_prediction (unsigned char* src, unsigned char* dst, int lx, int lx2,
+  void formComponentPrediction (unsigned char* src, unsigned char* dst, int lx, int lx2,
                                   int w, int h, int x, int y, int dx, int dy, int average_flag) {
 
     int xint;      /* horizontal integer sample vector: analogous to int_vec[0] */
@@ -2633,11 +2633,11 @@ private:
   }
   //}}}
   //{{{
-  void form_prediction (unsigned char* src[], int sfield, unsigned char* dst[], int dfield,
+  void formPrediction (unsigned char* src[], int sfield, unsigned char* dst[], int dfield,
                         int lx, int lx2, int w, int h, int x, int y, int dx, int dy, int average_flag) {
 
     /* Y */
-    form_component_prediction (src[0] + (sfield?lx2>>1:0), dst[0] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[0] + (sfield?lx2>>1:0), dst[0] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
 
     if (chroma_format!=CHROMA444) {
       lx>>=1;
@@ -2654,13 +2654,13 @@ private:
       }
 
     /* Cb */
-    form_component_prediction(src[1] + (sfield?lx2>>1:0), dst[1] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[1] + (sfield?lx2>>1:0), dst[1] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
     /* Cr */
-    form_component_prediction(src[2] + (sfield?lx2>>1:0), dst[2] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[2] + (sfield?lx2>>1:0), dst[2] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
   }
   //}}}
   //{{{
-  void form_predictions (int bx, int by, int macroblock_type,
+  void formPredictions (int bx, int by, int macroblock_type,
                          int motion_type, int PMV[2][2][2], int motion_vertical_field_select[2][2], int dmvector[2],
                          int stwtype) {
 
@@ -2677,25 +2677,25 @@ private:
         if ((motion_type==MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
           /* frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes) */
           if (stwtop < 2)
-            form_prediction(forward_reference_frame,0,current_frame,0,
+            formPrediction(forward_reference_frame,0,current_frame,0,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by,
               PMV[0][0][0],PMV[0][0][1],stwtop);
 
           if (stwbot < 2)
-            form_prediction(forward_reference_frame,1,current_frame,1,
+            formPrediction(forward_reference_frame,1,current_frame,1,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by,
               PMV[0][0][0],PMV[0][0][1],stwbot);
           }
         else if (motion_type==MC_FIELD) /* field-based prediction */ {
           /* top field prediction */
           if (stwtop < 2)
-            form_prediction(forward_reference_frame,motion_vertical_field_select[0][0],
+            formPrediction(forward_reference_frame,motion_vertical_field_select[0][0],
               current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
               bx,by>>1,PMV[0][0][0],PMV[0][0][1]>>1,stwtop);
 
           /* bottom field prediction */
           if (stwbot < 2)
-            form_prediction(forward_reference_frame,motion_vertical_field_select[1][0],
+            formPrediction(forward_reference_frame,motion_vertical_field_select[1][0],
               current_frame,1,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
               bx,by>>1,PMV[1][0][0],PMV[1][0][1]>>1,stwbot);
         }
@@ -2705,21 +2705,21 @@ private:
 
           if (stwtop < 2) {
             /* predict top field from top field */
-            form_prediction(forward_reference_frame,0,current_frame,0,
+            formPrediction(forward_reference_frame,0,current_frame,0,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
 
             /* predict and add to top field from bottom field */
-            form_prediction(forward_reference_frame,1,current_frame,0,
+            formPrediction(forward_reference_frame,1,current_frame,0,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, DMV[0][0],DMV[0][1],1);
             }
 
           if (stwbot<2) {
             /* predict bottom field from bottom field */
-            form_prediction(forward_reference_frame,1,current_frame,1,
+            formPrediction(forward_reference_frame,1,current_frame,1,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
 
             /* predict and add to bottom field from top field */
-            form_prediction(forward_reference_frame,0,current_frame,1,
+            formPrediction(forward_reference_frame,0,current_frame,1,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, DMV[1][0],DMV[1][1],1);
           }
         }
@@ -2740,13 +2740,13 @@ private:
         if ((motion_type==MC_FIELD) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
           /* field-based prediction */
           if (stwtop<2)
-            form_prediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
+            formPrediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by,
               PMV[0][0][0],PMV[0][0][1],stwtop);
         }
         else if (motion_type==MC_16X8) {
           if (stwtop<2) {
-            form_prediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
+            formPrediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by,
               PMV[0][0][0],PMV[0][0][1],stwtop);
 
@@ -2756,7 +2756,7 @@ private:
             else
               predframe = forward_reference_frame; /* previous frame */
 
-            form_prediction(predframe,motion_vertical_field_select[1][0],current_frame,0,
+            formPrediction(predframe,motion_vertical_field_select[1][0],current_frame,0,
               Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by+8, PMV[1][0][0],PMV[1][0][1],stwtop);
           }
         }
@@ -2770,11 +2770,11 @@ private:
           dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]);
 
           /* predict from field of same parity */
-          form_prediction(forward_reference_frame,currentfield,current_frame,0,
+          formPrediction(forward_reference_frame,currentfield,current_frame,0,
             Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by, PMV[0][0][0],PMV[0][0][1],0);
 
           /* predict from field of opposite parity */
-          form_prediction(predframe,!currentfield,current_frame,0,
+          formPrediction(predframe,!currentfield,current_frame,0,
             Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by, DMV[0][0],DMV[0][1],1);
         }
         else
@@ -2789,22 +2789,22 @@ private:
         if (motion_type == MC_FRAME) {
           /* frame-based prediction */
           if (stwtop<2)
-            form_prediction (backward_reference_frame,0,current_frame,0,
+            formPrediction(backward_reference_frame,0,current_frame,0,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
 
           if (stwbot<2)
-            form_prediction (backward_reference_frame,1,current_frame,1,
+            formPrediction(backward_reference_frame,1,current_frame,1,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
         }
         else /* field-based prediction */ {
           /* top field prediction */
           if (stwtop<2)
-            form_prediction (backward_reference_frame,motion_vertical_field_select[0][1],
+            formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
               current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
 
           /* bottom field prediction */
           if (stwbot<2)
-            form_prediction (backward_reference_frame,motion_vertical_field_select[1][1],
+            formPrediction(backward_reference_frame,motion_vertical_field_select[1][1],
               current_frame,1,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
         }
       }
@@ -2812,14 +2812,14 @@ private:
         /* field picture */
         if (motion_type==MC_FIELD) {
           /* field-based prediction */
-          form_prediction (backward_reference_frame,motion_vertical_field_select[0][1],
+          formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
             current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16, bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
         }
         else if (motion_type==MC_16X8) {
-          form_prediction (backward_reference_frame,motion_vertical_field_select[0][1],
+          formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
             current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
 
-          form_prediction (backward_reference_frame,motion_vertical_field_select[1][1],
+          formPrediction(backward_reference_frame,motion_vertical_field_select[1][1],
             current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by+8,PMV[1][1][0],PMV[1][1][1],stwtop);
         }
         else
@@ -2926,8 +2926,8 @@ private:
   //}}}
   //{{{
   /* ISO/IEC 13818-2 section 7.6 */
-  void motion_compensation (int MBA, int macroblock_type, int motion_type, int PMV[2][2][2],
-                            int motion_vertical_field_select[2][2], int dmvector[2], int stwtype, int dct_type) {
+  void motionCompensation (int MBA, int macroblock_type, int motion_type, int PMV[2][2][2],
+                           int motion_vertical_field_select[2][2], int dmvector[2], int stwtype, int dct_type) {
 
     /* derive current macroblock position within picture */
     /* ISO/IEC 13818-2 section 6.3.1.6 and 6.3.1.7 */
@@ -2936,7 +2936,7 @@ private:
 
     /* motion compensation */
     if (!(macroblock_type & MACROBLOCK_INTRA))
-      form_predictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype);
+      formPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype);
 
     /* copy or add block data into picture */
     int comp;
@@ -2952,7 +2952,7 @@ private:
 
   //{{{
   /* ISO/IEC 13818-2 section 6.2.4 */
-  int slice_header() {
+  int sliceHeader() {
 
     int slice_vertical_position_extension;
     int quantizer_scale_code;
@@ -2974,7 +2974,7 @@ private:
       intra_slice = getBits (1);
       slice_picture_id_enable = getBits (1);
       slice_picture_id = getBits (6);
-      extra_information_slice = extra_bit_information();
+      extra_information_slice = extraBitInformation();
       }
     else
       intra_slice = 0;
@@ -2985,14 +2985,14 @@ private:
   //{{{
   /* return==-1 means go to next picture */
   /* the expression "start of slice" is used throughout the normative body of the MPEG specification */
-  int start_of_slice (int MBAmax, int* MBA, int* MBAinc, int dc_dct_pred[3], int PMV[2][2][2]) {
+  int startOfSlice (int MBAmax, int* MBA, int* MBAinc, int dc_dct_pred[3], int PMV[2][2][2]) {
 
     unsigned int code;
     int slice_vert_pos_ext;
 
     Fault_Flag = 0;
 
-    next_start_code();
+    nextStartCode();
     code = showBits(32);
 
     if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX) {
@@ -3004,7 +3004,7 @@ private:
     flushBuffer32();
 
     /* decode slice header (may change quantizer_scale) */
-    slice_vert_pos_ext = slice_header();
+    slice_vert_pos_ext = sliceHeader();
 
     /* decode macroblock address increment */
     *MBAinc = getMacroBlockAddressIncrement();
@@ -3037,7 +3037,7 @@ private:
 
   //{{{
   /* ISO/IEC 13818-2 section 7.6.6 */
-  void skipped_macroblock (int dc_dct_pred[3], int PMV[2][2][2],
+  void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
                            int *motion_type, int motion_vertical_field_select[2][2], int *stwtype, int *macroblock_type) {
 
     int comp;
@@ -3072,7 +3072,7 @@ private:
   //}}}
   //{{{
   /* ISO/IEC 13818-2 sections 7.2 through 7.5 */
-  int decode_macroblock (int* macroblock_type, int* stwtype, int* stwclass, int* motion_type, int* dct_type,
+  int decodeMacroblock (int* macroblock_type, int* stwtype, int* stwclass, int* motion_type, int* dct_type,
                          int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2], int dmvector[2]) {
 
     /* locals */
@@ -3220,7 +3220,7 @@ private:
     MBA = 0; /* macroblock address */
     MBAinc = 0;
 
-    if ((ret = start_of_slice (MBAmax, &MBA, &MBAinc, dc_dct_pred, PMV)) != 1)
+    if ((ret = startOfSlice (MBAmax, &MBA, &MBAinc, dc_dct_pred, PMV)) != 1)
       return (ret);
 
     Fault_Flag = 0;
@@ -3248,7 +3248,7 @@ private:
         }
 
       if (MBAinc==1) /* not skipped */ {
-        ret = decode_macroblock (&macroblock_type, &stwtype, &stwclass,
+        ret = decodeMacroblock (&macroblock_type, &stwtype, &stwclass,
                 &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select, dmvector);
         if (ret == -1)
           return (-1);
@@ -3256,10 +3256,10 @@ private:
           goto resync;
         }
       else /* MBAinc!=1: skipped macroblock ISO/IEC 13818-2 section 7.6.6 */
-        skipped_macroblock(dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &stwtype, &macroblock_type);
+        skippedMacroblock(dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &stwtype, &macroblock_type);
 
       /* ISO/IEC 13818-2 section 7.6 */
-      motion_compensation(MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype, dct_type);
+      motionCompensation(MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype, dct_type);
 
       /* advance to next macroblock */
       MBA++;
@@ -3272,7 +3272,7 @@ private:
 
   //{{{
   /* reuse old picture buffers as soon as they are no longer needed based on life-time axioms of MPEG */
-  void Update_Picture_Buffers() {
+  void updatePictureBuffers() {
 
     for (int cc = 0; cc < 3; cc++) {
       /* B pictures do not need to be save for future reference */
@@ -3309,7 +3309,7 @@ private:
   //{{{
   /* decode all macroblocks of the current picture */
   /* stages described in ISO/IEC 13818-2 section 7 */
-  void picture_data (int framenum) {
+  void pictureData (int framenum) {
 
     int ret;
     /* number of macroblocks per picture */
@@ -3325,7 +3325,7 @@ private:
     }
   //}}}
   //{{{
-  void frame_reorder (int Bitstream_Framenum, int Sequence_Framenum) {
+  void frameReorder (int Bitstream_Framenum, int Sequence_Framenum) {
 
     if (Sequence_Framenum != 0) {
       if (picture_structure == FRAME_PICTURE || Second_Field) {
@@ -3396,13 +3396,13 @@ private:
       Second_Field = false;
       }
 
-    Update_Picture_Buffers();
+    updatePictureBuffers();
 
     /* decode picture data ISO/IEC 13818-2 section 6.2.3.7 */
-    picture_data (bitstream_framenum);
+    pictureData (bitstream_framenum);
 
     /* write or display current or previously decoded reference frame ISO/IEC 13818-2 section 6.1.1.11: Frame reordering */
-    frame_reorder (bitstream_framenum, sequence_framenum);
+    frameReorder (bitstream_framenum, sequence_framenum);
 
     if (picture_structure != FRAME_PICTURE)
       Second_Field = !Second_Field;
