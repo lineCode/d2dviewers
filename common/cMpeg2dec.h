@@ -652,8 +652,6 @@ public:
   //{{{
   cMpeg2dec() {
 
-    ld = &base;
-
     Clip = (unsigned char*)malloc(1024);
     Clip += 384;
     for (int i = -384; i < 640; i++)
@@ -664,7 +662,10 @@ public:
   //}}}
   //{{{
   ~cMpeg2dec() {
-    _close (base.Infile);
+
+    free (Clip);
+
+    _close (Infile);
    }
   //}}}
 
@@ -672,15 +673,14 @@ public:
   /* initialize buffer, call once before first getbits or showbits */
   void Initialize_Buffer (char* filename) {
 
-    ld = &base;
-    base.Infile = _open (filename, O_RDONLY | O_BINARY);
+    Infile = _open (filename, O_RDONLY | O_BINARY);
 
-    ld->Incnt = 0;
-    ld->Rdptr = ld->Rdbfr + 2048;
-    ld->Rdmax = ld->Rdptr;
+    Incnt = 0;
+    Rdptr = Rdbfr + 2048;
+    Rdmax = Rdptr;
 
-    ld->Bfr = 0;
-    Flush_Buffer(0); /* fills valid data into bfr */
+    Bfr = 0;
+    Flush_Buffer (0); /* fills valid data into bfr */
     }
   //}}}
   //{{{
@@ -715,7 +715,11 @@ public:
         if (Sequence_Framenum != 0)
           Output_Last_Frame_of_Sequence (Bitstream_Framenum);
 
-        Deinitialize_Sequence();
+        for (int i = 0; i < 3; i++) {
+          free (backward_reference_frame[i]);
+          free (forward_reference_frame[i]);
+          free (auxframe[i]);
+          }
         }
       else
         return;
@@ -876,24 +880,16 @@ private:
 
   // getBits
   //{{{
-  void Print_Bits (int code, int bits, int len) {
-
-    int i;
-    for (i = 0; i < len; i++)
-      printf ("%d", (code>>(bits-1-i))&1);
-    }
-  //}}}
-  //{{{
   /* MPEG-1 system layer demultiplexer */
   int Get_Byte() {
 
-    while(ld->Rdptr >= ld->Rdbfr+2048) {
-      _read (ld->Infile,ld->Rdbfr,2048);
-      ld->Rdptr -= 2048;
-      ld->Rdmax -= 2048;
+    while (Rdptr >= Rdbfr + 2048) {
+      _read (Infile,Rdbfr, 2048);
+      Rdptr -= 2048;
+      Rdmax -= 2048;
       }
 
-    return *ld->Rdptr++;
+    return *Rdptr++;
     }
   //}}}
   //{{{
@@ -928,19 +924,19 @@ private:
         //{{{
         case PACK_START_CODE: /* pack header */
           /* skip pack header (system_clock_reference and mux_rate) */
-          ld->Rdptr += 8;
+          Rdptr += 8;
           break;
         //}}}
         //{{{
         case VIDEO_ELEMENTARY_STREAM:
           code = Get_Word();             /* packet_length */
-          ld->Rdmax = ld->Rdptr + code;
+          Rdmax = Rdptr + code;
 
           code = Get_Byte();
           if((code>>6)==0x02) {
-            ld->Rdptr++;
+            Rdptr++;
             code = Get_Byte();  /* parse PES_header_data_length */
-            ld->Rdptr += code;    /* advance pointer by PES_header_data_length */
+            Rdptr += code;    /* advance pointer by PES_header_data_length */
             printf ("MPEG-2 PES packet\n");
             return;
             }
@@ -957,7 +953,7 @@ private:
               }
 
             /* skip STD_buffer_scale */
-            ld->Rdptr++;
+            Rdptr++;
             code = Get_Byte();
           }
 
@@ -967,12 +963,12 @@ private:
               exit (1);
               }
             /* skip presentation and decoding time stamps */
-            ld->Rdptr += 9;
+            Rdptr += 9;
             }
 
           else if (code>=0x20) {
             /* skip presentation time stamps */
-            ld->Rdptr += 4;
+            Rdptr += 4;
             }
 
           else if (code!=0x0f) {
@@ -986,22 +982,22 @@ private:
         case ISO_END_CODE: /* end */
           /* simulate a buffer full of sequence end codes */
           l = 0;
-          while (l<2048) {
-            ld->Rdbfr[l++] = SEQUENCE_END_CODE>>24;
-            ld->Rdbfr[l++] = SEQUENCE_END_CODE>>16;
-            ld->Rdbfr[l++] = SEQUENCE_END_CODE>>8;
-            ld->Rdbfr[l++] = SEQUENCE_END_CODE&0xff;
+          while (l < 2048) {
+            Rdbfr[l++] = SEQUENCE_END_CODE>>24;
+            Rdbfr[l++] = SEQUENCE_END_CODE>>16;
+            Rdbfr[l++] = SEQUENCE_END_CODE>>8;
+            Rdbfr[l++] = SEQUENCE_END_CODE&0xff;
             }
 
-          ld->Rdptr = ld->Rdbfr;
-          ld->Rdmax = ld->Rdbfr + 2048;
+          Rdptr = Rdbfr;
+          Rdmax = Rdbfr + 2048;
           return;
         //}}}
         default:
           if (code>=SYSTEM_START_CODE) {
             /* skip system headers and non-video packets*/
             code = Get_Word();
-            ld->Rdptr += code;
+            Rdptr += code;
             }
           else {
             fprintf(stderr,"Unexpected startcode %08x in system layer\n",code);
@@ -1015,11 +1011,11 @@ private:
   //{{{
   void Fill_Buffer() {
 
-    int Buffer_Level = _read (ld->Infile,ld->Rdbfr,2048);
-    ld->Rdptr = ld->Rdbfr;
+    int Buffer_Level = _read (Infile, Rdbfr, 2048);
+    Rdptr = Rdbfr;
 
     if (System_Stream_Flag)
-      ld->Rdmax -= 2048;
+      Rdmax -= 2048;
 
     /* end of the bitstream file */
     if (Buffer_Level < 2048) {
@@ -1029,14 +1025,14 @@ private:
 
       /* pad until the next to the next 32-bit word boundary */
       while (Buffer_Level & 3)
-        ld->Rdbfr[Buffer_Level++] = 0;
+        Rdbfr[Buffer_Level++] = 0;
 
       /* pad the buffer with sequence end codes */
       while (Buffer_Level < 2048) {
-        ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>24;
-        ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>16;
-        ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>8;
-        ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE&0xff;
+        Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>24;
+        Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>16;
+        Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>8;
+        Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE&0xff;
         }
       }
     }
@@ -1044,72 +1040,67 @@ private:
   //{{{
   /* return next n bits (right adjusted) without advancing */
   unsigned int Show_Bits (int N) {
-    return ld->Bfr >> (32-N);
+    return Bfr >> (32-N);
     }
   //}}}
   //{{{
   /* advance by n bits */
   void Flush_Buffer (int N) {
 
-    int Incnt;
-    ld->Bfr <<= N;
-    Incnt = ld->Incnt -= N;
+    Bfr <<= N;
+    Incnt -= N;
 
     if (Incnt <= 24) {
-      if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4)) {
+      if (System_Stream_Flag && (Rdptr >= Rdmax-4)) {
         do {
-          if (ld->Rdptr >= ld->Rdmax)
+          if (Rdptr >= Rdmax)
             Next_Packet();
-          ld->Bfr |= Get_Byte() << (24 - Incnt);
+          Bfr |= Get_Byte() << (24 - Incnt);
           Incnt += 8;
           }
         while (Incnt <= 24);
         }
-      else if (ld->Rdptr < ld->Rdbfr+2044) {
+      else if (Rdptr < Rdbfr+2044) {
         do {
-          ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
+          Bfr |= *Rdptr++ << (24 - Incnt);
           Incnt += 8;
           }
         while (Incnt <= 24);
         }
       else {
         do {
-          if (ld->Rdptr >= ld->Rdbfr+2048)
+          if (Rdptr >= Rdbfr+2048)
             Fill_Buffer();
-          ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
+          Bfr |= *Rdptr++ << (24 - Incnt);
           Incnt += 8;
           }
         while (Incnt <= 24);
         }
-      ld->Incnt = Incnt;
       }
     }
   //}}}
   //{{{
   void Flush_Buffer32() {
 
-    int Incnt;
-    ld->Bfr = 0;
-    Incnt = ld->Incnt;
+    Bfr = 0;
     Incnt -= 32;
 
-    if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4)) {
+    if (System_Stream_Flag && (Rdptr >= Rdmax-4)) {
       while (Incnt <= 24) {
-        if (ld->Rdptr >= ld->Rdmax)
+        if (Rdptr >= Rdmax)
           Next_Packet();
-        ld->Bfr |= Get_Byte() << (24 - Incnt);
+        Bfr |= Get_Byte() << (24 - Incnt);
         Incnt += 8;
         }
       }
     else {
       while (Incnt <= 24) {
-        if (ld->Rdptr >= ld->Rdbfr+2048) Fill_Buffer();
-        ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
+        if (Rdptr >= Rdbfr+2048) Fill_Buffer();
+        Bfr |= *Rdptr++ << (24 - Incnt);
         Incnt += 8;
         }
       }
 
-    ld->Incnt = Incnt;
     }
   //}}}
   //{{{
@@ -1141,15 +1132,14 @@ private:
   void next_start_code() {
 
     /* byte align */
-    Flush_Buffer (ld->Incnt&7);
+    Flush_Buffer (Incnt&7);
     while (Show_Bits(24) != 0x01L)
       Flush_Buffer(8);
     }
   //}}}
   //{{{
   /* ISO/IEC 13818-2 section 5.3 */
-  /* Purpose: this function is mainly designed to aid in bitstream conformance
-     testing.  A simple Flush_Buffer(1) would do */
+  /* Purpose: this function is mainly designed to aid in bitstream conformance testing A simple Flush_Buffer(1) would do */
   void marker_bit (char* text) {
     int marker = Get_Bits(1);
     }
@@ -1345,20 +1335,20 @@ private:
   {
     int macroblock_type = 0;
 
-    if (ld->scalable_mode == SC_SNR)
+    if (scalable_mode == SC_SNR)
       macroblock_type = Get_SNR_macroblock_type();
     else
     {
       switch (picture_coding_type)
       {
       case I_TYPE:
-        macroblock_type = ld->pict_scal ? Get_I_Spatial_macroblock_type() : Get_I_macroblock_type();
+        macroblock_type = pict_scal ? Get_I_Spatial_macroblock_type() : Get_I_macroblock_type();
         break;
       case P_TYPE:
-        macroblock_type = ld->pict_scal ? Get_P_Spatial_macroblock_type() : Get_P_macroblock_type();
+        macroblock_type = pict_scal ? Get_P_Spatial_macroblock_type() : Get_P_macroblock_type();
         break;
       case B_TYPE:
-        macroblock_type = ld->pict_scal ? Get_B_Spatial_macroblock_type() : Get_B_macroblock_type();
+        macroblock_type = pict_scal ? Get_B_Spatial_macroblock_type() : Get_B_macroblock_type();
         break;
       case D_TYPE:
         macroblock_type = Get_D_macroblock_type();
@@ -1699,7 +1689,7 @@ private:
   /* decode sequence display extension */
   void sequence_display_extension() {
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
     video_format      = Get_Bits(3);
     color_description = Get_Bits(1);
 
@@ -1720,33 +1710,27 @@ private:
   void quant_matrix_extension() {
 
     int i;
-    int pos;
-
-    pos = ld->Bitcnt;
-
-    if((ld->load_intra_quantizer_matrix = Get_Bits(1))) {
-      for (i=0; i<64; i++) {
-        ld->chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]]
-        = ld->intra_quantizer_matrix[scan[ZIG_ZAG][i]]
-        = Get_Bits(8);
+    int pos = Bitcnt;
+    if ((load_intra_quantizer_matrix = Get_Bits(1))) {
+      for (i = 0; i < 64; i++) {
+        chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+        }
       }
-    }
 
-    if((ld->load_non_intra_quantizer_matrix = Get_Bits(1))) {
-      for (i=0; i<64; i++) {
-        ld->chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]]
-        = ld->non_intra_quantizer_matrix[scan[ZIG_ZAG][i]]
-        = Get_Bits(8);
+    if ((load_non_intra_quantizer_matrix = Get_Bits(1))) {
+      for (i = 0; i < 64; i++) {
+        chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+        }
       }
-    }
 
-    if((ld->load_chroma_intra_quantizer_matrix = Get_Bits(1))) {
-      for (i=0; i<64; i++) ld->chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
-    }
+    if ((load_chroma_intra_quantizer_matrix = Get_Bits(1))) {
+      for (i = 0; i < 64; i++)
+        chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+      }
 
-    if((ld->load_chroma_non_intra_quantizer_matrix = Get_Bits(1))) {
-      for (i=0; i<64; i++)
-        ld->chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+    if ((load_chroma_non_intra_quantizer_matrix = Get_Bits(1))) {
+      for (i = 0; i < 64; i++)
+        chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
       }
     }
   //}}}
@@ -1754,13 +1738,13 @@ private:
   /* decode sequence scalable extension ISO/IEC 13818-2   section 6.2.2.5 */
   void sequence_scalable_extension() {
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
 
     /* values (without the +1 offset) of scalable_mode are defined in Table 6-10 of ISO/IEC 13818-2 */
-    ld->scalable_mode = Get_Bits(2) + 1; /* add 1 to make SC_DP != SC_NONE */
+    scalable_mode = Get_Bits(2) + 1; /* add 1 to make SC_DP != SC_NONE */
 
     layer_id = Get_Bits(4);
-    if (ld->scalable_mode==SC_SPAT) {
+    if (scalable_mode==SC_SPAT) {
       lower_layer_prediction_horizontal_size = Get_Bits(14);
       marker_bit ("sequence_scalable_extension()");
       lower_layer_prediction_vertical_size   = Get_Bits(14);
@@ -1770,7 +1754,7 @@ private:
       vertical_subsampling_factor_n          = Get_Bits(5);
       }
 
-    if (ld->scalable_mode==SC_TEMP)
+    if (scalable_mode==SC_TEMP)
       printf ("temporal scalability not implemented\n");
     }
   //}}}
@@ -1782,7 +1766,7 @@ private:
     int number_of_frame_center_offsets;
     int pos;
 
-    pos = ld->Bitcnt;
+    pos = Bitcnt;
     /* based on ISO/IEC 13818-2 section 6.3.12 (November 1994) Picture display extensions */
     /* derive number_of_frame_center_offsets */
     if (progressive_sequence) {
@@ -1820,7 +1804,7 @@ private:
   /* decode picture coding extension */
   void picture_coding_extension() {
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
 
     f_code[0][0] = Get_Bits(4);
     f_code[0][1] = Get_Bits(4);
@@ -1832,9 +1816,9 @@ private:
     top_field_first            = Get_Bits(1);
     frame_pred_frame_dct       = Get_Bits(1);
     concealment_motion_vectors = Get_Bits(1);
-    ld->q_scale_type           = Get_Bits(1);
+    q_scale_type           = Get_Bits(1);
     intra_vlc_format           = Get_Bits(1);
-    ld->alternate_scan         = Get_Bits(1);
+    alternate_scan         = Get_Bits(1);
     repeat_first_field         = Get_Bits(1);
     chroma_420_type            = Get_Bits(1);
     progressive_frame          = Get_Bits(1);
@@ -1856,9 +1840,9 @@ private:
   {
     int pos;
 
-    pos = ld->Bitcnt;
+    pos = Bitcnt;
 
-    ld->pict_scal = 1; /* use spatial scalability in this picture */
+    pict_scal = 1; /* use spatial scalability in this picture */
 
     lower_layer_temporal_reference = Get_Bits(10);
     marker_bit("picture_spatial_scalable_extension(), first marker bit");
@@ -1899,7 +1883,7 @@ private:
     int pos;
     int reserved_data;
 
-    pos = ld->Bitcnt;
+    pos = Bitcnt;
 
 
     copyright_flag =       Get_Bits(1);
@@ -1927,9 +1911,9 @@ private:
     int vbv_buffer_size_extension;
 
     /* derive bit position for trace */
-    ld->MPEG2_Flag = 1;
+    MPEG2_Flag = 1;
 
-    ld->scalable_mode = SC_NONE; /* unless overwritten by sequence_scalable_extension() */
+    scalable_mode = SC_NONE; /* unless overwritten by sequence_scalable_extension() */
     layer_id = 0;                /* unless overwritten by sequence_scalable_extension() */
 
     profile_and_level_indication = Get_Bits(8);
@@ -2031,7 +2015,7 @@ private:
     Temporal_Reference_Base = True_Framenum_max + 1;  /* *CH* */
     Temporal_Reference_GOP_Reset = 1;
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
     drop_flag   = Get_Bits(1);
     hour        = Get_Bits(5);
     minute      = Get_Bits(6);
@@ -2048,7 +2032,7 @@ private:
 
     int i;
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
     horizontal_size             = Get_Bits(12);
     vertical_size               = Get_Bits(12);
     aspect_ratio_information    = Get_Bits(4);
@@ -2058,28 +2042,28 @@ private:
     vbv_buffer_size             = Get_Bits(10);
     constrained_parameters_flag = Get_Bits(1);
 
-    if ((ld->load_intra_quantizer_matrix = Get_Bits(1))) {
+    if ((load_intra_quantizer_matrix = Get_Bits(1))) {
       for (i = 0; i < 64; i++)
-        ld->intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+        intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
       }
     else {
       for (i = 0; i < 64; i++)
-        ld->intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+        intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
       }
 
-    if ((ld->load_non_intra_quantizer_matrix = Get_Bits(1))) {
+    if ((load_non_intra_quantizer_matrix = Get_Bits(1))) {
       for (i = 0; i < 64; i++)
-        ld->non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+        non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
       }
     else {
       for (i = 0; i < 64; i++)
-        ld->non_intra_quantizer_matrix[i] = 16;
+        non_intra_quantizer_matrix[i] = 16;
       }
 
     /* copy luminance to chrominance matrices */
     for (i = 0; i < 64; i++) {
-      ld->chroma_intra_quantizer_matrix[i] = ld->intra_quantizer_matrix[i];
-      ld->chroma_non_intra_quantizer_matrix[i] = ld->non_intra_quantizer_matrix[i];
+      chroma_intra_quantizer_matrix[i] = intra_quantizer_matrix[i];
+      chroma_non_intra_quantizer_matrix[i] = non_intra_quantizer_matrix[i];
       }
 
     extension_and_user_data();
@@ -2123,9 +2107,9 @@ private:
   void picture_header() {
 
     /* unless later overwritten by picture_spatial_scalable_extension() */
-    ld->pict_scal = 0;
+    pict_scal = 0;
 
-    int pos = ld->Bitcnt;
+    int pos = Bitcnt;
     temporal_reference  = Get_Bits(10);
     picture_coding_type = Get_Bits(3);
     vbv_delay           = Get_Bits(16);
@@ -2193,7 +2177,7 @@ private:
     DCTtab *tab;
     short *bp;
 
-    bp = ld->block[comp];
+    bp = block[comp];
 
     /* ISO/IEC 11172-2 section 2.4.3.7: Block layer. */
     /* decode DC coefficients */
@@ -2268,7 +2252,7 @@ private:
         }
 
       j = scan[ZIG_ZAG][i];
-      val = (val*ld->quantizer_scale*ld->intra_quantizer_matrix[j]) >> 3;
+      val = (val*quantizer_scale*intra_quantizer_matrix[j]) >> 3;
 
       /* mismatch control ('oddification') */
       if (val!=0) /* should always be true, but it's not guaranteed */
@@ -2291,7 +2275,7 @@ private:
     DCTtab *tab;
     short *bp;
 
-    bp = ld->block[comp];
+    bp = block[comp];
 
     /* decode AC coefficients */
     for (i=0; ; i++)
@@ -2360,7 +2344,7 @@ private:
       }
 
       j = scan[ZIG_ZAG][i];
-      val = (((val<<1)+1)*ld->quantizer_scale*ld->non_intra_quantizer_matrix[j]) >> 4;
+      val = (((val<<1)+1)*quantizer_scale*non_intra_quantizer_matrix[j]) >> 4;
 
       /* mismatch control ('oddification') */
       if (val!=0) /* should always be true, but it's not guaranteed */
@@ -2383,18 +2367,15 @@ private:
     DCTtab *tab;
     short *bp;
     int *qmat;
-    struct layer_data *ld1;
 
     /* with data partitioning, data always goes to base layer */
-    ld1 = ld;
-    bp = ld1->block[comp];
-    ld = &base;
+    bp = block[comp];
 
     cc = (comp<4) ? 0 : (comp&1)+1;
 
     qmat = (comp<4 || chroma_format==CHROMA420)
-           ? ld1->intra_quantizer_matrix
-           : ld1->chroma_intra_quantizer_matrix;
+           ? intra_quantizer_matrix
+           : chroma_intra_quantizer_matrix;
 
     /* ISO/IEC 13818-2 section 7.2.1: decode DC coefficients */
     if (cc==0)
@@ -2483,8 +2464,8 @@ private:
         return;
       }
 
-      j = scan[ld1->alternate_scan][i];
-      val = (val * ld1->quantizer_scale * qmat[j]) >> 4;
+      j = scan[alternate_scan][i];
+      val = (val * quantizer_scale * qmat[j]) >> 4;
       bp[j] = sign ? -val : val;
       nc++;
     }
@@ -2499,21 +2480,13 @@ private:
     DCTtab *tab;
     short *bp;
     int *qmat;
-    struct layer_data *ld1;
 
     /* with data partitioning, data always goes to base layer */
-    ld1 = ld;
-    bp = ld1->block[comp];
-
-    if (base.scalable_mode==SC_DP)
-      if (base.priority_breakpoint<64)
-        ld = &enhan;
-      else
-        ld = &base;
+    bp = block[comp];
 
     qmat = (comp<4 || chroma_format==CHROMA420)
-           ? ld1->non_intra_quantizer_matrix
-           : ld1->chroma_non_intra_quantizer_matrix;
+           ? non_intra_quantizer_matrix
+           : chroma_non_intra_quantizer_matrix;
 
     nc = 0;
 
@@ -2585,13 +2558,10 @@ private:
         return;
       }
 
-      j = scan[ld1->alternate_scan][i];
-      val = (((val<<1)+1) * ld1->quantizer_scale * qmat[j]) >> 5;
+      j = scan[alternate_scan][i];
+      val = (((val<<1)+1) * quantizer_scale * qmat[j]) >> 5;
       bp[j] = sign ? -val : val;
       nc++;
-
-      if (base.scalable_mode==SC_DP && nc==base.priority_breakpoint-63)
-        ld = &enhan;
     }
   }
   //}}}
@@ -3121,7 +3091,7 @@ private:
         }
       }
 
-    bp = ld->block[comp];
+    bp = block[comp];
 
     if (addflag) {
       for (i=0; i<8; i++) {
@@ -3145,7 +3115,7 @@ private:
   /* IMPLEMENTATION: set scratch pad macroblock to zero */
   void Clear_Block (int comp) {
 
-    short* Block_Ptr = ld->block[comp];
+    short* Block_Ptr = block[comp];
     for (int i = 0; i < 64; i++)
       *Block_Ptr++ = 0;
     }
@@ -3164,15 +3134,11 @@ private:
     if (!(macroblock_type & MACROBLOCK_INTRA))
       form_predictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype);
 
-    /* SCALABILITY: Data Partitioning */
-    if (base.scalable_mode == SC_DP)
-      ld = &base;
-
     /* copy or add block data into picture */
     int comp;
     for (comp = 0; comp < block_count; comp++) {
       /* ISO/IEC 13818-2 section Annex A: inverse DCT */
-      Fast_IDCT (ld->block[comp]);
+      Fast_IDCT (block[comp]);
 
       /* ISO/IEC 13818-2 section 7.6.8: Adding prediction and coefficient data */
       Add_Block (comp,bx,by,dct_type,(macroblock_type & MACROBLOCK_INTRA)==0);
@@ -3191,23 +3157,23 @@ private:
     int slice_picture_id = 0;
     int extra_information_slice = 0;
 
-    pos = ld->Bitcnt;
-    slice_vertical_position_extension = (ld->MPEG2_Flag && vertical_size>2800) ? Get_Bits (3) : 0;
-    if (ld->scalable_mode == SC_DP)
-      ld->priority_breakpoint = Get_Bits (7);
+    pos = Bitcnt;
+    slice_vertical_position_extension = (MPEG2_Flag && vertical_size>2800) ? Get_Bits (3) : 0;
+    if (scalable_mode == SC_DP)
+      priority_breakpoint = Get_Bits (7);
 
     quantizer_scale_code = Get_Bits (5);
-    ld->quantizer_scale = ld->MPEG2_Flag ? (ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1) : quantizer_scale_code;
+    quantizer_scale = MPEG2_Flag ? (q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1) : quantizer_scale_code;
 
     /* slice_id introduced in March 1995 as part of the video corridendum (after the IS was drafted in November 1994) */
     if (Get_Bits(1)) {
-      ld->intra_slice = Get_Bits (1);
+      intra_slice = Get_Bits (1);
       slice_picture_id_enable = Get_Bits (1);
       slice_picture_id = Get_Bits (6);
       extra_information_slice = extra_bit_information();
       }
     else
-      ld->intra_slice = 0;
+      intra_slice = 0;
 
     return slice_vertical_position_extension;
     }
@@ -3219,8 +3185,6 @@ private:
 
     unsigned int code;
     int slice_vert_pos_ext;
-
-    ld = &base;
 
     Fault_Flag = 0;
 
@@ -3237,28 +3201,6 @@ private:
 
     /* decode slice header (may change quantizer_scale) */
     slice_vert_pos_ext = slice_header();
-
-
-    /* SCALABILITY: Data Partitioning */
-    if (base.scalable_mode==SC_DP) {
-      ld = &enhan;
-      next_start_code();
-      code = Show_Bits(32);
-
-      if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX) {
-        /* only slice headers are allowed in picture_data */
-        printf("DP: Premature end of picture\n");
-        return(-1);    /* trigger: go to next picture */
-        }
-
-      Flush_Buffer32();
-
-      /* decode slice header (may change quantizer_scale) */
-      slice_vert_pos_ext = slice_header();
-
-      if (base.priority_breakpoint!=1)
-        ld = &base;
-      }
 
     /* decode macroblock address increment */
     *MBAinc = Get_macroblock_address_increment();
@@ -3295,10 +3237,6 @@ private:
                                   int *motion_type, int motion_vertical_field_select[2][2], int *stwtype, int *macroblock_type) {
 
     int comp;
-
-    /* SCALABILITY: Data Paritioning */
-    if (base.scalable_mode==SC_DP)
-      ld = &base;
 
     for (comp = 0; comp < block_count; comp++)
       Clear_Block(comp);
@@ -3344,13 +3282,6 @@ private:
     int mvscale;
     int coded_block_pattern;
 
-    /* SCALABILITY: Data Patitioning */
-    if (base.scalable_mode==SC_DP) {
-      if (base.priority_breakpoint<=2)
-        ld = &enhan;
-      else
-        ld = &base;
-    }
 
     /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
     macroblock_modes(macroblock_type, stwtype, stwclass,
@@ -3363,20 +3294,15 @@ private:
       quantizer_scale_code = Get_Bits(5);
 
       /* ISO/IEC 13818-2 section 7.4.2.2: Quantizer scale factor */
-      if (ld->MPEG2_Flag)
-        ld->quantizer_scale = ld->q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : (quantizer_scale_code << 1);
+      if (MPEG2_Flag)
+        quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : (quantizer_scale_code << 1);
       else
-        ld->quantizer_scale = quantizer_scale_code;
-
-      /* SCALABILITY: Data Partitioning */
-      if (base.scalable_mode==SC_DP)
-        /* make sure base.quantizer_scale is valid */
-        base.quantizer_scale = ld->quantizer_scale;
+        quantizer_scale = quantizer_scale_code;
       }
 
     /* motion vectors ISO/IEC 13818-2 section 6.3.17.2: Motion vectors decode forward motion vectors */
     if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD) || ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)) {
-      if (ld->MPEG2_Flag)
+      if (MPEG2_Flag)
         motion_vectors(PMV,dmvector,motion_vertical_field_select,
           0,motion_vector_count,mv_format,f_code[0][0]-1,f_code[0][1]-1, dmv,mvscale);
       else
@@ -3388,7 +3314,7 @@ private:
 
     /* decode backward motion vectors */
     if (*macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
-      if (ld->MPEG2_Flag)
+      if (MPEG2_Flag)
         motion_vectors(PMV,dmvector,motion_vertical_field_select,
           1,motion_vector_count,mv_format,f_code[1][0]-1,f_code[1][1]-1,0,
           mvscale);
@@ -3402,9 +3328,6 @@ private:
 
     if ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
       Flush_Buffer(1); /* remove marker_bit */
-
-    if (base.scalable_mode==SC_DP && base.priority_breakpoint==3)
-      ld = &enhan;
 
     /* macroblock_pattern */
     /* ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern */
@@ -3430,21 +3353,17 @@ private:
 
     /* decode blocks */
     for (comp=0; comp<block_count; comp++) {
-      /* SCALABILITY: Data Partitioning */
-      if (base.scalable_mode==SC_DP)
-      ld = &base;
-
       Clear_Block(comp);
 
       if (coded_block_pattern & (1<<(block_count-1-comp))) {
         if (*macroblock_type & MACROBLOCK_INTRA) {
-          if (ld->MPEG2_Flag)
+          if (MPEG2_Flag)
             Decode_MPEG2_Intra_Block(comp,dc_dct_pred);
           else
             Decode_MPEG1_Intra_Block(comp,dc_dct_pred);
         }
         else {
-          if (ld->MPEG2_Flag)
+          if (MPEG2_Flag)
             Decode_MPEG2_Non_Intra_Block(comp);
           else
             Decode_MPEG1_Non_Intra_Block(comp);
@@ -3530,11 +3449,7 @@ private:
       if (MBA>=MBAmax)
         return(-1); /* all macroblocks decoded */
 
-      ld = &base;
-
       if (MBAinc==0) {
-        if (base.scalable_mode==SC_DP && base.priority_breakpoint==1)
-            ld = &enhan;
 
         if (!Show_Bits(23) || Fault_Flag) /* next_start_code or fault */ {
   resync: /* if Fault_Flag: resynchronize to next next_start_code */
@@ -3542,9 +3457,6 @@ private:
           return(0);     /* trigger: go to next slice */
           }
         else /* neither next_start_code nor Fault_Flag */ {
-          if (base.scalable_mode==SC_DP && base.priority_breakpoint==1)
-            ld = &enhan;
-
           /* decode macroblock address increment */
           MBAinc = Get_macroblock_address_increment();
 
@@ -3672,14 +3584,13 @@ private:
   //}}}
 
   //{{{
-  /* mostly IMPLEMENTAION specific rouintes */
   void Initialize_Sequence() {
 
     int cc, size;
     static int Table_6_20[3] = {6,8,12};
 
     /* force MPEG-1 parameters for proper decoder behavior see ISO/IEC 13818-2 section D.9.14 */
-    if (!base.MPEG2_Flag) {
+    if (!MPEG2_Flag) {
       progressive_sequence = 1;
       progressive_frame = 1;
       picture_structure = FRAME_PICTURE;
@@ -3690,7 +3601,7 @@ private:
 
     /* round to nearest multiple of coded macroblocks  ISO/IEC 13818-2 section 6.3.3 sequence_header() */
     mb_width = (horizontal_size + 15) / 16;
-    mb_height = (base.MPEG2_Flag && !progressive_sequence) ? 2 * ((vertical_size+31)/32) : (vertical_size + 15) / 16;
+    mb_height = (MPEG2_Flag && !progressive_sequence) ? 2 * ((vertical_size+31)/32) : (vertical_size + 15) / 16;
 
     Coded_Picture_Width = 16*mb_width;
     Coded_Picture_Height = 16*mb_height;
@@ -3721,7 +3632,7 @@ private:
     if (picture_structure == FRAME_PICTURE && Second_Field) {
       /* recover from illegal number of field pictures */
       printf ("odd number of field pictures\n");
-      Second_Field = 0;
+      Second_Field = false;
       }
 
     Update_Picture_Buffers();
@@ -3744,19 +3655,6 @@ private:
     else
       Write_Frame (backward_reference_frame,Framenum-1,
                    progressive_sequence || progressive_frame, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
-    }
-  //}}}
-  //{{{
-  void Deinitialize_Sequence() {
-
-    /* clear flags */
-    base.MPEG2_Flag = 0;
-
-    for (int i = 0; i < 3; i++) {
-      free (backward_reference_frame[i]);
-      free (forward_reference_frame[i]);
-      free (auxframe[i]);
-      }
     }
   //}}}
 
@@ -3787,6 +3685,34 @@ private:
   int True_Framenum_max  = -1;
   int Temporal_Reference_Base = 0;
   int Temporal_Reference_GOP_Reset = 0;
+
+  int Infile;
+  unsigned char Rdbfr[2048];
+  unsigned char* Rdptr;
+  unsigned int Bfr;
+  unsigned char* Rdmax;
+  int Incnt;
+  int Bitcnt;
+
+  int intra_quantizer_matrix[64];
+  int non_intra_quantizer_matrix[64];
+  int chroma_intra_quantizer_matrix[64];
+  int chroma_non_intra_quantizer_matrix[64];
+
+  int load_intra_quantizer_matrix;
+  int load_non_intra_quantizer_matrix;
+  int load_chroma_intra_quantizer_matrix;
+  int load_chroma_non_intra_quantizer_matrix;
+
+  int MPEG2_Flag;
+  int scalable_mode;
+  int q_scale_type;
+  int alternate_scan;
+  int pict_scal;
+  int priority_breakpoint;
+  int quantizer_scale;
+  int intra_slice;
+  short block[12][64];
 
   int profile, level;
   //{{{  normative derived variables (as per ISO/IEC 13818-2)
@@ -3888,50 +3814,5 @@ private:
   int closed_gop;
   int broken_link;
   //}}}
-  //}}}
-  //{{{  struct layer_data
-  /* layer specific variables (needed for SNR and DP scalability) */
-  struct layer_data {
-    /* bit input */
-    int Infile;
-    unsigned char Rdbfr[2048];
-    unsigned char* Rdptr;
-    unsigned char Inbfr[16];
-
-    /* from mpeg2play */
-    unsigned int Bfr;
-    unsigned char* Rdmax;
-    int Incnt;
-    int Bitcnt;
-
-    /* sequence header and quant_matrix_extension() */
-    int intra_quantizer_matrix[64];
-    int non_intra_quantizer_matrix[64];
-    int chroma_intra_quantizer_matrix[64];
-    int chroma_non_intra_quantizer_matrix[64];
-
-    int load_intra_quantizer_matrix;
-    int load_non_intra_quantizer_matrix;
-    int load_chroma_intra_quantizer_matrix;
-    int load_chroma_non_intra_quantizer_matrix;
-
-    int MPEG2_Flag;
-
-    /* sequence scalable extension */
-    int scalable_mode;
-
-    /* picture coding extension */
-    int q_scale_type;
-    int alternate_scan;
-
-    /* picture spatial scalable extension */
-    int pict_scal;
-
-    /* slice/macroblock */
-    int priority_breakpoint;
-    int quantizer_scale;
-    int intra_slice;
-    short block[12][64];
-    } base, enhan, *ld;
   //}}}
   };
