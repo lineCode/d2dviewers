@@ -3,7 +3,7 @@
 class cMyMpeg2dec : public cMpeg2dec {
 public:
   //{{{
-  void Write_Frame (unsigned char*src[], int frame,
+  void writeFrame (unsigned char*src[], int frame,
                     bool progressive, int coded_Picture_Width, int coded_Picture_Height, int chroma_Width) {
     if (progressive)
       printf ("writeFrame prog %d, %d %d\n", frame,coded_Picture_Width, coded_Picture_Height);

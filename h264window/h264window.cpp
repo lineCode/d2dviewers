@@ -45,7 +45,7 @@ public:
   //}}}
 
   //{{{
-  void Write_Frame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
+  void writeFrame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
 
     Sleep (40);
     makeVidFrame (frame, src[0], src[1], src[2], width, height, width, chromaWidth);

@@ -25,7 +25,9 @@
 //{{{
 class cDecodeTransportStream : public cTransportStream {
 public:
-  cDecodeTransportStream() {}
+  cDecodeTransportStream() {
+    mFile = CreateFile (L"C:\\Users\\colin\\Desktop\\test.m2v" , GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+    }
   //{{{
   virtual ~cDecodeTransportStream() {
 
@@ -254,6 +256,10 @@ protected:
     avPacket.size = 0;
 
     auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+
+    DWORD numberOfBytesWritten;
+    WriteFile (mFile, pidInfo->mBuffer, pesLen, &numberOfBytesWritten, NULL);
+
     pidInfo->mBufPtr = pidInfo->mBuffer;
     while (pesLen) {
       auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
@@ -303,6 +309,8 @@ private:
 
   cAudFrame mAudFrames[maxAudFrames];
   cYuvFrame mYuvFrames[maxVidFrames];
+
+  HANDLE mFile = 0;
   };
 //}}}
 
