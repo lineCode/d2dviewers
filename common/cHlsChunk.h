@@ -326,7 +326,7 @@ private:
         if (sDstBufInfo.iBufferStatus)
           mYuvFrames[mVidFramesLoaded++].set (fakeVidPts++, yuv, sDstBufInfo.UsrData.sSystemBuffer.iStride,
                                               sDstBufInfo.UsrData.sSystemBuffer.iWidth,
-                                              sDstBufInfo.UsrData.sSystemBuffer.iHeight);
+                                              sDstBufInfo.UsrData.sSystemBuffer.iHeight, 0,0);
 
         iBufPos += iSliceSize;
         if (iBufPos >= mVidLen) {
@@ -369,7 +369,7 @@ private:
         packetUsed = avcodec_decode_video2 (vidCodecContext, vidFrame, &got, &vidPacket);
         if (got)
           mYuvFrames[mVidFramesLoaded++].set (fakeVidPts++, vidFrame->data, vidFrame->linesize,
-                                              vidCodecContext->width, vidCodecContext->height);
+                                              vidCodecContext->width, vidCodecContext->height, 0, 0);
 
         vidPacket.data += packetUsed;
         vidLen -= packetUsed;

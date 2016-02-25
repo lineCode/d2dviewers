@@ -648,20 +648,17 @@ int Temporal_Reference_Base = 0;
 int Temporal_Reference_GOP_Reset = 0;
 
 /* decoder operation control flags */
-int Quiet_Flag;
-int Trace_Flag;
-int Fault_Flag;
-int Verbose_Flag;
-int Spatial_Flag;
-int System_Stream_Flag;
-int Display_Progressive_Flag;
-int Ersatz_Flag;
-int Stats_Flag;
-int User_Data_Flag;
+int Fault_Flag = 0;
+int System_Stream_Flag = 0;
+int Display_Progressive_Flag = 0;
+int Spatial_Flag = 0;
+int Trace_Flag = 0;
+int Ersatz_Flag = 0;
+int User_Data_Flag = 0;
 
 /* filenames */
-char *Substitute_Picture_Filename;
-char *Enhancement_Layer_Bitstream_Filename;
+char* Substitute_Picture_Filename;
+char* Enhancement_Layer_Bitstream_Filename;
 
 /* buffers for multiuse purposes */
 char Error_Text[256];
@@ -680,13 +677,16 @@ unsigned char* llframe1[3];
 
 short* lltmp;
 char* Lower_Layer_Picture_Filename;
-/*{{{  non-normative variables derived from normative elements */
+/*{{{  non-normative variables derived from normative elements*/
 int Coded_Picture_Width;
 int Coded_Picture_Height;
+
 int Chroma_Width;
 int Chroma_Height;
+
 int block_count;
 int Second_Field;
+
 int profile, level;
 /*}}}*/
 /*{{{  normative derived variables (as per ISO/IEC 13818-2)*/
@@ -1015,7 +1015,6 @@ void Initialize_Fast_IDCT()
 }
 /*}}}*/
 /*}}}*/
-
 /*{{{*/
 void Write_Frame (unsigned char*src[], int frame) {
 
@@ -1029,13 +1028,12 @@ void Write_Frame (unsigned char*src[], int frame) {
 // getBits
 /*{{{*/
 /* Trace_Flag output */
-void Print_Bits(code,bits,len)
-int code,bits,len;
-{
+void Print_Bits (int code, int bits, int len) {
+
   int i;
-  for (i=0; i<len; i++)
-    printf("%d",(code>>(bits-1-i))&1);
-}
+  for (i = 0; i < len; i++)
+    printf ("%d", (code>>(bits-1-i))&1);
+  }
 /*}}}*/
 /*{{{*/
 /* MPEG-1 system layer demultiplexer */
@@ -1052,21 +1050,18 @@ int Get_Byte() {
 /*}}}*/
 /*{{{*/
 /* extract a 16-bit word from the bitstream buffer */
-int Get_Word()
-{
-  int Val;
-  Val = Get_Byte();
+int Get_Word() {
+
+  int Val = Get_Byte();
   return (Val<<8) | Get_Byte();
-}
+  }
 /*}}}*/
 /*{{{*/
-int Get_Long()
-{
-  int i;
+int Get_Long() {
 
-  i = Get_Word();
+  int i = Get_Word();
   return (i<<16) | Get_Word();
-}
+  }
 /*}}}*/
 /*{{{*/
 /* parse system layer, ignore everything we don't need */
@@ -1170,20 +1165,16 @@ void Next_Packet() {
   }
 /*}}}*/
 /*{{{*/
-void Fill_Buffer()
-{
-  int Buffer_Level;
+void Fill_Buffer() {
 
-  Buffer_Level = read (ld->Infile,ld->Rdbfr,2048);
+  int Buffer_Level = read (ld->Infile,ld->Rdbfr,2048);
   ld->Rdptr = ld->Rdbfr;
 
   if (System_Stream_Flag)
     ld->Rdmax -= 2048;
 
-
   /* end of the bitstream file */
-  if (Buffer_Level < 2048)
-  {
+  if (Buffer_Level < 2048) {
     /* just to be safe */
     if (Buffer_Level < 0)
       Buffer_Level = 0;
@@ -1192,194 +1183,168 @@ void Fill_Buffer()
     while (Buffer_Level & 3)
       ld->Rdbfr[Buffer_Level++] = 0;
 
-  /* pad the buffer with sequence end codes */
-    while (Buffer_Level < 2048)
-    {
+    /* pad the buffer with sequence end codes */
+    while (Buffer_Level < 2048) {
       ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>24;
       ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>16;
       ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE>>8;
       ld->Rdbfr[Buffer_Level++] = SEQUENCE_END_CODE&0xff;
+      }
     }
   }
-}
 /*}}}*/
 /*{{{*/
 /* advance by n bits */
-void Flush_Buffer(N)
+void Flush_Buffer (int N) {
 
-int N;
-{
   int Incnt;
-
   ld->Bfr <<= N;
-
   Incnt = ld->Incnt -= N;
 
-  if (Incnt <= 24)
-  {
-    if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4))
-    {
-      do
-      {
+  if (Incnt <= 24) {
+    if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4)) {
+      do {
         if (ld->Rdptr >= ld->Rdmax)
           Next_Packet();
         ld->Bfr |= Get_Byte() << (24 - Incnt);
         Incnt += 8;
-      }
+        }
       while (Incnt <= 24);
-    }
-    else if (ld->Rdptr < ld->Rdbfr+2044)
-    {
-      do
-      {
+      }
+    else if (ld->Rdptr < ld->Rdbfr+2044) {
+      do {
         ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
         Incnt += 8;
-      }
+        }
       while (Incnt <= 24);
-    }
-    else
-    {
-      do
-      {
+      }
+    else {
+      do {
         if (ld->Rdptr >= ld->Rdbfr+2048)
           Fill_Buffer();
         ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
         Incnt += 8;
-      }
+        }
       while (Incnt <= 24);
-    }
+      }
     ld->Incnt = Incnt;
+    }
   }
-
-}
 /*}}}*/
 /*{{{*/
-void Flush_Buffer32()
-{
+void Flush_Buffer32() {
+
   int Incnt;
-
   ld->Bfr = 0;
-
   Incnt = ld->Incnt;
   Incnt -= 32;
 
-  if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4))
-  {
-    while (Incnt <= 24)
-    {
+  if (System_Stream_Flag && (ld->Rdptr >= ld->Rdmax-4)) {
+    while (Incnt <= 24) {
       if (ld->Rdptr >= ld->Rdmax)
         Next_Packet();
       ld->Bfr |= Get_Byte() << (24 - Incnt);
       Incnt += 8;
+      }
     }
-  }
-  else
-  {
-    while (Incnt <= 24)
-    {
-      if (ld->Rdptr >= ld->Rdbfr+2048)
-        Fill_Buffer();
+  else {
+    while (Incnt <= 24) {
+      if (ld->Rdptr >= ld->Rdbfr+2048) Fill_Buffer();
       ld->Bfr |= *ld->Rdptr++ << (24 - Incnt);
       Incnt += 8;
+      }
     }
-  }
-  ld->Incnt = Incnt;
 
-}
+  ld->Incnt = Incnt;
+  }
 /*}}}*/
 /*{{{*/
 /* return next n bits (right adjusted) without advancing */
-unsigned int Show_Bits(N)
-int N;
-{
+unsigned int Show_Bits (int N) {
   return ld->Bfr >> (32-N);
-}
+  }
 /*}}}*/
 /*{{{*/
 /* return next n bits (right adjusted) */
-unsigned int Get_Bits(N)
-int N;
-{
-  unsigned int Val;
+unsigned int Get_Bits (int N) {
 
-  Val = Show_Bits(N);
+  unsigned int Val = Show_Bits(N);
   Flush_Buffer(N);
-
   return Val;
-}
+  }
 /*}}}*/
 /*{{{*/
-unsigned int Get_Bits32()
-{
-  unsigned int l;
+/* return next bit (could be made faster than Get_Bits(1)) */
+unsigned int Get_Bits1() {
+  return Get_Bits (1);
+  }
+/*}}}*/
+/*{{{*/
+unsigned int Get_Bits32() {
 
-  l = Show_Bits(32);
+  unsigned int l = Show_Bits (32);
   Flush_Buffer32();
-
   return l;
-}
+  }
 /*}}}*/
 /*{{{*/
 /* initialize buffer, call once before first getbits or showbits */
-void Initialize_Buffer()
-{
+void Initialize_Buffer() {
+
   ld->Incnt = 0;
   ld->Rdptr = ld->Rdbfr + 2048;
   ld->Rdmax = ld->Rdptr;
 
   ld->Bfr = 0;
   Flush_Buffer(0); /* fills valid data into bfr */
-}
-/*}}}*/
-/*{{{*/
-/* return next bit (could be made faster than Get_Bits(1)) */
-unsigned int Get_Bits1()
-{
-  return Get_Bits(1);
-}
+  }
 /*}}}*/
 
 /*{{{*/
 /* align to start of next next_start_code */
-void next_start_code()
-{
+void next_start_code() {
+
   /* byte align */
-  Flush_Buffer(ld->Incnt&7);
-  while (Show_Bits(24)!=0x01L)
+  Flush_Buffer (ld->Incnt&7);
+  while (Show_Bits(24) != 0x01L)
     Flush_Buffer(8);
-}
+  }
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 5.3 */
 /* Purpose: this function is mainly designed to aid in bitstream conformance
    testing.  A simple Flush_Buffer(1) would do */
-void marker_bit (text)
-char *text;
-{
-  int marker;
-
-  marker = Get_Bits(1);
-
-}
+void marker_bit (char* text) {
+  int marker = Get_Bits(1);
+  }
 /*}}}*/
 /*{{{*/
 /* decode extra bit information */
 /* ISO/IEC 13818-2 section 6.2.3.4. */
-static int extra_bit_information()
-{
+static int extra_bit_information() {
+
   int Byte_Count = 0;
-
-  while (Get_Bits1())
-  {
-    Flush_Buffer(8);
+  while (Get_Bits1()) {
+    Flush_Buffer (8);
     Byte_Count++;
+    }
+
+  return Byte_Count;
   }
-
-  return(Byte_Count);
-}
-
 /*}}}*/
 
+/*{{{*/
+static char* MBdescr[]={
+  "",                  "Intra",        "No MC, Coded",         "",
+  "Bwd, Not Coded",    "",             "Bwd, Coded",           "",
+  "Fwd, Not Coded",    "",             "Fwd, Coded",           "",
+  "Interp, Not Coded", "",             "Interp, Coded",        "",
+  "",                  "Intra, Quant", "No MC, Coded, Quant",  "",
+  "",                  "",             "Bwd, Coded, Quant",    "",
+  "",                  "",             "Fwd, Coded, Quant",    "",
+  "",                  "",             "Interp, Coded, Quant", ""
+};
+/*}}}*/
 /*{{{*/
 static int Get_I_macroblock_type()
 {
@@ -1399,8 +1364,7 @@ static int Get_I_macroblock_type()
 
   if (!Get_Bits1())
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf ("Invalid macroblock_type code\n");
     Fault_Flag = 1;
   }
 
@@ -1411,18 +1375,6 @@ static int Get_I_macroblock_type()
 
   return 17;
 }
-/*}}}*/
-/*{{{*/
-static char* MBdescr[]={
-  "",                  "Intra",        "No MC, Coded",         "",
-  "Bwd, Not Coded",    "",             "Bwd, Coded",           "",
-  "Fwd, Not Coded",    "",             "Fwd, Coded",           "",
-  "Interp, Not Coded", "",             "Interp, Coded",        "",
-  "",                  "Intra, Quant", "No MC, Coded, Quant",  "",
-  "",                  "",             "Bwd, Coded, Quant",    "",
-  "",                  "",             "Fwd, Coded, Quant",    "",
-  "",                  "",             "Interp, Coded, Quant", ""
-};
 /*}}}*/
 /*{{{*/
 static int Get_P_macroblock_type()
@@ -1450,8 +1402,7 @@ static int Get_P_macroblock_type()
 
   if (code==0)
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1497,8 +1448,7 @@ static int Get_B_macroblock_type()
 
   if (code==0)
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1521,8 +1471,7 @@ static int Get_D_macroblock_type()
 {
   if (!Get_Bits1())
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag=1;
   }
 
@@ -1544,8 +1493,7 @@ static int Get_I_Spatial_macroblock_type()
 
   if (code==0)
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1576,8 +1524,7 @@ static int Get_P_Spatial_macroblock_type()
 
   if (code<2)
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1632,8 +1579,7 @@ static int Get_B_Spatial_macroblock_type()
     p = &spBMBtab2[code-8];
   else
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1665,8 +1611,7 @@ static int Get_SNR_macroblock_type()
 
   if (code==0)
   {
-    if (!Quiet_Flag)
-      printf("Invalid macroblock_type code\n");
+    printf("Invalid macroblock_type code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1773,7 +1718,6 @@ int Get_motion_code()
 
   if ((code-=12)<0)
   {
-    if (!Quiet_Flag)
     Fault_Flag=1;
     return 0;
   }
@@ -1867,8 +1811,7 @@ int Get_coded_block_pattern()
 
   if (code<1)
   {
-    if (!Quiet_Flag)
-      printf("Invalid coded_block_pattern code\n");
+    printf("Invalid coded_block_pattern code\n");
     Fault_Flag = 1;
     return 0;
   }
@@ -1915,9 +1858,7 @@ int Get_macroblock_address_increment()
       }
       else
       {
-        if (!Quiet_Flag)
-          printf("Invalid macroblock_address_increment code\n");
-
+        printf("Invalid macroblock_address_increment code\n");
         Fault_Flag = 1;
         return 1;
       }
@@ -2158,40 +2099,16 @@ static void sequence_display_extension()
   video_format      = Get_Bits(3);
   color_description = Get_Bits(1);
 
-  if (color_description)
-  {
+  if (color_description) {
     color_primaries          = Get_Bits(8);
     transfer_characteristics = Get_Bits(8);
     matrix_coefficients      = Get_Bits(8);
-  }
+    }
 
   display_horizontal_size = Get_Bits(14);
-  marker_bit("sequence_display_extension");
+  marker_bit ("sequence_display_extension");
   display_vertical_size   = Get_Bits(14);
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("sequence display extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-
-      printf("  video_format=%d\n",video_format);
-      printf("  color_description=%d\n",color_description);
-
-      if (color_description)
-      {
-        printf("    color_primaries=%d\n",color_primaries);
-        printf("    transfer_characteristics=%d\n",transfer_characteristics);
-        printf("    matrix_coefficients=%d\n",matrix_coefficients);
-      }
-      printf("  display_horizontal_size=%d\n",display_horizontal_size);
-      printf("  display_vertical_size=%d\n",display_vertical_size);
-    }
   }
-#endif /* VERBOSE */
-
-}
 /*}}}*/
 /*{{{*/
 /* decode quant matrix entension */
@@ -2229,28 +2146,11 @@ static void quant_matrix_extension()
       ld->chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
   }
 
-  if((ld->load_chroma_non_intra_quantizer_matrix = Get_Bits(1)))
-  {
+  if((ld->load_chroma_non_intra_quantizer_matrix = Get_Bits(1))) {
     for (i=0; i<64; i++)
       ld->chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = Get_Bits(8);
+    }
   }
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("quant matrix extension (byte %d)\n",(pos>>3)-4);
-    printf("  load_intra_quantizer_matrix=%d\n",
-      ld->load_intra_quantizer_matrix);
-    printf("  load_non_intra_quantizer_matrix=%d\n",
-      ld->load_non_intra_quantizer_matrix);
-    printf("  load_chroma_intra_quantizer_matrix=%d\n",
-      ld->load_chroma_intra_quantizer_matrix);
-    printf("  load_chroma_non_intra_quantizer_matrix=%d\n",
-      ld->load_chroma_non_intra_quantizer_matrix);
-  }
-#endif /* VERBOSE */
-
-}
 /*}}}*/
 /*{{{*/
 /* decode sequence scalable extension */
@@ -2267,48 +2167,19 @@ static void sequence_scalable_extension()
 
   layer_id = Get_Bits(4);
 
-  if (ld->scalable_mode==SC_SPAT)
-  {
+  if (ld->scalable_mode==SC_SPAT) {
     lower_layer_prediction_horizontal_size = Get_Bits(14);
-    marker_bit("sequence_scalable_extension()");
+    marker_bit ("sequence_scalable_extension()");
     lower_layer_prediction_vertical_size   = Get_Bits(14);
     horizontal_subsampling_factor_m        = Get_Bits(5);
     horizontal_subsampling_factor_n        = Get_Bits(5);
     vertical_subsampling_factor_m          = Get_Bits(5);
     vertical_subsampling_factor_n          = Get_Bits(5);
-  }
+    }
 
   if (ld->scalable_mode==SC_TEMP)
     Error ("temporal scalability not implemented\n");
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("sequence scalable extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  scalable_mode=%d\n",ld->scalable_mode-1);
-      printf("  layer_id=%d\n",layer_id);
-      if (ld->scalable_mode==SC_SPAT)
-      {
-        printf("    lower_layer_prediction_horiontal_size=%d\n",
-          lower_layer_prediction_horizontal_size);
-        printf("    lower_layer_prediction_vertical_size=%d\n",
-          lower_layer_prediction_vertical_size);
-        printf("    horizontal_subsampling_factor_m=%d\n",
-          horizontal_subsampling_factor_m);
-        printf("    horizontal_subsampling_factor_n=%d\n",
-          horizontal_subsampling_factor_n);
-        printf("    vertical_subsampling_factor_m=%d\n",
-          vertical_subsampling_factor_m);
-        printf("    vertical_subsampling_factor_n=%d\n",
-          vertical_subsampling_factor_n);
-      }
-    }
   }
-#endif /* VERBOSE */
-
-}
 /*}}}*/
 /*{{{*/
 /* decode picture display extension */
@@ -2320,69 +2191,37 @@ static void picture_display_extension()
   int pos;
 
   pos = ld->Bitcnt;
-  /* based on ISO/IEC 13818-2 section 6.3.12
-    (November 1994) Picture display extensions */
-
+  /* based on ISO/IEC 13818-2 section 6.3.12 (November 1994) Picture display extensions */
   /* derive number_of_frame_center_offsets */
-  if(progressive_sequence)
-  {
-    if(repeat_first_field)
-    {
-      if(top_field_first)
+  if (progressive_sequence) {
+    if (repeat_first_field) {
+      if (top_field_first)
         number_of_frame_center_offsets = 3;
       else
         number_of_frame_center_offsets = 2;
-    }
+      }
     else
-    {
       number_of_frame_center_offsets = 1;
     }
-  }
-  else
-  {
-    if(picture_structure!=FRAME_PICTURE)
-    {
+  else {
+    if (picture_structure!=FRAME_PICTURE)
       number_of_frame_center_offsets = 1;
-    }
-    else
-    {
+    else {
       if(repeat_first_field)
         number_of_frame_center_offsets = 3;
       else
         number_of_frame_center_offsets = 2;
-    }
-  }
-
-
-  /* now parse */
-  for (i=0; i<number_of_frame_center_offsets; i++)
-  {
-    frame_center_horizontal_offset[i] = Get_Bits(16);
-    marker_bit("picture_display_extension, first marker bit");
-
-    frame_center_vertical_offset[i]   = Get_Bits(16);
-    marker_bit("picture_display_extension, second marker bit");
-  }
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("picture display extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-
-      for (i=0; i<number_of_frame_center_offsets; i++)
-      {
-        printf("  frame_center_horizontal_offset[%d]=%d\n",i,
-          frame_center_horizontal_offset[i]);
-        printf("  frame_center_vertical_offset[%d]=%d\n",i,
-          frame_center_vertical_offset[i]);
       }
     }
-  }
-#endif /* VERBOSE */
 
-}
+  /* now parse */
+  for (i = 0; i < number_of_frame_center_offsets; i++) {
+    frame_center_horizontal_offset[i] = Get_Bits(16);
+    marker_bit("picture_display_extension, first marker bit");
+    frame_center_vertical_offset[i]   = Get_Bits(16);
+    marker_bit("picture_display_extension, second marker bit");
+    }
+  }
 
 /*}}}*/
 /*{{{*/
@@ -2419,42 +2258,6 @@ static void picture_coding_extension()
     burst_amplitude   = Get_Bits(7);
     sub_carrier_phase = Get_Bits(8);
   }
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("picture coding extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  forward horizontal f_code=%d\n", f_code[0][0]);
-      printf("  forward vertical f_code=%d\n", f_code[0][1]);
-      printf("  backward horizontal f_code=%d\n", f_code[1][0]);
-      printf("  backward_vertical f_code=%d\n", f_code[1][1]);
-      printf("  intra_dc_precision=%d\n",intra_dc_precision);
-      printf("  picture_structure=%d\n",picture_structure);
-      printf("  top_field_first=%d\n",top_field_first);
-      printf("  frame_pred_frame_dct=%d\n",frame_pred_frame_dct);
-      printf("  concealment_motion_vectors=%d\n",concealment_motion_vectors);
-      printf("  q_scale_type=%d\n",ld->q_scale_type);
-      printf("  intra_vlc_format=%d\n",intra_vlc_format);
-      printf("  alternate_scan=%d\n",ld->alternate_scan);
-      printf("  repeat_first_field=%d\n",repeat_first_field);
-      printf("  chroma_420_type=%d\n",chroma_420_type);
-      printf("  progressive_frame=%d\n",progressive_frame);
-      printf("  composite_display_flag=%d\n",composite_display_flag);
-
-      if (composite_display_flag)
-      {
-        printf("    v_axis=%d\n",v_axis);
-        printf("    field_sequence=%d\n",field_sequence);
-        printf("    sub_carrier=%d\n",sub_carrier);
-        printf("    burst_amplitude=%d\n",burst_amplitude);
-        printf("    sub_carrier_phase=%d\n",sub_carrier_phase);
-      }
-    }
-  }
-#endif /* VERBOSE */
-
 }
 /*}}}*/
 /*{{{*/
@@ -2480,24 +2283,6 @@ static void picture_spatial_scalable_extension()
   spatial_temporal_weight_code_table_index = Get_Bits(2);
   lower_layer_progressive_frame = Get_Bits(1);
   lower_layer_deinterlaced_field_select = Get_Bits(1);
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("picture spatial scalable extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  lower_layer_temporal_reference=%d\n",lower_layer_temporal_reference);
-      printf("  lower_layer_horizontal_offset=%d\n",lower_layer_horizontal_offset);
-      printf("  lower_layer_vertical_offset=%d\n",lower_layer_vertical_offset);
-      printf("  spatial_temporal_weight_code_table_index=%d\n",
-        spatial_temporal_weight_code_table_index);
-      printf("  lower_layer_progressive_frame=%d\n",lower_layer_progressive_frame);
-      printf("  lower_layer_deinterlaced_field_select=%d\n",lower_layer_deinterlaced_field_select);
-    }
-  }
-#endif /* VERBOSE */
-
 }
 /*}}}*/
 /*{{{*/
@@ -2546,25 +2331,6 @@ static void copyright_extension()
   copyright_number_2 =   Get_Bits(22);
   marker_bit("copyright_extension(), third marker bit");
   copyright_number_3 =   Get_Bits(22);
-
-  if(Verbose_Flag>NO_LAYER)
-  {
-    printf("copyright_extension (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  copyright_flag =%d\n",copyright_flag);
-
-      printf("  copyright_identifier=%d\n",copyright_identifier);
-
-      printf("  original_or_copy = %d (original=1, copy=0)\n",
-        original_or_copy);
-
-      printf("  copyright_number_1=%d\n",copyright_number_1);
-      printf("  copyright_number_2=%d\n",copyright_number_2);
-      printf("  copyright_number_3=%d\n",copyright_number_3);
-    }
-  }
-
 }
 /*}}}*/
 /*{{{*/
@@ -2616,10 +2382,6 @@ static void sequence_extension()
   int vbv_buffer_size_extension;
 
   /* derive bit position for trace */
-#ifdef VERBOSE
-  pos = ld->Bitcnt;
-#endif
-
   ld->MPEG2_Flag = 1;
 
   ld->scalable_mode = SC_NONE; /* unless overwritten by sequence_scalable_extension() */
@@ -2671,50 +2433,18 @@ static void sequence_extension()
   bit_rate_value += (bit_rate_extension << 18);
   bit_rate = ((double) bit_rate_value) * 400.0;
   vbv_buffer_size += (vbv_buffer_size_extension << 10);
-
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("sequence extension (byte %d)\n",(pos>>3)-4);
-
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  profile_and_level_indication=%d\n",profile_and_level_indication);
-
-      if (profile_and_level_indication<128)
-      {
-        printf("    profile=%d, level=%d\n",profile,level);
-      }
-
-      printf("  progressive_sequence=%d\n",progressive_sequence);
-      printf("  chroma_format=%d\n",chroma_format);
-      printf("  horizontal_size_extension=%d\n",horizontal_size_extension);
-      printf("  vertical_size_extension=%d\n",vertical_size_extension);
-      printf("  bit_rate_extension=%d\n",bit_rate_extension);
-      printf("  vbv_buffer_size_extension=%d\n",vbv_buffer_size_extension);
-      printf("  low_delay=%d\n",low_delay);
-      printf("  frame_rate_extension_n=%d\n",frame_rate_extension_n);
-      printf("  frame_rate_extension_d=%d\n",frame_rate_extension_d);
-    }
-  }
-#endif /* VERBOSE */
-
-
 }
 /*}}}*/
+
 /*{{{*/
 /* decode extension and user data */
 /* ISO/IEC 13818-2 section 6.2.2.2 */
 static void extension_and_user_data()
 {
   int code,ext_ID;
-
   next_start_code();
-
-  while ((code = Show_Bits(32))==EXTENSION_START_CODE || code==USER_DATA_START_CODE)
-  {
-    if (code==EXTENSION_START_CODE)
-    {
+  while ((code = Show_Bits(32))==EXTENSION_START_CODE || code==USER_DATA_START_CODE) {
+    if (code==EXTENSION_START_CODE) {
       Flush_Buffer32();
       ext_ID = Get_Bits(4);
       switch (ext_ID)
@@ -2754,10 +2484,6 @@ static void extension_and_user_data()
     }
     else
     {
-#ifdef VERBOSE
-      if (Verbose_Flag>NO_LAYER)
-        printf("user data\n");
-#endif /* VERBOSE */
       Flush_Buffer32();
       user_data();
     }
@@ -2785,23 +2511,7 @@ static void group_of_pictures_header()
   frame       = Get_Bits(6);
   closed_gop  = Get_Bits(1);
   broken_link = Get_Bits(1);
-
-#ifdef VERBOSE
-  if (Verbose_Flag > NO_LAYER)
-  {
-    printf("group of pictures (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag > SEQUENCE_LAYER)
-    {
-      printf("  drop_flag=%d\n",drop_flag);
-      printf("  timecode %d:%02d:%02d:%02d\n",hour,minute,sec,frame);
-      printf("  closed_gop=%d\n",closed_gop);
-      printf("  broken_link=%d\n",broken_link);
-    }
-  }
-#endif /* VERBOSE */
-
   extension_and_user_data();
-
 }
 /*}}}*/
 /*{{{*/
@@ -2831,32 +2541,7 @@ static void picture_header()
     backward_f_code = Get_Bits(3);
   }
 
-#ifdef VERBOSE
-  if (Verbose_Flag>NO_LAYER)
-  {
-    printf("picture header (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag>SEQUENCE_LAYER)
-    {
-      printf("  temporal_reference=%d\n",temporal_reference);
-      printf("  picture_coding_type=%d\n",picture_coding_type);
-      printf("  vbv_delay=%d\n",vbv_delay);
-      if (picture_coding_type==P_TYPE || picture_coding_type==B_TYPE)
-      {
-        printf("  full_pel_forward_vector=%d\n",full_pel_forward_vector);
-        printf("  forward_f_code =%d\n",forward_f_code);
-      }
-      if (picture_coding_type==B_TYPE)
-      {
-        printf("  full_pel_backward_vector=%d\n",full_pel_backward_vector);
-        printf("  backward_f_code =%d\n",backward_f_code);
-      }
-    }
-  }
-#endif /* VERBOSE */
-
-  Extra_Information_Byte_Count =
-    extra_bit_information();
-
+  Extra_Information_Byte_Count = extra_bit_information();
   extension_and_user_data();
 
   /* update tracking information used to assist spatial scalability */
@@ -2910,31 +2595,10 @@ static void sequence_header()
 
     ld->chroma_non_intra_quantizer_matrix[i] =
       ld->non_intra_quantizer_matrix[i];
-  }
-
-#ifdef VERBOSE
-  if (Verbose_Flag > NO_LAYER)
-  {
-    printf("sequence header (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag > SEQUENCE_LAYER)
-    {
-      printf("  horizontal_size=%d\n",horizontal_size);
-      printf("  vertical_size=%d\n",vertical_size);
-      printf("  aspect_ratio_information=%d\n",aspect_ratio_information);
-      printf("  frame_rate_code=%d",frame_rate_code);
-      printf("  bit_rate_value=%d\n",bit_rate_value);
-      printf("  vbv_buffer_size=%d\n",vbv_buffer_size);
-      printf("  constrained_parameters_flag=%d\n",constrained_parameters_flag);
-      printf("  load_intra_quantizer_matrix=%d\n",ld->load_intra_quantizer_matrix);
-      printf("  load_non_intra_quantizer_matrix=%d\n",ld->load_non_intra_quantizer_matrix);
     }
-  }
-#endif /* VERBOSE */
-
   extension_and_user_data();
-}
+  }
 /*}}}*/
-
 /*{{{*/
 /* decode headers from one input stream until an End of Sequence or picture start code is found */
 int Get_Hdr() {
@@ -2964,8 +2628,7 @@ int Get_Hdr() {
         break;
 
       default:
-        if (!Quiet_Flag)
-          fprintf(stderr,"Unexpected next_start_code %08x (ignored)\n",code);
+        fprintf(stderr,"Unexpected next_start_code %08x (ignored)\n",code);
         break;
       }
 
@@ -3023,8 +2686,7 @@ int dc_dct_pred[];
       tab = &DCTtab6[code-16];
     else
     {
-      if (!Quiet_Flag)
-        printf("invalid Huffman code in Decode_MPEG1_Intra_Block()\n");
+      printf("invalid Huffman code in Decode_MPEG1_Intra_Block()\n");
       Fault_Flag = 1;
       return;
     }
@@ -3058,8 +2720,7 @@ int dc_dct_pred[];
 
     if (i>=64)
     {
-      if (!Quiet_Flag)
-        fprintf(stderr,"DCT coeff index (i) out of bounds (intra)\n");
+      fprintf(stderr,"DCT coeff index (i) out of bounds (intra)\n");
       Fault_Flag = 1;
       return;
     }
@@ -3118,8 +2779,7 @@ int comp;
       tab = &DCTtab6[code-16];
     else
     {
-      if (!Quiet_Flag)
-        printf("invalid Huffman code in Decode_MPEG1_Non_Intra_Block()\n");
+      printf("invalid Huffman code in Decode_MPEG1_Non_Intra_Block()\n");
       Fault_Flag = 1;
       return;
     }
@@ -3153,8 +2813,7 @@ int comp;
 
     if (i>=64)
     {
-      if (!Quiet_Flag)
-        fprintf(stderr,"DCT coeff index (i) out of bounds (inter)\n");
+      fprintf(stderr,"DCT coeff index (i) out of bounds (inter)\n");
       Fault_Flag = 1;
       return;
     }
@@ -3254,8 +2913,7 @@ int dc_dct_pred[];
       tab = &DCTtab6[code-16];
     else
     {
-      if (!Quiet_Flag)
-        printf("invalid Huffman code in Decode_MPEG2_Intra_Block()\n");
+      printf("invalid Huffman code in Decode_MPEG2_Intra_Block()\n");
       Fault_Flag = 1;
       return;
     }
@@ -3302,8 +2960,7 @@ int dc_dct_pred[];
       val = Get_Bits(12);
       if ((val&2047)==0)
       {
-        if (!Quiet_Flag)
-          printf("invalid escape in Decode_MPEG2_Intra_Block()\n");
+        printf("invalid escape in Decode_MPEG2_Intra_Block()\n");
         Fault_Flag = 1;
         return;
       }
@@ -3324,8 +2981,7 @@ int dc_dct_pred[];
 
     if (i>=64)
     {
-      if (!Quiet_Flag)
-        fprintf(stderr,"DCT coeff index (i) out of bounds (intra2)\n");
+      fprintf(stderr,"DCT coeff index (i) out of bounds (intra2)\n");
       Fault_Flag = 1;
       return;
     }
@@ -3405,8 +3061,7 @@ int comp;
       tab = &DCTtab6[code-16];
     else
     {
-      if (!Quiet_Flag)
-        printf("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
+      printf("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
       Fault_Flag = 1;
       return;
     }
@@ -3453,8 +3108,7 @@ int comp;
       val = Get_Bits(12);
       if ((val&2047)==0)
       {
-        if (!Quiet_Flag)
-          printf("invalid escape in Decode_MPEG2_Intra_Block()\n");
+        printf("invalid escape in Decode_MPEG2_Intra_Block()\n");
         Fault_Flag = 1;
         return;
       }
@@ -3475,8 +3129,7 @@ int comp;
 
     if (i>=64)
     {
-      if (!Quiet_Flag)
-        fprintf(stderr,"DCT coeff index (i) out of bounds (inter2)\n");
+      fprintf(stderr,"DCT coeff index (i) out of bounds (inter2)\n");
       Fault_Flag = 1;
       return;
     }
@@ -4156,23 +3809,6 @@ int slice_header() {
   else
     ld->intra_slice = 0;
 
-#ifdef VERBOSE
-  if (Verbose_Flag>PICTURE_LAYER)
-  {
-    printf ("slice header (byte %d)\n",(pos>>3)-4);
-    if (Verbose_Flag > SLICE_LAYER) {
-      if (ld->MPEG2_Flag && vertical_size>2800)
-        printf ("  slice_vertical_position_extension=%d\n",slice_vertical_position_extension);
-      if (ld->scalable_mode==SC_DP)
-        printf ("  priority_breakpoint=%d\n",ld->priority_breakpoint);
-      printf ("  quantizer_scale_code=%d\n",quantizer_scale_code);
-      printf ("  slice_picture_id_enable = %d\n", slice_picture_id_enable);
-      if (slice_picture_id_enable)
-        printf("  slice_picture_id = %d\n", slice_picture_id);
-    }
-  }
-#endif /* VERBOSE */
-
   return slice_vertical_position_extension;
 }
 /*}}}*/
@@ -4469,9 +4105,7 @@ int PMV[2][2][2];
   if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX)
   {
     /* only slice headers are allowed in picture_data */
-    if (!Quiet_Flag)
-      printf("start_of_slice(): Premature end of picture\n");
-
+    printf("start_of_slice(): Premature end of picture\n");
     return(-1);  /* trigger: go to next picture */
   }
 
@@ -4491,8 +4125,7 @@ int PMV[2][2][2];
     if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX)
     {
       /* only slice headers are allowed in picture_data */
-      if (!Quiet_Flag)
-        printf("DP: Premature end of picture\n");
+      printf("DP: Premature end of picture\n");
       return(-1);    /* trigger: go to next picture */
     }
 
@@ -4535,31 +4168,26 @@ int PMV[2][2][2];
 }
 /*}}}*/
 /*{{{*/
-static void frame_reorder (Bitstream_Framenum, Sequence_Framenum)
-int Bitstream_Framenum, Sequence_Framenum;
-{
+static void frame_reorder (int Bitstream_Framenum, int Sequence_Framenum) {
+
   /* tracking variables to insure proper output in spatial scalability */
   static int Oldref_progressive_frame, Newref_progressive_frame;
 
-  if (Sequence_Framenum!=0)
-  {
-    if (picture_structure==FRAME_PICTURE || Second_Field)
-    {
-      if (picture_coding_type==B_TYPE)
+  if (Sequence_Framenum!=0) {
+    if (picture_structure==FRAME_PICTURE || Second_Field) {
+      if (picture_coding_type == B_TYPE)
         Write_Frame (auxframe, Bitstream_Framenum-1);
-      else
-      {
+      else {
         Newref_progressive_frame = progressive_frame;
         progressive_frame = Oldref_progressive_frame;
         Write_Frame (forward_reference_frame, Bitstream_Framenum-1);
         Oldref_progressive_frame = progressive_frame = Newref_progressive_frame;
+        }
       }
     }
-  }
   else
     Oldref_progressive_frame = progressive_frame;
-
-}
+  }
 /*}}}*/
 /*{{{*/
 /* ISO/IEC 13818-2 section 7.6 */
@@ -4928,8 +4556,7 @@ resync: /* if Fault_Flag: resynchronize to next next_start_code */
     if (MBA>=MBAmax)
     {
       /* MBAinc points beyond picture dimensions */
-      if (!Quiet_Flag)
-        printf("Too many macroblocks in picture\n");
+      printf("Too many macroblocks in picture\n");
       return(-1);
     }
 
@@ -5010,8 +4637,7 @@ static void Decode_SNR_Macroblock (SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
 
       if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX) {
         /* only slice headers are allowed in picture_data */
-        if (!Quiet_Flag)
-          printf("SNR: Premature end of picture\n");
+        printf("SNR: Premature end of picture\n");
         return;
       }
 
@@ -5031,8 +4657,7 @@ static void Decode_SNR_Macroblock (SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
     else /* not next_start_code */
     {
       if (*SNRMBA>=MBAmax) {
-        if (!Quiet_Flag)
-          printf("Too many macroblocks in picture\n");
+        printf("Too many macroblocks in picture\n");
         return;
       }
 
@@ -5043,8 +4668,7 @@ static void Decode_SNR_Macroblock (SNRMBA, SNRMBAinc, MBA, MBAmax, dct_type)
 
   if (*SNRMBA!=MBA) {
     /* streams out of sync */
-    if (!Quiet_Flag)
-      printf("Cant't synchronize streams\n");
+    printf("Cant't synchronize streams\n");
     return;
   }
 
@@ -5143,10 +4767,9 @@ static void Update_Picture_Buffers() {
 
   int cc;              /* color component index */
   unsigned char *tmp;  /* temporary swap pointer */
-
-  for (cc=0; cc<3; cc++) {
+  for (cc = 0; cc < 3; cc++) {
     /* B pictures do not need to be save for future reference */
-    if (picture_coding_type==B_TYPE)
+    if (picture_coding_type == B_TYPE)
       current_frame[cc] = auxframe[cc];
     else {
       /* only update at the beginning of the coded frame */
@@ -5173,82 +4796,12 @@ static void Update_Picture_Buffers() {
        one-time folding of a line offset into the pointer which stores the
        memory address of the current frame saves offsets and conditional
        branches throughout the remainder of the picture processing loop */
-    if (picture_structure==BOTTOM_FIELD)
+    if (picture_structure == BOTTOM_FIELD)
       current_frame[cc]+= (cc==0) ? Coded_Picture_Width : Chroma_Width;
     }
   }
 /*}}}*/
 
-/*{{{*/
-/* optimization: do not open the big file each time. Open once at start
-   of decoder, and close at the very last frame */
-/* Note: "big" files were used in E-mail exchanges almost exclusively by the
-   MPEG Committee's syntax validation and conformance ad-hoc groups from
-   the year 1993 until 1995 */
-static int Extract_Components (filename, frame, framenum)
-char *filename;
-unsigned char *frame[3];
-int framenum;
-{
-/*  int err = 0; */
-  FILE *fd;
-  int line;
-  int size, offset;
-
-
-  if (!(fd = fopen(filename,"rb")))
-  {
-    sprintf(Error_Text,"Couldn't open %s\n",filename);
-    return(-1);
-  }
-
-  /* compute size of each frame (in bytes) */
-  size = (Coded_Picture_Width*Coded_Picture_Height);
-
-  if(chroma_format==CHROMA444)
-    size = (size * 3);
-  else if(chroma_format==CHROMA422)
-    size = (size * 2);
-  else if(chroma_format==CHROMA420)
-    size = ((size*3)>>1);
-  else
-    printf("ERROR: chroma_format (%d) not recognized\n", chroma_format);
-
-
-  /* compute distance into "big" file */
-  offset = size*framenum;
-
-  printf("EXTRACTING: frame(%d) offset(%d), size (%d) from %s\n",
-    framenum, offset, size, filename);
-
-  /* seek to location in big file where desired frame begins */
-  /* note: this offset cannot exceed a few billion bytes due to the */
-  /*       obvious limitations of 32-bit integers */
-  fseek(fd, offset, 0);
-
-  /* Y  */
-  for (line=0; line<Coded_Picture_Height; line++)
-  {
-    fread(frame[0]+(line*Coded_Picture_Width),1,Coded_Picture_Width,fd);
-  }
-
-  /* Cb */
-  for (line=0; line<Chroma_Height; line++)
-  {
-    fread(frame[1]+(line*Chroma_Width),1,Chroma_Width,fd);
-  }
-
-  /* Cr */
-  for (line=0; line<Chroma_Height; line++)
-  {
-    fread(frame[2]+(line*Chroma_Width),1,Chroma_Width,fd);
-  }
-
-
-  fclose(fd);
-  return(0);
-}
-/*}}}*/
 /*{{{*/
 static void Copy_Frame (src, dst, width, height, parity, field_mode)
 unsigned char *src;
@@ -5344,7 +4897,7 @@ int framenum;
 /*}}}*/
 /*{{{*/
 /* Note: fields are only read to serve as the same-frame reference for a second field */
-static void Read_Frame (fname,frame,framenum)
+static void Read_Frame (fname, frame, framenum)
 char *fname;
 unsigned char *frame[];
 int framenum;
@@ -5353,52 +4906,35 @@ int framenum;
   int rerr = 0;
   int field_mode;
 
-  if(framenum<0)
-    printf("ERROR: framenum (%d) is less than zero\n", framenum);
+  if (framenum < 0)
+    printf ("ERROR: framenum (%d) is less than zero\n", framenum);
 
-  rerr = Read_Components(fname, substitute_frame, framenum);
-  if(rerr!=0)
-    printf("was unable to substitute frame\n");
+  rerr = Read_Components (fname, substitute_frame, framenum);
+  if (rerr != 0)
+    printf ("was unable to substitute frame\n");
 
   /* now copy to the appropriate buffer */
   /* first field (which we are attempting to substitute) must be
      of opposite field parity to the current one */
-  if((Second_Field)&&(picture_coding_type==P_TYPE))
-  {
+  if ((Second_Field) && (picture_coding_type == P_TYPE)) {
     parity      = (picture_structure==TOP_FIELD ? 1:0);
     field_mode  = (picture_structure==FRAME_PICTURE ? 0:1);
-  }
-  else
-  {
+    }
+  else {
     /* Like frame structued pictures, B pictures only substitute an entire frame
-       since both fields always predict from the same frame (with respect
-       to forward/backwards directions) */
+       since both fields always predict from the same frame (with respect to forward/backwards directions) */
     parity = 0;
     field_mode = 0;
+    }
+
+  Copy_Frame (substitute_frame[0], frame[0], Coded_Picture_Width, Coded_Picture_Height, parity, field_mode);
+  Copy_Frame (substitute_frame[1], frame[1], Chroma_Width, Chroma_Height, parity, field_mode);
+  Copy_Frame (substitute_frame[2], frame[2], Chroma_Width, Chroma_Height, parity, field_mode);
   }
-
-
-  Copy_Frame(substitute_frame[0], frame[0], Coded_Picture_Width,
-    Coded_Picture_Height, parity, field_mode);
-
-  Copy_Frame(substitute_frame[1], frame[1], Chroma_Width, Chroma_Height,
-    parity, field_mode);
-
-  Copy_Frame(substitute_frame[2], frame[2], Chroma_Width, Chroma_Height,
-    parity, field_mode);
-
-#ifdef VERBOSE
-  if(Verbose_Flag > NO_LAYER)
-    printf("substituted %s %d\n",
-      (field_mode ? (parity?"bottom field":"bottom field"):"frame"), framenum);
-#endif
-}
 /*}}}*/
 /*{{{*/
-void Substitute_Frame_Buffer (bitstream_framenum, sequence_framenum)
-int bitstream_framenum;
-int sequence_framenum;
-{
+void Substitute_Frame_Buffer (int bitstream_framenum, int sequence_framenum) {
+
   /* static tracking variables */
   static int previous_temporal_reference;
   static int previous_bitstream_framenum;
@@ -5409,64 +4945,52 @@ int sequence_framenum;
 
   /* local temporary variables */
   int substitute_display_framenum;
-
-
-  printf("SUB: seq fn(%d) bitfn(%d) tempref(%d) picstr(%d) type(%d)\n",
-    sequence_framenum, bitstream_framenum, temporal_reference,
-    picture_structure, picture_coding_type);
+  printf ("SUB: seq fn(%d) bitfn(%d) tempref(%d) picstr(%d) type(%d)\n",
+    sequence_framenum, bitstream_framenum, temporal_reference, picture_structure, picture_coding_type);
 
   /* we don't substitute at the first picture of a sequence */
-  if((sequence_framenum!=0)||(Second_Field)) {
+  if ((sequence_framenum != 0) || (Second_Field)) {
     /* only at the start of the frame */
     if ((picture_structure==FRAME_PICTURE)||(!Second_Field)) {
-      if(picture_coding_type==P_TYPE) {
+      if (picture_coding_type==P_TYPE) {
         /* the most recently decoded reference frame needs substituting */
         substitute_display_framenum = bitstream_framenum - 1;
-
-        Read_Frame(Substitute_Picture_Filename, forward_reference_frame,
-          substitute_display_framenum);
+        Read_Frame(Substitute_Picture_Filename, forward_reference_frame, substitute_display_framenum);
       }
-      /* only the first B frame in a consequitve set of B pictures
-         loads a substitute backward_reference_frame since all subsequent
-         B frames predict from the same reference pictures */
+      // only the first B frame in a consequitve set of B pictures loads a substitute backward_reference_frame
+      // since all subsequent B frames predict from the same reference pictures */
       else if((picture_coding_type==B_TYPE)&&(bgate!=1)) {
-        substitute_display_framenum =
-          (previous_temporal_reference - temporal_reference)
-            + bitstream_framenum - 1;
-
-        Read_Frame(Substitute_Picture_Filename, backward_reference_frame,
-          substitute_display_framenum);
-      }
-    } /* P fields can predict from the two most recently decoded fields, even
-         from the first field of the same frame being decoded */
-    else if(Second_Field && (picture_coding_type==P_TYPE)) {
+        substitute_display_framenum = (previous_temporal_reference - temporal_reference) + bitstream_framenum - 1;
+        Read_Frame(Substitute_Picture_Filename, backward_reference_frame, substitute_display_framenum);
+        }
+      } /* P fields can predict from the two most recently decoded fields, even from the first field of the same frame being decoded */
+    else if (Second_Field && (picture_coding_type==P_TYPE)) {
       /* our favourite case: the IP field picture pair */
-      if((previous_picture_coding_type==I_TYPE)&&(picture_coding_type==P_TYPE))
+      if ((previous_picture_coding_type == I_TYPE) && (picture_coding_type == P_TYPE))
         substitute_display_framenum = bitstream_framenum;
       else /* our more generic P field picture pair */
         substitute_display_framenum = (temporal_reference - previous_anchor_temporal_reference) + bitstream_framenum - 1;
 
       Read_Frame(Substitute_Picture_Filename, current_frame, substitute_display_framenum);
       }
-    else if((picture_coding_type!=B_TYPE)||(picture_coding_type!=D_TYPE))
+    else if ((picture_coding_type!=B_TYPE)||(picture_coding_type!=D_TYPE))
       printf("NO SUBS FOR THIS PICTURE\n");
     }
 
-
   /* set b gate so we don't redundantly load next time around */
-  if(picture_coding_type==B_TYPE)
+  if (picture_coding_type == B_TYPE)
     bgate = 1;
   else
     bgate = 0;
 
   /* update general tracking variables */
-  if((picture_structure==FRAME_PICTURE)||(!Second_Field)) {
+  if ((picture_structure==FRAME_PICTURE)||(!Second_Field)) {
     previous_temporal_reference  = temporal_reference;
     previous_bitstream_framenum  = bitstream_framenum;
     }
 
   /* update reference frame tracking variables */
-  if((picture_coding_type!=B_TYPE) && ((picture_structure==FRAME_PICTURE)||Second_Field)) {
+  if ((picture_coding_type!=B_TYPE) && ((picture_structure==FRAME_PICTURE)||Second_Field)) {
     previous_anchor_temporal_reference  = temporal_reference;
     previous_anchor_bitstream_framenum  = bitstream_framenum;
     }
@@ -5486,12 +5010,9 @@ static void Read_Lower_Layer_Component_Framewise (comp,lw,lh)
 /*  char *ext = {".Y",".U",".V"}; */
   int i,j;
 
-  sprintf (fname,Lower_Layer_Picture_Filename, True_Framenum);
+  sprintf (fname, Lower_Layer_Picture_Filename, True_Framenum);
   strcat (fname,ext[comp]);
-#ifdef VERBOSE
-  if (Verbose_Flag>1)
-    printf("reading %s\n",fname);
-#endif VERBOSE
+
   fd=fopen(fname,"rb");
   if (fd==NULL) exit(-1);
   for (j=0; j<lh; j++) {
@@ -5519,10 +5040,7 @@ static void Read_Lower_Layer_Component_Fieldwise (comp,lw,lh)
 
   sprintf (fname, Lower_Layer_Picture_Filename, True_Framenum, lower_layer_progressive_frame ? 'f':'a');
   strcat (fname, ext[comp]);
-#ifdef VERBOSE
-  if (Verbose_Flag>1)
-    printf("reading %s\n",fname);
-#endif VERBOSE
+
   fd=fopen(fname,"rb");
   if (fd==NULL) exit(-1);
   for (j=0; j<lh; j+=lower_layer_progressive_frame?1:2)
@@ -5533,10 +5051,7 @@ static void Read_Lower_Layer_Component_Fieldwise (comp,lw,lh)
   if (! lower_layer_progressive_frame) {
     sprintf (fname, Lower_Layer_Picture_Filename, True_Framenum,'b');
     strcat (fname, ext[comp]);
-#ifdef VERBOSE
-    if (Verbose_Flag > 1)
-      printf ("reading %s\n",fname);
-#endif VERBOSE
+
     fd = fopen (fname, "rb");
     if (fd == NULL)
       exit(-1);
@@ -5786,14 +5301,14 @@ void Decode_Picture (int bitstream_framenum, int sequence_framenum) {
     /* recover from illegal number of field pictures */
     printf ("odd number of field pictures\n");
     Second_Field = 0;
-  }
+    }
 
   /* IMPLEMENTATION: update picture buffer pointers */
   Update_Picture_Buffers();
 
   /* ISO/IEC 13818-4 section 2.4.5.4 "frame buffer intercept method" */
   /* (section number based on November 1995 (Dallas) draft of the conformance document) */
-  if(Ersatz_Flag)
+  if (Ersatz_Flag)
     Substitute_Frame_Buffer (bitstream_framenum, sequence_framenum);
 
   /* form spatial scalable picture */
@@ -5821,27 +5336,16 @@ void Output_Last_Frame_of_Sequence (int Framenum) {
     Write_Frame (backward_reference_frame,Framenum-1);
   }
 /*}}}*/
+
 /*{{{*/
-static void Deinitialize_Sequence() {
+static int Headers() {
 
-  int i;
+  int ret;
+  ld = &base;
 
-  /* clear flags */
-  base.MPEG2_Flag=0;
-
-  for (i=0;i<3;i++) {
-    free(backward_reference_frame[i]);
-    free(forward_reference_frame[i]);
-    free(auxframe[i]);
-
-    if (base.scalable_mode==SC_SPAT) {
-      free(llframe0[i]);
-      free(llframe1[i]);
-      }
-    }
-
-  if (base.scalable_mode==SC_SPAT)
-    free (lltmp);
+  /* return when end of sequence (0) or picture header has been parsed (1) */
+  ret = Get_Hdr();
+  return ret;
   }
 /*}}}*/
 /*{{{*/
@@ -5910,32 +5414,39 @@ static void Initialize_Sequence() {
     }
   }
 /*}}}*/
-
 /*{{{*/
-static int Headers() {
+static void Deinitialize_Sequence() {
 
-  int ret;
-  ld = &base;
+  int i;
 
-  /* return when end of sequence (0) or picture header has been parsed (1) */
-  ret = Get_Hdr();
-  return ret;
+  /* clear flags */
+  base.MPEG2_Flag=0;
+
+  for (i=0;i<3;i++) {
+    free(backward_reference_frame[i]);
+    free(forward_reference_frame[i]);
+    free(auxframe[i]);
+
+    if (base.scalable_mode==SC_SPAT) {
+      free(llframe0[i]);
+      free(llframe1[i]);
+      }
+    }
+
+  if (base.scalable_mode==SC_SPAT)
+    free (lltmp);
   }
 /*}}}*/
 /*{{{*/
 static int video_sequence (int* Bitstream_Framenumber) {
 
-  int Bitstream_Framenum;
-  int Sequence_Framenum;
-  int Return_Value;
-
-  Bitstream_Framenum = *Bitstream_Framenumber;
-  Sequence_Framenum = 0;
+  int Bitstream_Framenum = *Bitstream_Framenumber;
+  int Sequence_Framenum = 0;
 
   Initialize_Sequence();
 
   /* decode picture whose header has already been parsed in Decode_Bitstream() */
-  Decode_Picture(Bitstream_Framenum, Sequence_Framenum);
+  Decode_Picture (Bitstream_Framenum, Sequence_Framenum);
 
   /* update picture numbers */
   if (!Second_Field) {
@@ -5944,6 +5455,7 @@ static int video_sequence (int* Bitstream_Framenumber) {
     }
 
   /* loop through the rest of the pictures in the sequence */
+  int Return_Value;
   while ((Return_Value = Headers())) {
     Decode_Picture (Bitstream_Framenum, Sequence_Framenum);
     if (!Second_Field) {
@@ -5963,91 +5475,49 @@ static int video_sequence (int* Bitstream_Framenumber) {
   }
 /*}}}*/
 /*{{{*/
-static int Decode_Bitstream() {
-
-  int ret;
-  int Bitstream_Framenum;
-
-  Bitstream_Framenum = 0;
-
-  for (;;) {
-    ret = Headers();
-    if (ret==1)
-      ret = video_sequence (&Bitstream_Framenum);
-    else
-      return(ret);
-    }
-  }
-/*}}}*/
-/*{{{*/
 static void Initialize_Decoder() {
-
-  int i;
 
   /* Clip table */
   if (!(Clip = (unsigned char *)malloc(1024)))
     Error ("Clip[] malloc failed\n");
 
   Clip += 384;
-  for (i=-384; i<640; i++)
+  for (int i=-384; i<640; i++)
     Clip[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
 
   Initialize_Fast_IDCT();
   }
 /*}}}*/
-
 /*{{{*/
-static void Clear_Options()
-{
-  Verbose_Flag = 0;
-  Spatial_Flag = 0;
-  Lower_Layer_Picture_Filename = " ";
-  Trace_Flag = 0;
-  Quiet_Flag = 0;
-  Ersatz_Flag = 0;
-  Substitute_Picture_Filename  = " ";
-  Enhancement_Layer_Bitstream_Filename = " ";
-  Stats_Flag  = 0;
-  User_Data_Flag = 0;
-}
+static int Decode_Bitstream() {
+
+  int Bitstream_Framenum = 0;
+  for (;;) {
+    int ret = Headers();
+    if (ret == 1)
+      ret = video_sequence (&Bitstream_Framenum);
+    else
+      return (ret);
+    }
+  }
 /*}}}*/
+
 /*{{{*/
 int main (int argc, char* argv[]) {
 
-  int ret, code;
-  Clear_Options();
+  Lower_Layer_Picture_Filename = " ";
+  Substitute_Picture_Filename  = " ";
+  Enhancement_Layer_Bitstream_Filename = " ";
 
   ld = &base;
   base.Infile = open (argv[1], O_RDONLY | O_BINARY);
-  if (base.Infile != 0) {
-    Initialize_Buffer();
-    next_start_code();
-    code = Show_Bits(32);
-    switch(code) {
-      case SEQUENCE_HEADER_CODE:
-        break;
-      case PACK_START_CODE:
-        System_Stream_Flag = 1;
-      case VIDEO_ELEMENTARY_STREAM:
-        System_Stream_Flag = 1;
-        break;
-      default:
-        sprintf(Error_Text,"Unable to recognize stream type\n");
-        Error (Error_Text);
-        break;
-        }
 
-    lseek (base.Infile, 0l, 0);
-    Initialize_Buffer();
-    }
-
-  if (base.Infile != 0)
-    lseek (base.Infile, 0l, 0);
-
+  System_Stream_Flag = 1;
   Initialize_Buffer();
   Initialize_Decoder();
-  ret = Decode_Bitstream();
+  int ret = Decode_Bitstream();
   close (base.Infile);
+
   return 0;
   }
 /*}}}*/

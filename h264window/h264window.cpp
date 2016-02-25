@@ -4,6 +4,8 @@
 
 #include "../common/cD2dWindow.h"
 
+#include "../common/cMpeg2dec.h"
+
 #include "ldecod.h"
 
 #include "codec_def.h"
@@ -15,7 +17,7 @@
 #define maxFrame 30000
 static char filename[100];
 
-class cAppWindow : public cD2dWindow {
+class cAppWindow : public cD2dWindow, public cMpeg2dec {
 public:
   //{{{
   //{{{
@@ -33,12 +35,20 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    std::thread ([=]() { playerReference264(); }).detach();
+    std::thread ([=]() { playerMpeg2(); }).detach();
+    //std::thread ([=]() { playerReference264(); }).detach();
     //std::thread ([=]() { playerOpenH264(); }).detach();
 
     // loop in windows message pump till quit
     messagePump();
     };
+  //}}}
+
+  //{{{
+  void Write_Frame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
+    Sleep (40);
+    makeVidFrame (frame, src[0], src[1], src[2], width, height, width, chromaWidth);
+    }
   //}}}
 
 protected:
@@ -139,7 +149,8 @@ private:
     //if (width % 32)
     //  pitch = ((width + 31) / 32) * 32;
 
-    getWicImagingFactory()->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrames[frameIndex]);
+    getWicImagingFactory()->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand,
+                                          &vidFrames[frameIndex]);
 
     // lock vidFrame wicBitmap
     WICRect wicRect = { 0, 0, pitch, height };
@@ -280,6 +291,13 @@ private:
     delete[] pBuf;
     pDecoder->Uninitialize();
     WelsDestroyDecoder (pDecoder);
+    }
+  //}}}
+  //{{{
+  void playerMpeg2() {
+
+    Initialize_Buffer (filename);
+    Decode_Bitstream();
     }
   //}}}
 

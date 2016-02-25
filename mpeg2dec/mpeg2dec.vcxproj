@@ -19,7 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="mpeg2dec.c" />
+    <ClCompile Include="mpeg2dec.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\common\cMpeg2dec.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{83FD11DB-0A56-4B81-AA00-947845813482}</ProjectGuid>
