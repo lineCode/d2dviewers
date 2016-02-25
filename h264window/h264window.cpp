@@ -46,6 +46,7 @@ public:
 
   //{{{
   void Write_Frame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
+
     Sleep (40);
     makeVidFrame (frame, src[0], src[1], src[2], width, height, width, chromaWidth);
     }
@@ -296,8 +297,8 @@ private:
   //{{{
   void playerMpeg2() {
 
-    Initialize_Buffer (filename);
-    Decode_Bitstream();
+    initBitstream (filename);
+    decodeBitstream();
     }
   //}}}
 
