@@ -18,20 +18,19 @@
 //}}}
 
 #define maxFrame 10000
-static char filename[100];
 
 class cAppWindow : public cD2dWindow, public cMpeg2dec {
 public:
   cAppWindow() {}
   ~cAppWindow() {}
   //{{{
-  void run (wchar_t* title, int width, int height) {
+  void run (wchar_t* title, int32_t width, int32_t height, wchar_t* wFilename, char* filename) {
 
     // init window
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    std::thread ([=]() { playerMpeg2(); }).detach();
+    std::thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
     //std::thread ([=]() { playerReference264(); }).detach();
     //std::thread ([=]() { playerOpenH264(); }).detach();
 
@@ -41,9 +40,9 @@ public:
   //}}}
 
   //{{{
-  void writeFrame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
+  void writeFrame (unsigned char* src[], int32_t frame, bool progressive, int32_t width, int32_t height, int32_t chromaWidth) {
 
-    int linesize[2];
+    int32_t linesize[2];
     linesize[0] = width;
     linesize[1] = chromaWidth;
 
@@ -175,7 +174,7 @@ private:
     }
   //}}}
   //{{{
-  void playerReference264() {
+  void playerReference264 (char* filename) {
 
     OpenDecoder (filename);
 
@@ -197,7 +196,7 @@ private:
     }
   //}}}
   //{{{
-  void playerOpenH264() {
+  void playerOpenH264 (char* filename) {
 
     //{{{  init decoder
     ISVCDecoder* pDecoder = NULL;
@@ -280,10 +279,20 @@ private:
     }
   //}}}
   //{{{
-  void playerMpeg2() {
+  void playerMpeg2 (wchar_t* wFilename,char* filename) {
 
-    initBitstream (filename);
-    decodeBitstream();
+    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+      return;
+
+    int mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    decode (fileBuffer, mFileBytes);
+
+    UnmapViewOfFile(fileBuffer);
+    CloseHandle(fileHandle);
     }
   //}}}
 
@@ -296,6 +305,7 @@ private:
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
+  char filename[100];
   strcpy (filename, "C:\\Users\\colin\\Desktop\\d2dviewers\\test.264");
   if (argv[1])
     std::wcstombs (filename, argv[1], wcslen(argv[1])+1);
@@ -303,6 +313,6 @@ int wmain (int argc, wchar_t* argv[]) {
   printf ("Player %d %s /n", argc, filename);
 
   cAppWindow appWindow;
-  appWindow.run (L"appWindow", 1280, 720);
+  appWindow.run (L"appWindow", 1280, 720, argv[1], filename);
   }
 //}}}
