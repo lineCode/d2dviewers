@@ -550,7 +550,7 @@ public:
         printf ("last frame incomplete, not stored\n");
       else
         writeFrame (backward_reference_frame, bitFrame-1,
-                    progressive_sequence || progressive_frame, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
+                    progressive_frame != 0, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
       }
 
     //{{{  deallocate buffers
@@ -1244,7 +1244,7 @@ private:
     constrained_parameters_flag = getBits (1);
 
     mb_width = (horizontal_size + 15) / 16;
-    mb_height = (!progressive_sequence) ? 2 * ((vertical_size + 31) / 32) : (vertical_size + 15) / 16;
+    mb_height = 2 * ((vertical_size + 31) / 32);
     Coded_Picture_Width = 16 * mb_width;
     Coded_Picture_Height = 16 * mb_height;
     Chroma_Width = Coded_Picture_Width >> 1;
@@ -1285,7 +1285,7 @@ private:
     /* unless later overwritten by picture_spatial_scalable_extension() */
     temporal_reference = getBits (10);
     picture_coding_type = getBits (3);
-    vbv_delay = getBits (16);
+    int vbv_delay = getBits (16);
 
     if (picture_coding_type == P_TYPE || picture_coding_type == B_TYPE) {
       full_pel_forward_vector = getBits(1);
@@ -1772,24 +1772,26 @@ private:
         if ((motion_type == MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
           //{{{  frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
           if (stwtop < 2)
-            formPrediction(forward_reference_frame,0,current_frame,0,
-              Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][0][0],PMV[0][0][1],stwtop);
+            formPrediction (forward_reference_frame, 0, current_frame, 0,
+              Coded_Picture_Width, Coded_Picture_Width << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
 
           if (stwbot < 2)
-            formPrediction(forward_reference_frame,1,current_frame,1,
-              Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][0][0],PMV[0][0][1],stwbot);
+            formPrediction (forward_reference_frame, 1, current_frame, 1,
+              Coded_Picture_Width, Coded_Picture_Width << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
           }
           //}}}
         else if (motion_type == MC_FIELD) {
           //{{{  top field prediction
           if (stwtop < 2)
-            formPrediction(forward_reference_frame,motion_vertical_field_select[0][0],
-              current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[0][0][0],PMV[0][0][1]>>1,stwtop);
+            formPrediction (forward_reference_frame,motion_vertical_field_select[0][0],
+                            current_frame, 0, Coded_Picture_Width << 1, Coded_Picture_Width << 1, 16, 8,
+                            bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
 
           /* bottom field prediction */
           if (stwbot < 2)
-            formPrediction(forward_reference_frame,motion_vertical_field_select[1][0],
-              current_frame,1,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[1][0][0],PMV[1][0][1]>>1,stwbot);
+            formPrediction (forward_reference_frame, motion_vertical_field_select[1][0],
+                            current_frame, 1, Coded_Picture_Width << 1, Coded_Picture_Width << 1, 16, 8, 
+                            bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
           }
           //}}}
         else if (motion_type == MC_DMV) {
@@ -1798,22 +1800,26 @@ private:
 
           if (stwtop < 2) {
             /* predict top field from top field */
-            formPrediction(forward_reference_frame,0,current_frame,0,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
+            formPrediction (forward_reference_frame, 0, current_frame, 0,
+                            Coded_Picture_Width<<1, Coded_Picture_Width<<1,16,8,
+                            bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
 
             /* predict and add to top field from bottom field */
-            formPrediction(forward_reference_frame,1,current_frame,0,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, DMV[0][0],DMV[0][1],1);
+            formPrediction (forward_reference_frame,1,current_frame,0,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
+                            bx,by>>1, DMV[0][0],DMV[0][1],1);
             }
 
           if (stwbot<2) {
             /* predict bottom field from bottom field */
-            formPrediction(forward_reference_frame,1,current_frame,1,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
+            formPrediction (forward_reference_frame,1,current_frame,1,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
+                            bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
 
             /* predict and add to bottom field from top field */
-            formPrediction(forward_reference_frame,0,current_frame,1,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by>>1, DMV[1][0],DMV[1][1],1);
+            formPrediction (forward_reference_frame,0,current_frame,1,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
+                            bx,by>>1, DMV[1][0],DMV[1][1],1);
             }
           }
           //}}}
@@ -1833,16 +1839,16 @@ private:
         if ((motion_type==MC_FIELD) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
           //{{{  field-based prediction */
           if (stwtop<2)
-            formPrediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by,
-              PMV[0][0][0],PMV[0][0][1],stwtop);
+            formPrediction (predframe,motion_vertical_field_select[0][0],current_frame,0,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,
+                            bx,by, PMV[0][0][0],PMV[0][0][1],stwtop);
           }
           //}}}
         else if (motion_type==MC_16X8) {
           if (stwtop<2) {
-            formPrediction(predframe,motion_vertical_field_select[0][0],current_frame,0,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by,
-              PMV[0][0][0],PMV[0][0][1],stwtop);
+            formPrediction (predframe,motion_vertical_field_select[0][0],current_frame,0,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
+                            bx,by, PMV[0][0][0],PMV[0][0][1],stwtop);
 
             /* determine which frame to use for lower half prediction */
             if ((picture_coding_type==P_TYPE) && Second_Field && (currentfield!=motion_vertical_field_select[1][0]))
@@ -1850,8 +1856,9 @@ private:
             else
               predframe = forward_reference_frame; /* previous frame */
 
-            formPrediction(predframe,motion_vertical_field_select[1][0],current_frame,0,
-              Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,bx,by+8, PMV[1][0][0],PMV[1][0][1],stwtop);
+            formPrediction (predframe,motion_vertical_field_select[1][0],current_frame,0,
+                            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8,
+                            bx,by+8, PMV[1][0][0],PMV[1][0][1],stwtop);
             }
           }
         else if (motion_type==MC_DMV) {
@@ -1865,12 +1872,14 @@ private:
           dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]);
 
           /* predict from field of same parity */
-          formPrediction(forward_reference_frame,currentfield,current_frame,0,
-            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by, PMV[0][0][0],PMV[0][0][1],0);
+          formPrediction (forward_reference_frame,currentfield,current_frame,0,
+                          Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,
+                          bx,by, PMV[0][0][0],PMV[0][0][1],0);
 
           /* predict from field of opposite parity */
-          formPrediction(predframe,!currentfield,current_frame,0,
-            Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,bx,by, DMV[0][0],DMV[0][1],1);
+          formPrediction (predframe,!currentfield,current_frame,0,
+                          Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16,
+                          bx,by, DMV[0][0],DMV[0][1],1);
           }
           //}}}
         else
@@ -1886,40 +1895,47 @@ private:
         if (motion_type == MC_FRAME) {
           //{{{  frame-based prediction
           if (stwtop < 2)
-            formPrediction(backward_reference_frame,0,current_frame,0,
-              Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
+            formPrediction (backward_reference_frame,0,current_frame,0,
+                            Coded_Picture_Width,Coded_Picture_Width<<1,16,8,
+                            bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
 
           if (stwbot < 2)
-            formPrediction(backward_reference_frame,1,current_frame,1,
-              Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
+            formPrediction (backward_reference_frame,1,current_frame,1,
+                            Coded_Picture_Width,Coded_Picture_Width<<1,16,8,
+                            bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
           }
           //}}}
         else {
           //{{{  top field prediction
-          if (stwtop<2)
-            formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
-              current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
+          if (stwtop < 2)
+            formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
+                            current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, 
+                            bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
           //}}}
           //{{{  bottom field prediction
-          if (stwbot<2)
-            formPrediction(backward_reference_frame,motion_vertical_field_select[1][1],
-              current_frame,1,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
+          if (stwbot < 2)
+            formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
+                            current_frame,1,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, 
+                            bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
           //}}}
           }
         }
       else {
         //{{{  field picture
-        if (motion_type==MC_FIELD) {
+        if (motion_type == MC_FIELD) {
           /* field-based prediction */
-          formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
-            current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16, bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
+          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
+                         current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,16, 
+                         bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
           }
-        else if (motion_type==MC_16X8) {
-          formPrediction(backward_reference_frame,motion_vertical_field_select[0][1],
-            current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
+        else if (motion_type == MC_16X8) {
+          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
+                         current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, 
+                         bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
 
-          formPrediction(backward_reference_frame,motion_vertical_field_select[1][1],
-            current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, bx,by+8,PMV[1][1][0],PMV[1][1][1],stwtop);
+          formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
+                          current_frame,0,Coded_Picture_Width<<1,Coded_Picture_Width<<1,16,8, 
+                          bx,by+8,PMV[1][1][0],PMV[1][1][1],stwtop);
           }
         else
           /* invalid motion_type */
@@ -2348,12 +2364,12 @@ private:
       if (picture_structure == FRAME_PICTURE || Second_Field) {
         if (picture_coding_type == B_TYPE)
           writeFrame (auxframe, bitFrame-1,
-                      progressive_sequence || progressive_frame, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
+                      progressive_frame != 0, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
         else {
           Newref_progressive_frame = progressive_frame;
           progressive_frame = Oldref_progressive_frame;
           writeFrame (forward_reference_frame, bitFrame-1,
-                      progressive_sequence || progressive_frame, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
+                      progressive_frame != 0, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
           Oldref_progressive_frame = progressive_frame = Newref_progressive_frame;
           }
         }
@@ -2405,7 +2421,6 @@ private:
 
   int Fault_Flag = 0;
   int Second_Field = 0;
-  int scalable_mode = 0;
   int q_scale_type = 0;
   int pict_scal = 0;
   int alternate_scan = 0;
@@ -2415,7 +2430,7 @@ private:
   //{{{  ISO/IEC 13818-2 section 6.2.3: picture_header()
   int temporal_reference;
   int picture_coding_type;
-  int vbv_delay;
+
   int full_pel_forward_vector;
   int forward_f_code;
   int full_pel_backward_vector;
@@ -2427,14 +2442,6 @@ private:
   int bit_rate_value;
   int vbv_buffer_size;
   int constrained_parameters_flag;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.3: sequence_extension()
-  int profile_and_level_indication;
-  int progressive_sequence;
-  int chroma_format;
-  int low_delay;
-  int frame_rate_extension_n;
-  int frame_rate_extension_d;
   //}}}
   //{{{  ISO/IEC 13818-2 section 6.2.3.1: picture_coding_extension() header
   int f_code[2][2];
