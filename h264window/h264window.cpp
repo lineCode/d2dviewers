@@ -6,6 +6,9 @@
 
 #include "../common/cMpeg2dec.h"
 
+#include "../common/cYuvFrame.h"
+#include "../common/yuvrgb_sse2.h"
+
 #include "ldecod.h"
 
 #include "codec_def.h"
@@ -14,20 +17,13 @@
 #pragma comment(lib,"welsdec.lib")
 //}}}
 
-#define maxFrame 30000
+#define maxFrame 10000
 static char filename[100];
 
 class cAppWindow : public cD2dWindow, public cMpeg2dec {
 public:
-  //{{{
-  //{{{
-  cAppWindow() :  mD2D1Bitmap(nullptr), mCurVidFrame(0) {
-    for (auto i = 0; i < maxFrame; i++)
-      vidFrames[i] = nullptr;
-    }
-  //}}}
+  cAppWindow() {}
   ~cAppWindow() {}
-  //}}}
   //{{{
   void run (wchar_t* title, int width, int height) {
 
@@ -46,7 +42,13 @@ public:
 
   //{{{
   void writeFrame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
-    makeVidFrame (frame+1, src[0], src[1], src[2], width, height, width, chromaWidth);
+
+    int linesize[2];
+    linesize[0] = width;
+    linesize[1] = chromaWidth;
+
+    mYuvFrames [frame+1].set (0, src, linesize,  width, height, 0, 0);
+    mCurVidFrame++;
     }
   //}}}
 
@@ -100,21 +102,9 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    auto vidFrame = vidFrames[mCurVidFrame];
-    if (vidFrame) {
-      // convert to mD2D1Bitmap 32bit BGRA
-      IWICFormatConverter* wicFormatConverter;
-      getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
-      wicFormatConverter->Initialize (vidFrame, GUID_WICPixelFormat32bppPBGRA,
-                                      WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
-      if (mD2D1Bitmap)
-        mD2D1Bitmap->Release();
-
-      if (getDeviceContext())
-        getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
-
-      dc->DrawBitmap (mD2D1Bitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
-      }
+    makeBitmap (&mYuvFrames[mCurVidFrame]);
+    if (mBitmap)
+      dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
 
@@ -129,6 +119,50 @@ protected:
 
 private:
   //{{{
+  void makeBitmap (cYuvFrame* yuvFrame) {
+
+    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
+    if (yuvFrame) {
+      if (mBitmap)  {
+        auto pixelSize = mBitmap->GetPixelSize();
+        if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
+          mBitmap->Release();
+          mBitmap = nullptr;
+          }
+        }
+      if (!mBitmap) // create bitmap
+        getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
+
+      // allocate 16 byte aligned bgraBuf
+      auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
+      auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
+
+      // convert yuv420 -> bitmap bgra
+      auto yPtr = yuvFrame->mYbuf;
+      auto uPtr = yuvFrame->mUbuf;
+      auto vPtr = yuvFrame->mVbuf;
+      for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
+        yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
+        yPtr += yuvFrame->mYStride;
+
+        yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
+        yPtr += yuvFrame->mYStride;
+        uPtr += yuvFrame->mUVStride;
+        vPtr += yuvFrame->mUVStride;
+
+        mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
+        }
+
+      free (bgraBufUnaligned);
+      }
+    else if (mBitmap) {
+      mBitmap->Release();
+      mBitmap = nullptr;
+      }
+    }
+  //}}}
+  //{{{
   uint8_t limit (double v) {
 
     if (v <= 0.0)
@@ -138,53 +172,6 @@ private:
       return 255;
 
     return (uint8_t)v;
-    }
-  //}}}
-  //{{{
-  void makeVidFrame (int frameIndex, BYTE* ys, BYTE* us, BYTE* vs, int width, int height, int stridey, int strideuv) {
-
-    // create vidFrame wicBitmap 24bit BGR
-    int pitch = width;
-    //if (width % 32)
-    //  pitch = ((width + 31) / 32) * 32;
-
-    getWicImagingFactory()->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand,
-                                          &vidFrames[frameIndex]);
-
-    // lock vidFrame wicBitmap
-    WICRect wicRect = { 0, 0, pitch, height };
-    IWICBitmapLock* wicBitmapLock = NULL;
-    vidFrames[frameIndex]->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
-
-    // get vidFrame wicBitmap buffer
-    UINT bufferLen = 0;
-    BYTE* buffer = NULL;
-    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
-
-    // yuv
-    for (auto y = 0; y < height; y++) {
-      BYTE* yptr = ys + (y*stridey);
-      BYTE* uptr = us + ((y/2)*strideuv);
-      BYTE* vptr = vs + ((y/2)*strideuv);
-
-      for (auto x = 0; x < width/2; x++) {
-        int y1 = *yptr++;
-        int y2 = *yptr++;
-        int u = (*uptr++) - 128;
-        int v = (*vptr++) - 128;
-
-        *buffer++ = limit (y1 + (1.8556 * u));
-        *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
-        *buffer++ = limit (y1 + (1.5748 * v));
-
-        *buffer++ = limit (y2 + (1.8556 * u));
-        *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
-        *buffer++ = limit (y2 + (1.5748 * v));
-        }
-      }
-    // release vidFrame wicBitmap buffer
-    wicBitmapLock->Release();
-    mCurVidFrame = frameIndex;
     }
   //}}}
   //{{{
@@ -200,7 +187,7 @@ private:
       int iHeight = pDecPicList->iHeight;
       int iStride = pDecPicList->iYBufStride;
       if (iWidth && iHeight) {
-        makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight, iWidth, iWidth/2);
+        //makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight, iWidth, iWidth/2);
         changed();
         }
       } while (iRet == DEC_EOS || iRet == DEC_SUCCEED);
@@ -279,8 +266,8 @@ private:
       pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
       if (sDstBufInfo.iBufferStatus == 1) {
-        makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
-                      sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+        //makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
+        //              sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
         iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
         iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
         }
@@ -300,10 +287,10 @@ private:
     }
   //}}}
 
-  int mCurVidFrame;
-  ID2D1Bitmap* mD2D1Bitmap;
-  IWICBitmap* vidFrames[maxFrame];
+  int mCurVidFrame = 0;
+  cYuvFrame mYuvFrames[maxFrame];
   DecodedPicList* pDecPicList;
+  ID2D1Bitmap* mBitmap = nullptr;
   };
 
 //{{{

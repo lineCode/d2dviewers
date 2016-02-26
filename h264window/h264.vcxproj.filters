@@ -347,4 +347,7 @@
       <Extensions>.h</Extensions>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="..\common\yuvrgb_sse2.asm" />
+  </ItemGroup>
 </Project>
