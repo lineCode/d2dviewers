@@ -648,11 +648,8 @@ DCTtab DCTtab6[16] =
 //}}}
 //}}}
 
-// tracking variables to insure proper output in spatial scalability
 static int Oldref_progressive_frame;
 static int Newref_progressive_frame;
-static int temporal_reference_wrap = 0;
-static int temporal_reference_old = 0;
 
 class cMpeg2dec {
 public:
@@ -678,8 +675,8 @@ public:
   //{{{
   void initBitstream (char* filename) {
 
-    //System_Stream_Flag = 0;
-    System_Stream_Flag = 1;
+    System_Stream_Flag = 0;
+    //System_Stream_Flag = 1;
 
     Infile = _open (filename, O_RDONLY | O_BINARY);
     Incnt = 0;
@@ -695,33 +692,38 @@ public:
   void decodeBitstream() {
 
     int Bitstream_Framenum = 0;
-    if (getHeader()) {
-      int Sequence_Framenum = 0;
-      initSequence();
+
+    printf ("waiting for SEQUENCE_HEADER_CODE\n");
+    while (getNextHeader (false) != SEQUENCE_HEADER_CODE) {}
+    initSequence();
+
+    while (getNextHeader (true) != PICTURE_START_CODE) {}
+    int Sequence_Framenum = 0;
+    decodePicture (Bitstream_Framenum, Sequence_Framenum);
+    if (!Second_Field) {
+      Bitstream_Framenum++;
+      Sequence_Framenum++;
+      }
+
+    while (true) {
+      while (getNextHeader (true) != PICTURE_START_CODE) {}
+
+      //SEQUENCE_END_CODE
       decodePicture (Bitstream_Framenum, Sequence_Framenum);
       if (!Second_Field) {
         Bitstream_Framenum++;
         Sequence_Framenum++;
         }
+      }
 
-      /* loop through the rest of the pictures in the sequence */
-      while (getHeader()) {
-        decodePicture (Bitstream_Framenum, Sequence_Framenum);
-        if (!Second_Field) {
-          Bitstream_Framenum++;
-          Sequence_Framenum++;
-          }
-        }
+    /* put last frame */
+    if (Sequence_Framenum != 0)
+      outputLastFrameOfSequence (Bitstream_Framenum);
 
-      /* put last frame */
-      if (Sequence_Framenum != 0)
-        outputLastFrameOfSequence (Bitstream_Framenum);
-
-      for (int i = 0; i < 3; i++) {
-        free (backward_reference_frame[i]);
-        free (forward_reference_frame[i]);
-        free (auxframe[i]);
-        }
+    for (int i = 0; i < 3; i++) {
+      free (backward_reference_frame[i]);
+      free (forward_reference_frame[i]);
+      free (auxframe[i]);
       }
     }
   //}}}
@@ -1120,18 +1122,21 @@ private:
   //}}}
 
   //{{{
-  /* align to start of next next_start_code */
-  void nextStartCode() {
+  unsigned int showNextStartCode() {
+  // align to start of nextStartCode  and return it, but don't consume it
 
     /* byte align */
     flushBuffer (Incnt & 7);
+
     while (showBits (24) != 0x01L)
       flushBuffer (8);
+
+    return showBits (32);
     }
   //}}}
   //{{{
-  /* decode extra bit information ISO/IEC 13818-2 section 6.2.3.4. */
   int extraBitInformation() {
+  /* decode extra bit information ISO/IEC 13818-2 section 6.2.3.4. */
 
     int Byte_Count = 0;
     while (getBits1()) {
@@ -1144,8 +1149,8 @@ private:
   //}}}
 
   //{{{
-  int getImacroblockType()
-  {
+  int getImacroblockType() {
+
     if (getBits1())
       return 1;
 
@@ -1183,7 +1188,7 @@ private:
     int code;
     if ((code = showBits(6)) >= 8) {
       code >>= 2;
-      flushBuffer(BMBtab0[code].len);
+      flushBuffer (BMBtab0[code].len);
       return BMBtab0[code].val;
       }
 
@@ -1201,107 +1206,33 @@ private:
   int getDmacroblockType() {
 
     if (!getBits1()) {
-      printf("Invalid macroblock_type code\n");
-      Fault_Flag=1;
+      printf ("Invalid macroblock_type code\n");
+      Fault_Flag = 1;
       }
 
     return 1;
     }
   //}}}
   //{{{
-  /* macroblock_type for pictures with spatial scalability */
-  int getISpatial_macroblockType() {
-
-    int code = showBits(4);
-
-    if (code == 0) {
-      printf ("Invalid macroblock_type code\n");
-      Fault_Flag = 1;
-      return 0;
-      }
-
-    flushBuffer (spIMBtab[code].len);
-    return spIMBtab[code].val;
-    }
-  //}}}
-  //{{{
-  int getPSpatial_macroblockType() {
-
-    int code = showBits(7);
-    if (code < 2) {
-      printf("Invalid macroblock_type code\n");
-      Fault_Flag = 1;
-      return 0;
-      }
-
-    if (code >= 16) {
-      code >>= 3;
-      flushBuffer(spPMBtab0[code].len);
-      return spPMBtab0[code].val;
-      }
-
-    flushBuffer(spPMBtab1[code].len);
-    return spPMBtab1[code].val;
-    }
-  //}}}
-  //{{{
-  int getBSpatial_macroblockType() {
-
-    VLCtab* p;
-    int code = showBits(9);
-    if (code >= 64)
-      p = &spBMBtab0[(code>>5)-2];
-    else if (code>=16)
-      p = &spBMBtab1[(code>>2)-4];
-    else if (code>=8)
-      p = &spBMBtab2[code-8];
-    else {
-      printf("Invalid macroblock_type code\n");
-      Fault_Flag = 1;
-      return 0;
-      }
-
-    flushBuffer(p->len);
-    return p->val;
-    }
-  //}}}
-  //{{{
-  int getSNR_macroblockType() {
-
-    int code = showBits(3);
-    if (code == 0) {
-      printf("Invalid macroblock_type code\n");
-      return 0;
-      }
-
-    flushBuffer(SNRMBtab[code].len);
-    return SNRMBtab[code].val;
-    }
-  //}}}
-  //{{{
   int getMacroBlockType() {
 
     int macroblock_type = 0;
-    if (scalable_mode == SC_SNR)
-      macroblock_type = getSNR_macroblockType();
-    else {
-      switch (picture_coding_type) {
-        case I_TYPE:
-          macroblock_type = pict_scal ? getISpatial_macroblockType() : getImacroblockType();
-          break;
-        case P_TYPE:
-          macroblock_type = pict_scal ? getPSpatial_macroblockType() : getPmacroblockType();
-          break;
-        case B_TYPE:
-          macroblock_type = pict_scal ? getBSpatial_macroblockType() : getBmacroblockType();
-          break;
-        case D_TYPE:
-          macroblock_type = getDmacroblockType();
-          break;
-        default:
-          printf("getMacroblockType(): unrecognized picture coding type\n");
-          break;
-        }
+    switch (picture_coding_type) {
+      case I_TYPE:
+        macroblock_type = getImacroblockType();
+        break;
+      case P_TYPE:
+        macroblock_type = getPmacroblockType();
+        break;
+      case B_TYPE:
+        macroblock_type = getBmacroblockType();
+        break;
+      case D_TYPE:
+        macroblock_type = getDmacroblockType();
+        break;
+      default:
+        printf("getMacroblockType(): unrecognized picture coding type\n");
+        break;
       }
 
     return macroblock_type;
@@ -1323,7 +1254,7 @@ private:
     if (code >= 24) {
       code >>= 3;
       flushBuffer (MVtab1[code].len);
-      return getBits1()?-MVtab1[code].val:MVtab1[code].val;
+      return getBits1() ? -MVtab1[code].val : MVtab1[code].val;
       }
 
     if ((code -= 12) < 0) {
@@ -1376,9 +1307,10 @@ private:
 
     int code;
     int val = 0;
+
     while ((code = showBits(11))<24) {
-      if (code!=15) /* if not macroblock_stuffing */ {
-        if (code==8) /* if macroblock_escape */ {
+      if (code != 15) /* if not macroblock_stuffing */ {
+        if (code == 8) /* if macroblock_escape */ {
           val+= 33;
           }
         else {
@@ -1387,17 +1319,17 @@ private:
           return 1;
           }
         }
-      flushBuffer(11);
+      flushBuffer (11);
       }
 
     /* macroblock_address_increment == 1 ('1' is in the MSB position of the lookahead) */
     if (code >= 1024) {
-      flushBuffer(1);
+      flushBuffer (1);
       return val + 1;
       }
 
     /* codes 00010 ... 011xx */
-    if (code>=128) {
+    if (code >= 128) {
       /* remove leading zeros */
       code >>= 6;
       flushBuffer (MBAtab1[code].len);
@@ -1411,18 +1343,15 @@ private:
     }
   //}}}
   //{{{
-  /* combined MPEG-1 and MPEG-2 stage. parse VLC and
-     perform dct_diff arithmetic.
-     MPEG-1:  ISO/IEC 11172-2 section
-     MPEG-2:  ISO/IEC 13818-2 section 7.2.1
-     Note: the arithmetic here is presented more elegantly than
-     the spec, yet the results, dct_diff, are the same. */
   int getLumaDCdctDiff() {
-
-    int size, dct_diff;
+  // combined MPEG-1 and MPEG-2 stage. parse VLC and perform dct_diff arithmetic.
+  //  MPEG-1:  ISO/IEC 11172-2 section MPEG-2:  ISO/IEC 13818-2 section 7.2.1
+  //  Note: the arithmetic here is presented more elegantly than the spec, yet the results, dct_diff, are the same. */
 
     /* decode length */
     int code = showBits(5);
+
+    int size;
     if (code < 31) {
       size = DClumtab0[code].val;
       flushBuffer (DClumtab0[code].len);
@@ -1433,6 +1362,7 @@ private:
       flushBuffer (DClumtab1[code].len);
       }
 
+    int dct_diff;
     if (size == 0)
       dct_diff = 0;
     else {
@@ -1447,9 +1377,9 @@ private:
   //{{{
   int getChromaDCdctDiff() {
 
-    int size, dct_diff;
 
     /* decode length */
+    int size;
     int code = showBits(5);
     if (code<31) {
       size = DCchromtab0[code].val;
@@ -1461,6 +1391,7 @@ private:
       flushBuffer(DCchromtab1[code].len);
       }
 
+    int dct_diff;
     if (size == 0)
       dct_diff = 0;
     else {
@@ -1475,22 +1406,21 @@ private:
   //{{{
   /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
   void macroBlockModes (int* pmacroblock_type, int* pstwtype, int* pstwclass,
-                         int* pmotion_type, int* pmotion_vector_count, int* pmv_format,
-                         int* pdmv, int* pmvscale, int* pdct_type) {
+                        int* pmotion_type, int* pmotion_vector_count, int* pmv_format,
+                        int* pdmv, int* pmvscale, int* pdct_type) {
 
-    int macroblock_type;
-    int stwtype, stwcode, stwclass;
     int motion_type = 0;
     int motion_vector_count, mv_format, dmv, mvscale;
     int dct_type;
 
     /* get macroblock_type */
-    macroblock_type = getMacroBlockType();
+    int macroblock_type = getMacroBlockType();
 
     if (Fault_Flag)
       return;
 
     /* get spatial_temporal_weight_code */
+    int stwtype, stwcode, stwclass;
     if (macroblock_type & MB_WEIGHT) {
       if (spatial_temporal_weight_code_table_index==0)
         stwtype = 4;
@@ -1503,26 +1433,26 @@ private:
       stwtype = (macroblock_type & MB_CLASS4) ? 8 : 0;
 
     /* SCALABILITY: derive spatial_temporal_weight_class (Table 7-18) */
-    stwclass = stwclass_table[stwtype];
+    stwclass = stwclass_table [stwtype];
 
     /* get frame/field motion type */
     if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD)) {
-      if (picture_structure==FRAME_PICTURE) /* frame_motion_type */
+      if (picture_structure == FRAME_PICTURE) /* frame_motion_type */
         motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
       else /* field_motion_type */
         motion_type = getBits(2);
       }
     else if ((macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
       /* concealment motion vectors */
-      motion_type = (picture_structure==FRAME_PICTURE) ? MC_FRAME : MC_FIELD;
+      motion_type = (picture_structure == FRAME_PICTURE) ? MC_FRAME : MC_FIELD;
 
     /* derive motion_vector_count, mv_format and dmv, (table 6-17, 6-18) */
-    if (picture_structure==FRAME_PICTURE) {
-      motion_vector_count = (motion_type==MC_FIELD && stwclass<2) ? 2 : 1;
-      mv_format = (motion_type==MC_FRAME) ? MV_FRAME : MV_FIELD;
+    if (picture_structure == FRAME_PICTURE) {
+      motion_vector_count = (motion_type == MC_FIELD && stwclass < 2) ? 2 : 1;
+      mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
       }
     else {
-      motion_vector_count = (motion_type==MC_16X8) ? 2 : 1;
+      motion_vector_count = (motion_type == MC_16X8) ? 2 : 1;
       mv_format = MV_FIELD;
       }
 
@@ -1562,20 +1492,19 @@ private:
     color_description = getBits(1);
 
     if (color_description) {
-      color_primaries          = getBits(8);
+      color_primaries = getBits(8);
       transfer_characteristics = getBits(8);
-      matrix_coefficients      = getBits(8);
+      matrix_coefficients = getBits(8);
       }
 
     display_horizontal_size = getBits(14);
     flushBuffer (1);
-    display_vertical_size   = getBits(14);
+    display_vertical_size = getBits(14);
     }
   //}}}
   //{{{
-  /* decode quant matrix entension */
-  /* ISO/IEC 13818-2 section 6.2.3.2 */
   void quant_matrix_extension() {
+  /* decode quant matrix entension  ISO/IEC 13818-2 section 6.2.3.2 */
 
     int i;
     int pos = Bitcnt;
@@ -1603,8 +1532,8 @@ private:
     }
   //}}}
   //{{{
-  /* decode sequence scalable extension ISO/IEC 13818-2   section 6.2.2.5 */
   void sequence_scalable_extension() {
+  /* decode sequence scalable extension ISO/IEC 13818-2   section 6.2.2.5 */
 
     int pos = Bitcnt;
 
@@ -1627,8 +1556,8 @@ private:
     }
   //}}}
   //{{{
-  /* decode picture display extension ISO/IEC 13818-2 section 6.2.3.3. */
   void picture_display_extension() {
+  /* decode picture display extension ISO/IEC 13818-2 section 6.2.3.3. */
 
     int i;
     int number_of_frame_center_offsets;
@@ -1669,8 +1598,8 @@ private:
 
   //}}}
   //{{{
-  /* decode picture coding extension */
   void picture_coding_extension() {
+  /* decode picture coding extension */
 
     int pos = Bitcnt;
 
@@ -1702,8 +1631,8 @@ private:
     }
   //}}}
   //{{{
-  /* decode picture spatial scalable extension ISO/IEC 13818-2 section 6.2.3.5. */
   void picture_spatial_scalable_extension() {
+  /* decode picture spatial scalable extension ISO/IEC 13818-2 section 6.2.3.5. */
 
     int pos = Bitcnt;
     pict_scal = 1; /* use spatial scalability in this picture */
@@ -1726,21 +1655,15 @@ private:
     }
   //}}}
   //{{{
-  /* decode picture temporal scalable extension not implemented ISO/IEC 13818-2 section 6.2.3.4. */
   void picture_temporal_scalable_extension() {
+  /* decode picture temporal scalable extension not implemented ISO/IEC 13818-2 section 6.2.3.4. */
+
     printf ("temporal scalability not supported\n");
     }
   //}}}
   //{{{
-  /* ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 */
-  void user_data() {
-    /* skip ahead to the next start code */
-    nextStartCode();
-    }
-  //}}}
-  //{{{
-  /* Copyright extension  ISO/IEC 13818-2 section 6.2.3.6. (header added in November, 1994 to the IS document) */
   void copyright_extension() {
+  /* Copyright extension  ISO/IEC 13818-2 section 6.2.3.6. (header added in November, 1994 to the IS document) */
 
     int pos = Bitcnt;
 
@@ -1761,8 +1684,8 @@ private:
   }
   //}}}
   //{{{
-  /* decode sequence extension  ISO/IEC 13818-2 section 6.2.2.3 */
   void sequence_extension() {
+  /* decode sequence extension  ISO/IEC 13818-2 section 6.2.2.3 */
 
     int horizontal_size_extension;
     int vertical_size_extension;
@@ -1813,19 +1736,17 @@ private:
     bit_rate_value += (bit_rate_extension << 18);
     bit_rate = ((double) bit_rate_value) * 400.0;
     vbv_buffer_size += (vbv_buffer_size_extension << 10);
-  }
+    }
   //}}}
   //{{{
   /* decode extension and user data  ISO/IEC 13818-2 section 6.2.2.2 */
   void extension_and_user_data() {
 
-    int code,ext_ID;
-    nextStartCode();
-
-    while ((code = showBits(32))==EXTENSION_START_CODE || code==USER_DATA_START_CODE) {
+    unsigned int code = showNextStartCode();
+    while (code == EXTENSION_START_CODE || code == USER_DATA_START_CODE) {
       if (code == EXTENSION_START_CODE) {
         flushBuffer32();
-        ext_ID = getBits(4);
+        int ext_ID = getBits (4);
         switch (ext_ID) {
         case SEQUENCE_EXTENSION_ID:
           sequence_extension();
@@ -1855,46 +1776,15 @@ private:
           copyright_extension();
           break;
        default:
-          printf ("reserved extension start code ID %d\n",ext_ID);
+          printf ("reserved extension start code ID %d\n", ext_ID);
           break;
           }
-        nextStartCode();
         }
-      else {
+      else /* userData ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 skip ahead to the next start code */
         flushBuffer32();
-        user_data();
-        }
+
+      code = showNextStartCode();
       }
-    }
-  //}}}
-  //{{{
-  /* introduced in September 1995 to assist Spatial Scalability */
-  void Update_Temporal_Reference_Tacking_Data() {
-
-    if (picture_coding_type!=B_TYPE && temporal_reference!=temporal_reference_old) {
-    /* check first field of non-B-frame */
-      if (temporal_reference_wrap) {
-       /* wrap occured at previous I- or P-frame */
-       /* now all intervening B-frames which could still have high temporal_reference values are done  */
-        Temporal_Reference_Base += 1024;
-      temporal_reference_wrap = 0;
-      }
-
-      /* distinguish from a reset */
-      if (temporal_reference<temporal_reference_old && !Temporal_Reference_GOP_Reset)
-        temporal_reference_wrap = 1;  /* we must have just passed a GOP-Header! */
-
-      temporal_reference_old = temporal_reference;
-      Temporal_Reference_GOP_Reset = 0;
-      }
-
-    True_Framenum = Temporal_Reference_Base + temporal_reference;
-
-    /* temporary wrap of TR at 1024 for M frames */
-    if (temporal_reference_wrap && temporal_reference <= temporal_reference_old)
-      True_Framenum += 1024;
-
-    True_Framenum_max = (True_Framenum > True_Framenum_max) ? True_Framenum : True_Framenum_max;
     }
   //}}}
 
@@ -1984,43 +1874,41 @@ private:
 
     int Extra_Information_Byte_Count = extraBitInformation();
     extension_and_user_data();
-
-    /* update tracking information used to assist spatial scalability */
-    Update_Temporal_Reference_Tacking_Data();
     }
   //}}}
   //{{{
-  /* decode headers from one input stream until an End of Sequence or picture start code is found */
-  int getHeader() {
+  unsigned int getNextHeader (bool reportUnexpected) {
 
-    for (;;) {
-      nextStartCode();
-      unsigned int code = getBits32();
-      printf ("getHeader %x\n", code);
+    showNextStartCode();
+    unsigned int code = getBits32();
 
-      switch (code) {
-        case SEQUENCE_HEADER_CODE:
-          sequenceHeader();
-          break;
+    switch (code) {
+      case 0x1B3 : // SEQUENCE_HEADER_CODE:
+        //printf ("getNextHeader %x sequenceHeader\n", code);
+        sequenceHeader();
+        break;
 
-        case GROUP_START_CODE:
-          groupOfPicturesHeader();
-          break;
+      case 0x1B8 : // GROUP_START_CODE:
+        //printf ("getNextHeader %08x groupOfPicturesHeader\n", code);
+        groupOfPicturesHeader();
+        break;
 
-        case PICTURE_START_CODE:
-          pictureHeader();
-          return 1;
-          break;
+      case 0x100 : // PICTURE_START_CODE:
+        // printf ("getNextHeader %08x pictureHeader\n", code);
+        pictureHeader();
+        break;
 
-        case SEQUENCE_END_CODE:
-          return 0;
-          break;
+      case 0x1B7: // SEQUENCE_END_CODE:
+        printf ("getNextHeader %08x SEQUENCE_END_CODE\n", code);
+        break;
 
-        default:
-          printf ("Unexpected next_start_code %08x (ignored)\n", code);
-          break;
-        }
+      default:
+        if (reportUnexpected)
+          printf ("getNextHeader unexpected %08x\n", code);
+        break;
       }
+
+    return code;
     }
   //}}}
 
@@ -2788,11 +2676,11 @@ private:
       if (picture_structure == FRAME_PICTURE) {
         if (motion_type == MC_FRAME) {
           /* frame-based prediction */
-          if (stwtop<2)
+          if (stwtop < 2)
             formPrediction(backward_reference_frame,0,current_frame,0,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
 
-          if (stwbot<2)
+          if (stwbot < 2)
             formPrediction(backward_reference_frame,1,current_frame,1,
               Coded_Picture_Width,Coded_Picture_Width<<1,16,8,bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
         }
@@ -2987,15 +2875,12 @@ private:
   /* the expression "start of slice" is used throughout the normative body of the MPEG specification */
   int startOfSlice (int MBAmax, int* MBA, int* MBAinc, int dc_dct_pred[3], int PMV[2][2][2]) {
 
-    unsigned int code;
     int slice_vert_pos_ext;
-
     Fault_Flag = 0;
 
-    nextStartCode();
-    code = showBits(32);
+    unsigned int code = showNextStartCode();
 
-    if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX) {
+    if (code < SLICE_START_CODE_MIN || code > SLICE_START_CODE_MAX) {
       /* only slice headers are allowed in picture_data */
       printf("start_of_slice(): Premature end of picture\n");
       return(-1);  /* trigger: go to next picture */
@@ -3361,17 +3246,17 @@ private:
 
     /* round to nearest multiple of coded macroblocks  ISO/IEC 13818-2 section 6.3.3 sequence_header() */
     mb_width = (horizontal_size + 15) / 16;
-    mb_height = (MPEG2_Flag && !progressive_sequence) ? 2 * ((vertical_size+31)/32) : (vertical_size + 15) / 16;
+    mb_height = (MPEG2_Flag && !progressive_sequence) ? 2 * ((vertical_size + 31) / 32) : (vertical_size + 15) / 16;
 
     Coded_Picture_Width = 16*mb_width;
     Coded_Picture_Height = 16*mb_height;
 
     /* ISO/IEC 13818-2 sections 6.1.1.8, 6.1.1.9, and 6.1.1.10 */
-    Chroma_Width = (chroma_format==CHROMA444) ? Coded_Picture_Width : Coded_Picture_Width>>1;
-    Chroma_Height = (chroma_format!=CHROMA420) ? Coded_Picture_Height : Coded_Picture_Height>>1;
+    Chroma_Width = (chroma_format == CHROMA444) ? Coded_Picture_Width : Coded_Picture_Width >> 1;
+    Chroma_Height = (chroma_format != CHROMA420) ? Coded_Picture_Height : Coded_Picture_Height >> 1;
 
     /* derived based on Table 6-20 in ISO/IEC 13818-2 section 6.3.17 */
-    block_count = Table_6_20[chroma_format-1];
+    block_count = Table_6_20 [chroma_format - 1];
 
     int cc, size;
     for (cc = 0; cc < 3; cc++) {
@@ -3384,11 +3269,15 @@ private:
       forward_reference_frame[cc] = (unsigned char*)malloc(size);
       auxframe[cc] = (unsigned char*)malloc(size);
       }
+
+    printf ("initSequence %d %d %d\n",   horizontal_size, vertical_size, block_count);
     }
   //}}}
   //{{{
   /* decode one frame or field picture */
   void decodePicture (int bitstream_framenum, int sequence_framenum) {
+
+    //printf ("decodePicture %d %d\n",   bitstream_framenum, sequence_framenum);
 
     if (picture_structure == FRAME_PICTURE && Second_Field) {
       /* recover from illegal number of field pictures */
@@ -3431,56 +3320,58 @@ private:
   unsigned char* backward_reference_frame[3];
   unsigned char* forward_reference_frame[3];
 
-  short* iclp;
+  short* iclp = NULL;
   short iclip[1024];
-  unsigned char* Clip;
+  unsigned char* Clip = NULL;
 
-  int True_Framenum;
+  int True_Framenum = 0;
   int True_Framenum_max = -1;
   int Temporal_Reference_Base = 0;
   int Temporal_Reference_GOP_Reset = 0;
 
-  int Infile;
+  int Infile = 0;
   unsigned char Rdbfr[2048];
-  unsigned char* Rdptr;
-  unsigned int Bfr;
-  unsigned char* Rdmax;
-  int Incnt;
-  int Bitcnt;
+  unsigned char* Rdptr = NULL;
+  unsigned int Bfr = 0;
+  unsigned char* Rdmax = NULL;
+  int Incnt = 0;
+  int Bitcnt = 0;
 
   int intra_quantizer_matrix[64];
   int non_intra_quantizer_matrix[64];
   int chroma_intra_quantizer_matrix[64];
   int chroma_non_intra_quantizer_matrix[64];
 
-  int load_intra_quantizer_matrix;
-  int load_non_intra_quantizer_matrix;
-  int load_chroma_intra_quantizer_matrix;
-  int load_chroma_non_intra_quantizer_matrix;
+  int load_intra_quantizer_matrix = 0;
+  int load_non_intra_quantizer_matrix = 0;
+  int load_chroma_intra_quantizer_matrix= 0;
+  int load_chroma_non_intra_quantizer_matrix= 0;
 
-  int Second_Field;
+  int Second_Field = 0;
   int Fault_Flag = 0;
   int System_Stream_Flag = 0;
-  int MPEG2_Flag;
-  int scalable_mode;
-  int q_scale_type;
-  int alternate_scan;
-  int pict_scal;
-  int priority_breakpoint;
-  int quantizer_scale;
-  int intra_slice;
+
+  int MPEG2_Flag = 0;
+  int scalable_mode = 0;
+  int q_scale_type = 0;
+  int alternate_scan = 0;
+  int pict_scal = 0;
+  int priority_breakpoint = 0;
+  int quantizer_scale = 0;
+  int intra_slice = 0;
   short block[12][64];
 
-  int profile, level;
+  int profile = 0;
+  int level = 0;
   //{{{  normative derived variables (as per ISO/IEC 13818-2)
-  int horizontal_size;
-  int vertical_size;
+  int horizontal_size = 0;
+  int vertical_size = 0;
 
-  int mb_width;
-  int mb_height;
+  int mb_width = 0;
+  int mb_height = 0;
 
-  double bit_rate;
-  double frame_rate;
+  double bit_rate = 0;
+  double frame_rate = 0;
   //}}}
   //{{{  ISO/IEC 13818-2 section 6.2.2.1:  sequence_header()
   int aspect_ratio_information;

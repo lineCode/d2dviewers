@@ -25,8 +25,8 @@ int main (int argc, char* argv[]) {
 
   cMyMpeg2dec mpeg2dec;
 
-  mpeg2dec.Initialize_Buffer (argv[1]);
-  mpeg2dec.Decode_Bitstream();
+  mpeg2dec.initBitstream (argv[1]);
+  mpeg2dec.decodeBitstream();
 
 
   return 0;
