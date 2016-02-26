@@ -17,25 +17,18 @@
 #define GROUP_START_CODE        0x1B8
 #define ISO_END_CODE            0x1B9
 
-//{{{  scalable_mode
-#define SC_NONE 0
-#define SC_DP   1
-#define SC_SPAT 2
-#define SC_SNR  3
-#define SC_TEMP 4
-//}}}
-//{{{  picture coding type
+// picture coding type
 #define I_TYPE 1
 #define P_TYPE 2
 #define B_TYPE 3
 #define D_TYPE 4
-//}}}
-//{{{  picture structure
+
+// picture structure
 #define TOP_FIELD     1
 #define BOTTOM_FIELD  2
 #define FRAME_PICTURE 3
-//}}}
-//{{{  macroblock type
+
+// macroblock type
 #define MACROBLOCK_INTRA                        1
 #define MACROBLOCK_PATTERN                      2
 #define MACROBLOCK_MOTION_BACKWARD              4
@@ -43,38 +36,19 @@
 #define MACROBLOCK_QUANT                        16
 #define SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG       32
 #define PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS 64
-//}}}
-//{{{  motion_type
+
+// motion_type
 #define MC_FIELD 1
 #define MC_FRAME 2
 #define MC_16X8  2
 #define MC_DMV   3
-//}}}
-//{{{  mv_format
+
+// mv_format
 #define MV_FIELD 0
 #define MV_FRAME 1
-//}}}
-//{{{  chroma_format
-#define CHROMA420 1
-#define CHROMA422 2
-#define CHROMA444 3
-//}}}
-//{{{  extension start code IDs /
+
 #define SEQUENCE_EXTENSION_ID                    1
-#define SEQUENCE_DISPLAY_EXTENSION_ID            2
-#define QUANT_MATRIX_EXTENSION_ID                3
-#define COPYRIGHT_EXTENSION_ID                   4
-#define SEQUENCE_SCALABLE_EXTENSION_ID           5
-#define PICTURE_DISPLAY_EXTENSION_ID             7
 #define PICTURE_CODING_EXTENSION_ID              8
-#define PICTURE_SPATIAL_SCALABLE_EXTENSION_ID    9
-#define PICTURE_TEMPORAL_SCALABLE_EXTENSION_ID  10
-//}}}
-
-#define ZIG_ZAG      0
-
-#define PROFILE_422  (128+5)
-#define MAIN_LEVEL   8
 
 #define MB_WEIGHT    32
 #define MB_CLASS4    64
@@ -116,14 +90,8 @@ static unsigned char Non_Linear_quantizer_scale[32] = {
   56,64,72,80,88,96,104,112 } ;
 //}}}
 
-static int Table_6_20[3] = {6,8,12};
 static unsigned char stwc_table[3][4] = { {6,3,7,4}, {2,1,5,4}, {2,5,7,4} };
 static unsigned char stwclass_table[9] = {0, 1, 2, 1, 1, 2, 3, 3, 4};
-//{{{
-static double frame_rate_Table[16] = {
-  0.0, ((23.0*1000.0)/1001.0), 24.0, 25.0,
-  ((30.0*1000.0)/1001.0), 30.0, 50.0, ((60.0*1000.0)/1001.0), 60.0, -1, -1, -1, -1, -1, -1, -1 };
-//}}}
 
 //{{{  struct VLCtab
 typedef struct {
@@ -184,126 +152,6 @@ static VLCtab BMBtab1[8] = {
   {MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,5},
   {MACROBLOCK_INTRA,5},
   {MACROBLOCK_INTRA,5}
-};
-//}}}
-
-//{{{
-/* Table B-5, macroblock_type in spat. scal. I-pictures, codes 0001..1xxx */
-static VLCtab spIMBtab[16] = {
-  {-1,0},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS,4},
-  {MACROBLOCK_QUANT|MACROBLOCK_INTRA,4},
-  {MACROBLOCK_INTRA,4},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1}, {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,1}
-};
-//}}}
-//{{{
-/* Table B-6, macroblock_type in spat. scal. P-pictures, codes 0010..11xx */
-static VLCtab spPMBtab0[16] =
-{
-  {-1,0},
-  {-1,0},
-  {MACROBLOCK_MOTION_FORWARD,4},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD,4},
-  {MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,3}, {MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,3},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,3}, {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,3},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,2}
-};
-//}}}
-//{{{
-/* Table B-6, macroblock_type in spat. scal. P-pictures, codes 0000010..000111x */
-static VLCtab spPMBtab1[16] = {
-  {-1,0},
-  {-1,0},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,7},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS,7},
-  {MACROBLOCK_PATTERN,7},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,7},
-  {MACROBLOCK_QUANT|MACROBLOCK_INTRA,7},
-  {MACROBLOCK_INTRA,7},
-  {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,6},
-  {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_PATTERN,6}
-};
-//}}}
-//{{{
-/* Table B-7, macroblock_type in spat. scal. B-pictures, codes 0010..11xx */
-static VLCtab spBMBtab0[14] = {
-  {MACROBLOCK_MOTION_FORWARD,4},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,4},
-  {MACROBLOCK_MOTION_BACKWARD,3},
-  {MACROBLOCK_MOTION_BACKWARD,3},
-  {MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,3},
-  {MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,3},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,2}
-};
-//}}}
-//{{{
-/* Table B-7, macroblock_type in spat. scal. B-pictures, codes 0000100..000111x */
-static VLCtab spBMBtab1[12] = {
-  {MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,7},
-  {MACROBLOCK_QUANT|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,7},
-  {MACROBLOCK_INTRA,7},
-  {MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,7},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_BACKWARD,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_BACKWARD,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,6},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,6}
-};
-//}}}
-//{{{
-/* Table B-7, macroblock_type in spat. scal. B-pictures, codes 00000100x..000001111 */
-static VLCtab spBMBtab2[8] = {
-  {MACROBLOCK_QUANT|MACROBLOCK_INTRA,8},
-  {MACROBLOCK_QUANT|MACROBLOCK_INTRA,8},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,8},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_FORWARD|MACROBLOCK_PATTERN,8},
-  {SPATIAL_TEMPORAL_WEIGHT_CODE_FLAG|MACROBLOCK_QUANT|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,9},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_QUANT|MACROBLOCK_PATTERN,9},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS,9},
-  {PERMITTED_SPATIAL_TEMPORAL_WEIGHT_CLASS|MACROBLOCK_PATTERN,9}
-};
-//}}}
-
-//{{{
-/* Table B-8, macroblock_type in spat. scal. B-pictures, codes 001..1xx */
-static VLCtab SNRMBtab[8] = {
-  {-1,0},
-  {0,3},
-  {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,2},
-  {MACROBLOCK_PATTERN,1},
-  {MACROBLOCK_PATTERN,1},
-  {MACROBLOCK_PATTERN,1},
-  {MACROBLOCK_PATTERN,1}
 };
 //}}}
 
@@ -626,7 +474,6 @@ DCTtab DCTtab6[16] =
 
 static int Oldref_progressive_frame;
 static int Newref_progressive_frame;
-
 class cMpeg2dec {
 public:
   //{{{
@@ -668,7 +515,15 @@ public:
 
     printf ("waiting for SEQUENCE_HEADER_CODE\n");
     while (getNextHeader (false) != SEQUENCE_HEADER_CODE) {}
-    initSequence();
+
+    //{{{  allocate buffers
+    for (int cc = 0; cc < 3; cc++) {
+      int size = (cc == 0) ? Coded_Picture_Width * Coded_Picture_Height : Chroma_Width * Chroma_Height;
+      backward_reference_frame[cc] = (unsigned char*)malloc(size);
+      forward_reference_frame[cc] = (unsigned char*)malloc(size);
+      auxframe[cc] = (unsigned char*)malloc(size);
+      }
+    //}}}
 
     while (getNextHeader (true) != 0x100) {} // wait for pictureStartCode
     int seqFrame = 0;
@@ -698,11 +553,13 @@ public:
                     progressive_sequence || progressive_frame, Coded_Picture_Width, Coded_Picture_Height, Chroma_Width);
       }
 
+    //{{{  deallocate buffers
     for (int i = 0; i < 3; i++) {
       free (backward_reference_frame[i]);
       free (forward_reference_frame[i]);
       free (auxframe[i]);
       }
+    //}}}
     }
   //}}}
 
@@ -1258,15 +1115,9 @@ private:
       return;
 
     /* get spatial_temporal_weight_code */
-    int stwtype, stwcode, stwclass;
-    if (macroblock_type & MB_WEIGHT) {
-      if (spatial_temporal_weight_code_table_index==0)
-        stwtype = 4;
-      else {
-        stwcode = getBits(2);
-        stwtype = stwc_table[spatial_temporal_weight_code_table_index-1][stwcode];
-        }
-      }
+    int stwtype, stwclass;
+    if (macroblock_type & MB_WEIGHT)
+      stwtype = 4;
     else
       stwtype = (macroblock_type & MB_CLASS4) ? 8 : 0;
 
@@ -1321,178 +1172,9 @@ private:
     }
   //}}}
   //}}}
-  //{{{  extension and user data
-  //{{{
-  void sequence_extension() {
-  /* decode sequence extension  ISO/IEC 13818-2 section 6.2.2.3 */
-
-    int horizontal_size_extension;
-    int vertical_size_extension;
-    int bit_rate_extension;
-    int vbv_buffer_size_extension;
-
-    scalable_mode = SC_NONE; /* unless overwritten by sequence_scalable_extension() */
-    layer_id = 0;                /* unless overwritten by sequence_scalable_extension() */
-
-    profile_and_level_indication = getBits(8);
-    progressive_sequence         = getBits(1);
-    chroma_format                = getBits(2);
-    horizontal_size_extension    = getBits(2);
-    vertical_size_extension      = getBits(2);
-    bit_rate_extension           = getBits(12);
-    flushBuffer (1);
-    vbv_buffer_size_extension    = getBits(8);
-    low_delay                    = getBits(1);
-    frame_rate_extension_n       = getBits(2);
-    frame_rate_extension_d       = getBits(5);
-
-    frame_rate = frame_rate_Table[frame_rate_code] * ((frame_rate_extension_n+1)/(frame_rate_extension_d+1));
-
-    /* special case for 422 profile & level must be made */
-    if ((profile_and_level_indication >> 7) & 1) {
-      /* escape bit of profile_and_level_indication set */
-      /* 4:2:2 Profile @ Main Level */
-      if ((profile_and_level_indication & 15) == 5) {
-        profile = PROFILE_422;
-        level   = MAIN_LEVEL;
-        }
-      }
-    else {
-      profile = profile_and_level_indication >> 4;  /* Profile is upper nibble */
-      level   = profile_and_level_indication & 0xF;  /* Level is lower nibble */
-      }
-
-    horizontal_size = (horizontal_size_extension<<12) | (horizontal_size&0x0fff);
-    vertical_size = (vertical_size_extension<<12) | (vertical_size&0x0fff);
-
-    /* ISO/IEC 13818-2 does not define bit_rate_value to be composed of
-     * both the original bit_rate_value parsed in sequence_header() and
-     * the optional bit_rate_extension in sequence_extension_header().
-     * However, we use it for bitstream verification purposes.*/
-    bit_rate_value += (bit_rate_extension << 18);
-    bit_rate = ((double) bit_rate_value) * 400.0;
-    vbv_buffer_size += (vbv_buffer_size_extension << 10);
-    }
-  //}}}
-  //{{{
-  /* decode sequence display extension */
-  void sequence_display_extension() {
-
-    int pos = Bitcnt;
-    video_format = getBits(3);
-    color_description = getBits(1);
-
-    if (color_description) {
-      color_primaries = getBits(8);
-      transfer_characteristics = getBits(8);
-      matrix_coefficients = getBits(8);
-      }
-
-    display_horizontal_size = getBits(14);
-    flushBuffer (1);
-    display_vertical_size = getBits(14);
-    }
-  //}}}
-  //{{{
-  void quant_matrix_extension() {
-  /* decode quant matrix entension  ISO/IEC 13818-2 section 6.2.3.2 */
-
-    int i;
-    int pos = Bitcnt;
-    if ((load_intra_quantizer_matrix = getBits(1))) {
-      for (i = 0; i < 64; i++) {
-        chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits(8);
-        }
-      }
-
-    if ((load_non_intra_quantizer_matrix = getBits(1))) {
-      for (i = 0; i < 64; i++) {
-        chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits(8);
-        }
-      }
-
-    if ((load_chroma_intra_quantizer_matrix = getBits(1))) {
-      for (i = 0; i < 64; i++)
-        chroma_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits(8);
-      }
-
-    if ((load_chroma_non_intra_quantizer_matrix = getBits(1))) {
-      for (i = 0; i < 64; i++)
-        chroma_non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits(8);
-      }
-    }
-  //}}}
-  //{{{
-  void sequence_scalable_extension() {
-  /* decode sequence scalable extension ISO/IEC 13818-2   section 6.2.2.5 */
-
-    int pos = Bitcnt;
-
-    /* values (without the +1 offset) of scalable_mode are defined in Table 6-10 of ISO/IEC 13818-2 */
-    scalable_mode = getBits(2) + 1; /* add 1 to make SC_DP != SC_NONE */
-
-    layer_id = getBits(4);
-    if (scalable_mode == SC_SPAT) {
-      lower_layer_prediction_horizontal_size = getBits(14);
-      flushBuffer (1);
-      lower_layer_prediction_vertical_size   = getBits(14);
-      horizontal_subsampling_factor_m        = getBits(5);
-      horizontal_subsampling_factor_n        = getBits(5);
-      vertical_subsampling_factor_m          = getBits(5);
-      vertical_subsampling_factor_n          = getBits(5);
-      }
-
-    if (scalable_mode == SC_TEMP)
-      printf ("temporal scalability not implemented\n");
-    }
-  //}}}
-  //{{{
-  void picture_display_extension() {
-  /* decode picture display extension ISO/IEC 13818-2 section 6.2.3.3. */
-
-    int i;
-    int number_of_frame_center_offsets;
-    int pos;
-
-    pos = Bitcnt;
-    /* based on ISO/IEC 13818-2 section 6.3.12 (November 1994) Picture display extensions */
-    /* derive number_of_frame_center_offsets */
-    if (progressive_sequence) {
-      if (repeat_first_field) {
-        if (top_field_first)
-          number_of_frame_center_offsets = 3;
-        else
-          number_of_frame_center_offsets = 2;
-        }
-      else
-        number_of_frame_center_offsets = 1;
-      }
-    else {
-      if (picture_structure!=FRAME_PICTURE)
-        number_of_frame_center_offsets = 1;
-      else {
-        if(repeat_first_field)
-          number_of_frame_center_offsets = 3;
-        else
-          number_of_frame_center_offsets = 2;
-        }
-      }
-
-    /* now parse */
-    for (i = 0; i < number_of_frame_center_offsets; i++) {
-      frame_center_horizontal_offset[i] = getBits(16);
-      flushBuffer (1);
-      frame_center_vertical_offset[i] = getBits(16);
-      flushBuffer (1);
-      }
-    }
-
-  //}}}
+  //{{{  getHeader
   //{{{
   void picture_coding_extension() {
-  /* decode picture coding extension */
-
-    int pos = Bitcnt;
 
     f_code[0][0] = getBits(4);
     f_code[0][1] = getBits(4);
@@ -1522,61 +1204,8 @@ private:
     }
   //}}}
   //{{{
-  void picture_spatial_scalable_extension() {
-  /* decode picture spatial scalable extension ISO/IEC 13818-2 section 6.2.3.5. */
-
-    int pos = Bitcnt;
-    pict_scal = 1; /* use spatial scalability in this picture */
-
-    lower_layer_temporal_reference = getBits (10);
-    flushBuffer (1);
-
-    lower_layer_horizontal_offset = getBits (15);
-    if (lower_layer_horizontal_offset >= 16384)
-      lower_layer_horizontal_offset -= 32768;
-
-    flushBuffer (1);
-    lower_layer_vertical_offset = getBits(15);
-    if (lower_layer_vertical_offset >= 16384)
-      lower_layer_vertical_offset -= 32768;
-
-    spatial_temporal_weight_code_table_index = getBits(2);
-    lower_layer_progressive_frame = getBits(1);
-    lower_layer_deinterlaced_field_select = getBits(1);
-    }
-  //}}}
-  //{{{
-  void picture_temporal_scalable_extension() {
-  /* decode picture temporal scalable extension not implemented ISO/IEC 13818-2 section 6.2.3.4. */
-
-    printf ("temporal scalability not supported\n");
-    }
-  //}}}
-  //{{{
-  void copyright_extension() {
-  /* Copyright extension  ISO/IEC 13818-2 section 6.2.3.6. (header added in November, 1994 to the IS document) */
-
-    int pos = Bitcnt;
-
-    copyright_flag = getBits(1);
-    copyright_identifier = getBits(8);
-    original_or_copy = getBits(1);
-
-    int reserved_data = getBits(7);
-
-    flushBuffer (1);
-    copyright_number_1 =   getBits(20);
-
-    flushBuffer (1);
-    copyright_number_2 =   getBits(22);
-
-    flushBuffer (1);
-    copyright_number_3 =   getBits(22);
-  }
-  //}}}
-  //{{{
-  /* decode extension and user data  ISO/IEC 13818-2 section 6.2.2.2 */
   void extension_and_user_data() {
+  /* decode extension and user data  ISO/IEC 13818-2 section 6.2.2.2 */
 
     unsigned int code = showNextStartCode();
     while (code == EXTENSION_START_CODE || code == USER_DATA_START_CODE) {
@@ -1584,55 +1213,29 @@ private:
         flushBuffer32();
         int ext_ID = getBits (4);
         switch (ext_ID) {
-        case SEQUENCE_EXTENSION_ID:
-          sequence_extension();
-          break;
-        case SEQUENCE_DISPLAY_EXTENSION_ID:
-          sequence_display_extension();
-          break;
-        case QUANT_MATRIX_EXTENSION_ID:
-          quant_matrix_extension();
-          break;
-        case SEQUENCE_SCALABLE_EXTENSION_ID:
-          sequence_scalable_extension();
-          break;
-        case PICTURE_DISPLAY_EXTENSION_ID:
-          picture_display_extension();
-          break;
-        case PICTURE_CODING_EXTENSION_ID:
-          picture_coding_extension();
-          break;
-        case PICTURE_SPATIAL_SCALABLE_EXTENSION_ID:
-          picture_spatial_scalable_extension();
-          break;
-        case PICTURE_TEMPORAL_SCALABLE_EXTENSION_ID:
-          picture_temporal_scalable_extension();
-          break;
-        case COPYRIGHT_EXTENSION_ID:
-          copyright_extension();
-          break;
-       default:
-          printf ("reserved extension start code ID %d\n", ext_ID);
-          break;
+          case PICTURE_CODING_EXTENSION_ID:
+            picture_coding_extension();
+            break;
+          default:
+            //printf ("reserved extension start code ID %d\n", ext_ID);
+            break;
           }
         }
-      else /* userData ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 skip ahead to the next start code */
+      else
+        /* userData ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 skip ahead to the next start code */
         flushBuffer32();
 
       code = showNextStartCode();
       }
     }
   //}}}
-  //}}}
-  //{{{  getHeader
+
   //{{{
   void sequenceHeader() {
 
     int i;
-    int pos = Bitcnt;
-
-    horizontal_size = getBits (12);
-    vertical_size = getBits (12);
+    int horizontal_size = getBits (12);
+    int vertical_size = getBits (12);
     aspect_ratio_information = getBits (4);
     frame_rate_code = getBits (4);
     bit_rate_value = getBits (18);
@@ -1640,9 +1243,17 @@ private:
     vbv_buffer_size = getBits (10);
     constrained_parameters_flag = getBits (1);
 
+    mb_width = (horizontal_size + 15) / 16;
+    mb_height = (!progressive_sequence) ? 2 * ((vertical_size + 31) / 32) : (vertical_size + 15) / 16;
+    Coded_Picture_Width = 16 * mb_width;
+    Coded_Picture_Height = 16 * mb_height;
+    Chroma_Width = Coded_Picture_Width >> 1;
+    Chroma_Height = Coded_Picture_Height >> 1;
+    block_count = 6;
+
     if ((load_intra_quantizer_matrix = getBits (1))) {
       for (i = 0; i < 64; i++)
-        intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits (8);
+        intra_quantizer_matrix[scan[0][i]] = getBits (8);
       }
     else {
       for (i = 0; i < 64; i++)
@@ -1651,7 +1262,7 @@ private:
 
     if ((load_non_intra_quantizer_matrix = getBits(1))) {
       for (i = 0; i < 64; i++)
-        non_intra_quantizer_matrix[scan[ZIG_ZAG][i]] = getBits (8);
+        non_intra_quantizer_matrix[scan[0][i]] = getBits (8);
       }
     else {
       for (i = 0; i < 64; i++)
@@ -1668,30 +1279,10 @@ private:
     }
   //}}}
   //{{{
-  /* decode group of pictures header  ISO/IEC 13818-2 section 6.2.2.6 */
-  void groupOfPicturesHeader() {
-
-    int pos = Bitcnt;
-    drop_flag = getBits (1);
-    hour = getBits (5);
-    minute = getBits (6);
-    flushBuffer (1);
-    sec = getBits (6);
-    frame = getBits (6);
-    closed_gop = getBits (1);
-    broken_link = getBits (1);
-
-    extension_and_user_data();
-    }
-  //}}}
-  //{{{
   /* decode picture header ISO/IEC 13818-2 section 6.2.3 */
   void pictureHeader() {
 
     /* unless later overwritten by picture_spatial_scalable_extension() */
-    pict_scal = 0;
-
-    int pos = Bitcnt;
     temporal_reference = getBits (10);
     picture_coding_type = getBits (3);
     vbv_delay = getBits (16);
@@ -1710,6 +1301,7 @@ private:
     extension_and_user_data();
     }
   //}}}
+
   //{{{
   unsigned int getNextHeader (bool reportUnexpected) {
 
@@ -1724,7 +1316,6 @@ private:
 
       case 0x1B8 : // GROUP_START_CODE:
         //printf ("getNextHeader %08x groupOfPicturesHeader\n", code);
-        groupOfPicturesHeader();
         break;
 
       case 0x100 : // PICTURE_START_CODE:
@@ -1752,8 +1343,6 @@ private:
   void decodeIntraBlock (int comp, int dc_dct_pred[]) {
 
     int val, sign, run;
-    unsigned int code;
-    DCTtab* tab;
 
     /* ISO/IEC 13818-2 section 7.2.1: decode DC coefficients */
     int cc = (comp < 4) ? 0 : (comp & 1) + 1;
@@ -1772,8 +1361,9 @@ private:
 
     /* decode AC coefficients */
     for (int i = 1; ; i++) {
-      code = showBits (16);
-      if (code>=16384 && !intra_vlc_format)
+      DCTtab* tab;
+      unsigned int code = showBits (16);
+      if (code >= 16384 && !intra_vlc_format)
         tab = &DCTtabnext[(code>>12)-4];
       else if (code >= 1024) {
         if (intra_vlc_format)
@@ -1911,7 +1501,7 @@ private:
   //}}}
 
   //{{{
-  void decodeMotionVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
+  void decodeVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
   // calculate motion vector component  ISO/IEC 13818-2 section 7.6.3.1: Decoding the motion vectors
 
     int lim = 16 << r_size;
@@ -1938,7 +1528,7 @@ private:
     /* horizontal component ISO/IEC 13818-2 Table B-10 */
     int motion_code = getMotionCode();
     int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits(h_r_size) : 0;
-    decodeMotionVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
+    decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
 
     if (dmv)
       dmvector[0] = getDmvector();
@@ -1950,7 +1540,7 @@ private:
     if (mvscale)
       PMV[1] >>= 1; /* DIV 2 */
 
-    decodeMotionVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
+    decodeVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
 
     if (mvscale)
       PMV[1] <<= 1;
@@ -2151,7 +1741,6 @@ private:
   void formPrediction (unsigned char* src[], int sfield, unsigned char* dst[], int dfield,
                        int lx, int lx2, int w, int h, int x, int y, int dx, int dy, int average_flag) {
 
-    /* Y */
     formComponentPrediction (src[0] + (sfield?lx2>>1:0), dst[0] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
 
     lx >>= 1;
@@ -2162,10 +1751,7 @@ private:
     h >>= 1;
     y >>= 1;
     dy /= 2;
-
-    /* Cb */
     formComponentPrediction (src[1] + (sfield?lx2>>1:0), dst[1] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    /* Cr */
     formComponentPrediction (src[2] + (sfield?lx2>>1:0), dst[2] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
   }
   //}}}
@@ -2450,11 +2036,6 @@ private:
   /* ISO/IEC 13818-2 section 6.2.4 */
   int sliceHeader() {
 
-    int pos = Bitcnt;
-    int slice_vertical_position_extension = (vertical_size>2800) ? getBits (3) : 0;
-    if (scalable_mode == SC_DP)
-      priority_breakpoint = getBits (7);
-
     int quantizer_scale_code = getBits (5);
     quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code<<1;
 
@@ -2471,7 +2052,7 @@ private:
     else
       intra_slice = 0;
 
-    return slice_vertical_position_extension;
+    return 0;
     }
   //}}}
   //{{{
@@ -2673,12 +2254,12 @@ private:
         return -1; /* all macroblocks decoded */
       if (MBAinc == 0) {
         if (!showBits(23) || Fault_Flag) {
-          //* next_start_code or fault 
+          //* next_start_code or fault
       resync: /* if Fault_Flag: resynchronize to next next_start_code */
           Fault_Flag = 0;
           return 0;     /* trigger: go to next slice */
           }
-        else { 
+        else {
           /* neither next_start_code nor Fault_Flag  decode macroblock address increment */
           MBAinc = getMacroBlockAddressIncrement();
           if (Fault_Flag)
@@ -2718,27 +2299,6 @@ private:
     }
   //}}}
 
-  //{{{
-  void initSequence() {
-
-    mb_width = (horizontal_size + 15) / 16;
-    mb_height = (!progressive_sequence) ? 2 * ((vertical_size + 31) / 32) : (vertical_size + 15) / 16;
-    Coded_Picture_Width = 16 * mb_width;
-    Coded_Picture_Height = 16 * mb_height;
-    Chroma_Width = Coded_Picture_Width >> 1;
-    Chroma_Height = Coded_Picture_Height >> 1;
-    block_count = Table_6_20 [chroma_format - 1];
-
-    for (int cc = 0; cc < 3; cc++) {
-      int size = (cc == 0) ? Coded_Picture_Width * Coded_Picture_Height : Chroma_Width * Chroma_Height;
-      backward_reference_frame[cc] = (unsigned char*)malloc(size);
-      forward_reference_frame[cc] = (unsigned char*)malloc(size);
-      auxframe[cc] = (unsigned char*)malloc(size);
-      }
-
-    printf ("initSequence %d %d %d\n",   horizontal_size, vertical_size, block_count);
-    }
-  //}}}
   //{{{
   void decodePicture (int bitFrame, int seqFrame) {
   /* decode one frame or field picture */
@@ -2813,6 +2373,8 @@ private:
   int Chroma_Width;
   int Chroma_Height;
   int block_count;
+  int mb_width = 0;
+  int mb_height = 0;
 
   unsigned char* auxframe[3];
   unsigned char* current_frame[3];
@@ -2822,11 +2384,6 @@ private:
   short* iclp = NULL;
   short iclip[1024];
   unsigned char* Clip = NULL;
-
-  int True_Framenum = 0;
-  int True_Framenum_max = -1;
-  int Temporal_Reference_Base = 0;
-  int Temporal_Reference_GOP_Reset = 0;
 
   int Infile = 0;
   unsigned char Rdbfr[2048];
@@ -2850,49 +2407,11 @@ private:
   int Second_Field = 0;
   int scalable_mode = 0;
   int q_scale_type = 0;
-  int alternate_scan = 0;
   int pict_scal = 0;
-  int priority_breakpoint = 0;
+  int alternate_scan = 0;
   int quantizer_scale = 0;
   int intra_slice = 0;
   short block[12][64];
-
-  int profile = 0;
-  int level = 0;
-  //{{{  normative derived variables (as per ISO/IEC 13818-2)
-  int horizontal_size = 0;
-  int vertical_size = 0;
-
-  int mb_width = 0;
-  int mb_height = 0;
-
-  double bit_rate = 0;
-  double frame_rate = 0;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.1:  sequence_header()
-  int aspect_ratio_information;
-  int frame_rate_code;
-  int bit_rate_value;
-  int vbv_buffer_size;
-  int constrained_parameters_flag;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.3:  sequence_extension()
-  int profile_and_level_indication;
-  int progressive_sequence;
-  int chroma_format;
-  int low_delay;
-  int frame_rate_extension_n;
-  int frame_rate_extension_d;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.4:  sequence_display_extension()
-  int video_format;
-  int color_description;
-  int color_primaries;
-  int transfer_characteristics;
-  int matrix_coefficients;
-  int display_horizontal_size;
-  int display_vertical_size;
-  //}}}
   //{{{  ISO/IEC 13818-2 section 6.2.3: picture_header()
   int temporal_reference;
   int picture_coding_type;
@@ -2901,6 +2420,21 @@ private:
   int forward_f_code;
   int full_pel_backward_vector;
   int backward_f_code;
+  //}}}
+  //{{{  ISO/IEC 13818-2 section 6.2.2.1: sequence_header()
+  int aspect_ratio_information;
+  int frame_rate_code;
+  int bit_rate_value;
+  int vbv_buffer_size;
+  int constrained_parameters_flag;
+  //}}}
+  //{{{  ISO/IEC 13818-2 section 6.2.2.3: sequence_extension()
+  int profile_and_level_indication;
+  int progressive_sequence;
+  int chroma_format;
+  int low_delay;
+  int frame_rate_extension_n;
+  int frame_rate_extension_d;
   //}}}
   //{{{  ISO/IEC 13818-2 section 6.2.3.1: picture_coding_extension() header
   int f_code[2][2];
@@ -2919,44 +2453,6 @@ private:
   int sub_carrier;
   int burst_amplitude;
   int sub_carrier_phase;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.3.3: picture_display_extension() header
-  int frame_center_horizontal_offset[3];
-  int frame_center_vertical_offset[3];
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.5: sequence_scalable_extension() header
-  int layer_id;
-  int lower_layer_prediction_horizontal_size;
-  int lower_layer_prediction_vertical_size;
-  int horizontal_subsampling_factor_m;
-  int horizontal_subsampling_factor_n;
-  int vertical_subsampling_factor_m;
-  int vertical_subsampling_factor_n;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.3.5: picture_spatial_scalable_extension() header
-  int lower_layer_temporal_reference;
-  int lower_layer_horizontal_offset;
-  int lower_layer_vertical_offset;
-  int spatial_temporal_weight_code_table_index;
-  int lower_layer_progressive_frame;
-  int lower_layer_deinterlaced_field_select;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.3.6: copyright_extension() header
-  int copyright_flag;
-  int copyright_identifier;
-  int original_or_copy;
-  int copyright_number_1;
-  int copyright_number_2;
-  int copyright_number_3;
-  //}}}
-  //{{{  ISO/IEC 13818-2 section 6.2.2.6: group_of_pictures_header()
-  int drop_flag;
-  int hour;
-  int minute;
-  int sec;
-  int frame;
-  int closed_gop;
-  int broken_link;
   //}}}
   //}}}
   };
