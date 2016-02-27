@@ -9,7 +9,6 @@
 
 #include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
-
 #include "../common/cMpeg2decoder.h"
 
 #include "../common/cAudFrame.h"

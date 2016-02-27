@@ -15,31 +15,19 @@ public:
     mYStride = strides[0];
     mUVStride = strides[1];
 
-    if (sizeChanged && mYbufUnaligned) {
-      free (mYbufUnaligned);
-      mYbufUnaligned = nullptr;
-      }
-    if (!mYbufUnaligned)
-      mYbufUnaligned = (uint8_t*)malloc ((height * mYStride) + 15);
-    mYbuf = (uint8_t*)(((size_t)(mYbufUnaligned)+15) & ~0xf);
+    if (sizeChanged && mYbuf)
+      free (mYbuf);
+    mYbuf = (uint8_t*)_mm_malloc (height * mYStride, 128);
     memcpy (mYbuf, yuv[0], height * mYStride);
 
-    if (sizeChanged && mUbufUnaligned) {
-      free (mUbufUnaligned);
-      mUbufUnaligned = nullptr;
-      }
-    if (!mUbufUnaligned)
-      mUbufUnaligned = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
-    mUbuf = (uint8_t*)(((size_t)(mUbufUnaligned)+15) & ~0xf);
+    if (sizeChanged && mUbuf)
+      free (mUbuf);
+    mUbuf = (uint8_t*)_mm_malloc ((height/2) * mUVStride, 128);
     memcpy (mUbuf, yuv[1], (height/2) * mUVStride);
 
-    if (sizeChanged && mVbufUnaligned) {
-      free (mVbufUnaligned);
-      mVbufUnaligned = nullptr;
-      }
-    if (!mVbufUnaligned)
-      mVbufUnaligned = (uint8_t*)malloc (((height/2) * mUVStride) + 15);
-    mVbuf = (uint8_t*)(((size_t)(mVbufUnaligned)+15) & ~0xf);
+    if (sizeChanged && mVbuf)
+      free (mVbuf);
+    mVbuf = (uint8_t*)_mm_malloc ((height/2) * mUVStride, 128);
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
 
     mPts = pts;
@@ -56,19 +44,16 @@ public:
     mYStride = 0;
     mUVStride = 0;
 
-    if (mYbufUnaligned)
-      free (mYbufUnaligned);
-    mYbufUnaligned = nullptr;
+    if (mYbuf)
+      free (mYbuf);
     mYbuf = nullptr;
 
-    if (mUbufUnaligned)
-      free (mUbufUnaligned);
-    mUbufUnaligned = nullptr;
+    if (mUbuf)
+      free (mUbuf);
     mUbuf = nullptr;
 
-    if (mVbufUnaligned)
-      free (mVbufUnaligned);
-    mVbufUnaligned = nullptr;
+    if (mVbuf)
+      free (mVbuf);
     mVbuf = nullptr;
     }
   //}}}
@@ -92,9 +77,4 @@ public:
   uint8_t* mYbuf = nullptr;
   uint8_t* mUbuf = nullptr;
   uint8_t* mVbuf = nullptr;
-
-private:
-  uint8_t* mYbufUnaligned = nullptr;
-  uint8_t* mUbufUnaligned = nullptr;
-  uint8_t* mVbufUnaligned = nullptr;
   };
