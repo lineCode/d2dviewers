@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <io.h>
+#include <emmintrin.h>
 
 #include "cYuvFrame.h"
 //}}}
@@ -535,6 +536,9 @@ public:
       chroma_intra_quantizer_matrix[i] = intra_quantizer_matrix[i];
       chroma_non_intra_quantizer_matrix[i] = non_intra_quantizer_matrix[i];
       }
+
+    for (int i = 0; i < 6; i++)
+      block[i] = (short*)_mm_malloc (128, 128);
     }
   //}}}
   //{{{
@@ -901,83 +905,59 @@ private:
   //}}}
 
   //{{{
-  //void asm_Add_Block (int comp, int bx, int by, int dct_type, int addflag)
-  //{
-    //unsigned char *rfp;
-    //int iincr, cc = cc_table[comp];
+  void asmAddBlock (int comp, int bx, int by, int dct_type, int addflag) {
+  // 64 bit problem
 
-    //if (cc==0)  // luminance
-    //{
-      //if (picture_structure==FRAME_PICTURE)
-        //if (dct_type)  // field DCT coding
-        //{
-          //rfp = current_frame[0] + Picture_Width*(by+((comp&2)>>1)) + bx + ((comp&1)<<3);
-          //iincr = Picture_Width<<1;
-        //}
-        //else  // frame DCT coding
-        //{
-          //rfp = current_frame[0] + Picture_Width*(by+((comp&2)<<2)) + bx + ((comp&1)<<3);
-          //iincr = Picture_Width;
-        //}
-      //else  // field picture
-      //{
-        //rfp = current_frame[0] + (Picture_Width<<1)*(by+((comp&2)<<2)) + bx + ((comp&1)<<3);
-        //iincr = Picture_Width<<1;
-      //}
-    //}
-    //else  // chrominance
-    //{
-      //// scale coordinates
-      //bx >>= 1;
-      //by >>= 1;
+    unsigned char* rfp;
+    int iincr;
+    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
+    if (cc == 0) {
+      if (dct_type) {
+        // luma field DCT coding
+        rfp = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
+        iincr = mWidth << 1;
+        }
+      else {
+        // luma frame DCT coding
+        rfp = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
+        iincr = mWidth;
+        }
+      }
+    else {
+      bx >>= 1;
+      by >>= 1;
+      rfp = current_frame[cc] + mChromaWidth * (by + ((comp & 2) << 2)) + bx + (comp & 8);
+      iincr = mChromaWidth;
+      }
 
-      //if (picture_structure==FRAME_PICTURE)
-      //{
-          //rfp = current_frame[cc] + mChromaWidth*(by+((comp&2)<<2)) + bx + (comp&8);
-          //iincr = mChromaWidth;
-      //}
-      //else  // field picture
-      //{
-        //rfp = current_frame[cc] + (mChromaWidth<<1)*(by+((comp&2)<<2)) + bx + (comp&8);
-        //iincr = mChromaWidth<<1;
-      //}
-    //}
+    // 128bits is powerless in this case
+    __m64 *src = (__m64*)block[comp];
 
-    //// 128bits is powerless in this case
-    //__m64 *src = (__m64*)block[comp];
+    if (addflag) {
+       __m64 zero = _mm_setzero_si64();
+      for (int loop = 0; loop < 8; loop++) {
+        __m64 unpacklo = _m_punpcklbw(*(__m64*)rfp, zero);
+        __m64 sum1 = _m_paddw(*src++, unpacklo);
+        __m64 unpackhi = _m_punpckhbw(*(__m64*)rfp, zero);
+        __m64 sum2 = _m_paddw(*src++, unpackhi);
+        *(__m64*)rfp = _m_packuswb(sum1, sum2);
+        rfp += iincr;
+        }
+      }
 
-    //if (addflag)
-    //{
-       //__m64 zero = _mm_setzero_si64();
-
-  ////#pragma unroll(8)
-      //for (int loop=0; loop<8; loop++)
-      //{
-        //__m64 unpacklo = _m_punpcklbw(*(__m64*)rfp, zero);
-        //__m64 sum1 = _m_paddw(*src++, unpacklo);
-        //__m64 unpackhi = _m_punpckhbw(*(__m64*)rfp, zero);
-        //__m64 sum2 = _m_paddw(*src++, unpackhi);
-        //*(__m64*)rfp = _m_packuswb(sum1, sum2);
-        //rfp += iincr;
-      //}
-    //}
-    //else
-    //{
-      //__m64 offset = _mm_set1_pi16(128);
-
-  ////#pragma unroll(8)
-      //for (int loop=0; loop<8; loop++)
-      //{
-        //__m64 sum1 = _m_paddw(*src++, offset);
-        //__m64 sum2 = _m_paddw(*src++, offset);
-        //*(__m64*)rfp = _m_packuswb(sum1, sum2);
-        //rfp += iincr;
-      //}
-    //}
-  //}
+    else {
+      __m64 offset = _mm_set1_pi16 (128);
+      for (int loop = 0; loop < 8; loop++) {
+        __m64 sum1 = _m_paddw(*src++, offset);
+        __m64 sum2 = _m_paddw(*src++, offset);
+        *(__m64*)rfp = _m_packuswb(sum1, sum2);
+        rfp += iincr;
+        }
+      }
+    }
   //}}}
   //{{{
-  void asm_Clear_Block (int comp) {
+  void asmClearBlock (int comp) {
 
     float* ptr = (float*)block[comp];
     __m128 zero = _mm_setzero_ps();
@@ -988,209 +968,6 @@ private:
       ptr += 4;
       }
     }
-  //}}}
-  //{{{
-  //bool asm_start_of_slice (int *MBA, int *MBAinc, int dc_dct_pred[3], int PMV[2][2][2])
-  //{
-    //unsigned int code;
-    //int slice_vert_pos_ext;
-
-    //next_start_code();
-    //code = Get_Bits(32);
-
-    //if (code<SLICE_START_CODE_MIN || code>SLICE_START_CODE_MAX)
-    //{
-      //// only slice headers are allowed in picture_data
-      //Flaw_Flag = true;
-      //return false;
-    //}
-
-    //// decode slice header (may change quantizer_scale)
-    //slice_vert_pos_ext = slice_header();
-
-    //// decode macroblock address increment
-    //*MBAinc = Get_macroblock_address_increment();
-    //if (Flaw_Flag)
-      //return false;
-
-    //// set current location
-    //// ISO/IEC 13818-2 section 6.3.17: Macroblock
-    //*MBA = ((slice_vert_pos_ext<<7) + (code&255) - 1)*mBwidth + *MBAinc - 1;
-    //*MBAinc = 1;  // first macroblock in slice: not skipped
-
-    //// reset all DC coefficient and motion vector predictors
-    //// ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
-    //dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
-
-    //// ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
-    //PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-    //PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
-
-    //// successful: trigger decode macroblocks in slice
-    //return true;
-  //}
-
-  //// ISO/IEC 13818-2 sections 7.2 through 7.5
-  //static int decode_macroblock(int *macroblock_type, int *motion_type, int *dct_type,
-    //int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2], int dmvector[2])
-  //{
-    //int quantizer_scale_code, comp, motion_vector_count, mv_format;
-    //int dmv, mvscale, coded_block_pattern;
-
-    //// ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes
-    //switch (picture_coding_type)
-    //{
-      //case I_TYPE:
-        //*macroblock_type = Get_I_macroblock_type();
-        //break;
-
-      //case P_TYPE:
-        //*macroblock_type = Get_P_macroblock_type();
-        //break;
-
-      //case B_TYPE:
-        //*macroblock_type = Get_B_macroblock_type();
-        //break;
-    //}
-
-    //if (Flaw_Flag)
-      //return 0;  // go to next slice
-
-    //// get frame/field motion type
-    //if (*macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD))
-    //{
-      //if (picture_structure==FRAME_PICTURE)
-        //*motion_type = frame_pred_frame_dct ? MC_FRAME : Get_Bits(2);
-      //else
-        //*motion_type = Get_Bits(2);
-      //}
-    //else if ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
-      //*motion_type = (picture_structure==FRAME_PICTURE) ? MC_FRAME : MC_FIELD;
-
-    //// derive motion_vector_count, mv_format and dmv (table 6-17, 6-18)
-    //if (picture_structure==FRAME_PICTURE)
-    //{
-      //motion_vector_count = (*motion_type==MC_FIELD) ? 2 : 1;
-      //mv_format = (*motion_type==MC_FRAME) ? MV_FRAME : MV_FIELD;
-    //}
-    //else
-    //{
-      //motion_vector_count = (*motion_type==MC_16X8) ? 2 : 1;
-      //mv_format = MV_FIELD;
-    //}
-
-    //dmv = (*motion_type==MC_DMV);  // dual prime
-
-    //// field mv predictions in frame pictures have to be scaled
-    //// ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
-    //mvscale = (mv_format==MV_FIELD && picture_structure==FRAME_PICTURE);
-
-    //// get dct_type (frame DCT / field DCT)
-    //*dct_type = picture_structure==FRAME_PICTURE && !frame_pred_frame_dct
-      //&& (*macroblock_type & (MACROBLOCK_PATTERN|MACROBLOCK_INTRA)) ? Get_Bits(1) : 0;
-
-    //if (Flaw_Flag)
-      //return 0;  // go to next slice
-
-    //if (*macroblock_type & MACROBLOCK_QUANT)
-    //{
-      //quantizer_scale_code = Get_Bits(5);
-
-      //// ISO/IEC 13818-2 section 7.4.2.2: Quantizer scale factor
-      //quantizer_scale = q_scale_type ?
-        //Non_Linear_quantizer_scale[quantizer_scale_code] : (quantizer_scale_code << 1);
-    //}
-
-    //// ISO/IEC 13818-2 section 6.3.17.2: Motion vectors
-    //// decode forward motion vectors
-    //if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD)
-      //|| ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors))
-      //motion_vectors(PMV, dmvector, motion_vertical_field_select, 0, motion_vector_count,
-                     //mv_format, f_code[0][0]-1, f_code[0][1]-1, dmv, mvscale);
-
-    //if (Flaw_Flag)
-      //return 0;  // go to next slice
-
-    //// decode backward motion vectors
-    //if (*macroblock_type & MACROBLOCK_MOTION_BACKWARD)
-      //motion_vectors(PMV, dmvector, motion_vertical_field_select, 1, motion_vector_count,
-                     //mv_format, f_code[1][0]-1, f_code[1][1]-1, 0, mvscale);
-
-    //if (Flaw_Flag)
-      //return 0;  // go to next slice
-
-    //if ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
-      //Flush_Buffer(1);  // marker bit
-
-    //// ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern
-    //if (*macroblock_type & MACROBLOCK_PATTERN)
-    //{
-      //coded_block_pattern = Get_coded_block_pattern();
-
-      //if (chroma_format==CHROMA422)
-        //coded_block_pattern = (coded_block_pattern<<2) | Get_Bits(2);
-    //}
-    //else
-        //coded_block_pattern = (*macroblock_type & MACROBLOCK_INTRA) ? (1<<block_count)-1 : 0;
-
-    //if (Flaw_Flag)
-      //return 0;  // go to next slice
-
-    //// decode blocks
-    //for (comp=0; comp<block_count; comp++)
-    //{
-      //Clear_Block(comp);
-
-      //if (coded_block_pattern & (1<<(block_count-1-comp)))
-      //{
-        //if (*macroblock_type & MACROBLOCK_INTRA)
-          //Decode_MPEG2_Intra_Block(comp, dc_dct_pred);
-        //else
-          //Decode_MPEG2_Non_Intra_Block(comp);
-
-        //if (Flaw_Flag)
-          //return 0;  // go to next slice
-      //}
-      //else
-        //block[comp][63] = 1;  // ISO/IEC 13818-2 section 7.4.4: Mismatch control
-    //}
-
-    //// reset intra_dc predictors
-    //// ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
-    //if (!(*macroblock_type & MACROBLOCK_INTRA))
-      //dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
-
-    //// reset motion vector predictors
-    //if ((*macroblock_type & MACROBLOCK_INTRA) && !concealment_motion_vectors)
-    //{
-      //// intra mb without concealment motion vectors
-      //// ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
-      //PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-      //PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
-    //}
-
-    //// special "No_MC" macroblock_type case
-    //// ISO/IEC 13818-2 section 7.6.3.5: Prediction in P pictures
-    //if (picture_coding_type==P_TYPE && !(*macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_INTRA)))
-    //{
-      //// non-intra mb without forward mv in a P picture
-      //// ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
-      //PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-
-      //// derive motion_type
-      //// ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes, frame_motion_type
-      //if (picture_structure==FRAME_PICTURE)
-        //*motion_type = MC_FRAME;
-      //else
-      //{
-        //*motion_type = MC_FIELD;
-        //motion_vertical_field_select[0][0] = (picture_structure==BOTTOM_FIELD);
-      //}
-    //}
-
-    //// successfully decoded macroblock
-    //return 1;
-  //}
   //}}}
 
   //{{{
@@ -1641,8 +1418,8 @@ private:
   //}}}
 
   //{{{
-  void asm_form_prediction (unsigned char* src[], int sfield, int dfield, int lx, int lx2,
-                            int h, int x, int y, int dx, int dy, int average_flag) {
+  void asmFormPrediction (unsigned char* src[], int sfield, int dfield, int lx, int lx2,
+                          int h, int x, int y, int dx, int dy, int average_flag) {
   // ISO/IEC 13818-2 section 7.6.4: Forming predictions
 
     unsigned char *sY = src[0]+(sfield?lx2>>1:0) + lx * (y + (dy>>1)) + x + (dx>>1);
@@ -1747,6 +1524,58 @@ private:
         break;
       }
       //}}}
+    }
+  //}}}
+  //{{{
+  void asmFormPredictions (int bx, int by, int macroblock_type, int motion_type,
+                           int PMV[2][2][2], int motion_vertical_field_select[2][2]) {
+
+    int stw = 0;
+    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type==P_TYPE) {
+      if (motion_type==MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
+        // frame-based prediction
+        // broken into top and bottom halves for spatial scalability prediction purposes
+        asmFormPrediction(forward_reference_frame, 0, 0, mWidth,
+          mWidth <<1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+
+        asmFormPrediction(forward_reference_frame, 1, 1, mWidth,
+          mWidth <<1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        }
+      else if (motion_type==MC_FIELD) { // field-based prediction
+        // top field prediction
+        asmFormPrediction(forward_reference_frame, motion_vertical_field_select[0][0], 0,
+          mWidth <<1, mWidth <<1, 8, bx, by>>1,
+          PMV[0][0][0], PMV[0][0][1]>>1, 0);
+
+        // bottom field prediction
+        asmFormPrediction(forward_reference_frame, motion_vertical_field_select[1][0], 1,
+          mWidth <<1, mWidth <<1, 8, bx, by>>1,
+          PMV[1][0][0], PMV[1][0][1]>>1, 0);
+        }
+      else
+        Flaw_Flag = true;
+      stw = 1;
+      }
+
+    if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
+      if (motion_type==MC_FRAME) {
+        // frame-based prediction
+        asmFormPrediction(backward_reference_frame, 0, 0, mWidth,
+          mWidth <<1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
+
+        asmFormPrediction(backward_reference_frame, 1, 1, mWidth,
+          mWidth <<1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
+        }
+      else { // field-based prediction
+        // top field prediction
+        asmFormPrediction(backward_reference_frame, motion_vertical_field_select[0][1], 0,
+          mWidth <<1, mWidth <<1, 8, bx, by>>1, PMV[0][1][0], PMV[0][1][1]>>1, stw);
+
+        // bottom field prediction
+        asmFormPrediction(backward_reference_frame, motion_vertical_field_select[1][1], 1,
+          mWidth <<1, mWidth <<1, 8, bx, by>>1, PMV[1][1][0], PMV[1][1][1]>>1, stw);
+        }
+      }
     }
   //}}}
   //}}}
@@ -2433,7 +2262,7 @@ private:
    *  NOTE: the work of combining predictions (ISO/IEC 13818-2 section 7.6.7)
    *  is distributed among several other stages.  This is accomplished by
    *  folding line offsets into the source and destination (src,dst)
-   *  addresses (note the call arguments to form_prediction() in Predict()),
+   *  addresses (note the call arguments to formPrediction() in Predict()),
    *  line stride variables lx and lx2, the block dimension variables (w,h),
    *  average_flag, and by the very order in which Predict() is called.
    *  This implementation design (implicitly different than the spec) was chosen for its elegance. */
@@ -2574,10 +2403,10 @@ private:
         // frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
         if (stwtop < 2)
           formPrediction (forward_reference_frame, 0, current_frame, 0,
-                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
+                             mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
         if (stwbot < 2)
           formPrediction (forward_reference_frame, 1, current_frame, 1,
-                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
+                             mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
         }
       else if (motion_type == MC_FIELD) {
          // top field prediction
@@ -2676,14 +2505,12 @@ private:
     // motion compensation
     if (!(macroblock_type & MACROBLOCK_INTRA))
       formPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype);
+      //asmFormPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select);
 
-    // copy or add block data int32_to picture */
+    // copy or add block data int32_to picture
     for (int comp = 0; comp < block_count; comp++) {
-      // ISO/IEC 13818-2 section Annex A: inverse DCT
-      fastIDCT (block[comp]);
-      //sse2_ap945_idct (block[comp]);
-
-      // ISO/IEC 13818-2 section 7.6.8: Adding prediction and coefficient data
+      sse2_ap945_idct (block[comp]);
+      //asmAddBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
       addBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
       }
     }
@@ -2760,9 +2587,8 @@ private:
   void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
                           int* motion_type, int motion_vertical_field_select[2][2], int* stwtype, int* macroblock_type) {
 
-    //for (int comp = 0; comp < block_count; comp++)
-    //  clearBlock (comp);
-    memset (block, 0, 128*block_count);
+    for (int comp = 0; comp < block_count; comp++)
+      asmClearBlock (comp);
 
     // reset intra_dc predictors  ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
     dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
@@ -2831,8 +2657,8 @@ private:
       return 0;  // trigger: go to next slice
 
     // decode blocks
-    memset (block, 0, 128*block_count);
     for (comp = 0; comp < block_count; comp++) {
+      asmClearBlock (comp);
       if (coded_block_pattern & (1 << (block_count - 1 - comp))) {
         if (*macroblock_type & MACROBLOCK_INTRA)
           decodeIntraBlock (comp, dc_dct_pred);
@@ -2967,7 +2793,7 @@ private:
   int alternate_scan = 0;
   int quantizer_scale = 0;
   int intra_slice = 0;
-  short block[12][64];
+  short* block[6];
 
   int temporal_reference = 0;
   int picture_coding_type = 0;
