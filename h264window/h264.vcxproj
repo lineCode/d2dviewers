@@ -348,7 +348,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cMpeg2dec.h" />
+    <ClInclude Include="..\common\cMpeg2decoder.h" />
     <ClInclude Include="..\common\cYuvFrame.h" />
     <ClInclude Include="..\common\yuvrgb_sse2.h" />
     <ClInclude Include="..\ldecod\inc\annexb.h" />

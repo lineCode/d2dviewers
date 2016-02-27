@@ -7,9 +7,9 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\common\cMpeg2dec.h" />
+    <ClCompile Include="mpeg2dec.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="mpeg2dec.cpp" />
+    <ClInclude Include="..\common\cMpeg2decoder.h" />
   </ItemGroup>
 </Project>

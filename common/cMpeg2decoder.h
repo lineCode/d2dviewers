@@ -524,8 +524,6 @@ public:
     for (int i = -384; i < 640; i++)
       Clip[i] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
 
-    initFastIDCT();
-
     for (int i = 0; i < 64; i++)
       intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
 
@@ -587,11 +585,10 @@ public:
         }
       }
 
-    // get pictureStartCode
-    while ((mBufferPtr < mBufferEnd) && (getHeader (true) != 0x100)) {}
-
     // decodePicture
-    if (mBufferPtr < mBufferEnd) {
+    while (mBufferPtr < mBufferEnd) {
+      // get pictureStartCode
+      while ((mBufferPtr < mBufferEnd) && (getHeader (true) != 0x100)) {}
       //{{{  updatePictureBuffers;
       for (int cc = 0; cc < 3; cc++) {
         current_frame[cc] = (picture_coding_type == B_TYPE) ? auxframe[cc] : backward_reference_frame[cc];
@@ -905,6 +902,18 @@ private:
   //}}}
 
   //{{{
+  void asmClearBlock (int comp) {
+
+    float* ptr = (float*)block[comp];
+    __m128 zero = _mm_setzero_ps();
+
+    for (int loop = 0; loop < 8; loop++) {
+      _mm_store_ps (ptr, zero);
+      ptr += 4;
+      }
+    }
+  //}}}
+  //{{{
   void asmAddBlock (int comp, int bx, int by, int dct_type, int addflag) {
   // 64 bit problem
 
@@ -953,19 +962,6 @@ private:
         *(__m64*)rfp = _m_packuswb(sum1, sum2);
         rfp += iincr;
         }
-      }
-    }
-  //}}}
-  //{{{
-  void asmClearBlock (int comp) {
-
-    float* ptr = (float*)block[comp];
-    __m128 zero = _mm_setzero_ps();
-
-    //#pragma unroll(8)
-    for (int loop = 0; loop < 8; loop++) {
-      _mm_store_ps(ptr, zero);
-      ptr += 4;
       }
     }
   //}}}
@@ -1531,194 +1527,41 @@ private:
                            int PMV[2][2][2], int motion_vertical_field_select[2][2]) {
 
     int stw = 0;
-    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type==P_TYPE) {
-      if (motion_type==MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-        // frame-based prediction
-        // broken into top and bottom halves for spatial scalability prediction purposes
-        asmFormPrediction(forward_reference_frame, 0, 0, mWidth,
-          mWidth <<1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-
-        asmFormPrediction(forward_reference_frame, 1, 1, mWidth,
-          mWidth <<1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
+      if (motion_type == MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
+        // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
+        asmFormPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        asmFormPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
         }
-      else if (motion_type==MC_FIELD) { // field-based prediction
+      else {
         // top field prediction
-        asmFormPrediction(forward_reference_frame, motion_vertical_field_select[0][0], 0,
-          mWidth <<1, mWidth <<1, 8, bx, by>>1,
-          PMV[0][0][0], PMV[0][0][1]>>1, 0);
+        asmFormPrediction (forward_reference_frame, motion_vertical_field_select[0][0], 0,
+                           mWidth <<1, mWidth <<1, 8, bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, 0);
 
         // bottom field prediction
-        asmFormPrediction(forward_reference_frame, motion_vertical_field_select[1][0], 1,
-          mWidth <<1, mWidth <<1, 8, bx, by>>1,
-          PMV[1][0][0], PMV[1][0][1]>>1, 0);
+        asmFormPrediction (forward_reference_frame, motion_vertical_field_select[1][0], 1,
+                           mWidth <<1, mWidth <<1, 8, bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
         }
-      else
-        Flaw_Flag = true;
+
       stw = 1;
       }
 
     if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
-      if (motion_type==MC_FRAME) {
+      if (motion_type == MC_FRAME) {
         // frame-based prediction
-        asmFormPrediction(backward_reference_frame, 0, 0, mWidth,
-          mWidth <<1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
-
-        asmFormPrediction(backward_reference_frame, 1, 1, mWidth,
-          mWidth <<1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
+        asmFormPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
+        asmFormPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
         }
-      else { // field-based prediction
+      else {
         // top field prediction
-        asmFormPrediction(backward_reference_frame, motion_vertical_field_select[0][1], 0,
-          mWidth <<1, mWidth <<1, 8, bx, by>>1, PMV[0][1][0], PMV[0][1][1]>>1, stw);
+        asmFormPrediction (backward_reference_frame, motion_vertical_field_select[0][1], 0,
+                           mWidth << 1, mWidth << 1, 8, bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, stw);
 
         // bottom field prediction
-        asmFormPrediction(backward_reference_frame, motion_vertical_field_select[1][1], 1,
-          mWidth <<1, mWidth <<1, 8, bx, by>>1, PMV[1][1][0], PMV[1][1][1]>>1, stw);
+        asmFormPrediction (backward_reference_frame, motion_vertical_field_select[1][1], 1,
+                           mWidth << 1, mWidth << 1, 8, bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, stw);
         }
       }
-    }
-  //}}}
-  //}}}
-  //{{{  idct
-  #define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
-  #define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */
-  #define W3 2408 /* 2048*sqrt(2)*cos(3*pi/16) */
-  #define W5 1609 /* 2048*sqrt(2)*cos(5*pi/16) */
-  #define W6 1108 /* 2048*sqrt(2)*cos(6*pi/16) */
-  #define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
-  //{{{
-  /* row (horizontal) IDCT
-   *           7                       pi         1
-   * dst[k] = sum c[l] * src[l] * cos( -- * ( k + - ) * l )
-   *          l=0                      8          2
-   * where: c[0]    = 128
-   *        c[1..7] = 128*sqrt(2) */
-  void idctRow (short* blk) {
-
-    int x0, x1, x2, x3, x4, x5, x6, x7, x8;
-
-    /* shortcut */
-    if (!((x1 = blk[4]<<11) | (x2 = blk[6]) | (x3 = blk[2]) |
-          (x4 = blk[1]) | (x5 = blk[7]) | (x6 = blk[5]) | (x7 = blk[3]))) {
-      blk[0]=blk[1]=blk[2]=blk[3]=blk[4]=blk[5]=blk[6]=blk[7]=blk[0]<<3;
-      return;
-      }
-
-    x0 = (blk[0]<<11) + 128; /* for proper rounding in the fourth stage */
-
-    /* first stage */
-    x8 = W7*(x4+x5);
-    x4 = x8 + (W1-W7)*x4;
-    x5 = x8 - (W1+W7)*x5;
-    x8 = W3*(x6+x7);
-    x6 = x8 - (W3-W5)*x6;
-    x7 = x8 - (W3+W5)*x7;
-
-    /* second stage */
-    x8 = x0 + x1;
-    x0 -= x1;
-    x1 = W6*(x3+x2);
-    x2 = x1 - (W2+W6)*x2;
-    x3 = x1 + (W2-W6)*x3;
-    x1 = x4 + x6;
-    x4 -= x6;
-    x6 = x5 + x7;
-    x5 -= x7;
-
-    /* third stage */
-    x7 = x8 + x3;
-    x8 -= x3;
-    x3 = x0 + x2;
-    x0 -= x2;
-    x2 = (181*(x4+x5)+128)>>8;
-    x4 = (181*(x4-x5)+128)>>8;
-
-    /* fourth stage */
-    blk[0] = (x7+x1)>>8;
-    blk[1] = (x3+x2)>>8;
-    blk[2] = (x0+x4)>>8;
-    blk[3] = (x8+x6)>>8;
-    blk[4] = (x8-x6)>>8;
-    blk[5] = (x0-x4)>>8;
-    blk[6] = (x3-x2)>>8;
-    blk[7] = (x7-x1)>>8;
-    }
-  //}}}
-  //{{{
-  /* column (vertical) IDCT
-   *             7                         pi         1
-   * dst[8*k] = sum c[l] * src[8*l] * cos( -- * ( k + - ) * l )
-   *            l=0                        8          2
-   * where: c[0]    = 1/1024
-   *        c[1..7] = (1/1024)*sqrt(2) */
-  void idctCol (short* blk) {
-
-    int x0, x1, x2, x3, x4, x5, x6, x7, x8;
-
-    /* shortcut */
-    if (!((x1 = (blk[8*4]<<8)) | (x2 = blk[8*6]) | (x3 = blk[8*2]) |
-          (x4 = blk[8*1]) | (x5 = blk[8*7]) | (x6 = blk[8*5]) | (x7 = blk[8*3]))) {
-      blk[8*0]=blk[8*1]=blk[8*2]=blk[8*3]=blk[8*4]=blk[8*5]=blk[8*6]=blk[8*7] = iclp[(blk[8*0]+32)>>6];
-      return;
-      }
-
-    x0 = (blk[8*0]<<8) + 8192;
-
-    /* first stage */
-    x8 = W7*(x4+x5) + 4;
-    x4 = (x8+(W1-W7)*x4)>>3;
-    x5 = (x8-(W1+W7)*x5)>>3;
-    x8 = W3*(x6+x7) + 4;
-    x6 = (x8-(W3-W5)*x6)>>3;
-    x7 = (x8-(W3+W5)*x7)>>3;
-
-    /* second stage */
-    x8 = x0 + x1;
-    x0 -= x1;
-    x1 = W6*(x3+x2) + 4;
-    x2 = (x1-(W2+W6)*x2)>>3;
-    x3 = (x1+(W2-W6)*x3)>>3;
-    x1 = x4 + x6;
-    x4 -= x6;
-    x6 = x5 + x7;
-    x5 -= x7;
-
-    /* third stage */
-    x7 = x8 + x3;
-    x8 -= x3;
-    x3 = x0 + x2;
-    x0 -= x2;
-    x2 = (181*(x4+x5)+128)>>8;
-    x4 = (181*(x4-x5)+128)>>8;
-
-    /* fourth stage */
-    blk[8*0] = iclp[(x7+x1)>>14];
-    blk[8*1] = iclp[(x3+x2)>>14];
-    blk[8*2] = iclp[(x0+x4)>>14];
-    blk[8*3] = iclp[(x8+x6)>>14];
-    blk[8*4] = iclp[(x8-x6)>>14];
-    blk[8*5] = iclp[(x0-x4)>>14];
-    blk[8*6] = iclp[(x3-x2)>>14];
-    blk[8*7] = iclp[(x7-x1)>>14];
-    }
-  //}}}
-  //{{{
-  /* two dimensional inverse discrete cosine transform */
-  void fastIDCT (short* block) {
-
-    for (int i = 0; i < 8; i++)
-      idctRow (block+8*i);
-
-    for (int i = 0; i < 8; i++)
-      idctCol (block+i);
-    }
-  //}}}
-  //{{{
-  void initFastIDCT() {
-
-    iclp = iclip + 512;
-    for (int i = -512; i < 512; i++)
-      iclp[i] = (i < -256) ? -256 : ((i > 255) ? 255 : i);
     }
   //}}}
   //}}}
@@ -2777,8 +2620,6 @@ private:
   uint8_t* forward_reference_frame[3];
   uint8_t* backward_reference_frame[3];
 
-  short* iclp = NULL;
-  short iclip[1024];
   uint8_t* Clip = NULL;
 
   int intra_quantizer_matrix[64];

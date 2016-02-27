@@ -4,7 +4,7 @@
 
 #include "../common/cD2dWindow.h"
 
-#include "../common/cMpeg2dec.h"
+#include "../common/cMpeg2decoder.h"
 
 #include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
@@ -19,7 +19,7 @@
 
 #define maxFrame 10000
 
-class cAppWindow : public cD2dWindow, public cMpeg2dec {
+class cAppWindow : public cD2dWindow, public cMpeg2decoder {
 public:
   cAppWindow() {}
   ~cAppWindow() {}
@@ -286,7 +286,7 @@ private:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    decode (fileBuffer, mFileBytes);
+    decodePes (fileBuffer, mFileBytes, &mYuvFrames[0]);
 
     UnmapViewOfFile(fileBuffer);
     CloseHandle(fileHandle);
