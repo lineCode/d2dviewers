@@ -10,6 +10,8 @@
 #include "../common/cYuvFrame.h"
 #include "../common/yuvrgb_sse2.h"
 
+#include "../common/cMpeg2decoder.h"
+
 #include "../common/cAudFrame.h"
 #include "../common/winAudio.h"
 #include "../libfaad/include/neaacdec.h"
@@ -25,9 +27,7 @@
 //{{{
 class cDecodeTransportStream : public cTransportStream {
 public:
-  cDecodeTransportStream() {
-    mFile = CreateFile (L"C:\\Users\\colin\\Desktop\\test.m2v" , GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
-    }
+  cDecodeTransportStream() {}
   //{{{
   virtual ~cDecodeTransportStream() {
 
@@ -243,48 +243,58 @@ protected:
   //{{{
   void decodeVidPes (cPidInfo* pidInfo) {
 
-    if (!vidParser) { // allocate decoder
-      vidParser = av_parser_init (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
-      vidCodec = avcodec_find_decoder (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
+    if (!vidParser && (pidInfo->mStreamType == 27)) {
+      // allocate decoder
+      vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
+      vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
       vidContext = avcodec_alloc_context3 (vidCodec);
       avcodec_open2 (vidContext, vidCodec, NULL);
       }
 
-    AVPacket avPacket;
-    av_init_packet (&avPacket);
-    avPacket.data = pidInfo->mBuffer;
-    avPacket.size = 0;
-
     auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+    if (pidInfo->mStreamType == 27) {
+      //{{{  hd ffmpeg decode
+      AVPacket avPacket;
+      av_init_packet (&avPacket);
+      avPacket.data = pidInfo->mBuffer;
+      avPacket.size = 0;
 
-    DWORD numberOfBytesWritten;
-    WriteFile (mFile, pidInfo->mBuffer, pesLen, &numberOfBytesWritten, NULL);
+      pidInfo->mBufPtr = pidInfo->mBuffer;
+      while (pesLen) {
+        auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+        pidInfo->mBufPtr += lenUsed;
+        pesLen -= lenUsed;
 
-    pidInfo->mBufPtr = pidInfo->mBuffer;
-    while (pesLen) {
-      auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-      pidInfo->mBufPtr += lenUsed;
-      pesLen -= lenUsed;
-
-      if (avPacket.data) {
-        auto avFrame = av_frame_alloc();
-        auto got = 0;
-        auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
-        avPacket.data += bytesUsed;
-        avPacket.size -= bytesUsed;
-        if (got) {
-          //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
-          if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
-              (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
-            mVidPts = pidInfo->mPts;
-          else // fake pts
-            mVidPts += 90000/25;
-          mYuvFrames [mLoadVidFrame % maxVidFrames].set (
-            mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
-          mLoadVidFrame++;
+        if (avPacket.data) {
+          auto avFrame = av_frame_alloc();
+          auto got = 0;
+          auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+          avPacket.data += bytesUsed;
+          avPacket.size -= bytesUsed;
+          if (got) {
+            //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
+            if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
+                (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
+              mVidPts = pidInfo->mPts;
+            else // fake pts
+              mVidPts += 90000/25;
+            mYuvFrames [mLoadVidFrame % maxVidFrames].set (
+              mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+            mLoadVidFrame++;
+            }
+          av_frame_free (&avFrame);
           }
-        av_frame_free (&avFrame);
         }
+      }
+      //}}}
+    else if (mMpeg2decoder.decodePes (pidInfo->mBuffer, pesLen, &mYuvFrames [mLoadVidFrame % maxVidFrames])) {
+      // decoded piccy
+      if (pidInfo->mDts) // use actual pts
+        mVidPts = pidInfo->mPts;
+      else // fake pts
+        mVidPts += 90000/25;
+      mYuvFrames [mLoadVidFrame % maxVidFrames].mPts = mVidPts;
+      mLoadVidFrame++;
       }
     }
   //}}}
@@ -310,7 +320,7 @@ private:
   cAudFrame mAudFrames[maxAudFrames];
   cYuvFrame mYuvFrames[maxVidFrames];
 
-  HANDLE mFile = 0;
+  cMpeg2decoder mMpeg2decoder;
   };
 //}}}
 

@@ -24,9 +24,8 @@ public:
   cAppWindow() {}
   ~cAppWindow() {}
   //{{{
-  void run (wchar_t* title, int32_t width, int32_t height, wchar_t* wFilename, char* filename) {
+  void run (wchar_t* title, int width, int height, wchar_t* wFilename, char* filename) {
 
-    // init window
     initialise (title, width, height);
 
     // launch playerThread, higher priority
@@ -38,14 +37,12 @@ public:
     messagePump();
     };
   //}}}
-
   //{{{
-  void writeFrame (unsigned char* src[], int32_t frame, bool progressive, int32_t width, int32_t height, int32_t chromaWidth) {
+  void writeFrame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
 
     int32_t linesize[2];
     linesize[0] = width;
     linesize[1] = chromaWidth;
-
     mYuvFrames [frame+1].set (0, src, linesize,  width, height, 0, 0);
     mCurVidFrame++;
     }
@@ -310,7 +307,7 @@ int wmain (int argc, wchar_t* argv[]) {
   if (argv[1])
     std::wcstombs (filename, argv[1], wcslen(argv[1])+1);
 
-  printf ("Player %d %s /n", argc, filename);
+  printf ("Player %d %s/n", argc, filename);
 
   cAppWindow appWindow;
   appWindow.run (L"appWindow", 1280, 720, argv[1], filename);
