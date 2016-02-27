@@ -2141,7 +2141,7 @@ private:
   //{{{
   int getChromaDCdctDiff() {
 
-    // decode length 
+    // decode length
     int size;
     int code = peekBits (5);
     if (code<31) {
@@ -2340,16 +2340,16 @@ private:
     if (getBits (1))
       return 0;
 
-    if ((code = peekBits(9))>=64) {
+    if ((code = peekBits(9)) >= 64) {
       code >>= 6;
-      consumeBits (MVtab0[code].len);
-      return getBits (1) ? -MVtab0[code].val : MVtab0[code].val;
+      consumeBits (MVtab0 [code].len);
+      return getBits (1) ? -MVtab0 [code].val : MVtab0 [code].val;
       }
 
     if (code >= 24) {
       code >>= 3;
-      consumeBits (MVtab1[code].len);
-      return getBits (1) ? -MVtab1[code].val : MVtab1[code].val;
+      consumeBits (MVtab1 [code].len);
+      return getBits (1) ? -MVtab1 [code].val : MVtab1 [code].val;
       }
 
     if ((code -= 12) < 0) {
@@ -2357,8 +2357,8 @@ private:
       return 0;
       }
 
-    consumeBits (MVtab2[code].len);
-    return getBits (1) ? -MVtab2[code].val : MVtab2[code].val;
+    consumeBits (MVtab2 [code].len);
+    return getBits (1) ? -MVtab2 [code].val : MVtab2 [code].val;
     }
   //}}}
   //{{{
@@ -2368,13 +2368,13 @@ private:
     int lim = 16 << r_size;
     int vec = full_pel_vector ? (*pred >> 1) : (*pred);
 
-    if (motion_code>0) {
+    if (motion_code > 0) {
       vec += ((motion_code-1) << r_size) + motion_residual + 1;
       if (vec >= lim)
         vec -= lim + lim;
       }
-    else if (motion_code<0) {
-      vec -= ((-motion_code-1) << r_size) + motion_residual + 1;
+    else if (motion_code < 0) {
+      vec -= ((-motion_code - 1) << r_size) + motion_residual + 1;
       if (vec < -lim)
         vec += lim + lim;
       }
@@ -2388,12 +2388,12 @@ private:
 
     // horizontal component
     int motion_code = getMotionCode();
-    int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits(h_r_size) : 0;
+    int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits (h_r_size) : 0;
     decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
 
     // vertical component
     motion_code = getMotionCode();
-    motion_residual = (v_r_size!=0 && motion_code!=0) ? getBits(v_r_size) : 0;
+    motion_residual = (v_r_size != 0 && motion_code != 0) ? getBits (v_r_size) : 0;
 
     if (mvscale)
       PMV[1] >>= 1;
@@ -2419,9 +2419,9 @@ private:
       }
 
     else {
-      motion_vertical_field_select[0][s] = getBits(1);
+      motion_vertical_field_select[0][s] = getBits (1);
       motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
-      motion_vertical_field_select[1][s] = getBits(1);
+      motion_vertical_field_select [1][s] = getBits (1);
       motionVector (PMV[1][s], h_r_size, v_r_size, mvscale, 0);
       }
     }
@@ -2453,8 +2453,8 @@ private:
   //}}}
 
     // half pel scaling for integer vectors
-    int xint = dx>>1;
-    int yint = dy>>1;
+    int xint = dx >> 1;
+    int yint = dy >> 1;
 
     // derive half pel flags
     int xh = dx & 1;
@@ -2558,7 +2558,8 @@ private:
   void formPrediction (uint8_t* src[], int sfield, uint8_t* dst[], int dfield,
                        int lx, int lx2, int w, int h, int x, int y, int dx, int dy, int average_flag) {
 
-    formComponentPrediction (src[0] + (sfield?lx2>>1:0), dst[0] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[0] + (sfield ? lx2 >> 1 : 0), 
+                             dst[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
 
     lx >>= 1;
     lx2 >>= 1;
@@ -2568,44 +2569,39 @@ private:
     h >>= 1;
     y >>= 1;
     dy /= 2;
-    formComponentPrediction (src[1] + (sfield?lx2>>1:0), dst[1] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    formComponentPrediction (src[2] + (sfield?lx2>>1:0), dst[2] + (dfield?lx2>>1:0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[1] + (sfield ? lx2 >> 1 : 0), 
+                             dst[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (src[2] + (sfield ? lx2 >> 1: 0), 
+                             dst[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
   }
   //}}}
   //{{{
   void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
                         int motion_vertical_field_select[2][2], int stwtype) {
 
-    // 0:temporal, 1:(spat+temp)/2, 2:spatial
-    int stwtop = stwtype % 3;
+    int stwtop = stwtype % 3;  // 0:temporal, 1:(spat+temp)/2, 2:spatial
     int stwbot = stwtype / 3;
 
     if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || (picture_coding_type == P_TYPE)) {
       if ((motion_type == MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-        //{{{  frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
+        // frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
         if (stwtop < 2)
           formPrediction (forward_reference_frame, 0, current_frame, 0,
-            mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
-
+                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
         if (stwbot < 2)
           formPrediction (forward_reference_frame, 1, current_frame, 1,
-            mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
+                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
         }
-        //}}}
       else if (motion_type == MC_FIELD) {
-        //{{{  top field prediction
+         // top field prediction
         if (stwtop < 2)
-          formPrediction (forward_reference_frame,motion_vertical_field_select[0][0],
-                          current_frame, 0, mWidth << 1, mWidth << 1, 16, 8,
-                          bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
-
-        /* bottom field prediction */
+          formPrediction (forward_reference_frame,motion_vertical_field_select[0][0], current_frame, 0, 
+                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
+        // bottom field prediction
         if (stwbot < 2)
-          formPrediction (forward_reference_frame, motion_vertical_field_select[1][0],
-                          current_frame, 1, mWidth << 1, mWidth << 1, 16, 8,
-                          bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
+          formPrediction (forward_reference_frame, motion_vertical_field_select[1][0], current_frame, 1, 
+                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
         }
-        //}}}
       else
         printf ("invalid motion_type\n");
       stwtop = stwbot = 1;
@@ -2613,31 +2609,23 @@ private:
 
     if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
       if (motion_type == MC_FRAME) {
-        //{{{  frame-based prediction
+        // frame-based prediction
         if (stwtop < 2)
-          formPrediction (backward_reference_frame,0,current_frame,0,
-                          mWidth,mWidth<<1,16,8,
-                          bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
-
+          formPrediction (backward_reference_frame, 0, current_frame, 0,
+                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][1][0],PMV[0][1][1], stwtop);
         if (stwbot < 2)
-          formPrediction (backward_reference_frame,1,current_frame,1,
-                          mWidth,mWidth<<1,16,8,
-                          bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
+          formPrediction (backward_reference_frame, 1, current_frame, 1,
+                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][1][0],PMV[0][1][1], stwbot);
         }
-        //}}}
       else {
-        //{{{  top field prediction
+        // top field prediction
         if (stwtop < 2)
-          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
-                          current_frame,0,mWidth<<1,mWidth<<1,16,8,
-                          bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
-        //}}}
-        //{{{  bottom field prediction
+          formPrediction (backward_reference_frame, motion_vertical_field_select[0][1], current_frame, 0, 
+                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[0][1][0], PMV[0][1][1] >> 1, stwtop);
+        // bottom field prediction
         if (stwbot < 2)
-          formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
-                          current_frame,1,mWidth<<1,mWidth<<1,16,8,
-                          bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
-        //}}}
+          formPrediction (backward_reference_frame, motion_vertical_field_select[1][1], current_frame, 1, 
+                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[1][1][0], PMV[1][1][1] >> 1, stwbot);
         }
       }
     }
