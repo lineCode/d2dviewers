@@ -42,7 +42,6 @@
 #define MC_FIELD 1
 #define MC_FRAME 2
 #define MC_16X8  2
-#define MC_DMV   3
 
 // mv_format
 #define MV_FIELD 0
@@ -1959,17 +1958,6 @@ private:
     }
   //}}}
   //{{{
-  int getDmacroblockType() {
-
-    if (!getBits (1)) {
-      printf ("Invalid macroblock_type code\n");
-      Flaw_Flag = 1;
-      }
-
-    return 1;
-    }
-  //}}}
-  //{{{
   int getMacroBlockType() {
 
     int macroblock_type = 0;
@@ -1983,54 +1971,12 @@ private:
       case B_TYPE:
         macroblock_type = getBmacroblockType();
         break;
-      case D_TYPE:
-        macroblock_type = getDmacroblockType();
-        break;
       default:
         printf("getMacroblockType(): unrecognized picture coding type\n");
         break;
       }
 
     return macroblock_type;
-    }
-  //}}}
-
-  //{{{
-  int getMotionCode() {
-
-    int code;
-    if (getBits (1))
-      return 0;
-
-    if ((code = peekBits(9))>=64) {
-      code >>= 6;
-      consumeBits (MVtab0[code].len);
-      return getBits (1) ? -MVtab0[code].val : MVtab0[code].val;
-      }
-
-    if (code >= 24) {
-      code >>= 3;
-      consumeBits (MVtab1[code].len);
-      return getBits (1) ? -MVtab1[code].val : MVtab1[code].val;
-      }
-
-    if ((code -= 12) < 0) {
-      Flaw_Flag = 1;
-      return 0;
-      }
-
-    consumeBits(MVtab2[code].len);
-    return getBits (1) ? -MVtab2[code].val : MVtab2[code].val;
-    }
-  //}}}
-  //{{{
-  /* get differential motion vector (for dual prime prediction) */
-  int getDmvector() {
-
-    if (getBits(1))
-      return getBits(1) ? -1 : 1;
-    else
-      return 0;
     }
   //}}}
 
@@ -2102,75 +2048,13 @@ private:
   //}}}
 
   //{{{
-  int getLumaDCdctDiff() {
-  // combined MPEG-1 and MPEG-2 stage. parse VLC and perform dct_diff arithmetic.
-  //  MPEG-1:  ISO/IEC 11172-2 section MPEG-2:  ISO/IEC 13818-2 section 7.2.1
-  //  Note: the arithmetic here is presented more elegantly than the spec, yet the results, dct_diff, are the same. */
-
-    /* decode length */
-    int code = peekBits(5);
-
-    int size;
-    if (code < 31) {
-      size = DClumtab0[code].val;
-      consumeBits (DClumtab0[code].len);
-      }
-    else {
-      code = peekBits(9) - 0x1f0;
-      size = DClumtab1[code].val;
-      consumeBits (DClumtab1[code].len);
-      }
-
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
-      dct_diff = getBits (size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
-      }
-
-    return dct_diff;
-    }
-  //}}}
-  //{{{
-  int getChromaDCdctDiff() {
-
-
-    /* decode length */
-    int size;
-    int code = peekBits (5);
-    if (code<31) {
-      size = DCchromtab0[code].val;
-      consumeBits (DCchromtab0[code].len);
-      }
-    else {
-      code = peekBits(10) - 0x3e0;
-      size = DCchromtab1[code].val;
-      consumeBits (DCchromtab1[code].len);
-      }
-
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
-      dct_diff = getBits(size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
-      }
-
-    return dct_diff;
-    }
-  //}}}
-
-  //{{{
   /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
   void macroBlockModes (int* pmacroblock_type, int* pstwtype, int* pstwclass,
                         int* pmotion_type, int* pmotion_vector_count, int* pmv_format,
-                        int* pdmv, int* pmvscale, int* pdct_type) {
+                        int* pmvscale, int* pdct_type) {
 
     int motion_type = 0;
-    int motion_vector_count, mv_format, dmv, mvscale;
+    int motion_vector_count, mv_format, mvscale;
     int dct_type;
 
     /* get macroblock_type */
@@ -2200,7 +2084,6 @@ private:
     motion_vector_count = (motion_type == MC_FIELD && stwclass < 2) ? 2 : 1;
     mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
 
-    dmv = (motion_type==MC_DMV); /* dual prime */
     /* field mv predictions in frame pictures have to be scaled
      * ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
      * IMPLEMENTATION: mvscale is derived for later use in motion_vectors()
@@ -2219,84 +2102,68 @@ private:
     *pmotion_type = motion_type;
     *pmotion_vector_count = motion_vector_count;
     *pmv_format = mv_format;
-    *pdmv = dmv;
     *pmvscale = mvscale;
     *pdct_type = dct_type;
     }
   //}}}
   //}}}
+
   //{{{
-  void decodeNonIntraBlock (int comp) {
+  int getLumaDCdctDiff() {
+  // combined MPEG-1 and MPEG-2 stage. parse VLC and perform dct_diff arithmetic.
 
-    int val, sign, run;
+    // decode length
+    int code = peekBits(5);
 
-    // decode AC coefficients
-    for (int i = 0; ; i++) {
-      DCTtab* tab;
-      uint32_t code = peekBits (16);
-      if (code >= 16384) {
-        if (i == 0)
-          tab = &DCTtabfirst[(code>>12)-4];
-        else
-          tab = &DCTtabnext[(code>>12)-4];
-        }
-      else if (code >= 1024)
-        tab = &DCTtab0[(code>>8)-4];
-      else if (code >= 512)
-        tab = &DCTtab1[(code>>6)-8];
-      else if (code >= 256)
-        tab = &DCTtab2[(code>>4)-16];
-      else if (code >= 128)
-        tab = &DCTtab3[(code>>3)-16];
-      else if (code >= 64)
-        tab = &DCTtab4[(code>>2)-16];
-      else if (code >= 32)
-        tab = &DCTtab5[(code>>1)-16];
-      else if (code >= 16)
-        tab = &DCTtab6[code-16];
-      else {
-        //{{{  flaw
-        printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-      consumeBits (tab->len);
-
-      if (tab->run == 64) // end_of_block
-        return;
-
-      if (tab->run == 65) {
-        //{{{  escape
-        i += run = getBits (6);
-        val = getBits (12);
-        if ((val & 2047) == 0) {
-          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          Flaw_Flag = 1;
-          return;
-          }
-        if ((sign = (val >= 2048)))
-          val = 4096 - val;
-        }
-        //}}}
-      else {
-        i += run = tab->run;
-        val = tab->level;
-        sign = getBits (1);
-        }
-
-      if (i >= 64) {
-        //{{{  flaw
-        printf ("DCT coeff index (i) out of bounds (inter2)\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-
-      uint8_t j = scan[alternate_scan][i];
-      val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix[j]) >> 5;
-      block[comp][j] = sign ? -val : val;
+    int size;
+    if (code < 31) {
+      size = DClumtab0[code].val;
+      consumeBits (DClumtab0[code].len);
       }
+    else {
+      code = peekBits(9) - 0x1f0;
+      size = DClumtab1[code].val;
+      consumeBits (DClumtab1[code].len);
+      }
+
+    int dct_diff;
+    if (size == 0)
+      dct_diff = 0;
+    else {
+      dct_diff = getBits (size);
+      if ((dct_diff & (1<<(size-1)))==0)
+        dct_diff-= (1<<size) - 1;
+      }
+
+    return dct_diff;
+    }
+  //}}}
+  //{{{
+  int getChromaDCdctDiff() {
+
+    // decode length 
+    int size;
+    int code = peekBits (5);
+    if (code<31) {
+      size = DCchromtab0[code].val;
+      consumeBits (DCchromtab0[code].len);
+      }
+    else {
+      code = peekBits(10) - 0x3e0;
+      size = DCchromtab1[code].val;
+      consumeBits (DCchromtab1[code].len);
+      }
+
+    int dct_diff;
+    if (size == 0)
+      dct_diff = 0;
+    else {
+      dct_diff = getBits(size);
+      if ((dct_diff & (1<<(size-1)))==0)
+        dct_diff-= (1<<size) - 1;
+      }
+
+    return dct_diff;
     }
   //}}}
   //{{{
@@ -2391,7 +2258,109 @@ private:
       }
     }
   //}}}
+  //{{{
+  void decodeNonIntraBlock (int comp) {
 
+    int val, sign, run;
+
+    // decode AC coefficients
+    for (int i = 0; ; i++) {
+      DCTtab* tab;
+      uint32_t code = peekBits (16);
+      if (code >= 16384) {
+        if (i == 0)
+          tab = &DCTtabfirst[(code>>12)-4];
+        else
+          tab = &DCTtabnext[(code>>12)-4];
+        }
+      else if (code >= 1024)
+        tab = &DCTtab0[(code>>8)-4];
+      else if (code >= 512)
+        tab = &DCTtab1[(code>>6)-8];
+      else if (code >= 256)
+        tab = &DCTtab2[(code>>4)-16];
+      else if (code >= 128)
+        tab = &DCTtab3[(code>>3)-16];
+      else if (code >= 64)
+        tab = &DCTtab4[(code>>2)-16];
+      else if (code >= 32)
+        tab = &DCTtab5[(code>>1)-16];
+      else if (code >= 16)
+        tab = &DCTtab6[code-16];
+      else {
+        //{{{  flaw
+        printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+      consumeBits (tab->len);
+
+      if (tab->run == 64) // end_of_block
+        return;
+
+      if (tab->run == 65) {
+        //{{{  escape
+        i += run = getBits (6);
+        val = getBits (12);
+        if ((val & 2047) == 0) {
+          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
+          Flaw_Flag = 1;
+          return;
+          }
+        if ((sign = (val >= 2048)))
+          val = 4096 - val;
+        }
+        //}}}
+      else {
+        i += run = tab->run;
+        val = tab->level;
+        sign = getBits (1);
+        }
+
+      if (i >= 64) {
+        //{{{  flaw
+        printf ("DCT coeff index (i) out of bounds (inter2)\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+
+      uint8_t j = scan [alternate_scan][i];
+      val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
+      block [comp][j] = sign ? -val : val;
+      }
+    }
+  //}}}
+
+  //{{{
+  int getMotionCode() {
+
+    int code;
+    if (getBits (1))
+      return 0;
+
+    if ((code = peekBits(9))>=64) {
+      code >>= 6;
+      consumeBits (MVtab0[code].len);
+      return getBits (1) ? -MVtab0[code].val : MVtab0[code].val;
+      }
+
+    if (code >= 24) {
+      code >>= 3;
+      consumeBits (MVtab1[code].len);
+      return getBits (1) ? -MVtab1[code].val : MVtab1[code].val;
+      }
+
+    if ((code -= 12) < 0) {
+      Flaw_Flag = 1;
+      return 0;
+      }
+
+    consumeBits (MVtab2[code].len);
+    return getBits (1) ? -MVtab2[code].val : MVtab2[code].val;
+    }
+  //}}}
   //{{{
   void decodeVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
   // calculate motion vector component
@@ -2414,16 +2383,13 @@ private:
     }
   //}}}
   //{{{
-  void motionVector (int* PMV, int* dmvector, int h_r_size, int v_r_size, int dmv, int mvscale, int full_pel_vector) {
+  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int full_pel_vector) {
   // get and decode motion vector and differential motion vector for one prediction */
 
     // horizontal component
     int motion_code = getMotionCode();
     int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits(h_r_size) : 0;
     decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
-
-    if (dmv)
-      dmvector[0] = getDmvector();
 
     // vertical component
     motion_code = getMotionCode();
@@ -2436,19 +2402,16 @@ private:
 
     if (mvscale)
       PMV[1] <<= 1;
-
-    if (dmv)
-      dmvector[1] = getDmvector();
     }
   //}}}
   //{{{
-  void motionVectors (int PMV[2][2][2], int dmvector[2], int motion_vertical_field_select[2][2],
-                      int s, int motion_vector_count, int mv_format, int h_r_size, int v_r_size, int dmv, int mvscale) {
+  void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2],
+                      int s, int motion_vector_count, int mv_format, int h_r_size, int v_r_size, int mvscale) {
 
     if (motion_vector_count == 1) {
-      if (mv_format == MV_FIELD && !dmv)
+      if (mv_format == MV_FIELD)
         motion_vertical_field_select[1][s] = motion_vertical_field_select[0][s] = getBits(1);
-      motionVector (PMV[0][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
+      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
 
       // update other motion vector predictors
       PMV[1][s][0] = PMV[0][s][0];
@@ -2457,32 +2420,9 @@ private:
 
     else {
       motion_vertical_field_select[0][s] = getBits(1);
-      motionVector (PMV[0][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
+      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
       motion_vertical_field_select[1][s] = getBits(1);
-      motionVector (PMV[1][s], dmvector, h_r_size, v_r_size, dmv, mvscale, 0);
-      }
-    }
-  //}}}
-  //{{{
-  void dualPrimeArithmetic (int DMV[][2], int* dmvector, int mvx, int mvy) {
-
-    if (top_field_first) {
-      /* vector for prediction of top field from bottom field */
-      DMV[0][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-      DMV[0][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] - 1;
-
-      /* vector for prediction of bottom field from top field */
-      DMV[1][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-      DMV[1][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] + 1;
-      }
-    else {
-      /* vector for prediction of top field from bottom field */
-      DMV[0][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-      DMV[0][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] - 1;
-
-      /* vector for prediction of bottom field from top field */
-      DMV[1][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-      DMV[1][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] + 1;
+      motionVector (PMV[1][s], h_r_size, v_r_size, mvscale, 0);
       }
     }
   //}}}
@@ -2634,9 +2574,7 @@ private:
   //}}}
   //{{{
   void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
-                        int motion_vertical_field_select[2][2], int dmvector[2], int stwtype) {
-
-    int DMV[2][2];
+                        int motion_vertical_field_select[2][2], int stwtype) {
 
     // 0:temporal, 1:(spat+temp)/2, 2:spatial
     int stwtop = stwtype % 3;
@@ -2666,35 +2604,6 @@ private:
           formPrediction (forward_reference_frame, motion_vertical_field_select[1][0],
                           current_frame, 1, mWidth << 1, mWidth << 1, 16, 8,
                           bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
-        }
-        //}}}
-      else if (motion_type == MC_DMV) {
-        //{{{  calculate derived motion vectors
-        dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]>>1);
-
-        if (stwtop < 2) {
-          /* predict top field from top field */
-          formPrediction (forward_reference_frame, 0, current_frame, 0,
-                          mWidth<<1, mWidth<<1,16,8,
-                          bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
-
-          /* predict and add to top field from bottom field */
-          formPrediction (forward_reference_frame,1,current_frame,0,
-                          mWidth<<1,mWidth<<1,16,8,
-                          bx,by>>1, DMV[0][0],DMV[0][1],1);
-          }
-
-        if (stwbot<2) {
-          /* predict bottom field from bottom field */
-          formPrediction (forward_reference_frame,1,current_frame,1,
-                          mWidth<<1,mWidth<<1,16,8,
-                          bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
-
-          /* predict and add to bottom field from top field */
-          formPrediction (forward_reference_frame,0,current_frame,1,
-                          mWidth<<1,mWidth<<1,16,8,
-                          bx,by>>1, DMV[1][0],DMV[1][1],1);
-          }
         }
         //}}}
       else
@@ -2791,7 +2700,7 @@ private:
   //}}}
   //{{{
   void motionCompensation (int MBA, int macroblock_type, int motion_type, int PMV[2][2][2],
-                           int motion_vertical_field_select[2][2], int dmvector[2], int stwtype, int dct_type) {
+                           int motion_vertical_field_select[2][2], int stwtype, int dct_type) {
 
     // derive current macroblock position within picture ISO/IEC 13818-2 section 6.3.1.6 and 6.3.1.7
     int bx = 16 * (MBA % mBwidth);
@@ -2799,7 +2708,7 @@ private:
 
     // motion compensation
     if (!(macroblock_type & MACROBLOCK_INTRA))
-      formPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype);
+      formPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype);
 
     // copy or add block data int32_to picture */
     for (int comp = 0; comp < block_count; comp++) {
@@ -2907,18 +2816,17 @@ private:
   //}}}
   //{{{
   int decodeMacroblock (int* macroblock_type, int* stwtype, int* stwclass, int* motion_type, int* dct_type,
-                        int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2], int dmvector[2]) {
+                        int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
 
     int quantizer_scale_code;
     int comp;
     int motion_vector_count;
     int mv_format;
-    int dmv;
     int mvscale;
     int coded_block_pattern;
 
     // ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes
-    macroBlockModes (macroblock_type, stwtype, stwclass, motion_type, &motion_vector_count, &mv_format, &dmv, &mvscale, dct_type);
+    macroBlockModes (macroblock_type, stwtype, stwclass, motion_type, &motion_vector_count, &mv_format,  &mvscale, dct_type);
 
     if (Flaw_Flag)
       return 0;  // trigger: go to next slice
@@ -2931,16 +2839,14 @@ private:
 
     // motion vectors ISO/IEC 13818-2 section 6.3.17.2: Motion vectors decode forward motion vectors
     if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD) || ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors))
-      motionVectors (PMV,dmvector,motion_vertical_field_select,
-                     0, motion_vector_count, mv_format, f_code[0][0]-1, f_code[0][1]-1, dmv,mvscale);
+      motionVectors (PMV, motion_vertical_field_select, 0, motion_vector_count, mv_format, f_code[0][0]-1, f_code[0][1]-1, mvscale);
 
     if (Flaw_Flag)
       return 0;  // trigger: go to next slice
 
     // decode backward motion vectors
     if (*macroblock_type & MACROBLOCK_MOTION_BACKWARD)
-        motionVectors (PMV,dmvector, motion_vertical_field_select,
-                       1, motion_vector_count, mv_format, f_code[1][0]-1, f_code[1][1]-1, 0, mvscale);
+        motionVectors (PMV, motion_vertical_field_select, 1, motion_vector_count, mv_format, f_code[1][0]-1, f_code[1][1]-1, mvscale);
 
     if (Flaw_Flag)
       return 0;  // trigger: go to next slice
@@ -3044,12 +2950,10 @@ private:
 
       int macroblock_type, motion_type, dct_type;
       int motion_vertical_field_select[2][2];
-      int dmvector[2];
       int stwtype, stwclass;
       if (MBAinc == 1) {
         // not skipped
-        ret = decodeMacroblock (&macroblock_type, &stwtype, &stwclass,
-                                &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select, dmvector);
+        ret = decodeMacroblock (&macroblock_type, &stwtype, &stwclass, &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select);
         if (ret == -1)
           return -1;
         if (ret == 0)
@@ -3059,7 +2963,7 @@ private:
         skippedMacroblock (dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &stwtype, &macroblock_type);
 
       // ISO/IEC 13818-2 section 7.6
-      motionCompensation (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, dmvector, stwtype, dct_type);
+      motionCompensation (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype, dct_type);
 
       // next macroblock
       MBA++;
