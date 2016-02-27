@@ -11,29 +11,23 @@
 #include "cYuvFrame.h"
 //}}}
 //{{{  const
-#define SLICE_START_CODE_MIN    0x101
-#define SLICE_START_CODE_MAX    0x1AF
-#define USER_DATA_START_CODE    0x1B2
-#define SEQUENCE_HEADER_CODE    0x1B3
-#define SEQUENCE_ERROR_CODE     0x1B4
-#define EXTENSION_START_CODE    0x1B5
-#define SEQUENCE_END_CODE       0x1B7
-#define GROUP_START_CODE        0x1B8
-#define ISO_END_CODE            0x1B9
+#define SLICE_START_CODE_MIN     0x101
+#define SLICE_START_CODE_MAX     0x1AF
+#define USER_DATA_START_CODE     0x1B2
+#define SEQUENCE_HEADER_CODE     0x1B3
+#define EXTENSION_START_CODE     0x1B5
+#define SEQUENCE_END_CODE        0x1B7
+#define GROUP_START_CODE         0x1B8
+#define ISO_END_CODE             0x1B9
 
-#define SEQUENCE_EXTENSION_ID                    1
-#define PICTURE_CODING_EXTENSION_ID              8
+#define SEQUENCE_EXTENSION_ID        1
+#define PICTURE_CODING_EXTENSION_ID  8
 
 // picture coding type
 #define I_TYPE 1
 #define P_TYPE 2
 #define B_TYPE 3
 #define D_TYPE 4
-
-// picture structure
-#define TOP_FIELD     1
-#define BOTTOM_FIELD  2
-#define FRAME_PICTURE 3
 
 // macroblock type
 #define MACROBLOCK_INTRA                        1
@@ -574,11 +568,11 @@ public:
     consumeBits (0);
 
     if (!mGotSequenceHeader) {
-      // wait for sequenceHeaderCode
+      // get sequenceHeaderCode
       while (mBufferPtr < mBufferEnd) {
         uint32_t code = getHeader (false);
-        if (code == 0x1B3) {
-          //{{{  sequenceHeaderCode allocate buffers from sequenceHeader width, height
+        if (code == 0x1B3) { // sequenceHeaderCode
+          //{{{  allocate buffers from sequenceHeader width, height
           for (int cc = 0; cc < 3; cc++) {
             int size = (cc == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
             auxframe[cc] = (uint8_t*)malloc(size);
@@ -589,26 +583,16 @@ public:
           break;
           }
           //}}}
-        else if (code == 0x1B7)
+        else if (code == 0x1B9) // isoEndCode
           break;
         }
       }
 
-    int bitFrame = 0;
-    int seqFrame = 0;
+    // get pictureStartCode
+    while ((mBufferPtr < mBufferEnd) && (getHeader (true) != 0x100)) {}
 
-    while (mBufferPtr < mBufferEnd) {
-      // wait for pictureStartCode
-      while ((mBufferPtr < mBufferEnd) && (getHeader (true) != 0x100)) {}
-
-      // decodePicture
-      if (picture_structure == FRAME_PICTURE && Second_Field) {
-        //{{{  error
-        printf ("odd number of field pictures\n");
-        Second_Field = false;
-        }
-        //}}}
-
+    // decodePicture
+    if (mBufferPtr < mBufferEnd) {
       //{{{  updatePictureBuffers;
       for (int cc = 0; cc < 3; cc++) {
         // B pics do not need to be save for future reference
@@ -616,48 +600,30 @@ public:
           current_frame[cc] = auxframe[cc];
 
         else {
-          // only update at the beginning of the coded frame
-          if (!Second_Field) {
-            // the previously decoded reference frame is stored coincident with the location where the backward
-            // reference frame is stored (backwards prediction is not needed in P pictures)
-            // update pointer for potential future B pictures
-            uint8_t* tmp = forward_reference_frame[cc];
-            forward_reference_frame[cc] = backward_reference_frame[cc];
-            backward_reference_frame[cc] = tmp;
-            }
+          // the previously decoded reference frame is stored coincident with the location where the backward
+          // reference frame is stored (backwards prediction is not needed in P pictures)
+          // update pointer for potential future B pictures
+          uint8_t* tmp = forward_reference_frame[cc];
+          forward_reference_frame[cc] = backward_reference_frame[cc];
+          backward_reference_frame[cc] = tmp;
 
           // can erase over old backward reference frame since it is not used in a P picture
           // - since any subsequent B pictures will use the previously decoded I or P frame as the backward_reference_frame
           current_frame[cc] = backward_reference_frame[cc];
           }
-
-        // one-time folding of a line offset into the pointer which stores the  memory address of the current frame 
-        // - saves offsets and conditional branches throughout the remainder of the picture processing loop
-        if (picture_structure == BOTTOM_FIELD)
-          current_frame[cc] += (cc == 0) ? mWidth : mChromaWidth;
         }
       //}}}
-      while (slice (bitFrame, (picture_structure == FRAME_PICTURE) ? (mBwidth * mBheight) : ((mBwidth * mBheight)>>1)) >= 0);
-      //{{{  reorderFrames write or display current or previously decoded reference frame 
-      if (picture_structure == FRAME_PICTURE || Second_Field) {
-        int32_t linesize[2];
-        linesize[0] = mWidth;
-        linesize[1] = mChromaWidth;
-        yuvFrame->set (0, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
-                       mWidth, mHeight, pesLen, picture_coding_type);
-        frameWritten = true;
-        }
+      while (slice (mBwidth * mBheight) >= 0);
+      //{{{  reorderFrames write or display current or previously decoded reference frame
+      int32_t linesize[2];
+      linesize[0] = mWidth;
+      linesize[1] = mChromaWidth;
+      yuvFrame->set (0, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
+                     mWidth, mHeight, pesLen, picture_coding_type);
+      frameWritten = true;
       //}}}
-
-      if (picture_structure != FRAME_PICTURE)
-        Second_Field = !Second_Field;
-      if (!Second_Field) {
-        bitFrame++;
-        seqFrame++;
-        }
       }
 
-    //writeFrame (backward_reference_frame, bitFrame-1, progressive != 0, mWidth, mHeight, mChromaWidth);
     return frameWritten;
     }
   //}}}
@@ -694,10 +660,10 @@ private:
       consumeBits (mBitCount & 7);
       while ((mBufferPtr < mBufferEnd) && (m32bits >> 8) != 0x001)
         consumeBits (8);
-      return (mBufferPtr < mBufferEnd) ? m32bits : SEQUENCE_END_CODE;
+      return (mBufferPtr < mBufferEnd) ? m32bits : 0x1B9; // fake isoEndCode
       }
     else
-      return SEQUENCE_END_CODE;
+      return 0x1B9; // fake isoEndCode
     }
   //}}}
   //{{{  getHeader
@@ -2224,25 +2190,15 @@ private:
     stwclass = stwclass_table [stwtype];
 
     /* get frame/field motion type */
-    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD)) {
-      if (picture_structure == FRAME_PICTURE) /* frame_motion_type */
-        motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
-      else /* field_motion_type */
-        motion_type = getBits(2);
-      }
+    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD))
+      motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
     else if ((macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
       /* concealment motion vectors */
-      motion_type = (picture_structure == FRAME_PICTURE) ? MC_FRAME : MC_FIELD;
+      motion_type = MC_FRAME;
 
     /* derive motion_vector_count, mv_format and dmv, (table 6-17, 6-18) */
-    if (picture_structure == FRAME_PICTURE) {
-      motion_vector_count = (motion_type == MC_FIELD && stwclass < 2) ? 2 : 1;
-      mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
-      }
-    else {
-      motion_vector_count = (motion_type == MC_16X8) ? 2 : 1;
-      mv_format = MV_FIELD;
-      }
+    motion_vector_count = (motion_type == MC_FIELD && stwclass < 2) ? 2 : 1;
+    mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
 
     dmv = (motion_type==MC_DMV); /* dual prime */
     /* field mv predictions in frame pictures have to be scaled
@@ -2251,12 +2207,10 @@ private:
      * it displaces the stage:
      *    if((mv_format=="field")&&(t==1)&&(picture_structure=="Frame picture"))
      *      prediction = PMV[r][s][t] DIV 2; */
-    mvscale = ((mv_format == MV_FIELD) && (picture_structure == FRAME_PICTURE));
+    mvscale = mv_format == MV_FIELD;
 
     /* get dct_type (frame DCT / field DCT) */
-    dct_type = (picture_structure == FRAME_PICTURE)
-                && (!frame_pred_frame_dct) && (macroblock_type & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA))
-                 ? getBits(1) : 0;
+    dct_type = (!frame_pred_frame_dct) && (macroblock_type & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
 
     /* return values */
     *pmacroblock_type = macroblock_type;
@@ -2512,36 +2466,23 @@ private:
   //{{{
   void dualPrimeArithmetic (int DMV[][2], int* dmvector, int mvx, int mvy) {
 
-    if (picture_structure == FRAME_PICTURE) {
-      if (top_field_first) {
-        /* vector for prediction of top field from bottom field */
-        DMV[0][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-        DMV[0][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] - 1;
+    if (top_field_first) {
+      /* vector for prediction of top field from bottom field */
+      DMV[0][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
+      DMV[0][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] - 1;
 
-        /* vector for prediction of bottom field from top field */
-        DMV[1][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-        DMV[1][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] + 1;
-        }
-      else {
-        /* vector for prediction of top field from bottom field */
-        DMV[0][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-        DMV[0][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] - 1;
-
-        /* vector for prediction of bottom field from top field */
-        DMV[1][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-        DMV[1][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] + 1;
-        }
+      /* vector for prediction of bottom field from top field */
+      DMV[1][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
+      DMV[1][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] + 1;
       }
     else {
-      /* vector for prediction from field of opposite 'parity' */
-      DMV[0][0] = ((mvx+(mvx>0))>>1) + dmvector[0];
-      DMV[0][1] = ((mvy+(mvy>0))>>1) + dmvector[1];
+      /* vector for prediction of top field from bottom field */
+      DMV[0][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
+      DMV[0][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] - 1;
 
-      /* correct for vertical field shift */
-      if (picture_structure==TOP_FIELD)
-        DMV[0][1]--;
-      else
-        DMV[0][1]++;
+      /* vector for prediction of bottom field from top field */
+      DMV[1][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
+      DMV[1][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] + 1;
       }
     }
   //}}}
@@ -2695,8 +2636,6 @@ private:
   void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
                         int motion_vertical_field_select[2][2], int dmvector[2], int stwtype) {
 
-    int currentfield;
-    uint8_t** predframe;
     int DMV[2][2];
 
     // 0:temporal, 1:(spat+temp)/2, 2:spatial
@@ -2704,180 +2643,93 @@ private:
     int stwbot = stwtype / 3;
 
     if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || (picture_coding_type == P_TYPE)) {
-      if (picture_structure == FRAME_PICTURE) {
-        if ((motion_type == MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-          //{{{  frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
-          if (stwtop < 2)
-            formPrediction (forward_reference_frame, 0, current_frame, 0,
-              mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
+      if ((motion_type == MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
+        //{{{  frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
+        if (stwtop < 2)
+          formPrediction (forward_reference_frame, 0, current_frame, 0,
+            mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
 
-          if (stwbot < 2)
-            formPrediction (forward_reference_frame, 1, current_frame, 1,
-              mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
-          }
-          //}}}
-        else if (motion_type == MC_FIELD) {
-          //{{{  top field prediction
-          if (stwtop < 2)
-            formPrediction (forward_reference_frame,motion_vertical_field_select[0][0],
-                            current_frame, 0, mWidth << 1, mWidth << 1, 16, 8,
-                            bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
-
-          /* bottom field prediction */
-          if (stwbot < 2)
-            formPrediction (forward_reference_frame, motion_vertical_field_select[1][0],
-                            current_frame, 1, mWidth << 1, mWidth << 1, 16, 8,
-                            bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
-          }
-          //}}}
-        else if (motion_type == MC_DMV) {
-          //{{{  calculate derived motion vectors
-          dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]>>1);
-
-          if (stwtop < 2) {
-            /* predict top field from top field */
-            formPrediction (forward_reference_frame, 0, current_frame, 0,
-                            mWidth<<1, mWidth<<1,16,8,
-                            bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
-
-            /* predict and add to top field from bottom field */
-            formPrediction (forward_reference_frame,1,current_frame,0,
-                            mWidth<<1,mWidth<<1,16,8,
-                            bx,by>>1, DMV[0][0],DMV[0][1],1);
-            }
-
-          if (stwbot<2) {
-            /* predict bottom field from bottom field */
-            formPrediction (forward_reference_frame,1,current_frame,1,
-                            mWidth<<1,mWidth<<1,16,8,
-                            bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
-
-            /* predict and add to bottom field from top field */
-            formPrediction (forward_reference_frame,0,current_frame,1,
-                            mWidth<<1,mWidth<<1,16,8,
-                            bx,by>>1, DMV[1][0],DMV[1][1],1);
-            }
-          }
-          //}}}
-        else
-          printf ("invalid motion_type\n");
-        }
-      else {
-        //{{{  field picture
-        currentfield = (picture_structure==BOTTOM_FIELD);
-
-        /* determine which frame to use for prediction */
-        if ((picture_coding_type==P_TYPE) && Second_Field && (currentfield!=motion_vertical_field_select[0][0]))
-          predframe = backward_reference_frame; /* same frame */
-        else
-          predframe = forward_reference_frame; /* previous frame */
-
-        if ((motion_type==MC_FIELD) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-          //{{{  field-based prediction */
-          if (stwtop<2)
-            formPrediction (predframe,motion_vertical_field_select[0][0],current_frame,0,
-                            mWidth<<1,mWidth<<1,16,16,
-                            bx,by, PMV[0][0][0],PMV[0][0][1],stwtop);
-          }
-          //}}}
-        else if (motion_type==MC_16X8) {
-          if (stwtop<2) {
-            formPrediction (predframe,motion_vertical_field_select[0][0],current_frame,0,
-                            mWidth<<1,mWidth<<1,16,8,
-                            bx,by, PMV[0][0][0],PMV[0][0][1],stwtop);
-
-            /* determine which frame to use for lower half prediction */
-            if ((picture_coding_type==P_TYPE) && Second_Field && (currentfield!=motion_vertical_field_select[1][0]))
-              predframe = backward_reference_frame; /* same frame */
-            else
-              predframe = forward_reference_frame; /* previous frame */
-
-            formPrediction (predframe,motion_vertical_field_select[1][0],current_frame,0,
-                            mWidth<<1,mWidth<<1,16,8,
-                            bx,by+8, PMV[1][0][0],PMV[1][0][1],stwtop);
-            }
-          }
-        else if (motion_type==MC_DMV) {
-          //{{{  dual prime prediction */
-          if (Second_Field)
-            predframe = backward_reference_frame; /* same frame */
-          else
-            predframe = forward_reference_frame; /* previous frame */
-
-          /* calculate derived motion vectors */
-          dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]);
-
-          /* predict from field of same parity */
-          formPrediction (forward_reference_frame,currentfield,current_frame,0,
-                          mWidth<<1,mWidth<<1,16,16,
-                          bx,by, PMV[0][0][0],PMV[0][0][1],0);
-
-          /* predict from field of opposite parity */
-          formPrediction (predframe,!currentfield,current_frame,0,
-                          mWidth<<1,mWidth<<1,16,16,
-                          bx,by, DMV[0][0],DMV[0][1],1);
-          }
-          //}}}
-        else
-          /* invalid motion_type */
-          printf("invalid motion_type\n");
+        if (stwbot < 2)
+          formPrediction (forward_reference_frame, 1, current_frame, 1,
+            mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
         }
         //}}}
+      else if (motion_type == MC_FIELD) {
+        //{{{  top field prediction
+        if (stwtop < 2)
+          formPrediction (forward_reference_frame,motion_vertical_field_select[0][0],
+                          current_frame, 0, mWidth << 1, mWidth << 1, 16, 8,
+                          bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
+
+        /* bottom field prediction */
+        if (stwbot < 2)
+          formPrediction (forward_reference_frame, motion_vertical_field_select[1][0],
+                          current_frame, 1, mWidth << 1, mWidth << 1, 16, 8,
+                          bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
+        }
+        //}}}
+      else if (motion_type == MC_DMV) {
+        //{{{  calculate derived motion vectors
+        dualPrimeArithmetic (DMV,dmvector,PMV[0][0][0],PMV[0][0][1]>>1);
+
+        if (stwtop < 2) {
+          /* predict top field from top field */
+          formPrediction (forward_reference_frame, 0, current_frame, 0,
+                          mWidth<<1, mWidth<<1,16,8,
+                          bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
+
+          /* predict and add to top field from bottom field */
+          formPrediction (forward_reference_frame,1,current_frame,0,
+                          mWidth<<1,mWidth<<1,16,8,
+                          bx,by>>1, DMV[0][0],DMV[0][1],1);
+          }
+
+        if (stwbot<2) {
+          /* predict bottom field from bottom field */
+          formPrediction (forward_reference_frame,1,current_frame,1,
+                          mWidth<<1,mWidth<<1,16,8,
+                          bx,by>>1, PMV[0][0][0],PMV[0][0][1]>>1,0);
+
+          /* predict and add to bottom field from top field */
+          formPrediction (forward_reference_frame,0,current_frame,1,
+                          mWidth<<1,mWidth<<1,16,8,
+                          bx,by>>1, DMV[1][0],DMV[1][1],1);
+          }
+        }
+        //}}}
+      else
+        printf ("invalid motion_type\n");
       stwtop = stwbot = 1;
       }
 
     if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
-      if (picture_structure == FRAME_PICTURE) {
-        if (motion_type == MC_FRAME) {
-          //{{{  frame-based prediction
-          if (stwtop < 2)
-            formPrediction (backward_reference_frame,0,current_frame,0,
-                            mWidth,mWidth<<1,16,8,
-                            bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
+      if (motion_type == MC_FRAME) {
+        //{{{  frame-based prediction
+        if (stwtop < 2)
+          formPrediction (backward_reference_frame,0,current_frame,0,
+                          mWidth,mWidth<<1,16,8,
+                          bx,by, PMV[0][1][0],PMV[0][1][1],stwtop);
 
-          if (stwbot < 2)
-            formPrediction (backward_reference_frame,1,current_frame,1,
-                            mWidth,mWidth<<1,16,8,
-                            bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
-          }
-          //}}}
-        else {
-          //{{{  top field prediction
-          if (stwtop < 2)
-            formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
-                            current_frame,0,mWidth<<1,mWidth<<1,16,8,
-                            bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
-          //}}}
-          //{{{  bottom field prediction
-          if (stwbot < 2)
-            formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
-                            current_frame,1,mWidth<<1,mWidth<<1,16,8,
-                            bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
-          //}}}
-          }
-        }
-      else {
-        //{{{  field picture
-        if (motion_type == MC_FIELD) {
-          /* field-based prediction */
-          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
-                         current_frame,0,mWidth<<1,mWidth<<1,16,16,
-                         bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
-          }
-        else if (motion_type == MC_16X8) {
-          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
-                         current_frame,0,mWidth<<1,mWidth<<1,16,8,
-                         bx,by,PMV[0][1][0],PMV[0][1][1],stwtop);
-
-          formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
-                          current_frame,0,mWidth<<1,mWidth<<1,16,8,
-                          bx,by+8,PMV[1][1][0],PMV[1][1][1],stwtop);
-          }
-        else
-          /* invalid motion_type */
-          printf("invalid motion_type\n");
+        if (stwbot < 2)
+          formPrediction (backward_reference_frame,1,current_frame,1,
+                          mWidth,mWidth<<1,16,8,
+                          bx,by, PMV[0][1][0],PMV[0][1][1],stwbot);
         }
         //}}}
+      else {
+        //{{{  top field prediction
+        if (stwtop < 2)
+          formPrediction (backward_reference_frame,motion_vertical_field_select[0][1],
+                          current_frame,0,mWidth<<1,mWidth<<1,16,8,
+                          bx,by>>1,PMV[0][1][0],PMV[0][1][1]>>1,stwtop);
+        //}}}
+        //{{{  bottom field prediction
+        if (stwbot < 2)
+          formPrediction (backward_reference_frame,motion_vertical_field_select[1][1],
+                          current_frame,1,mWidth<<1,mWidth<<1,16,8,
+                          bx,by>>1,PMV[1][1][0],PMV[1][1][1]>>1,stwbot);
+        //}}}
+        }
       }
     }
   //}}}
@@ -2886,55 +2738,35 @@ private:
   // move/add 8x8-Block from block[comp] to backward_reference_frame */
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
   // ISO/IEC 13818-2 section 7.6.8: Adding prediction and coefficient data
-  // This stage also embodies some of the operations implied by:
 
     int iincr;
     uint8_t* rfp;
 
-    /* derive color component index equivalent to ISO/IEC 13818-2 Table 7-1 */
-    int cc = (comp<4) ? 0 : (comp&1)+1; /* color component index */
+    // derive color component index
+    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
     if (cc == 0) {
-      //{{{  luminance
-      if (picture_structure == FRAME_PICTURE)
-        if (dct_type) {
-          //  field DCT coding
-          rfp = current_frame[0] + mWidth*(by+((comp&2)>>1)) + bx + ((comp&1)<<3);
-          iincr = (mWidth<<1) - 8;
-          }
-        else {
-          // frame DCT coding
-          rfp = current_frame[0] + mWidth*(by+((comp&2)<<2)) + bx + ((comp&1)<<3);
-          iincr = mWidth - 8;
-          }
+      if (dct_type) {
+        // luminance  field DCT coding
+        rfp = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
+        iincr = (mWidth << 1) - 8;
+        }
       else {
-        // field picture
-        rfp = current_frame[0] + (mWidth<<1)*(by+((comp&2)<<2)) + bx + ((comp&1)<<3);
-        iincr = (mWidth<<1) - 8;
+        // luminance frame DCT coding
+        rfp = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
+        iincr = mWidth - 8;
         }
       }
-      //}}}
     else {
-      //{{{  chrominance scale coordinates
-      bx >>= 1;
-      by >>= 1;
-      if (picture_structure == FRAME_PICTURE) {
-        // frame DCT coding
-        rfp = current_frame[cc] + mChromaWidth*(by+((comp&2)<<2)) + bx + (comp&8);
-        iincr = mChromaWidth - 8;
-        }
-      else {
-        // field picture
-        rfp = current_frame[cc] + (mChromaWidth<<1)*(by+((comp&2)<<2)) + bx + (comp&8);
-        iincr = (mChromaWidth<<1) - 8;
-        }
+      // chrominance scale coordinates, frame DCT coding
+      rfp = current_frame[cc] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
+      iincr = mChromaWidth - 8;
       }
-      //}}}
 
-    short* bp = block[comp];
+    short* bp = block [comp];
     if (addflag) {
       for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
-          *rfp = Clip[*bp++ + *rfp];
+          *rfp = Clip [*bp++ + *rfp];
           rfp++;
           }
         rfp += iincr;
@@ -2943,7 +2775,7 @@ private:
     else {
       for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++)
-          *rfp++ = Clip[*bp++ + 128];
+          *rfp++ = Clip [*bp++ + 128];
         rfp += iincr;
         }
       }
@@ -3064,13 +2896,7 @@ private:
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
 
     // derive motion_type */
-    if (picture_structure == FRAME_PICTURE)
-      *motion_type = MC_FRAME;
-    else {
-      *motion_type = MC_FIELD;
-      // predict from field of same parity ISO/IEC 13818-2 section 7.6.6.1 and 7.6.6.3: P field picture and B field picture
-      motion_vertical_field_select[0][0] = motion_vertical_field_select[0][1] = (picture_structure == BOTTOM_FIELD);
-      }
+    *motion_type = MC_FRAME;
 
     // skipped I are spatial-only predicted, skipped P and B are temporal-only predicted ISO/IEC 13818-2 section 7.7.6:
     *stwtype = (picture_coding_type == I_TYPE) ? 8 : 0;
@@ -3165,13 +2991,7 @@ private:
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
 
       // derive motion_type ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes, frame_motion_type
-      if (picture_structure == FRAME_PICTURE)
-        *motion_type = MC_FRAME;
-      else {
-        *motion_type = MC_FIELD;
-        // predict from field of same parity
-        motion_vertical_field_select[0][0] = (picture_structure == BOTTOM_FIELD);
-        }
+      *motion_type = MC_FRAME;
       }
 
     if (*stwclass == 4) {
@@ -3185,7 +3005,7 @@ private:
     }
   //}}}
   //{{{
-  int slice (int framenum, int MBAmax) {
+  int slice (int MBAmax) {
   // decode all macroblocks of the current picture ISO/IEC 13818-2 section 6.3.16 */
 
     int MBA = 0;

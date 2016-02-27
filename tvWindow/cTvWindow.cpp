@@ -147,7 +147,12 @@ public:
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
 
       dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), whiteBrush);
-      swprintf (wStr, 10, L"%d", mYuvFrames[i].mPictType);
+      switch (mYuvFrames[i].mPictType) {
+        case 1: swprintf (wStr, 10, L"I"); break;
+        case 2: swprintf (wStr, 10, L"P"); break;
+        case 3: swprintf (wStr, 10, L"B"); break;
+        default: swprintf (wStr, 10, L"%d", mYuvFrames[i].mPictType); break;
+        }
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
 
       float l = mYuvFrames[i].mLen / 1000.0f;
