@@ -96,8 +96,7 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    makeBitmap (&mYuvFrames[mCurVidFrame]);
-    if (mBitmap)
+    if (makeBitmap (&mYuvFrames[mCurVidFrame], mBitmap, mBitmapPts))
       dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -112,32 +111,6 @@ protected:
   //}}}
 
 private:
-  //{{{
-  void makeBitmap (cYuvFrame* yuvFrame) {
-
-    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
-    if (yuvFrame && yuvFrame->mWidth && yuvFrame->mHeight) {
-      if (mBitmap)  {
-        auto pixelSize = mBitmap->GetPixelSize();
-        if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
-          mBitmap->Release();
-          mBitmap = nullptr;
-          }
-        }
-      if (!mBitmap) // create bitmap
-        getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
-
-      auto bgraBuf = yuvFrame->bgra();
-      mBitmap->CopyFromMemory (&RectU(0, 0, yuvFrame->mWidth, yuvFrame->mHeight), bgraBuf, yuvFrame->mWidth * 4);
-      _mm_free (bgraBuf);
-      }
-    else if (mBitmap) {
-      mBitmap->Release();
-      mBitmap = nullptr;
-      }
-    }
-  //}}}
   //{{{
   uint8_t limit (double v) {
 
@@ -272,6 +245,7 @@ private:
       if (!(i % 100))
         printf ("frame %d  %4.3fs %4.3fms\n", i, getTimer() - time, 1000.0 * (getTimer() - time) / i);
       decodePes (pesPtr, fileBuffer + mFileBytes, &mYuvFrames[i], pesPtr);
+      mYuvFrames [i].mPts = i;
       mCurVidFrame = i;
       }
 
@@ -281,6 +255,7 @@ private:
   //}}}
 
   int mCurVidFrame = 0;
+  int64_t mBitmapPts = -1;
   cYuvFrame mYuvFrames[maxVidFrames];
   DecodedPicList* pDecPicList;
   ID2D1Bitmap* mBitmap = nullptr;

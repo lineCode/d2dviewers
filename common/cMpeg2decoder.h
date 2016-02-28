@@ -1479,16 +1479,6 @@ private:
         break;
       //}}}
       //{{{
-      //void half_1_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
-
-        //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}}}
-      //{{{
       //case 1: {
         //for (int loop = 0; loop < h; loop++) {
           ////*(__m128i*)dCr = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCr), _mm_loadu_si128((__m128i*)(sCr+lx)));
@@ -1506,12 +1496,10 @@ private:
         ////half_1_sse (sCb, dCb, h, lx, lx2);
         //}
         //break;
-      //}}}
-      //{{{
-      //void half_2_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
 
+      //void half_1_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
         //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
           //s += lx2;
           //d += lx2;
           //}
@@ -1523,10 +1511,23 @@ private:
         ////half_2_sse (sCb, dCb, h, lx2);
         //}
         //break;
+
+      //void half_2_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+        //for (int loop = 0; loop < h; loop++) {
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
       //}}}
       //{{{
-      //void half_3_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+      //case 3: {
+        ////half_3_sse (sCr, dCr, h, lx, lx2);
+        ////half_3_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
 
+      //void half_3_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
         //__m64 shade = _mm_set1_pi8(1);
         //for (int loop = 0; loop < h; loop++) {
           //__m64 pixel1 = *(__m64*)s;
@@ -1548,35 +1549,15 @@ private:
         //}
       //}}}
       //{{{
-      //case 3: {
-        ////half_3_sse (sCr, dCr, h, lx, lx2);
-        ////half_3_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
-      //}}}
-      //{{{
-      //void half_4_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
-
-        //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)d);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}}}
-      //{{{
       //case 4: {
         ////half_4_sse (sCr, dCr, h, lx2);
         ////half_4_sse (sCb, dCb, h, lx2);
         //}
         //break;
-      //}}}
-      //{{{
-      //void half_5_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
 
+      //void half_4_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
         //for (int loop = 0; loop < h; loop++) {
-          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)d);
           //s += lx2;
           //d += lx2;
           //}
@@ -1588,12 +1569,10 @@ private:
         ////half_5_sse (sCb, dCb, h, lx, lx2);
         //}
         //break;
-      //}}}
-      //{{{
-      //void half_6_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
 
+      //void half_5_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
         //for (int loop = 0; loop < h; loop++) {
-          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
           //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
           //s += lx2;
           //d += lx2;
@@ -1606,10 +1585,24 @@ private:
         ////half_6_sse (sCb, dCb, h, lx2);
         //}
         //break;
+
+      //void half_6_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+        //for (int loop = 0; loop < h; loop++) {
+          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
       //}}}
       //{{{
-      //void half_7_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+      //case 7: {
+        ////half_7_sse (sCr, dCr, h, lx, lx2);
+        ////half_7_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
 
+      //void half_7_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
         //__m64 shade = _mm_set1_pi8(1);
         //for (int loop = 0; loop < h; loop++) {
           //__m64 pixel1 = *(__m64*)s;
@@ -1629,13 +1622,6 @@ private:
           //d += lx2;
           //}
         //}
-      //}}}
-      //{{{
-      //case 7: {
-        ////half_7_sse (sCr, dCr, h, lx, lx2);
-        ////half_7_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
       //}}}
       }
     }
@@ -1945,7 +1931,7 @@ private:
     }
   //}}}
   //{{{
-  void addBlock (int comp, int bx, int by, int dct_type, int addflag) {
+  void addBlock (int comp, int bx, int by, int dct_type, int add) {
   // move/add 8x8-Block from block[comp] to backward_reference_frame
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
 
@@ -1975,7 +1961,7 @@ private:
     // 128bits is powerless in this case
     __m64 *src = (__m64*)block[comp];
 
-    if (addflag) {
+    if (add) {
        __m64 zero = _mm_setzero_si64();
       for (int loop = 0; loop < 8; loop++) {
         __m64 unpacklo = _m_punpcklbw (*(__m64*)refFramePtr, zero);
@@ -2000,7 +1986,7 @@ private:
   #else
     short* src = block[comp];
 
-    if (addflag) {
+    if (add) {
       for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++)
           *refFramePtr++ = Clip [*src++ + *refFramePtr];
