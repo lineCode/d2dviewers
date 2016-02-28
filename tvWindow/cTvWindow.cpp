@@ -8,7 +8,7 @@
 #include "../common/cTransportStream.h"
 
 #include "../common/cYuvFrame.h"
-#include "../common/yuvrgb_sse2.h"
+//#include "../common/yuvrgb_sse2.h"
 #include "../common/cMpeg2decoder.h"
 
 #include "../common/cAudFrame.h"
@@ -291,14 +291,17 @@ protected:
         }
       }
       //}}}
-    else if (mMpeg2decoder.decodePes (pidInfo->mBuffer, pesLen, &mYuvFrames [mLoadVidFrame % maxVidFrames])) {
-      // decoded piccy
-      if (pidInfo->mDts) // use actual pts
-        mVidPts = pidInfo->mPts;
-      else // fake pts
-        mVidPts += 90000/25;
-      mYuvFrames [mLoadVidFrame % maxVidFrames].mPts = mVidPts;
-      mLoadVidFrame++;
+    else {
+      uint8_t* pesPtr;
+      if (mMpeg2decoder.decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, &mYuvFrames[mLoadVidFrame % maxVidFrames], pesPtr)) {
+        // decoded piccy
+        if (pidInfo->mDts) // use actual pts
+          mVidPts = pidInfo->mPts;
+        else // fake pts
+          mVidPts += 90000/25;
+        mYuvFrames [mLoadVidFrame % maxVidFrames].mPts = mVidPts;
+        mLoadVidFrame++;
+        }
       }
     }
   //}}}
@@ -456,8 +459,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  makeBitmap (mTs.getNearestVidFrame (mAudPts));
-  if (mBitmap)
+  if (makeBitmap (mTs.getNearestVidFrame (mAudPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
   else
     dc->Clear (ColorF(ColorF::Black));
@@ -481,42 +483,12 @@ void onDraw (ID2D1DeviceContext* dc) {
   if (mShowTransportStream)
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
 
-
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
   dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
   }
 //}}}
 
 private:
-  //{{{
-  void makeBitmap (cYuvFrame* yuvFrame) {
-
-    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
-    if (yuvFrame) {
-      if (yuvFrame->mPts != mBitmapPts) {
-        mBitmapPts = yuvFrame->mPts;
-        if (mBitmap)  {
-          auto pixelSize = mBitmap->GetPixelSize();
-          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
-            mBitmap->Release();
-            mBitmap = nullptr;
-            }
-          }
-        if (!mBitmap) // create bitmap
-          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
-
-        auto bgraBuf = yuvFrame->argb();
-        mBitmap->CopyFromMemory (&RectU(0, 0, yuvFrame->mWidth, yuvFrame->mHeight), bgraBuf, yuvFrame->mWidth * 4);
-        _mm_free (bgraBuf);
-        }
-      }
-    else if (mBitmap) {
-      mBitmap->Release();
-      mBitmap = nullptr;
-      }
-    }
-  //}}}
   //{{{
   void incPlayFrame (int64_t inc) {
 

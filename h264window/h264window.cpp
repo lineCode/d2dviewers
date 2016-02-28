@@ -2,8 +2,8 @@
 //{{{  includes
 #include "pch.h"
 
+#include "../common/timer.h"
 #include "../common/cD2dWindow.h"
-
 #include "../common/cYuvFrame.h"
 #include "../common/cMpeg2decoder.h"
 
@@ -15,7 +15,7 @@
 #pragma comment(lib,"welsdec.lib")
 //}}}
 
-#define maxFrame 10000
+#define maxVidFrames 10000
 
 class cAppWindow : public cD2dWindow, public cMpeg2decoder {
 public:
@@ -128,7 +128,7 @@ private:
       if (!mBitmap) // create bitmap
         getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
 
-      auto bgraBuf = yuvFrame->argb();
+      auto bgraBuf = yuvFrame->bgra();
       mBitmap->CopyFromMemory (&RectU(0, 0, yuvFrame->mWidth, yuvFrame->mHeight), bgraBuf, yuvFrame->mWidth * 4);
       _mm_free (bgraBuf);
       }
@@ -266,15 +266,22 @@ private:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    decodePes (fileBuffer, mFileBytes, &mYuvFrames[0]);
+    auto time = startTimer();
+    uint8_t* pesPtr = fileBuffer;
+    for (int i = 0; i < maxVidFrames; i++) {
+      if (!(i % 100))
+        printf ("frame %d  %4.3fs %4.3fs\n", i, getTimer() - time, (getTimer() - time) / i);
+      decodePes (pesPtr, fileBuffer + mFileBytes, &mYuvFrames[i], pesPtr);
+      mCurVidFrame = i;
+      }
 
-    UnmapViewOfFile(fileBuffer);
-    CloseHandle(fileHandle);
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
     }
   //}}}
 
   int mCurVidFrame = 0;
-  cYuvFrame mYuvFrames[maxFrame];
+  cYuvFrame mYuvFrames[maxVidFrames];
   DecodedPicList* pDecPicList;
   ID2D1Bitmap* mBitmap = nullptr;
   };

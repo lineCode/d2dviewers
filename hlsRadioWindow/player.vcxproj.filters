@@ -553,9 +553,6 @@
     <ClInclude Include="..\common\cYuvFrame.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\yuvrgb_sse2.h">
-      <Filter>header</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
@@ -569,8 +566,5 @@
       <UniqueIdentifier>{868a143c-99a1-4030-9f94-b1aa8444a32c}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\common\yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>

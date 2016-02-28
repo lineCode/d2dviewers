@@ -350,7 +350,6 @@
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cMpeg2decoder.h" />
     <ClInclude Include="..\common\cYuvFrame.h" />
-    <ClInclude Include="..\common\yuvrgb_sse2.h" />
     <ClInclude Include="..\ldecod\inc\annexb.h" />
     <ClInclude Include="..\ldecod\inc\biaridecod.h" />
     <ClInclude Include="..\ldecod\inc\blk_prediction.h" />
@@ -406,19 +405,6 @@
     <ClInclude Include="..\ldecod\inc\vui_params.h" />
     <ClInclude Include="..\ldecod\inc\win32.h" />
     <ClInclude Include="pch.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\common\yuvrgb_sse2.asm">
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">nasm -I%(RootDir)%(Directory)  -f win64 -DWIN64 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">nasm -I%(RootDir)%(Directory) -f win32 -DPREFIX -DX86_32 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">nasm -I%(RootDir)%(Directory)  -f win64 -DWIN64 -o $(IntDir)%(Filename).obj %(FullPath) </Command>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(IntDir)%(Filename).obj;%(Outputs)</Outputs>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
-    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{64E48C36-98A4-49F9-8E8C-765B09052454}</ProjectGuid>

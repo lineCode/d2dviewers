@@ -336,9 +336,6 @@
     <ClInclude Include="..\common\cYuvFrame.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\yuvrgb_sse2.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\cMpeg2decoder.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -355,8 +352,5 @@
       <UniqueIdentifier>{0de67470-45f7-4936-89c3-0abf32ec85b3}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\common\yuvrgb_sse2.asm" />
   </ItemGroup>
 </Project>

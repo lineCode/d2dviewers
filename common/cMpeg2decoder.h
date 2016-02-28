@@ -19,7 +19,6 @@
 #define EXTENSION_START_CODE     0x1B5
 #define SEQUENCE_END_CODE        0x1B7
 #define GROUP_START_CODE         0x1B8
-#define ISO_END_CODE             0x1B9
 
 #define SEQUENCE_EXTENSION_ID        1
 #define PICTURE_CODING_EXTENSION_ID  8
@@ -462,57 +461,6 @@ DCTtab DCTtab6[16] =
 };
 //}}}
 //}}}
-//{{{  sse2 const
-__declspec(align(64)) short sse2_tab_i_04[] = {
-  16384, 21407, 16384,  8867, 16384, -8867, 16384,-21407,  // w05 w04 w01 w00 w13 w12 w09 w08
-  16384,  8867,-16384,-21407,-16384, 21407, 16384, -8867,  // w07 w06 w03 w02 w15 w14 w11 w10
-  22725, 19266, 19266, -4520, 12873,-22725,  4520,-12873,
-  12873,  4520,-22725,-12873,  4520, 19266, 19266,-22725 };
-
-__declspec(align(64)) short sse2_tab_i_17[] = {
-  22725, 29692, 22725, 12299, 22725,-12299, 22725,-29692,
-  22725, 12299,-22725,-29692,-22725, 29692, 22725,-12299,
-  31521, 26722, 26722, -6270, 17855,-31521,  6270,-17855,
-  17855,  6270,-31521,-17855,  6270, 26722, 26722,-31521 };
-
-__declspec(align(64)) short sse2_tab_i_26[] = {
-  21407, 27969, 21407, 11585, 21407,-11585, 21407,-27969,
-  21407, 11585,-21407,-27969,-21407, 27969, 21407,-11585,
-  29692, 25172, 25172, -5906, 16819,-29692,  5906,-16819,
-  16819,  5906,-29692,-16819,  5906, 25172, 25172,-29692 };
-
-__declspec(align(64)) short sse2_tab_i_35[] = {
-  19266, 25172, 19266, 10426, 19266,-10426, 19266,-25172,
-  19266, 10426,-19266,-25172,-19266, 25172, 19266,-10426,
-  26722, 22654, 22654, -5315, 15137,-26722,  5315,-15137,
-  15137,  5315,-26722,-15137,  5315, 22654, 22654,-26722 };
-
-#define DCT_8_INV_ROWX2(tab1, tab2)  \
-{  \
-  r1 = _mm_shufflelo_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r1 = _mm_shufflehi_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  a0 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
-  a1 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
-  a2 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
-  a3 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
-  s0 = _mm_add_epi32(_mm_add_epi32(a0, round_row), a2);  \
-  s1 = _mm_add_epi32(a1, a3);  \
-  p0 = _mm_srai_epi32(_mm_add_epi32(s0, s1), 11);  \
-  p1 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r2 = _mm_shufflelo_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r2 = _mm_shufflehi_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  b0 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
-  b1 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
-  b2 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
-  b3 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
-  s2 = _mm_add_epi32(_mm_add_epi32(b0, round_row), b2);  \
-  s3 = _mm_add_epi32(b3, b1);  \
-  p2 = _mm_srai_epi32(_mm_add_epi32(s2, s3), 11);  \
-  p3 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r1 = _mm_packs_epi32(p0, p1);  \
-  r2 = _mm_packs_epi32(p2, p3);  \
-}
-//}}}
 
 class cMpeg2decoder {
 public:
@@ -535,8 +483,10 @@ public:
       chroma_non_intra_quantizer_matrix[i] = non_intra_quantizer_matrix[i];
       }
 
-    for (int i = 0; i < 6; i++)
-      block[i] = (short*)_mm_malloc (128, 128);
+    // dodgy init of block, single _mm_malloc, multiple pointers to comps
+    block[0] = (short*)_mm_malloc (6 * 128 * sizeof(short), 128);
+    for (int i = 1; i < 6; i++)
+      block[i] = block[0] + (i * 128 *sizeof(short));
     }
   //}}}
   //{{{
@@ -550,18 +500,22 @@ public:
       free (forward_reference_frame[i]);
       free (auxframe[i]);
       }
+
+    _mm_free (block[0]);
     }
   //}}}
 
   //{{{
-  bool decodePes (uint8_t* pesBuffer, int pesLen, cYuvFrame* yuvFrame) {
+  bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, cYuvFrame* yuvFrame, uint8_t*& pesPtr) {
+  // decode a frame of video, usually a pes packet
 
     bool frameWritten = false;
 
     m32bits = 0;
     mBitCount = 0;
     mBufferPtr = pesBuffer;
-    mBufferEnd = pesBuffer + pesLen;
+    mBufferEnd = pesBufferEnd;
+    pesPtr = pesBuffer;
     consumeBits (0);
 
     if (!mGotSequenceHeader) {
@@ -580,15 +534,18 @@ public:
           break;
           }
           //}}}
-        else if (code == 0x1B9) // isoEndCode
-          break;
         }
       }
 
-    // decodePicture
+    // get pictureStartCode
     while (mBufferPtr < mBufferEnd) {
-      // get pictureStartCode
-      while ((mBufferPtr < mBufferEnd) && (getHeader (true) != 0x100)) {}
+      uint32_t code = getHeader (true);
+      if (code == 0x100) // pictureStartCode
+        break;
+      }
+
+    if (mBufferPtr < mBufferEnd) {
+      // decodePicture
       //{{{  updatePictureBuffers;
       for (int cc = 0; cc < 3; cc++) {
         current_frame[cc] = (picture_coding_type == B_TYPE) ? auxframe[cc] : backward_reference_frame[cc];
@@ -608,146 +565,22 @@ public:
           }
         }
       //}}}
-      while (decodeSlice (mBwidth * mBheight) >= 0);
+      while (decodeSlice() >= 0);
       //{{{  reorderFrames write or display current or previously decoded reference frame
       int32_t linesize[2];
       linesize[0] = mWidth;
       linesize[1] = mChromaWidth;
       yuvFrame->set (0, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
-                     mWidth, mHeight, pesLen, picture_coding_type);
+                     mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), picture_coding_type);
       frameWritten = true;
       //}}}
+
+      // crude bodge to rewind buffer pointer for next time
+      pesPtr = mBufferPtr - 4;
+      return true;
       }
-
-    return frameWritten;
-    }
-  //}}}
-  //{{{
-  void yuv420argb8888 (uint8_t* yp, uint8_t* up, uint8_t* vp, uint32_t sy, uint32_t suv,
-                       int width, int height, uint32_t* rgb, uint32_t srgb) {
-
-    __m128i y0r0, y0r1, u0, v0;
-    __m128i y00r0, y01r0, y00r1, y01r1;
-    __m128i u00, u01, v00, v01;
-    __m128i rv00, rv01, gu00, gu01, gv00, gv01, bu00, bu01;
-    __m128i r00, r01, g00, g01, b00, b01;
-    __m128i rgb0123, rgb4567, rgb89ab, rgbcdef;
-    __m128i gbgb;
-    __m128i ysub, uvsub;
-    __m128i zero, facy, facrv, facgu, facgv, facbu;
-    __m128i *srcy128r0, *srcy128r1;
-    __m128i *dstrgb128r0, *dstrgb128r1;
-    __m64   *srcu64, *srcv64;
-
-    int x, y;
-
-    ysub  = _mm_set1_epi32( 0x00100010 );
-    uvsub = _mm_set1_epi32( 0x00800080 );
-
-    facy  = _mm_set1_epi32( 0x004a004a );
-    facrv = _mm_set1_epi32( 0x00660066 );
-    facgu = _mm_set1_epi32( 0x00190019 );
-    facgv = _mm_set1_epi32( 0x00340034 );
-    facbu = _mm_set1_epi32( 0x00810081 );
-
-    zero  = _mm_set1_epi32( 0x00000000 );
-
-    for (y = 0; y < height; y += 2) {
-      srcy128r0 = (__m128i *)(yp + sy*y);
-      srcy128r1 = (__m128i *)(yp + sy*y + sy);
-      srcu64 = (__m64 *)(up + suv*(y/2));
-      srcv64 = (__m64 *)(vp + suv*(y/2));
-
-      dstrgb128r0 = (__m128i *)(rgb + srgb*y);
-      dstrgb128r1 = (__m128i *)(rgb + srgb*y + srgb);
-
-      for (x = 0; x < width; x += 16) {
-        u0 = _mm_loadl_epi64( (__m128i *)srcu64 ); srcu64++;
-        v0 = _mm_loadl_epi64( (__m128i *)srcv64 ); srcv64++;
-
-        y0r0 = _mm_load_si128( srcy128r0++ );
-        y0r1 = _mm_load_si128( srcy128r1++ );
-
-        // constant y factors
-        y00r0 = _mm_mullo_epi16( _mm_sub_epi16( _mm_unpacklo_epi8( y0r0, zero ), ysub ), facy );
-        y01r0 = _mm_mullo_epi16( _mm_sub_epi16( _mm_unpackhi_epi8( y0r0, zero ), ysub ), facy );
-        y00r1 = _mm_mullo_epi16( _mm_sub_epi16( _mm_unpacklo_epi8( y0r1, zero ), ysub ), facy );
-        y01r1 = _mm_mullo_epi16( _mm_sub_epi16( _mm_unpackhi_epi8( y0r1, zero ), ysub ), facy );
-
-        // expand u and v so they're aligned with y values
-        u0  = _mm_unpacklo_epi8( u0,  zero );
-        u00 = _mm_sub_epi16( _mm_unpacklo_epi16( u0, u0 ), uvsub );
-        u01 = _mm_sub_epi16( _mm_unpackhi_epi16( u0, u0 ), uvsub );
-
-        v0  = _mm_unpacklo_epi8( v0,  zero );
-        v00 = _mm_sub_epi16( _mm_unpacklo_epi16( v0, v0 ), uvsub );
-        v01 = _mm_sub_epi16( _mm_unpackhi_epi16( v0, v0 ), uvsub );
-
-        // common factors on both rows.
-        rv00 = _mm_mullo_epi16( facrv, v00 );
-        rv01 = _mm_mullo_epi16( facrv, v01 );
-        gu00 = _mm_mullo_epi16( facgu, u00 );
-        gu01 = _mm_mullo_epi16( facgu, u01 );
-        gv00 = _mm_mullo_epi16( facgv, v00 );
-        gv01 = _mm_mullo_epi16( facgv, v01 );
-        bu00 = _mm_mullo_epi16( facbu, u00 );
-        bu01 = _mm_mullo_epi16( facbu, u01 );
-
-        // row 0
-        r00 = _mm_srai_epi16( _mm_add_epi16( y00r0, rv00 ), 6 );
-        r01 = _mm_srai_epi16( _mm_add_epi16( y01r0, rv01 ), 6 );
-        g00 = _mm_srai_epi16( _mm_sub_epi16( _mm_sub_epi16( y00r0, gu00 ), gv00 ), 6 );
-        g01 = _mm_srai_epi16( _mm_sub_epi16( _mm_sub_epi16( y01r0, gu01 ), gv01 ), 6 );
-        b00 = _mm_srai_epi16( _mm_add_epi16( y00r0, bu00 ), 6 );
-        b01 = _mm_srai_epi16( _mm_add_epi16( y01r0, bu01 ), 6 );
-
-        r00 = _mm_packus_epi16( r00, r01 );         // rrrr.. saturated
-        g00 = _mm_packus_epi16( g00, g01 );         // gggg.. saturated
-        b00 = _mm_packus_epi16( b00, b01 );         // bbbb.. saturated
-
-        r01     = _mm_unpacklo_epi8(  r00,  zero ); // 0r0r..
-        gbgb    = _mm_unpacklo_epi8(  b00,  g00 );  // gbgb..
-        rgb0123 = _mm_unpacklo_epi16( gbgb, r01 );  // 0rgb0rgb..
-        rgb4567 = _mm_unpackhi_epi16( gbgb, r01 );  // 0rgb0rgb..
-
-        r01     = _mm_unpackhi_epi8(  r00,  zero );
-        gbgb    = _mm_unpackhi_epi8(  b00,  g00 );
-        rgb89ab = _mm_unpacklo_epi16( gbgb, r01 );
-        rgbcdef = _mm_unpackhi_epi16( gbgb, r01 );
-
-        _mm_store_si128( dstrgb128r0++, rgb0123 );
-        _mm_store_si128( dstrgb128r0++, rgb4567 );
-        _mm_store_si128( dstrgb128r0++, rgb89ab );
-        _mm_store_si128( dstrgb128r0++, rgbcdef );
-
-        // row 1
-        r00 = _mm_srai_epi16( _mm_add_epi16( y00r1, rv00 ), 6 );
-        r01 = _mm_srai_epi16( _mm_add_epi16( y01r1, rv01 ), 6 );
-        g00 = _mm_srai_epi16( _mm_sub_epi16( _mm_sub_epi16( y00r1, gu00 ), gv00 ), 6 );
-        g01 = _mm_srai_epi16( _mm_sub_epi16( _mm_sub_epi16( y01r1, gu01 ), gv01 ), 6 );
-        b00 = _mm_srai_epi16( _mm_add_epi16( y00r1, bu00 ), 6 );
-        b01 = _mm_srai_epi16( _mm_add_epi16( y01r1, bu01 ), 6 );
-
-        r00 = _mm_packus_epi16( r00, r01 );         // rrrr.. saturated
-        g00 = _mm_packus_epi16( g00, g01 );         // gggg.. saturated
-        b00 = _mm_packus_epi16( b00, b01 );         // bbbb.. saturated
-
-        r01     = _mm_unpacklo_epi8(  r00,  zero ); // 0r0r..
-        gbgb    = _mm_unpacklo_epi8(  b00,  g00 );  // gbgb..
-        rgb0123 = _mm_unpacklo_epi16( gbgb, r01 );  // 0rgb0rgb..
-        rgb4567 = _mm_unpackhi_epi16( gbgb, r01 );  // 0rgb0rgb..
-
-        r01     = _mm_unpackhi_epi8(  r00,  zero );
-        gbgb    = _mm_unpackhi_epi8(  b00,  g00 );
-        rgb89ab = _mm_unpacklo_epi16( gbgb, r01 );
-        rgbcdef = _mm_unpackhi_epi16( gbgb, r01 );
-
-        _mm_store_si128( dstrgb128r1++, rgb0123 );
-        _mm_store_si128( dstrgb128r1++, rgb4567 );
-        _mm_store_si128( dstrgb128r1++, rgb89ab );
-        _mm_store_si128( dstrgb128r1++, rgbcdef );
-        }
-      }
+    else
+      return false;
     }
   //}}}
 
@@ -782,7 +615,8 @@ private:
     consumeBits (mBitCount & 7);
     while ((mBufferPtr < mBufferEnd) && (m32bits >> 8) != 0x001)
       consumeBits (8);
-    return (mBufferPtr < mBufferEnd) ? m32bits : 0x1B9; // fake isoEndCode
+
+    return m32bits;
     }
   //}}}
   //{{{  getHeader
@@ -860,7 +694,6 @@ private:
     mHeight = 16 * mBheight;
     mChromaWidth = mWidth >> 1;
     mChromaHeight = mHeight >> 1;
-    block_count = 6;
 
     //if ((load_intra_quantizer_matrix = getBits (1)))
     //  for (int32_t i = 0; i < 64; i++)
@@ -1026,19 +859,6 @@ private:
     *(__m128i*)(block+8*5) = _mm_srai_epi16(_mm_subs_epi16(t2, t5), 6);
     *(__m128i*)(block+8*3) = _mm_srai_epi16(_mm_adds_epi16(t3, t4), 6);
     *(__m128i*)(block+8*4) = _mm_srai_epi16(_mm_subs_epi16(t3, t4), 6);
-    }
-  //}}}
-
-  //{{{
-  void asmClearBlock (int comp) {
-
-    float* ptr = (float*)block[comp];
-    __m128 zero = _mm_setzero_ps();
-
-    for (int loop = 0; loop < 8; loop++) {
-      _mm_store_ps (ptr, zero);
-      ptr += 4;
-      }
     }
   //}}}
   //{{{
@@ -1321,7 +1141,6 @@ private:
       }
     }
   //}}}
-
   //{{{
   void asmFormPrediction (unsigned char* src[], int sfield, int dfield, int lx, int lx2,
                           int h, int x, int y, int dx, int dy, int average_flag) {
@@ -1394,8 +1213,8 @@ private:
         break;
 
       case 1:
-        half_1_sse (sCr, dCr, h, lx, lx2);
-        half_1_sse (sCb, dCb, h, lx, lx2);
+        //half_1_sse (sCr, dCr, h, lx, lx2);
+        //half_1_sse (sCb, dCb, h, lx, lx2);
         break;
 
       case 2:
@@ -2260,7 +2079,7 @@ private:
       //asmFormPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select);
 
     // copy or add block data int32_to picture
-    for (int comp = 0; comp < block_count; comp++) {
+    for (int comp = 0; comp < 6; comp++) {
       sse2_ap945_idct (block[comp]);
       //asmAddBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
       addBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
@@ -2339,8 +2158,7 @@ private:
   void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
                           int* motion_type, int motion_vertical_field_select[2][2], int* stwtype, int* macroblock_type) {
 
-    for (int comp = 0; comp < block_count; comp++)
-      asmClearBlock (comp);
+    memset (block[0], 0, 128 * sizeof(short) * 6);
 
     // reset intra_dc predictors  ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
     dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
@@ -2403,15 +2221,15 @@ private:
     if (*macroblock_type & MACROBLOCK_PATTERN)
       coded_block_pattern = getCodedBlockPattern();
     else
-      coded_block_pattern = (*macroblock_type & MACROBLOCK_INTRA) ? (1 << block_count) - 1 : 0;
+      coded_block_pattern = (*macroblock_type & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
 
     if (Flaw_Flag)
       return 0;  // trigger: go to next slice
 
     // decode blocks
-    for (comp = 0; comp < block_count; comp++) {
-      asmClearBlock (comp);
-      if (coded_block_pattern & (1 << (block_count - 1 - comp))) {
+    for (comp = 0; comp < 6; comp++) {
+      memset (block[comp], 0, 128 * sizeof(short));
+      if (coded_block_pattern & (1 << (6 - 1 - comp))) {
         if (*macroblock_type & MACROBLOCK_INTRA)
           decodeIntraBlock (comp, dc_dct_pred);
         else
@@ -2444,12 +2262,12 @@ private:
     }
   //}}}
   //{{{
-  int decodeSlice (int MBAmax) {
+  int decodeSlice() {
   // decode all macroblocks of the current picture
 
     int MBA = 0;
     int MBAinc = 0;
-
+    int MBAmax = mBwidth * mBheight;
     int dc_dct_pred[3];
     int PMV[2][2][2];
     int ret = startOfSlice (MBAmax, &MBA, &MBAinc, dc_dct_pred, PMV);
@@ -2457,10 +2275,7 @@ private:
       return (ret);
 
     Flaw_Flag = 0;
-    for (;;) {
-      // this is how we properly exit out of picture
-      if (MBA >= MBAmax)
-        return -1; /* all macroblocks decoded */
+    for (; MBA < MBAmax; MBA++, MBAinc--) {
       if (MBAinc == 0) {
         if (!peekBits(23) || Flaw_Flag) {
           // next_start_code or fault
@@ -2475,14 +2290,6 @@ private:
             goto resync;
           }
         }
-
-      if (MBA >= MBAmax) {
-        //{{{  too many macroBlocks
-        // MBAinc points beyond picture dimensions
-        printf ("Too many macroblocks in picture\n");
-        return -1;
-        }
-        //}}}
 
       int macroblock_type, motion_type, dct_type;
       int motion_vertical_field_select[2][2];
@@ -2499,13 +2306,9 @@ private:
         skippedMacroblock (dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &stwtype, &macroblock_type);
 
       motionCompensation (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype, dct_type);
-
-      // next macroblock
-      MBA++;
-      MBAinc--;
-      if (MBA >= MBAmax)
-        return -1; /* all macroblocks decoded */
       }
+
+    return -1; /* all macroblocks decoded */
     }
   //}}}
 
@@ -2522,7 +2325,6 @@ private:
   int mChromaHeight = 0;
   int mBwidth = 0;
   int mBheight = 0;
-  int block_count = 0;
 
   uint8_t* auxframe[3];
   uint8_t* current_frame[3];

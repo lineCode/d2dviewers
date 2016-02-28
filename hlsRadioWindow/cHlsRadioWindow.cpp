@@ -171,8 +171,7 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    makeBitmap (mVidFrame);
-    if (mBitmap)
+    if (makeBitmap (mVidFrame, mBitmap, mVidPts))
       dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -242,54 +241,6 @@ protected:
   //}}}
 
 private:
-  //{{{
-  void makeBitmap (cYuvFrame* yuvFrame) {
-
-    static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
-    if (yuvFrame) {
-      if (yuvFrame->mPts != mVidPts) {
-        mVidPts = yuvFrame->mPts;
-        if (mBitmap)  {
-          auto pixelSize = mBitmap->GetPixelSize();
-          if ((pixelSize.width != yuvFrame->mWidth) || (pixelSize.height != yuvFrame->mHeight)) {
-            mBitmap->Release();
-            mBitmap = nullptr;
-            }
-          }
-        if (!mBitmap) // create bitmap
-          getDeviceContext()->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &mBitmap);
-
-        // allocate 16 byte aligned bgraBuf
-        auto bgraBufUnaligned = malloc ((yuvFrame->mWidth * 4 * 2) + 15);
-        auto bgraBuf = (uint8_t*)(((size_t)(bgraBufUnaligned) + 15) & ~0xf);
-
-        // convert yuv420 -> bitmap bgra
-        auto yPtr = yuvFrame->mYbuf;
-        auto uPtr = yuvFrame->mUbuf;
-        auto vPtr = yuvFrame->mVbuf;
-        for (auto i = 0; i < yuvFrame->mHeight; i += 2) {
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf, yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-
-          yuv420_rgba32_sse2 (yPtr, uPtr, vPtr, bgraBuf + (yuvFrame->mWidth * 4), yuvFrame->mWidth);
-          yPtr += yuvFrame->mYStride;
-          uPtr += yuvFrame->mUVStride;
-          vPtr += yuvFrame->mUVStride;
-
-          mBitmap->CopyFromMemory (&RectU(0, i, yuvFrame->mWidth, i + 2), bgraBuf, yuvFrame->mWidth * 4);
-          }
-
-        free (bgraBufUnaligned);
-        }
-      }
-    else if (mBitmap) {
-      mBitmap->Release();
-      mBitmap = nullptr;
-      }
-    }
-  //}}}
-
   //{{{
   void loader() {
   // loader task, handles all http gets, sleep 1s if no load suceeded
