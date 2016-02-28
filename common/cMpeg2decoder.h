@@ -503,15 +503,18 @@ public:
     for (int i = -384; i < 640; i++)
       Clip[i] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
 
-    for (int i = 0; i < 64; i++)
-      intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
-
-    for (int i = 0; i < 64; i++)
-      non_intra_quantizer_matrix[i] = 16;
-
     for (int i = 0; i < 64; i++) {
-      chroma_intra_quantizer_matrix[i] = intra_quantizer_matrix[i];
-      chroma_non_intra_quantizer_matrix[i] = non_intra_quantizer_matrix[i];
+      intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+      chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+      non_intra_quantizer_matrix[i] = 16;
+      chroma_non_intra_quantizer_matrix[i] = 16;
+      }
+
+    for (int i = 0; i < 3; i++) {
+      auxframe[i] = nullptr;
+      current_frame[i] = nullptr;
+      forward_reference_frame[i] = nullptr;
+      backward_reference_frame[i] = nullptr;
       }
 
     // dodgy init of block, single _mm_malloc, multiple pointers to comps
@@ -1001,7 +1004,6 @@ private:
     }
   //}}}
   //}}}
-
   //{{{
   int getLumaDCdctDiff() {
   // parse VLC and perform dct_diff arithmetic.
@@ -1291,9 +1293,7 @@ private:
 
     if (mvscale)
       PMV[1] >>= 1;
-
     decodeVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
-
     if (mvscale)
       PMV[1] <<= 1;
     }
@@ -1315,6 +1315,7 @@ private:
     else {
       motion_vertical_field_select[0][s] = getBits (1);
       motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
+
       motion_vertical_field_select [1][s] = getBits (1);
       motionVector (PMV[1][s], h_r_size, v_r_size, mvscale, 0);
       }
@@ -1323,19 +1324,15 @@ private:
 
 #ifdef ASM_FORMPREDICTION
   //{{{
-  void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int h,
-                       int x, int y, int dx, int dy, int average_flag) {
-  // ISO/IEC 13818-2 section 7.6.4: Forming predictions
+  void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int h, int x, int y, int dx, int dy, bool average) {
 
-    uint8_t* sY = src[0]+(sfield?lx2>>1:0) + lx * (y + (dy>>1)) + x + (dx>>1);
-    uint8_t* dY = current_frame[0]+(dfield?lx2>>1:0) + lx * y + x;
-    uint8_t* sYo = sY + 8;
-    uint8_t* dYo = dY + 8;
-    switch ((average_flag<<2) + ((dx & 1)<<1) + (dy & 1)) {
+    uint8_t* sY = src[0] + (sfield ? lx2 >> 1 : 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
+    uint8_t* dY = current_frame[0] + (dfield ? lx2 >> 1 : 0) + lx * y + x;
+    switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
       //{{{
       case 0: { // d[i] = s[i];
         for (int loop = 0; loop < h; loop++) {
-          *(__m128i*)dY = _mm_loadu_si128((__m128i*)sY);
+          *(__m128i*)dY = _mm_loadu_si128 ((__m128i*)sY);
           sY += lx2;
           dY += lx2;
           }
@@ -1345,7 +1342,7 @@ private:
       //{{{
       case 1: { // d[i] = (s[i]+s[i+lx]+1)>>1;
         for (int loop = 0; loop < h; loop++) {
-          *(__m128i*)dY = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sY), _mm_loadu_si128((__m128i*)(sY+lx)));
+          *(__m128i*)dY = _mm_avg_epu8 (_mm_loadu_si128((__m128i*)sY), _mm_loadu_si128 ((__m128i*)(sY+lx)));
           sY += lx2;
           dY += lx2;
           }
@@ -1355,7 +1352,7 @@ private:
       //{{{
       case 2: { // d[i] = (s[i]+s[i+1]+1)>>1;
         for (int loop = 0; loop < h; loop++) {
-          *(__m128i*)dY = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sY), _mm_loadu_si128((__m128i*)(sY+1)));
+          *(__m128i*)dY = _mm_avg_epu8 (_mm_loadu_si128 ((__m128i*)sY), _mm_loadu_si128 ((__m128i*)(sY+1)));
           sY += lx2;
           dY += lx2;
           }
@@ -1365,26 +1362,24 @@ private:
       //{{{
       case 3: { // d[i] = (s[i]+s[i+1]+s[i+lx]+s[i+lx+1]+2)>>2;
         // (a+b+c+d+2)>>2 = avg(avg(a,b)+avg(c,d)) - (a^b)|(c^d) & avg(a,b)^avg(c,d) & 0x01
-
         __m128i shade = _mm_set1_epi8(1);
-
         for (int loop = 0; loop < h; loop++) {
-          __m128i pixel1 = _mm_loadu_si128((__m128i*)sY);
-          __m128i pixel2 = _mm_loadu_si128((__m128i*)(sY + 1));
-          __m128i pixel3 = _mm_loadu_si128((__m128i*)(sY + lx));
-          __m128i pixel4 = _mm_loadu_si128((__m128i*)(sY + lx + 1));
+          __m128i pixel1 = _mm_loadu_si128 ((__m128i*)sY);
+          __m128i pixel2 = _mm_loadu_si128 ((__m128i*)(sY + 1));
+          __m128i pixel3 = _mm_loadu_si128 ((__m128i*)(sY + lx));
+          __m128i pixel4 = _mm_loadu_si128 ((__m128i*)(sY + lx + 1));
 
-          __m128i avg12 = _mm_avg_epu8(pixel1, pixel2);
-          __m128i avg34 = _mm_avg_epu8(pixel3, pixel4);
-          __m128i avg = _mm_avg_epu8(avg12, avg34);
+          __m128i avg12 = _mm_avg_epu8 (pixel1, pixel2);
+          __m128i avg34 = _mm_avg_epu8 (pixel3, pixel4);
+          __m128i avg = _mm_avg_epu8 (avg12, avg34);
 
-          __m128i xor12 = _mm_xor_si128(pixel1, pixel2);
-          __m128i xor34 = _mm_xor_si128(pixel3, pixel4);
-          __m128i or1234 = _mm_or_si128(xor12, xor34);
-          __m128i xoravg = _mm_xor_si128(avg12, avg34);
-          __m128i offset = _mm_and_si128(_mm_and_si128(or1234, xoravg), shade);
+          __m128i xor12 = _mm_xor_si128 (pixel1, pixel2);
+          __m128i xor34 = _mm_xor_si128 (pixel3, pixel4);
+          __m128i or1234 = _mm_or_si128 (xor12, xor34);
+          __m128i xoravg = _mm_xor_si128 (avg12, avg34);
+          __m128i offset = _mm_and_si128 (_mm_and_si128(or1234, xoravg), shade);
 
-          *(__m128i*)dY = _mm_sub_epi8(avg, offset);
+          *(__m128i*)dY = _mm_sub_epi8 (avg, offset);
 
           sY += lx2;
           dY += lx2;
@@ -1394,9 +1389,8 @@ private:
       //}}}
       //{{{
       case 4: { // d[i] = (s[i]+d[i]+1)>>1;
-
         for (int loop = 0; loop < h; loop++) {
-          *(__m128i*)dY = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sY), *(__m128i*)dY);
+          *(__m128i*)dY = _mm_avg_epu8 (_mm_loadu_si128 ((__m128i*)sY), *(__m128i*)dY);
           sY += lx2;
           dY += lx2;
           }
@@ -1405,10 +1399,9 @@ private:
       //}}}
       //{{{
       case 5: { // d[i] = ((s[i]+s[i+lx]+1)>>1) + d[i] + 1)>>1;
-
         for (int loop = 0; loop < h; loop++) {
-          __m128i avg = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sY), _mm_loadu_si128((__m128i*)(sY+lx)));
-          *(__m128i*)dY = _mm_avg_epu8(avg , *(__m128i*)dY);
+          __m128i avg = _mm_avg_epu8 (_mm_loadu_si128 ((__m128i*)sY), _mm_loadu_si128 ((__m128i*)(sY+lx)));
+          *(__m128i*)dY = _mm_avg_epu8 (avg , *(__m128i*)dY);
           sY += lx2;
           dY += lx2;
           }
@@ -1417,10 +1410,9 @@ private:
       //}}}
       //{{{
       case 6: { // d[i] = (((s[i]+s[i+1]+1)>>1) + d[1] + 1)>>1;
-
         for (int loop = 0; loop < h; loop++) {
-          __m128i avg = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sY), _mm_loadu_si128((__m128i*)(sY+1)));
-          *(__m128i*)dY = _mm_avg_epu8(avg, *(__m128i*)dY);
+          __m128i avg = _mm_avg_epu8 (_mm_loadu_si128 ((__m128i*)sY), _mm_loadu_si128 ((__m128i*)(sY+1)));
+          *(__m128i*)dY = _mm_avg_epu8 (avg, *(__m128i*)dY);
           sY += lx2;
           dY += lx2;
           }
@@ -1429,9 +1421,7 @@ private:
       //}}}
       //{{{
       case 7: { // d[i] = (((s[i]+s[i+1]+s[i+lx]+s[i+lx+1]+2)>>2) + d[i] + 1)>>1;
-
-        __m128i shade = _mm_set1_epi8(1);
-
+        __m128i shade = _mm_set1_epi8 (1);
         for (int loop = 0; loop < h; loop++) {
           __m128i pixel1 = _mm_loadu_si128 ((__m128i*)sY);
           __m128i pixel2 = _mm_loadu_si128 ((__m128i*)(sY + 1));
@@ -1471,7 +1461,7 @@ private:
     uint8_t* dCr = current_frame[1] + dOffset;
     uint8_t* sCb = src[2] + sOffset;
     uint8_t* dCb = current_frame[2] + dOffset;
-    switch ((average_flag << 2) + ((dx & 1) << 1) + (dy & 1)) {
+    switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
       case 1: case 2: case 3: case 4: case 5: case 6: case 7:
       //{{{
       case 0: {
@@ -1700,6 +1690,7 @@ private:
           d += lx2;
           }
         }
+
       else {
         for (int j = 0; j < h; j++) {
           for (int i = 0; i < w; i++)
@@ -1803,42 +1794,42 @@ private:
   //{{{
   void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2], int motionVertField[2][2]) {
 
-    int average_flag = 0;
+    bool average = false;
     if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
       if (motion_type == MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
         // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
-        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, 
+        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
                         bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, 
+        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8,
                         bx, by, PMV[0][0][0], PMV[0][0][1], 0);
         }
       else {
         // top field prediction
-        formPrediction (forward_reference_frame, motionVertField[0][0], 0, mWidth <<1, mWidth <<1, 8,
+        formPrediction (forward_reference_frame, motionVertField[0][0], 0, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, 0);
         // bottom field prediction
-        formPrediction (forward_reference_frame, motionVertField[1][0], 1, mWidth <<1, mWidth <<1, 8,
+        formPrediction (forward_reference_frame, motionVertField[1][0], 1, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
         }
 
-      average_flag = 1;
+      average = true;
       }
 
     if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
       if (motion_type == MC_FRAME) {
         // frame-based prediction
-        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, 
-                        bx, by, PMV[0][1][0], PMV[0][1][1], average_flag);
-        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, 
-                        bx, by, PMV[0][1][0], PMV[0][1][1], average_flag);
+        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
+                        bx, by, PMV[0][1][0], PMV[0][1][1], average);
+        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8,
+                        bx, by, PMV[0][1][0], PMV[0][1][1], average);
         }
       else {
         // top field prediction
         formPrediction (backward_reference_frame, motionVertField[0][1], 0, mWidth << 1, mWidth << 1, 8,
-                        bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, average_flag);
+                        bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, average);
         // bottom field prediction
         formPrediction (backward_reference_frame, motionVertField[1][1], 1, mWidth << 1, mWidth << 1, 8,
-                        bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, average_flag);
+                        bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, average);
         }
       }
     }
@@ -2280,17 +2271,19 @@ private:
   int mBwidth = 0;
   int mBheight = 0;
 
+  short* block[6];
+
   uint8_t* auxframe[3];
   uint8_t* current_frame[3];
   uint8_t* forward_reference_frame[3];
   uint8_t* backward_reference_frame[3];
 
-  uint8_t* Clip = NULL;
-
   int intra_quantizer_matrix[64];
   int non_intra_quantizer_matrix[64];
   int chroma_intra_quantizer_matrix[64];
   int chroma_non_intra_quantizer_matrix[64];
+
+  uint8_t* Clip = NULL;
 
   bool Flaw_Flag = 0;
   bool Second_Field = 0;
@@ -2299,7 +2292,6 @@ private:
   int alternate_scan = 0;
   int quantizer_scale = 0;
   int intra_slice = 0;
-  short* block[6];
 
   int temporal_reference = 0;
   int picture_coding_type = 0;
