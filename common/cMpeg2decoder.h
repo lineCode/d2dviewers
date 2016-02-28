@@ -48,7 +48,7 @@
 //}}}
 //{{{  tables
 //{{{
-static uint8_t scan[2][64] = {
+static const uint8_t scan[2][64] = {
   { /* Zig-Zag scan pattern  */
     0,1,8,16,9,2,3,10,17,24,32,25,18,11,4,5,
     12,19,26,33,40,48,41,34,27,20,13,6,7,14,21,28,
@@ -64,7 +64,7 @@ static uint8_t scan[2][64] = {
 //}}}
 //{{{
 /* default intra quantization matrix */
-static uint8_t default_intra_quantizer_matrix[64] = {
+static const uint8_t default_intra_quantizer_matrix[64] = {
   8, 16, 19, 22, 26, 27, 29, 34,
   16, 16, 22, 24, 27, 29, 34, 37,
   19, 22, 26, 27, 29, 34, 34, 38,
@@ -76,7 +76,7 @@ static uint8_t default_intra_quantizer_matrix[64] = {
 //}}}
 //{{{
 /* non-linear quantization coefficient table */
-static uint8_t Non_Linear_quantizer_scale[32] = {
+static const uint8_t Non_Linear_quantizer_scale[32] = {
    0, 1, 2, 3, 4, 5, 6, 7,
    8,10,12,14,16,18,20,22,
   24,28,32,36,40,44,48,52,
@@ -90,7 +90,7 @@ typedef struct {
 //}}}
 //{{{
 /* Table B-3, macroblock_type in P-pictures, codes 001..1xx */
-static VLCtab PMBtab0[8] = {
+static const VLCtab PMBtab0[8] = {
   {-1,0},
   {MACROBLOCK_MOTION_FORWARD,3},
   {MACROBLOCK_PATTERN,2}, {MACROBLOCK_PATTERN,2},
@@ -102,7 +102,7 @@ static VLCtab PMBtab0[8] = {
 //}}}
 //{{{
 /* Table B-3, macroblock_type in P-pictures, codes 000001..00011x */
-static VLCtab PMBtab1[8] = {
+static const VLCtab PMBtab1[8] = {
   {-1,0},
   {MACROBLOCK_QUANT|MACROBLOCK_INTRA,6},
   {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,5}, {MACROBLOCK_QUANT|MACROBLOCK_PATTERN,5},
@@ -112,7 +112,7 @@ static VLCtab PMBtab1[8] = {
 //}}}
 //{{{
 /* Table B-4, macroblock_type in B-pictures, codes 0010..11xx */
-static VLCtab BMBtab0[16] = {
+static const VLCtab BMBtab0[16] = {
   {-1,0},
   {-1,0},
   {MACROBLOCK_MOTION_FORWARD,4},
@@ -133,7 +133,7 @@ static VLCtab BMBtab0[16] = {
 //}}}
 //{{{
 /* Table B-4, macroblock_type in B-pictures, codes 000001..00011x */
-static VLCtab BMBtab1[8] = {
+static const VLCtab BMBtab1[8] = {
   {-1,0},
   {MACROBLOCK_QUANT|MACROBLOCK_INTRA,6},
   {MACROBLOCK_QUANT|MACROBLOCK_MOTION_BACKWARD|MACROBLOCK_PATTERN,6},
@@ -147,19 +147,19 @@ static VLCtab BMBtab1[8] = {
 
 //{{{
 /* Table B-10, motion_code, codes 0001 ... 01xx */
-static VLCtab MVtab0[8] =
+static const VLCtab MVtab0[8] =
 { {-1,0}, {3,3}, {2,2}, {2,2}, {1,1}, {1,1}, {1,1}, {1,1}
 };
 //}}}
 //{{{
 /* Table B-10, motion_code, codes 0000011 ... 000011x */
-static VLCtab MVtab1[8] =
+static const VLCtab MVtab1[8] =
 { {-1,0}, {-1,0}, {-1,0}, {7,6}, {6,6}, {5,6}, {4,5}, {4,5}
 };
 //}}}
 //{{{
 /* Table B-10, motion_code, codes 0000001100 ... 000001011x */
-static VLCtab MVtab2[12] =
+static const VLCtab MVtab2[12] =
 { {16,9}, {15,9}, {14,9}, {13,9},
   {12,9}, {11,9}, {10,8}, {10,8},
   {9,8},  {9,8},  {8,8},  {8,8}
@@ -168,7 +168,7 @@ static VLCtab MVtab2[12] =
 
 //{{{
 /* Table B-9, coded_block_pattern, codes 01000 ... 111xx */
-static VLCtab CBPtab0[32] =
+static const VLCtab CBPtab0[32] =
 { {-1,0}, {-1,0}, {-1,0}, {-1,0},
   {-1,0}, {-1,0}, {-1,0}, {-1,0},
   {62,5}, {2,5},  {61,5}, {1,5},  {56,5}, {52,5}, {44,5}, {28,5},
@@ -178,7 +178,7 @@ static VLCtab CBPtab0[32] =
 //}}}
 //{{{
 /* Table B-9, coded_block_pattern, codes 00000100 ... 001111xx */
-static VLCtab CBPtab1[64] =
+static const VLCtab CBPtab1[64] =
 { {-1,0}, {-1,0}, {-1,0}, {-1,0},
   {58,8}, {54,8}, {46,8}, {30,8},
   {57,8}, {53,8}, {45,8}, {29,8}, {38,8}, {26,8}, {37,8}, {25,8},
@@ -192,21 +192,21 @@ static VLCtab CBPtab1[64] =
 //}}}
 //{{{
 /* Table B-9, coded_block_pattern, codes 000000001 ... 000000111 */
-static VLCtab CBPtab2[8] =
+static const VLCtab CBPtab2[8] =
 { {-1,0}, {0,9}, {39,9}, {27,9}, {59,9}, {55,9}, {47,9}, {31,9}
 };
 //}}}
 
 //{{{
 /* Table B-1, macroblock_address_increment, codes 00010 ... 011xx */
-static VLCtab MBAtab1[16] =
+static const VLCtab MBAtab1[16] =
 { {-1,0}, {-1,0}, {7,5}, {6,5}, {5,4}, {5,4}, {4,4}, {4,4},
   {3,3}, {3,3}, {3,3}, {3,3}, {2,3}, {2,3}, {2,3}, {2,3}
 };
 //}}}
 //{{{
 /* Table B-1, macroblock_address_increment, codes 00000011000 ... 0000111xxxx */
-static VLCtab MBAtab2[104] =
+static const VLCtab MBAtab2[104] =
 {
   {33,11}, {32,11}, {31,11}, {30,11}, {29,11}, {28,11}, {27,11}, {26,11},
   {25,11}, {24,11}, {23,11}, {22,11}, {21,10}, {21,10}, {20,10}, {20,10},
@@ -226,7 +226,7 @@ static VLCtab MBAtab2[104] =
 
 //{{{
 /* Table B-12, dct_dc_size_luminance, codes 00xxx ... 11110 */
-static VLCtab DClumtab0[32] =
+static const VLCtab DClumtab0[32] =
 { {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2},
   {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2},
   {0, 3}, {0, 3}, {0, 3}, {0, 3}, {3, 3}, {3, 3}, {3, 3}, {3, 3},
@@ -235,14 +235,14 @@ static VLCtab DClumtab0[32] =
 //}}}
 //{{{
 /* Table B-12, dct_dc_size_luminance, codes 111110xxx ... 111111111 */
-static VLCtab DClumtab1[16] =
+static const VLCtab DClumtab1[16] =
 { {7, 6}, {7, 6}, {7, 6}, {7, 6}, {7, 6}, {7, 6}, {7, 6}, {7, 6},
   {8, 7}, {8, 7}, {8, 7}, {8, 7}, {9, 8}, {9, 8}, {10,9}, {11,9}
 };
 //}}}
 //{{{
 /* Table B-13, dct_dc_size_chrominance, codes 00xxx ... 11110 */
-static VLCtab DCchromtab0[32] =
+static const VLCtab DCchromtab0[32] =
 { {0, 2}, {0, 2}, {0, 2}, {0, 2}, {0, 2}, {0, 2}, {0, 2}, {0, 2},
   {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2}, {1, 2},
   {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2}, {2, 2},
@@ -251,7 +251,7 @@ static VLCtab DCchromtab0[32] =
 //}}}
 //{{{
 /* Table B-13, dct_dc_size_chrominance, codes 111110xxxx ... 1111111111 */
-static VLCtab DCchromtab1[32] =
+static const VLCtab DCchromtab1[32] =
 { {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6},
   {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6}, {6, 6},
   {7, 7}, {7, 7}, {7, 7}, {7, 7}, {7, 7}, {7, 7}, {7, 7}, {7, 7},
@@ -268,7 +268,7 @@ typedef struct {
 /* Table B-14, DCT coefficients table zero,
  * codes 0100 ... 1xxx (used for first (DC) coefficient)
  */
-DCTtab DCTtabfirst[12] =
+static const DCTtab DCTtabfirst[12] =
 {
   {0,2,4}, {2,1,4}, {1,1,3}, {1,1,3},
   {0,1,1}, {0,1,1}, {0,1,1}, {0,1,1},
@@ -279,7 +279,7 @@ DCTtab DCTtabfirst[12] =
 /* Table B-14, DCT coefficients table zero,
  * codes 0100 ... 1xxx (used for all other coefficients)
  */
-DCTtab DCTtabnext[12] =
+static const DCTtab DCTtabnext[12] =
 {
   {0,2,4},  {2,1,4},  {1,1,3},  {1,1,3},
   {64,0,2}, {64,0,2}, {64,0,2}, {64,0,2}, /* EOB */
@@ -290,7 +290,7 @@ DCTtab DCTtabnext[12] =
 /* Table B-14, DCT coefficients table zero,
  * codes 000001xx ... 00111xxx
  */
-DCTtab DCTtab0[60] =
+static const DCTtab DCTtab0[60] =
 {
   {65,0,6}, {65,0,6}, {65,0,6}, {65,0,6}, /* Escape */
   {2,2,7}, {2,2,7}, {9,1,7}, {9,1,7},
@@ -313,7 +313,7 @@ DCTtab DCTtab0[60] =
 /* Table B-15, DCT coefficients table one,
  * codes 000001xx ... 11111111
 */
-DCTtab DCTtab0a[252] =
+static const DCTtab DCTtab0a[252] =
 {
   {65,0,6}, {65,0,6}, {65,0,6}, {65,0,6}, /* Escape */
   {7,1,7}, {7,1,7}, {8,1,7}, {8,1,7},
@@ -384,7 +384,7 @@ DCTtab DCTtab0a[252] =
 /* Table B-14, DCT coefficients table zero,
  * codes 0000001000 ... 0000001111
  */
-DCTtab DCTtab1[8] =
+static const DCTtab DCTtab1[8] =
 {
   {16,1,10}, {5,2,10}, {0,7,10}, {2,3,10},
   {1,4,10}, {15,1,10}, {14,1,10}, {4,2,10}
@@ -394,7 +394,7 @@ DCTtab DCTtab1[8] =
 /* Table B-15, DCT coefficients table one,
  * codes 000000100x ... 000000111x
  */
-DCTtab DCTtab1a[8] =
+static const DCTtab DCTtab1a[8] =
 {
   {5,2,9}, {5,2,9}, {14,1,9}, {14,1,9},
   {2,4,10}, {16,1,10}, {15,1,9}, {15,1,9}
@@ -404,7 +404,7 @@ DCTtab DCTtab1a[8] =
 /* Table B-14/15, DCT coefficients table zero / one,
  * codes 000000010000 ... 000000011111
  */
-DCTtab DCTtab2[16] =
+static const DCTtab DCTtab2[16] =
 {
   {0,11,12}, {8,2,12}, {4,3,12}, {0,10,12},
   {2,4,12}, {7,2,12}, {21,1,12}, {20,1,12},
@@ -416,7 +416,7 @@ DCTtab DCTtab2[16] =
 /* Table B-14/15, DCT coefficients table zero / one,
  * codes 0000000010000 ... 0000000011111
  */
-DCTtab DCTtab3[16] =
+static const DCTtab DCTtab3[16] =
 {
   {10,2,13}, {9,2,13}, {5,3,13}, {3,4,13},
   {2,5,13}, {1,7,13}, {1,6,13}, {0,15,13},
@@ -428,7 +428,7 @@ DCTtab DCTtab3[16] =
 /* Table B-14/15, DCT coefficients table zero / one,
  * codes 00000000010000 ... 00000000011111
  */
-DCTtab DCTtab4[16] =
+static const DCTtab DCTtab4[16] =
 {
   {0,31,14}, {0,30,14}, {0,29,14}, {0,28,14},
   {0,27,14}, {0,26,14}, {0,25,14}, {0,24,14},
@@ -440,7 +440,7 @@ DCTtab DCTtab4[16] =
 /* Table B-14/15, DCT coefficients table zero / one,
  * codes 000000000010000 ... 000000000011111
  */
-DCTtab DCTtab5[16] =
+static const DCTtab DCTtab5[16] =
 {
   {0,40,15}, {0,39,15}, {0,38,15}, {0,37,15},
   {0,36,15}, {0,35,15}, {0,34,15}, {0,33,15},
@@ -452,7 +452,7 @@ DCTtab DCTtab5[16] =
 /* Table B-14/15, DCT coefficients table zero / one,
  * codes 0000000000010000 ... 0000000000011111
  */
-DCTtab DCTtab6[16] =
+static const DCTtab DCTtab6[16] =
 {
   {1,18,16}, {1,17,16}, {1,16,16}, {1,15,16},
   {6,3,16}, {16,2,16}, {15,2,16}, {14,2,16},
@@ -462,61 +462,36 @@ DCTtab DCTtab6[16] =
 //}}}
 
 //{{{
-static __declspec(align(64)) short sse2_tab_i_04[] = {
+static __declspec(align(64)) const short sse2_tab_i_04[] = {
   16384, 21407, 16384,  8867, 16384, -8867, 16384,-21407,  // w05 w04 w01 w00 w13 w12 w09 w08
   16384,  8867,-16384,-21407,-16384, 21407, 16384, -8867,  // w07 w06 w03 w02 w15 w14 w11 w10
   22725, 19266, 19266, -4520, 12873,-22725,  4520,-12873,
   12873,  4520,-22725,-12873,  4520, 19266, 19266,-22725 };
 //}}}
 //{{{
-static __declspec(align(64)) short sse2_tab_i_17[] = {
+static __declspec(align(64)) const short sse2_tab_i_17[] = {
   22725, 29692, 22725, 12299, 22725,-12299, 22725,-29692,
   22725, 12299,-22725,-29692,-22725, 29692, 22725,-12299,
   31521, 26722, 26722, -6270, 17855,-31521,  6270,-17855,
   17855,  6270,-31521,-17855,  6270, 26722, 26722,-31521 };
 //}}}
 //{{{
-static __declspec(align(64)) short sse2_tab_i_26[] = {
+static __declspec(align(64)) const short sse2_tab_i_26[] = {
   21407, 27969, 21407, 11585, 21407,-11585, 21407,-27969,
   21407, 11585,-21407,-27969,-21407, 27969, 21407,-11585,
   29692, 25172, 25172, -5906, 16819,-29692,  5906,-16819,
   16819,  5906,-29692,-16819,  5906, 25172, 25172,-29692 };
 //}}}
 //{{{
-static __declspec(align(64)) short sse2_tab_i_35[] = {
+static __declspec(align(64)) const short sse2_tab_i_35[] = {
   19266, 25172, 19266, 10426, 19266,-10426, 19266,-25172,
   19266, 10426,-19266,-25172,-19266, 25172, 19266,-10426,
   26722, 22654, 22654, -5315, 15137,-26722,  5315,-15137,
   15137,  5315,-26722,-15137,  5315, 22654, 22654,-26722 };
 //}}}
 //}}}
-//{{{  DCT_8_INV_ROWX2 macro
-#define DCT_8_INV_ROWX2(tab1, tab2)  \
-{  \
-  r1 = _mm_shufflelo_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r1 = _mm_shufflehi_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  a0 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
-  a1 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
-  a2 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
-  a3 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
-  s0 = _mm_add_epi32(_mm_add_epi32(a0, round_row), a2);  \
-  s1 = _mm_add_epi32(a1, a3);  \
-  p0 = _mm_srai_epi32(_mm_add_epi32(s0, s1), 11);  \
-  p1 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r2 = _mm_shufflelo_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r2 = _mm_shufflehi_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  b0 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
-  b1 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
-  b2 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
-  b3 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
-  s2 = _mm_add_epi32(_mm_add_epi32(b0, round_row), b2);  \
-  s3 = _mm_add_epi32(b3, b1);  \
-  p2 = _mm_srai_epi32(_mm_add_epi32(s2, s3), 11);  \
-  p3 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r1 = _mm_packs_epi32(p0, p1);  \
-  r2 = _mm_packs_epi32(p2, p3);  \
-}
-//}}}
+//#define ASM_ADDBLOCK
+#define ASM_FORMPREDICTION
 
 class cMpeg2decoder {
 public:
@@ -834,191 +809,522 @@ private:
   //}}}
   //}}}
 
-  //{{{  sse2
+  //{{{  macroBlocks
   //{{{
-  void sse2_ap945_idct (short* block) {
+  int getImacroblockType() {
 
-    __m128i r1, r2, a0, a1, a2, a3, b0, b1, b2, b3, s0, s1, s2, s3, p0, p1, p2, p3;
-    __m128i round_row = _mm_set_epi16(0, 1024, 0, 1024, 0, 1024, 0, 1024);
+    if (getBits (1))
+      return 1;
 
-    r1 = *(__m128i*)(block+8*0);
-    r2 = *(__m128i*)(block+8*1);
-    DCT_8_INV_ROWX2(sse2_tab_i_04, sse2_tab_i_17);
-    *(__m128i*)(block+8*0) = r1;
-    *(__m128i*)(block+8*1) = r2;
+    if (!getBits (1)) {
+      printf ("Invalid macroblock_type code\n");
+      Flaw_Flag = 1;
+      }
 
-    r1 = *(__m128i*)(block+8*4);
-    r2 = *(__m128i*)(block+8*7);
-    DCT_8_INV_ROWX2(sse2_tab_i_04, sse2_tab_i_17);
-    *(__m128i*)(block+8*4) = r1;
-    *(__m128i*)(block+8*7) = r2;
+    return 17;
+    }
+  //}}}
+  //{{{
+  int getPmacroblockType() {
 
-    r1 = *(__m128i*)(block+8*2);
-    r2 = *(__m128i*)(block+8*3);
-    DCT_8_INV_ROWX2(sse2_tab_i_26, sse2_tab_i_35);
-    *(__m128i*)(block+8*2) = r1;
-    *(__m128i*)(block+8*3) = r2;
+    int code;
+    if ((code = peekBits (6)) >= 8) {
+      code >>= 3;
+      consumeBits (PMBtab0[code].len);
+      return PMBtab0[code].val;
+      }
 
-    r1 = *(__m128i*)(block+8*6);
-    r2 = *(__m128i*)(block+8*5);
-    DCT_8_INV_ROWX2(sse2_tab_i_26, sse2_tab_i_35);
-    *(__m128i*)(block+8*6) = r1;
-    *(__m128i*)(block+8*5) = r2;
+    if (code == 0) {
+      printf ("Invalid macroblock_type code\n");
+      Flaw_Flag = 1;
+      return 0;
+      }
 
-    __m128i x0 = *(__m128i*)(block+8*0);
-    __m128i x1 = *(__m128i*)(block+8*1);
-    __m128i x2 = *(__m128i*)(block+8*2);
-    __m128i x3 = *(__m128i*)(block+8*3);
-    __m128i x4 = *(__m128i*)(block+8*4);
-    __m128i x5 = *(__m128i*)(block+8*5);
-    __m128i x6 = *(__m128i*)(block+8*6);
-    __m128i x7 = *(__m128i*)(block+8*7);
+    consumeBits (PMBtab1[code].len);
+    return PMBtab1[code].val;
+    }
+  //}}}
+  //{{{
+  int getBmacroblockType() {
 
-    __m128i tan1 = _mm_set1_epi16(13036);
-    __m128i tan2 = _mm_set1_epi16(27146);
-    __m128i tan3 = _mm_set1_epi16(-21746);
-    __m128i cos4 = _mm_set1_epi16(-19195);
-    __m128i round_err = _mm_set1_epi16(1);
-    __m128i round_col = _mm_set1_epi16(32);
-    __m128i round_corr = _mm_set1_epi16(31);
+    int code;
+    if ((code = peekBits(6)) >= 8) {
+      code >>= 2;
+      consumeBits (BMBtab0[code].len);
+      return BMBtab0[code].val;
+      }
 
-    __m128i tp765 = _mm_adds_epi16(_mm_mulhi_epi16(x7, tan1), x1);
-    __m128i tp465 = _mm_subs_epi16(_mm_mulhi_epi16(x1, tan1), x7);
-    __m128i tm765 = _mm_adds_epi16(_mm_mulhi_epi16(x5, tan3), _mm_adds_epi16(x5, x3));
-    __m128i tm465 = _mm_subs_epi16(x5, _mm_adds_epi16(_mm_mulhi_epi16(x3, tan3), x3));
+    if (code == 0) {
+      printf("Invalid macroblock_type code\n");
+      Flaw_Flag = 1;
+      return 0;
+      }
 
-    __m128i t7 = _mm_adds_epi16(_mm_adds_epi16(tp765, tm765), round_err);
-    __m128i tp65 = _mm_subs_epi16(tp765, tm765);
-    __m128i t4 = _mm_adds_epi16(tp465, tm465);
-    __m128i tm65 = _mm_adds_epi16(_mm_subs_epi16(tp465, tm465), round_err);
+    consumeBits(BMBtab1[code].len);
+    return BMBtab1[code].val;
+    }
+  //}}}
+  //{{{
+  int getMacroBlockType() {
 
-    __m128i tmp1 = _mm_adds_epi16(tp65, tm65);
-    __m128i t6 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp1, cos4), tmp1), round_err);
-    __m128i tmp2 = _mm_subs_epi16(tp65, tm65);
-    __m128i t5 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp2, cos4), tmp2), round_err);
+    int macroblock_type = 0;
+    switch (picture_coding_type) {
+      case I_TYPE:
+        macroblock_type = getImacroblockType();
+        break;
+      case P_TYPE:
+        macroblock_type = getPmacroblockType();
+        break;
+      case B_TYPE:
+        macroblock_type = getBmacroblockType();
+        break;
+      default:
+        printf("getMacroblockType(): unrecognized picture coding type\n");
+        break;
+      }
 
-    __m128i tp03 = _mm_adds_epi16(x0, x4);
-    __m128i tp12 = _mm_subs_epi16(x0, x4);
-    __m128i tm03 = _mm_adds_epi16(_mm_mulhi_epi16(x6, tan2), x2);
-    __m128i tm12 = _mm_subs_epi16(_mm_mulhi_epi16(x2, tan2), x6);
-
-    __m128i t0 = _mm_adds_epi16(_mm_adds_epi16(tp03, tm03), round_col);
-    __m128i t3 = _mm_adds_epi16(_mm_subs_epi16(tp03, tm03), round_corr);
-    __m128i t1 = _mm_adds_epi16(_mm_adds_epi16(tp12, tm12), round_col);
-    __m128i t2 = _mm_adds_epi16(_mm_subs_epi16(tp12, tm12), round_corr);
-
-    *(__m128i*)(block+8*0) = _mm_srai_epi16(_mm_adds_epi16(t0, t7), 6);
-    *(__m128i*)(block+8*7) = _mm_srai_epi16(_mm_subs_epi16(t0, t7), 6);
-    *(__m128i*)(block+8*1) = _mm_srai_epi16(_mm_adds_epi16(t1, t6), 6);
-    *(__m128i*)(block+8*6) = _mm_srai_epi16(_mm_subs_epi16(t1, t6), 6);
-    *(__m128i*)(block+8*2) = _mm_srai_epi16(_mm_adds_epi16(t2, t5), 6);
-    *(__m128i*)(block+8*5) = _mm_srai_epi16(_mm_subs_epi16(t2, t5), 6);
-    *(__m128i*)(block+8*3) = _mm_srai_epi16(_mm_adds_epi16(t3, t4), 6);
-    *(__m128i*)(block+8*4) = _mm_srai_epi16(_mm_subs_epi16(t3, t4), 6);
+    return macroblock_type;
     }
   //}}}
 
   //{{{
-  void half_1_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+  int getCodedBlockPattern() {
 
-    for (int loop = 0; loop < h; loop++) {
-      *(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-      s += lx2;
-      d += lx2;
+    int code = peekBits(9);
+    if (code >= 128) {
+      code >>= 4;
+      consumeBits (CBPtab0[code].len);
+      return CBPtab0[code].val;
+      }
+
+    if (code >= 8) {
+      code >>= 1;
+      consumeBits (CBPtab1[code].len);
+      return CBPtab1[code].val;
+      }
+
+    if (code < 1) {
+      printf ("Invalid coded_block_pattern code\n");
+      Flaw_Flag = 1;
+      return 0;
+      }
+
+    consumeBits (CBPtab2[code].len);
+    return CBPtab2[code].val;
+    }
+  //}}}
+  //{{{
+  int getMacroBlockAddressIncrement() {
+
+    int code;
+    int val = 0;
+
+    while ((code = peekBits(11))<24) {
+      if (code != 15) /* if not macroblock_stuffing */ {
+        if (code == 8) /* if macroblock_escape */ {
+          val+= 33;
+          }
+        else {
+          printf("Invalid macroblock_address_increment code\n");
+          Flaw_Flag = 1;
+          return 1;
+          }
+        }
+      consumeBits (11);
+      }
+
+    /* macroblock_address_increment == 1 ('1' is in the MSB position of the lookahead) */
+    if (code >= 1024) {
+      consumeBits (1);
+      return val + 1;
+      }
+
+    /* codes 00010 ... 011xx */
+    if (code >= 128) {
+      /* remove leading zeros */
+      code >>= 6;
+      consumeBits (MBAtab1[code].len);
+      return val + MBAtab1[code].val;
+      }
+
+    /* codes 00000011000 ... 0000111xxxx */
+    code-= 24; /* remove common base */
+    consumeBits (MBAtab2[code].len);
+    return val + MBAtab2[code].val;
+    }
+  //}}}
+
+  //{{{
+  /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
+  void macroBlockModes (int* pmacroblock_type, int* pmotion_type, int* pmotion_vector_count, int* pmv_format,
+                        int* pmvscale, int* pdct_type) {
+
+    int motion_type = 0;
+    int motion_vector_count, mv_format, mvscale;
+    int dct_type;
+
+    /* get macroblock_type */
+    int macroblock_type = getMacroBlockType();
+
+    if (Flaw_Flag)
+      return;
+
+    /* get frame/field motion type */
+    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD))
+      motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
+    else if ((macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
+      /* concealment motion vectors */
+      motion_type = MC_FRAME;
+
+    /* derive motion_vector_count, mv_format and dmv, (table 6-17, 6-18) */
+    motion_vector_count = (motion_type == MC_FIELD) ? 2 : 1;
+    mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
+
+    /* field mv predictions in frame pictures have to be scaled
+     * ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
+     * IMPLEMENTATION: mvscale is derived for later use in motion_vectors()
+     * it displaces the stage:
+     *    if((mv_format=="field")&&(t==1)&&(picture_structure=="Frame picture"))
+     *      prediction = PMV[r][s][t] DIV 2; */
+    mvscale = mv_format == MV_FIELD;
+
+    /* get dct_type (frame DCT / field DCT) */
+    dct_type = (!frame_pred_frame_dct) && (macroblock_type & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
+
+    /* return values */
+    *pmacroblock_type = macroblock_type;
+    *pmotion_type = motion_type;
+    *pmotion_vector_count = motion_vector_count;
+    *pmv_format = mv_format;
+    *pmvscale = mvscale;
+    *pdct_type = dct_type;
+    }
+  //}}}
+  //}}}
+
+  //{{{
+  int getLumaDCdctDiff() {
+  // parse VLC and perform dct_diff arithmetic.
+
+    // decode length
+    int code = peekBits(5);
+
+    int size;
+    if (code < 31) {
+      size = DClumtab0[code].val;
+      consumeBits (DClumtab0[code].len);
+      }
+    else {
+      code = peekBits(9) - 0x1f0;
+      size = DClumtab1[code].val;
+      consumeBits (DClumtab1[code].len);
+      }
+
+    int dct_diff;
+    if (size == 0)
+      dct_diff = 0;
+    else {
+      dct_diff = getBits (size);
+      if ((dct_diff & (1<<(size-1)))==0)
+        dct_diff-= (1<<size) - 1;
+      }
+
+    return dct_diff;
+    }
+  //}}}
+  //{{{
+  int getChromaDCdctDiff() {
+
+    // decode length
+    int size;
+    int code = peekBits (5);
+    if (code<31) {
+      size = DCchromtab0[code].val;
+      consumeBits (DCchromtab0[code].len);
+      }
+    else {
+      code = peekBits(10) - 0x3e0;
+      size = DCchromtab1[code].val;
+      consumeBits (DCchromtab1[code].len);
+      }
+
+    int dct_diff;
+    if (size == 0)
+      dct_diff = 0;
+    else {
+      dct_diff = getBits(size);
+      if ((dct_diff & (1<<(size-1)))==0)
+        dct_diff-= (1<<size) - 1;
+      }
+
+    return dct_diff;
+    }
+  //}}}
+  //{{{
+  void decodeIntraBlock (int comp, int dc_dct_pred[]) {
+
+    int val, sign, run;
+
+    // decode DC coefficients
+    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
+    if (cc == 0)
+      val = (dc_dct_pred[0] += getLumaDCdctDiff());
+    else if (cc == 1)
+      val = (dc_dct_pred[1] += getChromaDCdctDiff());
+    else
+      val = (dc_dct_pred[2] += getChromaDCdctDiff());
+
+    if (Flaw_Flag)
+      return;
+
+    block[comp][0] = val << (3 - intra_dc_precision);
+
+    // decode AC coefficients
+    for (int i = 1; ; i++) {
+      const DCTtab* tab;
+      uint32_t code = peekBits (16);
+      if (code >= 16384 && !intra_vlc_format)
+        tab = &DCTtabnext[(code >> 12) - 4];
+      else if (code >= 1024) {
+        if (intra_vlc_format)
+          tab = &DCTtab0a[(code >> 8) - 4];
+        else
+          tab = &DCTtab0[(code >> 8) - 4];
+        }
+      else if (code >= 512) {
+        if (intra_vlc_format)
+          tab = &DCTtab1a[(code >> 6) - 8];
+        else
+          tab = &DCTtab1[(code >> 6) - 8];
+        }
+      else if (code >= 256)
+        tab = &DCTtab2[(code >> 4) - 16];
+      else if (code >= 128)
+        tab = &DCTtab3[(code >> 3) - 16];
+      else if (code >= 64)
+        tab = &DCTtab4[(code >> 2) - 16];
+      else if (code >= 32)
+        tab = &DCTtab5[(code >> 1) - 16];
+      else if (code >= 16)
+        tab = &DCTtab6[code - 16];
+      else {
+        //{{{  flaw
+        printf ("invalid Huffman code in Decode_MPEG2_Intra_Block()\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+      consumeBits (tab->len);
+
+      if (tab->run == 64) // end_of_block
+        return;
+
+      if (tab->run == 65) {
+        //{{{  escape
+        i += run = getBits (6);
+        val = getBits (12);
+        if ((val & 2047) == 0) {
+          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
+          Flaw_Flag = 1;
+          return;
+          }
+        if ((sign = (val >= 2048)))
+          val = 4096 - val;
+        }
+        //}}}
+      else {
+        i+= run = tab->run;
+        val = tab->level;
+        sign = getBits (1);
+      }
+
+      if (i >= 64) {
+        //{{{  flaw
+        printf ("DCT coeff index (i) out of bounds (intra2)\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+
+      uint8_t j = scan [alternate_scan][i];
+      val = (val * quantizer_scale * intra_quantizer_matrix[j]) >> 4;
+      block [comp][j] = sign ? -val : val;
       }
     }
   //}}}
   //{{{
-  void half_2_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+  void decodeNonIntraBlock (int comp) {
 
-    for (int loop = 0; loop < h; loop++) {
-      *(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
-      s += lx2;
-      d += lx2;
+    int val, sign, run;
+
+    // decode AC coefficients
+    for (int i = 0; ; i++) {
+      const DCTtab* tab;
+      uint32_t code = peekBits (16);
+      if (code >= 16384) {
+        if (i == 0)
+          tab = &DCTtabfirst[(code>>12)-4];
+        else
+          tab = &DCTtabnext[(code>>12)-4];
+        }
+      else if (code >= 1024)
+        tab = &DCTtab0[(code>>8)-4];
+      else if (code >= 512)
+        tab = &DCTtab1[(code>>6)-8];
+      else if (code >= 256)
+        tab = &DCTtab2[(code>>4)-16];
+      else if (code >= 128)
+        tab = &DCTtab3[(code>>3)-16];
+      else if (code >= 64)
+        tab = &DCTtab4[(code>>2)-16];
+      else if (code >= 32)
+        tab = &DCTtab5[(code>>1)-16];
+      else if (code >= 16)
+        tab = &DCTtab6[code-16];
+      else {
+        //{{{  flaw
+        printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+      consumeBits (tab->len);
+
+      if (tab->run == 64) // end_of_block
+        return;
+
+      if (tab->run == 65) {
+        //{{{  escape
+        i += run = getBits (6);
+        val = getBits (12);
+        if ((val & 2047) == 0) {
+          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
+          Flaw_Flag = 1;
+          return;
+          }
+        if ((sign = (val >= 2048)))
+          val = 4096 - val;
+        }
+        //}}}
+      else {
+        i += run = tab->run;
+        val = tab->level;
+        sign = getBits (1);
+        }
+
+      if (i >= 64) {
+        //{{{  flaw
+        printf ("DCT coeff index (i) out of bounds (inter2)\n");
+        Flaw_Flag = 1;
+        return;
+        }
+        //}}}
+
+      uint8_t j = scan [alternate_scan][i];
+      val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
+      block [comp][j] = sign ? -val : val;
       }
     }
   //}}}
-  //{{{
-  void half_3_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
 
-    __m64 shade = _mm_set1_pi8(1);
-    for (int loop = 0; loop < h; loop++) {
-      __m64 pixel1 = *(__m64*)s;
-      __m64 pixel2 = *(__m64*)(s+1);
-      __m64 pixel3 = *(__m64*)(s+lx);
-      __m64 pixel4 = *(__m64*)(s+lx+1);
-      __m64 avg12 = _m_pavgb(pixel1, pixel2);
-      __m64 avg34 = _m_pavgb(pixel3, pixel4);
-      __m64 avg = _m_pavgb(avg12, avg34);
-      __m64 xor12 = _m_pxor(pixel1, pixel2);
-      __m64 xor34 = _m_pxor(pixel3, pixel4);
-      __m64 or1234 = _m_por(xor12, xor34);
-      __m64 xoravg = _m_pxor(avg12, avg34);
-      __m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
-      *(__m64*)d = _m_psubb(avg, offset);
-      s += lx2;
-      d += lx2;
+  //{{{
+  int getMotionCode() {
+
+    if (getBits (1))
+      return 0;
+
+    int code = peekBits(9);
+    if (code >= 64) {
+      code >>= 6;
+      consumeBits (MVtab0 [code].len);
+      return getBits (1) ? -MVtab0 [code].val : MVtab0 [code].val;
       }
+
+    if (code >= 24) {
+      code >>= 3;
+      consumeBits (MVtab1 [code].len);
+      return getBits (1) ? -MVtab1 [code].val : MVtab1 [code].val;
+      }
+
+    if ((code -= 12) < 0) {
+      Flaw_Flag = 1;
+      return 0;
+      }
+
+    consumeBits (MVtab2 [code].len);
+    return getBits (1) ? -MVtab2 [code].val : MVtab2 [code].val;
     }
   //}}}
   //{{{
-  void half_4_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+  void decodeVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
+  // calculate motion vector component
 
-    for (int loop = 0; loop < h; loop++) {
-      *(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)d);
-      s += lx2;
-      d += lx2;
+    int lim = 16 << r_size;
+    int vec = full_pel_vector ? (*pred >> 1) : (*pred);
+
+    if (motion_code > 0) {
+      vec += ((motion_code-1) << r_size) + motion_residual + 1;
+      if (vec >= lim)
+        vec -= lim + lim;
       }
+    else if (motion_code < 0) {
+      vec -= ((-motion_code - 1) << r_size) + motion_residual + 1;
+      if (vec < -lim)
+        vec += lim + lim;
+      }
+
+    *pred = full_pel_vector ? (vec << 1) : vec;
     }
   //}}}
   //{{{
-  void half_5_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int full_pel_vector) {
+  // get and decode motion vector and differential motion vector for one prediction */
 
-    for (int loop = 0; loop < h; loop++) {
-      __m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-      *(__m64*)d = _m_pavgb(avg, *(__m64*)d);
-      s += lx2;
-      d += lx2;
-      }
+    // horizontal component
+    int motion_code = getMotionCode();
+    int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits (h_r_size) : 0;
+    decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
+
+    // vertical component
+    motion_code = getMotionCode();
+    motion_residual = (v_r_size != 0 && motion_code != 0) ? getBits (v_r_size) : 0;
+
+    if (mvscale)
+      PMV[1] >>= 1;
+
+    decodeVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
+
+    if (mvscale)
+      PMV[1] <<= 1;
     }
   //}}}
   //{{{
-  void half_6_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+  void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2],
+                      int s, int motion_vector_count, int mv_format, int h_r_size, int v_r_size, int mvscale) {
 
-    for (int loop = 0; loop < h; loop++) {
-      __m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
-      *(__m64*)d = _m_pavgb(avg, *(__m64*)d);
-      s += lx2;
-      d += lx2;
+    if (motion_vector_count == 1) {
+      if (mv_format == MV_FIELD)
+        motion_vertical_field_select[1][s] = motion_vertical_field_select[0][s] = getBits(1);
+      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
+
+      // update other motion vector predictors
+      PMV[1][s][0] = PMV[0][s][0];
+      PMV[1][s][1] = PMV[0][s][1];
+      }
+
+    else {
+      motion_vertical_field_select[0][s] = getBits (1);
+      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
+      motion_vertical_field_select [1][s] = getBits (1);
+      motionVector (PMV[1][s], h_r_size, v_r_size, mvscale, 0);
       }
     }
   //}}}
-  //{{{
-  void half_7_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
 
-    __m64 shade = _mm_set1_pi8(1);
-    for (int loop = 0; loop < h; loop++) {
-      __m64 pixel1 = *(__m64*)s;
-      __m64 pixel2 = *(__m64*)(s+1);
-      __m64 pixel3 = *(__m64*)(s+lx);
-      __m64 pixel4 = *(__m64*)(s+lx+1);
-      __m64 avg12 = _m_pavgb(pixel1, pixel2);
-      __m64 avg34 = _m_pavgb(pixel3, pixel4);
-      __m64 avg = _m_pavgb(avg12, avg34);
-      __m64 xor12 = _m_pxor(pixel1, pixel2);
-      __m64 xor34 = _m_pxor(pixel3, pixel4);
-      __m64 or1234 = _m_por(xor12, xor34);
-      __m64 xoravg = _m_pxor(avg12, avg34);
-      __m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
-      *(__m64*)d = _m_pavgb(_m_psubb(avg, offset), *(__m64*)d);
-      s += lx2;
-      d += lx2;
-      }
-    }
-  //}}}
+#ifdef ASM_FORMPREDICTION
   //{{{
-  void asmFormPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2,
-                          int h, int x, int y, int dx, int dy, int average_flag) {
+  void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int h,
+                       int x, int y, int dx, int dy, int average_flag) {
   // ISO/IEC 13818-2 section 7.6.4: Forming predictions
 
     uint8_t* sY = src[0]+(sfield?lx2>>1:0) + lx * (y + (dy>>1)) + x + (dx>>1);
@@ -1183,688 +1489,171 @@ private:
         break;
       //}}}
       //{{{
-      case 11: {
-        for (int loop = 0; loop < h; loop++) {
-          //*(__m128i*)dCr = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCr), _mm_loadu_si128((__m128i*)(sCr+lx)));
-          //*(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+lx));
-          sCr += lx2;
-          dCr += lx2;
-          }
-        for (int loop = 0; loop < h; loop++) {
-          //*(__m128i*)dCb = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCb), _mm_loadu_si128((__m128i*)(sCb+lx)));
-          //*(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+lx));
-          sCb += lx2;
-          dCb += lx2;
-          }
-        //half_1_sse (sCr, dCr, h, lx, lx2);
-        //half_1_sse (sCb, dCb, h, lx, lx2);
-        }
-        break;
+      //void half_1_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+
+        //for (int loop = 0; loop < h; loop++) {
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
       //}}}
       //{{{
-      case 12: {
-        //half_2_sse (sCr, dCr, h, lx2);
-        //half_2_sse (sCb, dCb, h, lx2);
-        }
-        break;
+      //case 1: {
+        //for (int loop = 0; loop < h; loop++) {
+          ////*(__m128i*)dCr = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCr), _mm_loadu_si128((__m128i*)(sCr+lx)));
+          ////*(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+lx));
+          //sCr += lx2;
+          //dCr += lx2;
+          //}
+        //for (int loop = 0; loop < h; loop++) {
+          ////*(__m128i*)dCb = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCb), _mm_loadu_si128((__m128i*)(sCb+lx)));
+          ////*(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+lx));
+          //sCb += lx2;
+          //dCb += lx2;
+          //}
+        ////half_1_sse (sCr, dCr, h, lx, lx2);
+        ////half_1_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
       //}}}
       //{{{
-      case 13: {
-        //half_3_sse (sCr, dCr, h, lx, lx2);
-        //half_3_sse (sCb, dCb, h, lx, lx2);
-        }
-        break;
+      //void half_2_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+
+        //for (int loop = 0; loop < h; loop++) {
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
       //}}}
       //{{{
-      case 14: {
-        //half_4_sse (sCr, dCr, h, lx2);
-        //half_4_sse (sCb, dCb, h, lx2);
-        }
-        break;
+      //case 2: {
+        ////half_2_sse (sCr, dCr, h, lx2);
+        ////half_2_sse (sCb, dCb, h, lx2);
+        //}
+        //break;
       //}}}
       //{{{
-      case 15: {
-        //half_5_sse (sCr, dCr, h, lx, lx2);
-        //half_5_sse (sCb, dCb, h, lx, lx2);
-        }
-        break;
+      //void half_3_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+
+        //__m64 shade = _mm_set1_pi8(1);
+        //for (int loop = 0; loop < h; loop++) {
+          //__m64 pixel1 = *(__m64*)s;
+          //__m64 pixel2 = *(__m64*)(s+1);
+          //__m64 pixel3 = *(__m64*)(s+lx);
+          //__m64 pixel4 = *(__m64*)(s+lx+1);
+          //__m64 avg12 = _m_pavgb(pixel1, pixel2);
+          //__m64 avg34 = _m_pavgb(pixel3, pixel4);
+          //__m64 avg = _m_pavgb(avg12, avg34);
+          //__m64 xor12 = _m_pxor(pixel1, pixel2);
+          //__m64 xor34 = _m_pxor(pixel3, pixel4);
+          //__m64 or1234 = _m_por(xor12, xor34);
+          //__m64 xoravg = _m_pxor(avg12, avg34);
+          //__m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
+          //*(__m64*)d = _m_psubb(avg, offset);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
       //}}}
       //{{{
-      case 16: {
-       // half_6_sse (sCr, dCr, h, lx2);
-        //half_6_sse (sCb, dCb, h, lx2);
-        }
-        break;
+      //case 3: {
+        ////half_3_sse (sCr, dCr, h, lx, lx2);
+        ////half_3_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
       //}}}
       //{{{
-      case 17: {
-        //half_7_sse (sCr, dCr, h, lx, lx2);
-        //half_7_sse (sCb, dCb, h, lx, lx2);
-        }
-        break;
+      //void half_4_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+
+        //for (int loop = 0; loop < h; loop++) {
+          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)d);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}}}
+      //{{{
+      //case 4: {
+        ////half_4_sse (sCr, dCr, h, lx2);
+        ////half_4_sse (sCb, dCb, h, lx2);
+        //}
+        //break;
+      //}}}
+      //{{{
+      //void half_5_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+
+        //for (int loop = 0; loop < h; loop++) {
+          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
+          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}}}
+      //{{{
+      //case 5: {
+        ////half_5_sse (sCr, dCr, h, lx, lx2);
+        ////half_5_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
+      //}}}
+      //{{{
+      //void half_6_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
+
+        //for (int loop = 0; loop < h; loop++) {
+          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
+          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}}}
+      //{{{
+      //case 6: {
+       //// half_6_sse (sCr, dCr, h, lx2);
+        ////half_6_sse (sCb, dCb, h, lx2);
+        //}
+        //break;
+      //}}}
+      //{{{
+      //void half_7_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
+
+        //__m64 shade = _mm_set1_pi8(1);
+        //for (int loop = 0; loop < h; loop++) {
+          //__m64 pixel1 = *(__m64*)s;
+          //__m64 pixel2 = *(__m64*)(s+1);
+          //__m64 pixel3 = *(__m64*)(s+lx);
+          //__m64 pixel4 = *(__m64*)(s+lx+1);
+          //__m64 avg12 = _m_pavgb(pixel1, pixel2);
+          //__m64 avg34 = _m_pavgb(pixel3, pixel4);
+          //__m64 avg = _m_pavgb(avg12, avg34);
+          //__m64 xor12 = _m_pxor(pixel1, pixel2);
+          //__m64 xor34 = _m_pxor(pixel3, pixel4);
+          //__m64 or1234 = _m_por(xor12, xor34);
+          //__m64 xoravg = _m_pxor(avg12, avg34);
+          //__m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
+          //*(__m64*)d = _m_pavgb(_m_psubb(avg, offset), *(__m64*)d);
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}}}
+      //{{{
+      //case 7: {
+        ////half_7_sse (sCr, dCr, h, lx, lx2);
+        ////half_7_sse (sCb, dCb, h, lx, lx2);
+        //}
+        //break;
       //}}}
       }
     }
   //}}}
+#else
   //{{{
-  void asmFormPredictions (int bx, int by, int macroblock_type, int motion_type,
-                           int PMV[2][2][2], int motion_vertical_field_select[2][2]) {
-
-    int stw = 0;
-    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
-      if (motion_type == MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-        // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
-        asmFormPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-        asmFormPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-        }
-      else {
-        // top field prediction
-        asmFormPrediction (forward_reference_frame, motion_vertical_field_select[0][0], 0,
-                           mWidth <<1, mWidth <<1, 8, bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, 0);
-
-        // bottom field prediction
-        asmFormPrediction (forward_reference_frame, motion_vertical_field_select[1][0], 1,
-                           mWidth <<1, mWidth <<1, 8, bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
-        }
-
-      stw = 1;
-      }
-
-    if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
-      if (motion_type == MC_FRAME) {
-        // frame-based prediction
-        asmFormPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
-        asmFormPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], stw);
-        }
-      else {
-        // top field prediction
-        asmFormPrediction (backward_reference_frame, motion_vertical_field_select[0][1], 0,
-                           mWidth << 1, mWidth << 1, 8, bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, stw);
-
-        // bottom field prediction
-        asmFormPrediction (backward_reference_frame, motion_vertical_field_select[1][1], 1,
-                           mWidth << 1, mWidth << 1, 8, bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, stw);
-        }
-      }
-    }
-  //}}}
-
-  //{{{
-  void asmAddBlock (int comp, int bx, int by, int dct_type, int addflag) {
-
-    uint8_t* rfp;
-    int iincr;
-    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
-    if (cc == 0) {
-      if (dct_type) {
-        // luma field DCT coding
-        rfp = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
-        iincr = mWidth << 1;
-        }
-      else {
-        // luma frame DCT coding
-        rfp = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
-        iincr = mWidth;
-        }
-      }
-    else {
-      bx >>= 1;
-      by >>= 1;
-      rfp = current_frame[cc] + mChromaWidth * (by + ((comp & 2) << 2)) + bx + (comp & 8);
-      iincr = mChromaWidth;
-      }
-
-    // 128bits is powerless in this case
-    __m64 *src = (__m64*)block[comp];
-
-    if (addflag) {
-       __m64 zero = _mm_setzero_si64();
-      for (int loop = 0; loop < 8; loop++) {
-        __m64 unpacklo = _m_punpcklbw(*(__m64*)rfp, zero);
-        __m64 sum1 = _m_paddw(*src++, unpacklo);
-        __m64 unpackhi = _m_punpckhbw(*(__m64*)rfp, zero);
-        __m64 sum2 = _m_paddw(*src++, unpackhi);
-        *(__m64*)rfp = _m_packuswb(sum1, sum2);
-        rfp += iincr;
-        }
-      }
-
-    else {
-      __m64 offset = _mm_set1_pi16 (128);
-      for (int loop = 0; loop < 8; loop++) {
-        __m64 sum1 = _m_paddw(*src++, offset);
-        __m64 sum2 = _m_paddw(*src++, offset);
-        *(__m64*)rfp = _m_packuswb(sum1, sum2);
-        rfp += iincr;
-        }
-      }
-    }
-  //}}}
-  //}}}
-  //{{{  macroBlocks
-  //{{{
-  int getImacroblockType() {
-
-    if (getBits (1))
-      return 1;
-
-    if (!getBits (1)) {
-      printf ("Invalid macroblock_type code\n");
-      Flaw_Flag = 1;
-      }
-
-    return 17;
-    }
-  //}}}
-  //{{{
-  int getPmacroblockType() {
-
-    int code;
-    if ((code = peekBits (6)) >= 8) {
-      code >>= 3;
-      consumeBits (PMBtab0[code].len);
-      return PMBtab0[code].val;
-      }
-
-    if (code == 0) {
-      printf ("Invalid macroblock_type code\n");
-      Flaw_Flag = 1;
-      return 0;
-      }
-
-    consumeBits (PMBtab1[code].len);
-    return PMBtab1[code].val;
-    }
-  //}}}
-  //{{{
-  int getBmacroblockType() {
-
-    int code;
-    if ((code = peekBits(6)) >= 8) {
-      code >>= 2;
-      consumeBits (BMBtab0[code].len);
-      return BMBtab0[code].val;
-      }
-
-    if (code == 0) {
-      printf("Invalid macroblock_type code\n");
-      Flaw_Flag = 1;
-      return 0;
-      }
-
-    consumeBits(BMBtab1[code].len);
-    return BMBtab1[code].val;
-    }
-  //}}}
-  //{{{
-  int getMacroBlockType() {
-
-    int macroblock_type = 0;
-    switch (picture_coding_type) {
-      case I_TYPE:
-        macroblock_type = getImacroblockType();
-        break;
-      case P_TYPE:
-        macroblock_type = getPmacroblockType();
-        break;
-      case B_TYPE:
-        macroblock_type = getBmacroblockType();
-        break;
-      default:
-        printf("getMacroblockType(): unrecognized picture coding type\n");
-        break;
-      }
-
-    return macroblock_type;
-    }
-  //}}}
-
-  //{{{
-  int getCodedBlockPattern() {
-
-    int code;
-    if ((code = peekBits(9))>=128) {
-      code >>= 4;
-      consumeBits (CBPtab0[code].len);
-      return CBPtab0[code].val;
-      }
-
-    if (code >= 8) {
-      code >>= 1;
-      consumeBits (CBPtab1[code].len);
-      return CBPtab1[code].val;
-      }
-
-    if (code<1) {
-      printf("Invalid coded_block_pattern code\n");
-      Flaw_Flag = 1;
-      return 0;
-      }
-
-    consumeBits (CBPtab2[code].len);
-    return CBPtab2[code].val;
-    }
-  //}}}
-  //{{{
-  int getMacroBlockAddressIncrement() {
-
-    int code;
-    int val = 0;
-
-    while ((code = peekBits(11))<24) {
-      if (code != 15) /* if not macroblock_stuffing */ {
-        if (code == 8) /* if macroblock_escape */ {
-          val+= 33;
-          }
-        else {
-          printf("Invalid macroblock_address_increment code\n");
-          Flaw_Flag = 1;
-          return 1;
-          }
-        }
-      consumeBits (11);
-      }
-
-    /* macroblock_address_increment == 1 ('1' is in the MSB position of the lookahead) */
-    if (code >= 1024) {
-      consumeBits (1);
-      return val + 1;
-      }
-
-    /* codes 00010 ... 011xx */
-    if (code >= 128) {
-      /* remove leading zeros */
-      code >>= 6;
-      consumeBits (MBAtab1[code].len);
-      return val + MBAtab1[code].val;
-      }
-
-    /* codes 00000011000 ... 0000111xxxx */
-    code-= 24; /* remove common base */
-    consumeBits (MBAtab2[code].len);
-    return val + MBAtab2[code].val;
-    }
-  //}}}
-
-  //{{{
-  /* ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes */
-  void macroBlockModes (int* pmacroblock_type, int* pstwtype,
-                        int* pmotion_type, int* pmotion_vector_count, int* pmv_format,
-                        int* pmvscale, int* pdct_type) {
-
-    int motion_type = 0;
-    int motion_vector_count, mv_format, mvscale;
-    int dct_type;
-
-    /* get macroblock_type */
-    int macroblock_type = getMacroBlockType();
-
-    if (Flaw_Flag)
-      return;
-
-    /* get spatial_temporal_weight_code */
-    int stwtype;
-    if (macroblock_type & 32)
-      stwtype = 4;
-    else
-      stwtype = (macroblock_type & 64) ? 8 : 0;
-
-    /* get frame/field motion type */
-    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD))
-      motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
-    else if ((macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
-      /* concealment motion vectors */
-      motion_type = MC_FRAME;
-
-    /* derive motion_vector_count, mv_format and dmv, (table 6-17, 6-18) */
-    motion_vector_count = (motion_type == MC_FIELD) ? 2 : 1;
-    mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
-
-    /* field mv predictions in frame pictures have to be scaled
-     * ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
-     * IMPLEMENTATION: mvscale is derived for later use in motion_vectors()
-     * it displaces the stage:
-     *    if((mv_format=="field")&&(t==1)&&(picture_structure=="Frame picture"))
-     *      prediction = PMV[r][s][t] DIV 2; */
-    mvscale = mv_format == MV_FIELD;
-
-    /* get dct_type (frame DCT / field DCT) */
-    dct_type = (!frame_pred_frame_dct) && (macroblock_type & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
-
-    /* return values */
-    *pmacroblock_type = macroblock_type;
-    *pstwtype = stwtype;
-    *pmotion_type = motion_type;
-    *pmotion_vector_count = motion_vector_count;
-    *pmv_format = mv_format;
-    *pmvscale = mvscale;
-    *pdct_type = dct_type;
-    }
-  //}}}
-  //}}}
-
-  //{{{
-  int getLumaDCdctDiff() {
-  // parse VLC and perform dct_diff arithmetic.
-
-    // decode length
-    int code = peekBits(5);
-
-    int size;
-    if (code < 31) {
-      size = DClumtab0[code].val;
-      consumeBits (DClumtab0[code].len);
-      }
-    else {
-      code = peekBits(9) - 0x1f0;
-      size = DClumtab1[code].val;
-      consumeBits (DClumtab1[code].len);
-      }
-
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
-      dct_diff = getBits (size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
-      }
-
-    return dct_diff;
-    }
-  //}}}
-  //{{{
-  int getChromaDCdctDiff() {
-
-    // decode length
-    int size;
-    int code = peekBits (5);
-    if (code<31) {
-      size = DCchromtab0[code].val;
-      consumeBits (DCchromtab0[code].len);
-      }
-    else {
-      code = peekBits(10) - 0x3e0;
-      size = DCchromtab1[code].val;
-      consumeBits (DCchromtab1[code].len);
-      }
-
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
-      dct_diff = getBits(size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
-      }
-
-    return dct_diff;
-    }
-  //}}}
-  //{{{
-  void decodeIntraBlock (int comp, int dc_dct_pred[]) {
-
-    int val, sign, run;
-
-    // decode DC coefficients
-    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
-    if (cc == 0)
-      val = (dc_dct_pred[0] += getLumaDCdctDiff());
-    else if (cc == 1)
-      val = (dc_dct_pred[1] += getChromaDCdctDiff());
-    else
-      val = (dc_dct_pred[2] += getChromaDCdctDiff());
-
-    if (Flaw_Flag)
-      return;
-
-    block[comp][0] = val << (3 - intra_dc_precision);
-
-    // decode AC coefficients
-    for (int i = 1; ; i++) {
-      DCTtab* tab;
-      uint32_t code = peekBits (16);
-      if (code >= 16384 && !intra_vlc_format)
-        tab = &DCTtabnext[(code >> 12) - 4];
-      else if (code >= 1024) {
-        if (intra_vlc_format)
-          tab = &DCTtab0a[(code >> 8) - 4];
-        else
-          tab = &DCTtab0[(code >> 8) - 4];
-        }
-      else if (code >= 512) {
-        if (intra_vlc_format)
-          tab = &DCTtab1a[(code >> 6) - 8];
-        else
-          tab = &DCTtab1[(code >> 6) - 8];
-        }
-      else if (code >= 256)
-        tab = &DCTtab2[(code >> 4) - 16];
-      else if (code >= 128)
-        tab = &DCTtab3[(code >> 3) - 16];
-      else if (code >= 64)
-        tab = &DCTtab4[(code >> 2) - 16];
-      else if (code >= 32)
-        tab = &DCTtab5[(code >> 1) - 16];
-      else if (code >= 16)
-        tab = &DCTtab6[code - 16];
-      else {
-        //{{{  flaw
-        printf ("invalid Huffman code in Decode_MPEG2_Intra_Block()\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-      consumeBits (tab->len);
-
-      if (tab->run == 64) // end_of_block
-        return;
-
-      if (tab->run == 65) {
-        //{{{  escape
-        i += run = getBits (6);
-        val = getBits (12);
-        if ((val & 2047) == 0) {
-          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          Flaw_Flag = 1;
-          return;
-          }
-        if ((sign = (val >= 2048)))
-          val = 4096 - val;
-        }
-        //}}}
-      else {
-        i+= run = tab->run;
-        val = tab->level;
-        sign = getBits (1);
-      }
-
-      if (i >= 64) {
-        //{{{  flaw
-        printf ("DCT coeff index (i) out of bounds (intra2)\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-
-      uint8_t j = scan [alternate_scan][i];
-      val = (val * quantizer_scale * intra_quantizer_matrix[j]) >> 4;
-      block [comp][j] = sign ? -val : val;
-      }
-    }
-  //}}}
-  //{{{
-  void decodeNonIntraBlock (int comp) {
-
-    int val, sign, run;
-
-    // decode AC coefficients
-    for (int i = 0; ; i++) {
-      DCTtab* tab;
-      uint32_t code = peekBits (16);
-      if (code >= 16384) {
-        if (i == 0)
-          tab = &DCTtabfirst[(code>>12)-4];
-        else
-          tab = &DCTtabnext[(code>>12)-4];
-        }
-      else if (code >= 1024)
-        tab = &DCTtab0[(code>>8)-4];
-      else if (code >= 512)
-        tab = &DCTtab1[(code>>6)-8];
-      else if (code >= 256)
-        tab = &DCTtab2[(code>>4)-16];
-      else if (code >= 128)
-        tab = &DCTtab3[(code>>3)-16];
-      else if (code >= 64)
-        tab = &DCTtab4[(code>>2)-16];
-      else if (code >= 32)
-        tab = &DCTtab5[(code>>1)-16];
-      else if (code >= 16)
-        tab = &DCTtab6[code-16];
-      else {
-        //{{{  flaw
-        printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-      consumeBits (tab->len);
-
-      if (tab->run == 64) // end_of_block
-        return;
-
-      if (tab->run == 65) {
-        //{{{  escape
-        i += run = getBits (6);
-        val = getBits (12);
-        if ((val & 2047) == 0) {
-          printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          Flaw_Flag = 1;
-          return;
-          }
-        if ((sign = (val >= 2048)))
-          val = 4096 - val;
-        }
-        //}}}
-      else {
-        i += run = tab->run;
-        val = tab->level;
-        sign = getBits (1);
-        }
-
-      if (i >= 64) {
-        //{{{  flaw
-        printf ("DCT coeff index (i) out of bounds (inter2)\n");
-        Flaw_Flag = 1;
-        return;
-        }
-        //}}}
-
-      uint8_t j = scan [alternate_scan][i];
-      val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
-      block [comp][j] = sign ? -val : val;
-      }
-    }
-  //}}}
-
-  //{{{
-  int getMotionCode() {
-
-    if (getBits (1))
-      return 0;
-
-    int code = peekBits(9);
-    if (code >= 64) {
-      code >>= 6;
-      consumeBits (MVtab0 [code].len);
-      return getBits (1) ? -MVtab0 [code].val : MVtab0 [code].val;
-      }
-
-    if (code >= 24) {
-      code >>= 3;
-      consumeBits (MVtab1 [code].len);
-      return getBits (1) ? -MVtab1 [code].val : MVtab1 [code].val;
-      }
-
-    if ((code -= 12) < 0) {
-      Flaw_Flag = 1;
-      return 0;
-      }
-
-    consumeBits (MVtab2 [code].len);
-    return getBits (1) ? -MVtab2 [code].val : MVtab2 [code].val;
-    }
-  //}}}
-  //{{{
-  void decodeVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
-  // calculate motion vector component
-
-    int lim = 16 << r_size;
-    int vec = full_pel_vector ? (*pred >> 1) : (*pred);
-
-    if (motion_code > 0) {
-      vec += ((motion_code-1) << r_size) + motion_residual + 1;
-      if (vec >= lim)
-        vec -= lim + lim;
-      }
-    else if (motion_code < 0) {
-      vec -= ((-motion_code - 1) << r_size) + motion_residual + 1;
-      if (vec < -lim)
-        vec += lim + lim;
-      }
-
-    *pred = full_pel_vector ? (vec << 1) : vec;
-    }
-  //}}}
-  //{{{
-  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int full_pel_vector) {
-  // get and decode motion vector and differential motion vector for one prediction */
-
-    // horizontal component
-    int motion_code = getMotionCode();
-    int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits (h_r_size) : 0;
-    decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
-
-    // vertical component
-    motion_code = getMotionCode();
-    motion_residual = (v_r_size != 0 && motion_code != 0) ? getBits (v_r_size) : 0;
-
-    if (mvscale)
-      PMV[1] >>= 1;
-
-    decodeVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
-
-    if (mvscale)
-      PMV[1] <<= 1;
-    }
-  //}}}
-  //{{{
-  void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2],
-                      int s, int motion_vector_count, int mv_format, int h_r_size, int v_r_size, int mvscale) {
-
-    if (motion_vector_count == 1) {
-      if (mv_format == MV_FIELD)
-        motion_vertical_field_select[1][s] = motion_vertical_field_select[0][s] = getBits(1);
-      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
-
-      // update other motion vector predictors
-      PMV[1][s][0] = PMV[0][s][0];
-      PMV[1][s][1] = PMV[0][s][1];
-      }
-
-    else {
-      motion_vertical_field_select[0][s] = getBits (1);
-      motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
-      motion_vertical_field_select [1][s] = getBits (1);
-      motionVector (PMV[1][s], h_r_size, v_r_size, mvscale, 0);
-      }
-    }
-  //}}}
-
-  //{{{
-  void formComponentPrediction (uint8_t* src, uint8_t* dst, int lx, int lx2,
-                                int w, int h, int x, int y, int dx, int dy, int average_flag) {
+  void formComponentPrediction (uint8_t* src, uint8_t* dst, int lx, int lx2, int w, int h,
+                                int x, int y, int dx, int dy, int average_flag) {
   //{{{  description
   /* ISO/IEC 13818-2 section 7.6.4: Forming predictions */
   /* NOTE: the arithmetic below produces numerically equivalent results
@@ -1990,11 +1779,11 @@ private:
     }
   //}}}
   //{{{
-  void formPrediction (uint8_t* src[], int sfield, uint8_t* dst[], int dfield,
-                       int lx, int lx2, int w, int h, int x, int y, int dx, int dy, int average_flag) {
+  void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int w, int h,
+                       int x, int y, int dx, int dy, int average_flag) {
 
-    formComponentPrediction (src[0] + (sfield ? lx2 >> 1 : 0),
-                             dst[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (
+      src[0] + (sfield ? lx2 >> 1 : 0), current_frame[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
 
     lx >>= 1;
     lx2 >>= 1;
@@ -2004,118 +1793,241 @@ private:
     h >>= 1;
     y >>= 1;
     dy /= 2;
-    formComponentPrediction (src[1] + (sfield ? lx2 >> 1 : 0),
-                             dst[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    formComponentPrediction (src[2] + (sfield ? lx2 >> 1: 0),
-                             dst[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (
+      src[1] + (sfield ? lx2 >> 1 : 0), current_frame[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    formComponentPrediction (
+      src[2] + (sfield ? lx2 >> 1: 0), current_frame[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
   }
   //}}}
+#endif
   //{{{
-  void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2],
-                        int motion_vertical_field_select[2][2], int stwtype) {
+  void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2], int motionVertField[2][2]) {
 
-    int stwtop = stwtype % 3;  // 0:temporal, 1:(spat+temp)/2, 2:spatial
-    int stwbot = stwtype / 3;
-
-    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || (picture_coding_type == P_TYPE)) {
-      if ((motion_type == MC_FRAME) || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
-        // frame-based prediction (broken into top and bottom halves for spatial scalability prediction purposes)
-        if (stwtop < 2)
-          formPrediction (forward_reference_frame, 0, current_frame, 0,
-                             mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1], stwtop);
-        if (stwbot < 2)
-          formPrediction (forward_reference_frame, 1, current_frame, 1,
-                             mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][0][0], PMV[0][0][1],stwbot);
+    int average_flag = 0;
+    if ((macroblock_type & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
+      if (motion_type == MC_FRAME || !(macroblock_type & MACROBLOCK_MOTION_FORWARD)) {
+        // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
+        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, 
+                        bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, 
+                        bx, by, PMV[0][0][0], PMV[0][0][1], 0);
         }
-      else if (motion_type == MC_FIELD) {
-         // top field prediction
-        if (stwtop < 2)
-          formPrediction (forward_reference_frame,motion_vertical_field_select[0][0], current_frame, 0,
-                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, stwtop);
+      else {
+        // top field prediction
+        formPrediction (forward_reference_frame, motionVertField[0][0], 0, mWidth <<1, mWidth <<1, 8,
+                        bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, 0);
         // bottom field prediction
-        if (stwbot < 2)
-          formPrediction (forward_reference_frame, motion_vertical_field_select[1][0], current_frame, 1,
-                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[1][0][0], PMV[1][0][1] >> 1, stwbot);
+        formPrediction (forward_reference_frame, motionVertField[1][0], 1, mWidth <<1, mWidth <<1, 8,
+                        bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
         }
-      else
-        printf ("invalid motion_type\n");
-      stwtop = stwbot = 1;
+
+      average_flag = 1;
       }
 
     if (macroblock_type & MACROBLOCK_MOTION_BACKWARD) {
       if (motion_type == MC_FRAME) {
         // frame-based prediction
-        if (stwtop < 2)
-          formPrediction (backward_reference_frame, 0, current_frame, 0,
-                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][1][0],PMV[0][1][1], stwtop);
-        if (stwbot < 2)
-          formPrediction (backward_reference_frame, 1, current_frame, 1,
-                          mWidth, mWidth << 1, 16, 8, bx, by, PMV[0][1][0],PMV[0][1][1], stwbot);
+        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, 
+                        bx, by, PMV[0][1][0], PMV[0][1][1], average_flag);
+        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, 
+                        bx, by, PMV[0][1][0], PMV[0][1][1], average_flag);
         }
       else {
         // top field prediction
-        if (stwtop < 2)
-          formPrediction (backward_reference_frame, motion_vertical_field_select[0][1], current_frame, 0,
-                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[0][1][0], PMV[0][1][1] >> 1, stwtop);
+        formPrediction (backward_reference_frame, motionVertField[0][1], 0, mWidth << 1, mWidth << 1, 8,
+                        bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, average_flag);
         // bottom field prediction
-        if (stwbot < 2)
-          formPrediction (backward_reference_frame, motion_vertical_field_select[1][1], current_frame, 1,
-                          mWidth << 1, mWidth << 1, 16, 8, bx, by >> 1, PMV[1][1][0], PMV[1][1][1] >> 1, stwbot);
+        formPrediction (backward_reference_frame, motionVertField[1][1], 1, mWidth << 1, mWidth << 1, 8,
+                        bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, average_flag);
         }
       }
+    }
+  //}}}
+
+  //{{{
+  void idctSSE2 (short* block) {
+
+    //{{{  DCT_8_INV_ROWX2 macro
+    #define DCT_8_INV_ROWX2(tab1, tab2)  \
+    {  \
+      r1 = _mm_shufflelo_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
+      r1 = _mm_shufflehi_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
+      a0 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
+      a1 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
+      a2 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
+      a3 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
+      s0 = _mm_add_epi32(_mm_add_epi32(a0, round_row), a2);  \
+      s1 = _mm_add_epi32(a1, a3);  \
+      p0 = _mm_srai_epi32(_mm_add_epi32(s0, s1), 11);  \
+      p1 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
+      r2 = _mm_shufflelo_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
+      r2 = _mm_shufflehi_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
+      b0 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
+      b1 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
+      b2 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
+      b3 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
+      s2 = _mm_add_epi32(_mm_add_epi32(b0, round_row), b2);  \
+      s3 = _mm_add_epi32(b3, b1);  \
+      p2 = _mm_srai_epi32(_mm_add_epi32(s2, s3), 11);  \
+      p3 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
+      r1 = _mm_packs_epi32(p0, p1);  \
+      r2 = _mm_packs_epi32(p2, p3);  \
+    }
+    //}}}
+    __m128i r1, r2, a0, a1, a2, a3, b0, b1, b2, b3, s0, s1, s2, s3, p0, p1, p2, p3;
+    __m128i round_row = _mm_set_epi16(0, 1024, 0, 1024, 0, 1024, 0, 1024);
+
+    r1 = *(__m128i*)(block+8*0);
+    r2 = *(__m128i*)(block+8*1);
+    DCT_8_INV_ROWX2(sse2_tab_i_04, sse2_tab_i_17);
+    *(__m128i*)(block+8*0) = r1;
+    *(__m128i*)(block+8*1) = r2;
+
+    r1 = *(__m128i*)(block+8*4);
+    r2 = *(__m128i*)(block+8*7);
+    DCT_8_INV_ROWX2(sse2_tab_i_04, sse2_tab_i_17);
+    *(__m128i*)(block+8*4) = r1;
+    *(__m128i*)(block+8*7) = r2;
+
+    r1 = *(__m128i*)(block+8*2);
+    r2 = *(__m128i*)(block+8*3);
+    DCT_8_INV_ROWX2(sse2_tab_i_26, sse2_tab_i_35);
+    *(__m128i*)(block+8*2) = r1;
+    *(__m128i*)(block+8*3) = r2;
+
+    r1 = *(__m128i*)(block+8*6);
+    r2 = *(__m128i*)(block+8*5);
+    DCT_8_INV_ROWX2(sse2_tab_i_26, sse2_tab_i_35);
+    *(__m128i*)(block+8*6) = r1;
+    *(__m128i*)(block+8*5) = r2;
+
+    __m128i x0 = *(__m128i*)(block+8*0);
+    __m128i x1 = *(__m128i*)(block+8*1);
+    __m128i x2 = *(__m128i*)(block+8*2);
+    __m128i x3 = *(__m128i*)(block+8*3);
+    __m128i x4 = *(__m128i*)(block+8*4);
+    __m128i x5 = *(__m128i*)(block+8*5);
+    __m128i x6 = *(__m128i*)(block+8*6);
+    __m128i x7 = *(__m128i*)(block+8*7);
+
+    __m128i tan1 = _mm_set1_epi16(13036);
+    __m128i tan2 = _mm_set1_epi16(27146);
+    __m128i tan3 = _mm_set1_epi16(-21746);
+    __m128i cos4 = _mm_set1_epi16(-19195);
+    __m128i round_err = _mm_set1_epi16(1);
+    __m128i round_col = _mm_set1_epi16(32);
+    __m128i round_corr = _mm_set1_epi16(31);
+
+    __m128i tp765 = _mm_adds_epi16(_mm_mulhi_epi16(x7, tan1), x1);
+    __m128i tp465 = _mm_subs_epi16(_mm_mulhi_epi16(x1, tan1), x7);
+    __m128i tm765 = _mm_adds_epi16(_mm_mulhi_epi16(x5, tan3), _mm_adds_epi16(x5, x3));
+    __m128i tm465 = _mm_subs_epi16(x5, _mm_adds_epi16(_mm_mulhi_epi16(x3, tan3), x3));
+
+    __m128i t7 = _mm_adds_epi16(_mm_adds_epi16(tp765, tm765), round_err);
+    __m128i tp65 = _mm_subs_epi16(tp765, tm765);
+    __m128i t4 = _mm_adds_epi16(tp465, tm465);
+    __m128i tm65 = _mm_adds_epi16(_mm_subs_epi16(tp465, tm465), round_err);
+
+    __m128i tmp1 = _mm_adds_epi16(tp65, tm65);
+    __m128i t6 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp1, cos4), tmp1), round_err);
+    __m128i tmp2 = _mm_subs_epi16(tp65, tm65);
+    __m128i t5 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp2, cos4), tmp2), round_err);
+
+    __m128i tp03 = _mm_adds_epi16(x0, x4);
+    __m128i tp12 = _mm_subs_epi16(x0, x4);
+    __m128i tm03 = _mm_adds_epi16(_mm_mulhi_epi16(x6, tan2), x2);
+    __m128i tm12 = _mm_subs_epi16(_mm_mulhi_epi16(x2, tan2), x6);
+
+    __m128i t0 = _mm_adds_epi16(_mm_adds_epi16(tp03, tm03), round_col);
+    __m128i t3 = _mm_adds_epi16(_mm_subs_epi16(tp03, tm03), round_corr);
+    __m128i t1 = _mm_adds_epi16(_mm_adds_epi16(tp12, tm12), round_col);
+    __m128i t2 = _mm_adds_epi16(_mm_subs_epi16(tp12, tm12), round_corr);
+
+    *(__m128i*)(block+8*0) = _mm_srai_epi16(_mm_adds_epi16(t0, t7), 6);
+    *(__m128i*)(block+8*7) = _mm_srai_epi16(_mm_subs_epi16(t0, t7), 6);
+    *(__m128i*)(block+8*1) = _mm_srai_epi16(_mm_adds_epi16(t1, t6), 6);
+    *(__m128i*)(block+8*6) = _mm_srai_epi16(_mm_subs_epi16(t1, t6), 6);
+    *(__m128i*)(block+8*2) = _mm_srai_epi16(_mm_adds_epi16(t2, t5), 6);
+    *(__m128i*)(block+8*5) = _mm_srai_epi16(_mm_subs_epi16(t2, t5), 6);
+    *(__m128i*)(block+8*3) = _mm_srai_epi16(_mm_adds_epi16(t3, t4), 6);
+    *(__m128i*)(block+8*4) = _mm_srai_epi16(_mm_subs_epi16(t3, t4), 6);
     }
   //}}}
   //{{{
   void addBlock (int comp, int bx, int by, int dct_type, int addflag) {
-  // move/add 8x8-Block from block[comp] to backward_reference_frame */
+  // move/add 8x8-Block from block[comp] to backward_reference_frame
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
-  // ISO/IEC 13818-2 section 7.6.8: Adding prediction and coefficient data
 
+    uint8_t* refFramePtr;
     int iincr;
-    uint8_t* rfp;
-
-    // derive color component index
     int cc = (comp < 4) ? 0 : (comp & 1) + 1;
     if (cc == 0) {
       if (dct_type) {
-        // luminance  field DCT coding
-        rfp = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
+        // luma field DCT coding
+        refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
         iincr = (mWidth << 1) - 8;
         }
       else {
-        // luminance frame DCT coding
-        rfp = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
+        // luma frame DCT coding
+        refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
         iincr = mWidth - 8;
         }
       }
     else {
-      // chrominance scale coordinates, frame DCT coding
-      rfp = current_frame[cc] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
+      // chroma scale coordinates, frame DCT coding
+      refFramePtr = current_frame[cc] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
       iincr = mChromaWidth - 8;
       }
 
-    short* bp = block [comp];
+  #ifdef ASM_ADDBLOCK
+    //{{{  intrinsics
+    // 128bits is powerless in this case
+    __m64 *src = (__m64*)block[comp];
+
     if (addflag) {
-      for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++) {
-          *rfp = Clip [*bp++ + *rfp];
-          rfp++;
-          }
-        rfp += iincr;
+       __m64 zero = _mm_setzero_si64();
+      for (int loop = 0; loop < 8; loop++) {
+        __m64 unpacklo = _m_punpcklbw (*(__m64*)refFramePtr, zero);
+        __m64 sum1 = _m_paddw(*src++, unpacklo);
+        __m64 unpackhi = _m_punpckhbw (*(__m64*)refFramePtr, zero);
+        __m64 sum2 = _m_paddw (*src++, unpackhi);
+        *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
+        refFramePtr += iincr;
+        }
+      }
+
+    else {
+      __m64 offset = _mm_set1_pi16 (128);
+      for (int loop = 0; loop < 8; loop++) {
+        __m64 sum1 = _m_paddw (*src++, offset);
+        __m64 sum2 = _m_paddw (*src++, offset);
+        *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
+        refFramePtr += iincr;
+        }
+      }
+    //}}}
+  #else
+    short* src = block[comp];
+
+    if (addflag) {
+      for (int j = 0; j < 8; j++) {
+        for (int i = 0; i < 8; i++)
+          *refFramePtr++ = Clip [*src++ + *refFramePtr];
+        refFramePtr += iincr;
         }
       }
     else {
-      for (int i = 0; i < 8; i++) {
-        for (int j = 0; j < 8; j++)
-          *rfp++ = Clip [*bp++ + 128];
-        rfp += iincr;
+      for (int j = 0; j < 8; j++) {
+        for (int i = 0; i < 8; i++)
+          *refFramePtr++ = Clip [*src++ + 128];
+        refFramePtr += iincr;
         }
       }
+  #endif
     }
   //}}}
   //{{{
-  void motionCompensation (int MBA, int macroblock_type, int motion_type, int PMV[2][2][2],
-                           int motion_vertical_field_select[2][2], int stwtype, int dct_type) {
+  void motionComp (int MBA, int macroblock_type, int motion_type, int PMV[2][2][2], int motionVertField[2][2], int dct_type) {
 
     // derive current macroblock position within picture ISO/IEC 13818-2 section 6.3.1.6 and 6.3.1.7
     int bx = 16 * (MBA % mBwidth);
@@ -2123,13 +2035,11 @@ private:
 
     // motion compensation
     if (!(macroblock_type & MACROBLOCK_INTRA))
-      //formPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype);
-      asmFormPredictions (bx, by, macroblock_type, motion_type, PMV, motion_vertical_field_select);
+      formPredictions (bx, by, macroblock_type, motion_type, PMV, motionVertField);
 
     // copy or add block data int32_to picture
     for (int comp = 0; comp < 6; comp++) {
-      sse2_ap945_idct (block[comp]);
-      //asmAddBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
+      idctSSE2 (block[comp]);
       addBlock (comp, bx, by, dct_type, (macroblock_type & MACROBLOCK_INTRA) == 0);
       }
     }
@@ -2204,7 +2114,7 @@ private:
   //}}}
   //{{{
   void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
-                          int* motion_type, int motion_vertical_field_select[2][2], int* stwtype, int* macroblock_type) {
+                          int* motion_type, int motion_vertical_field_select[2][2], int* macroblock_type) {
 
     memset (block[0], 0, 128 * sizeof(short) * 6);
 
@@ -2218,15 +2128,12 @@ private:
     // derive motion_type */
     *motion_type = MC_FRAME;
 
-    // skipped I are spatial-only predicted, skipped P and B are temporal-only predicted ISO/IEC 13818-2 section 7.7.6:
-    *stwtype = (picture_coding_type == I_TYPE) ? 8 : 0;
-
     // IMPLEMENTATION: clear MACROBLOCK_INTRA */
     *macroblock_type &= ~MACROBLOCK_INTRA;
     }
   //}}}
   //{{{
-  int decodeMacroblock (int* macroblock_type, int* stwtype, int* motion_type, int* dct_type,
+  int decodeMacroblock (int* macroblock_type, int* motion_type, int* dct_type,
                         int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
 
     int quantizer_scale_code;
@@ -2237,7 +2144,7 @@ private:
     int coded_block_pattern;
 
     // ISO/IEC 13818-2 section 6.3.17.1: Macroblock modes
-    macroBlockModes (macroblock_type, stwtype, motion_type, &motion_vector_count, &mv_format,  &mvscale, dct_type);
+    macroBlockModes (macroblock_type, motion_type, &motion_vector_count, &mv_format,  &mvscale, dct_type);
 
     if (Flaw_Flag)
       return 0;  // trigger: go to next slice
@@ -2341,19 +2248,18 @@ private:
 
       int macroblock_type, motion_type, dct_type;
       int motion_vertical_field_select[2][2];
-      int stwtype;
       if (MBAinc == 1) {
         // not skipped
-        ret = decodeMacroblock (&macroblock_type, &stwtype, &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select);
+        ret = decodeMacroblock (&macroblock_type, &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select);
         if (ret == -1)
           return -1;
         if (ret == 0)
           goto resync;
         }
       else // MBAinc != 1 skipped macroblock
-        skippedMacroblock (dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &stwtype, &macroblock_type);
+        skippedMacroblock (dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &macroblock_type);
 
-      motionCompensation (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, stwtype, dct_type);
+      motionComp (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, dct_type);
       }
 
     return -1; /* all macroblocks decoded */
