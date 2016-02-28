@@ -270,7 +270,7 @@ private:
     uint8_t* pesPtr = fileBuffer;
     for (int i = 0; i < maxVidFrames; i++) {
       if (!(i % 100))
-        printf ("frame %d  %4.3fs %4.3fs\n", i, getTimer() - time, (getTimer() - time) / i);
+        printf ("frame %d  %4.3fs %4.3fms\n", i, getTimer() - time, 1000.0 * (getTimer() - time) / i);
       decodePes (pesPtr, fileBuffer + mFileBytes, &mYuvFrames[i], pesPtr);
       mCurVidFrame = i;
       }
