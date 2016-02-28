@@ -625,13 +625,15 @@ private:
     m32bits <<= numBits;
     mBitCount -= numBits;
     while (mBitCount <= 24) {
-      m32bits |= *mBufferPtr++ << (24 - mBitCount);
+      m32bits |= (*mBufferPtr++) << (24 - mBitCount);
       mBitCount += 8;
       }
+    //printf ("consumeBits %d\n", numBits);
     }
   //}}}
   //{{{
   uint32_t peekBits (int numBits) {
+    //printf ("peekbits %d %x\n", numBits, m32bits >> (32 - numBits));
     return m32bits >> (32 - numBits);
     }
   //}}}
@@ -640,6 +642,8 @@ private:
 
     uint32_t val = m32bits >> (32 - numBits);
     consumeBits (numBits);
+
+    //printf ("getBits %d %x\n",  numBits, val);
     return val;
     }
   //}}}
@@ -650,6 +654,7 @@ private:
     while ((mBufferPtr < mBufferEnd) && (m32bits >> 8) != 0x001)
       consumeBits (8);
 
+    //printf ("getStartCode %x\n",  m32bits);
     return m32bits;
     }
   //}}}
@@ -670,11 +675,11 @@ private:
     q_scale_type               = getBits(1);
     intra_vlc_format           = getBits(1);
     alternate_scan             = getBits(1);
-    int repeat_first_field         = getBits(1);
-    int chroma_420_type            = getBits(1);
-    progressive          = getBits(1);
+    int repeat_first_field     = getBits(1);
+    int chroma_420_type        = getBits(1);
+    progressive                = getBits(1);
 
-    int composite_display_flag     = getBits(1);
+    int composite_display_flag  = getBits(1);
     if (composite_display_flag) {
       int v_axis            = getBits(1);
       int field_sequence    = getBits(3);
@@ -682,6 +687,7 @@ private:
       int burst_amplitude   = getBits(7);
       int sub_carrier_phase = getBits(8);
       }
+    printf ("picture_coding_extension %d\n", concealment_motion_vectors);
     }
   //}}}
   //{{{
@@ -692,7 +698,7 @@ private:
     while (code == EXTENSION_START_CODE || code == USER_DATA_START_CODE) {
       if (code == EXTENSION_START_CODE) {
         consumeBits (32);
-        uint32_t ext_ID = getBits (4);
+        int ext_ID = getBits (4);
         switch (ext_ID) {
           case PICTURE_CODING_EXTENSION_ID:
             picture_coding_extension();
@@ -728,20 +734,6 @@ private:
     mHeight = 16 * mBheight;
     mChromaWidth = mWidth >> 1;
     mChromaHeight = mHeight >> 1;
-
-    //if ((load_intra_quantizer_matrix = getBits (1)))
-    //  for (int32_t i = 0; i < 64; i++)
-    //    intra_quantizer_matrix[scan[0][i]] = getBits (8);
-
-    //if ((load_non_intra_quantizer_matrix = getBits(1)))
-    //  for (int32_t i = 0; i < 64; i++)
-    //    non_intra_quantizer_matrix[scan[0][i]] = getBits (8);
-
-    // copy luminance to chrominance matrices
-    //for (int32_t i = 0; i < 64; i++) {
-    //  chroma_intra_quantizer_matrix[i] = intra_quantizer_matrix[i];
-    //  chroma_non_intra_quantizer_matrix[i] = non_intra_quantizer_matrix[i];
-    //  }
 
     extension_and_user_data();
     }
@@ -922,13 +914,13 @@ private:
     int code;
     int val = 0;
 
-    while ((code = peekBits(11))<24) {
+    while ((code = peekBits (11)) < 24) {
       if (code != 15) /* if not macroblock_stuffing */ {
         if (code == 8) /* if macroblock_escape */ {
-          val+= 33;
+          val += 33;
           }
         else {
-          printf("Invalid macroblock_address_increment code\n");
+          printf ("Invalid macroblock_address_increment code\n");
           Flaw_Flag = 1;
           return 1;
           }
@@ -936,22 +928,22 @@ private:
       consumeBits (11);
       }
 
-    /* macroblock_address_increment == 1 ('1' is in the MSB position of the lookahead) */
+    // macroblock_address_increment == 1 ('1' is in the MSB position of the lookahead)
     if (code >= 1024) {
       consumeBits (1);
       return val + 1;
       }
 
-    /* codes 00010 ... 011xx */
+    // codes 00010 ... 011xx
     if (code >= 128) {
-      /* remove leading zeros */
+      // remove leading zeros
       code >>= 6;
       consumeBits (MBAtab1[code].len);
       return val + MBAtab1[code].val;
       }
 
-    /* codes 00000011000 ... 0000111xxxx */
-    code-= 24; /* remove common base */
+    // codes 00000011000 ... 0000111xxxx
+    code -= 24; // remove common base
     consumeBits (MBAtab2[code].len);
     return val + MBAtab2[code].val;
     }
@@ -973,7 +965,7 @@ private:
       return;
 
     /* get frame/field motion type */
-    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD|MACROBLOCK_MOTION_BACKWARD))
+    if (macroblock_type & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_MOTION_BACKWARD))
       motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
     else if ((macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors)
       /* concealment motion vectors */
@@ -1111,7 +1103,7 @@ private:
         tab = &DCTtab6[code - 16];
       else {
         //{{{  flaw
-        printf ("invalid Huffman code in Decode_MPEG2_Intra_Block()\n");
+        printf ("invalid Huffman code in Decode_MPEG2_Intra_Block() code:%d %d \n", code, mBitCount);
         Flaw_Flag = 1;
         return;
         }
@@ -1235,7 +1227,7 @@ private:
     if (getBits (1))
       return 0;
 
-    int code = peekBits(9);
+    int code = peekBits (9);
     if (code >= 64) {
       code >>= 6;
       consumeBits (MVtab0 [code].len);
@@ -1302,9 +1294,13 @@ private:
   void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2],
                       int s, int motion_vector_count, int mv_format, int h_r_size, int v_r_size, int mvscale) {
 
+    //printf ("motionVectors\n");
     if (motion_vector_count == 1) {
-      if (mv_format == MV_FIELD)
-        motion_vertical_field_select[1][s] = motion_vertical_field_select[0][s] = getBits(1);
+      if (mv_format == MV_FIELD) {
+        int bits = getBits(1);
+        motion_vertical_field_select[1][s] = bits;
+        motion_vertical_field_select[0][s] = bits;
+        }
       motionVector (PMV[0][s], h_r_size, v_r_size, mvscale, 0);
 
       // update other motion vector predictors
@@ -1322,11 +1318,33 @@ private:
     }
   //}}}
 
-#ifdef ASM_FORMPREDICTION
   //{{{
   void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int h, int x, int y, int dx, int dy, bool average) {
+  //{{{  description
+  //*   1. the vectors (dx, dy) are based on cartesian frame
+  //*      coordiantes along a half-pel grid (always positive numbers)
+  //*      In contrast, vector[r][s][t] are differential (with positive and
+  //*      negative values). As a result, deriving the integer vectors
+  //*      (int_vec[t]) from dx, dy is accomplished by a simple right shift.
+  //*
+  //*   2. Half pel flags (xh, yh) are equivalent to the LSB (Least
+  //*      Significant Bit) of the half-pel coordinates (dx,dy).
+  //
+  //*  the work of combining predictions (ISO/IEC 13818-2 section 7.6.7)
+  //*  is distributed among several other stages.  This is accomplished by
+  //*  folding line offsets into the source and destination (src,dst)
+  //*  addresses (note the call arguments to formPrediction() in Predict()),
+  //*  line stride variables lx and lx2, the block dimension variables (w,h),
+  //*  average_flag, and by the very order in which Predict() is called.
+  //*  This implementation design (implicitly different than the spec) was chosen for its elegance. */
+  //}}}
 
-    uint8_t* sY = src[0] + (sfield ? lx2 >> 1 : 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
+    int srcOffset = (sfield ? lx2 >> 1 : 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
+    if (srcOffset < 0) {
+      printf ("srcOffset:%d - sfield:%d dx:%d, dy:%d\n", sfield, srcOffset, dx, dy);
+      return;
+      }
+    uint8_t* sY = src[0] + srcOffset;
     uint8_t* dY = current_frame[0] + (dfield ? lx2 >> 1 : 0) + lx * y + x;
     switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
       //{{{
@@ -1626,157 +1644,130 @@ private:
       }
     }
   //}}}
-#else
   //{{{
-  void formComponentPrediction (uint8_t* src, uint8_t* dst, int lx, int lx2, int w, int h,
-                                int x, int y, int dx, int dy, int average_flag) {
-  //{{{  description
-  /* ISO/IEC 13818-2 section 7.6.4: Forming predictions */
-  /* NOTE: the arithmetic below produces numerically equivalent results
-   *  to 7.6.4, yet is more elegant. It differs in the following ways:
-   *
-   *   1. the vectors (dx, dy) are based on cartesian frame
-   *      coordiantes along a half-pel grid (always positive numbers)
-   *      In contrast, vector[r][s][t] are differential (with positive and
-   *      negative values). As a result, deriving the integer vectors
-   *      (int_vec[t]) from dx, dy is accomplished by a simple right shift.
-   *
-   *   2. Half pel flags (xh, yh) are equivalent to the LSB (Least
-   *      Significant Bit) of the half-pel coordinates (dx,dy).
-   *  NOTE: the work of combining predictions (ISO/IEC 13818-2 section 7.6.7)
-   *  is distributed among several other stages.  This is accomplished by
-   *  folding line offsets into the source and destination (src,dst)
-   *  addresses (note the call arguments to formPrediction() in Predict()),
-   *  line stride variables lx and lx2, the block dimension variables (w,h),
-   *  average_flag, and by the very order in which Predict() is called.
-   *  This implementation design (implicitly different than the spec) was chosen for its elegance. */
-  //}}}
+  //void formComponentPrediction (uint8_t* src, uint8_t* dst, int lx, int lx2, int w, int h,
+                                //int x, int y, int dx, int dy, int average_flag) {
 
-    // half pel scaling for integer vectors
-    int xint = dx >> 1;
-    int yint = dy >> 1;
-
-    // derive half pel flags
-    int xh = dx & 1;
-    int yh = dy & 1;
-
-    // compute the linear address of pel_ref[][] and pel_pred[][] based on cartesian/raster cordinates provided
-    uint8_t* s = src + lx * (y + yint) + x + xint;
-    uint8_t* d = dst + lx * y + x;
-
-    if (!xh && !yh) {
+    //// half pel scaling for integer vectors
+    //int xint = dx >> 1;
+    //int yint = dy >> 1;
+    //// derive half pel flags
+    //int xh = dx & 1;
+    //int yh = dy & 1;
+    //// compute the linear address of pel_ref[][] and pel_pred[][] based on cartesian/raster cordinates provided
+    //uint8_t* s = src + lx * (y + yint) + x + xint;
+    //uint8_t* d = dst + lx * y + x;
+    //if (!xh && !yh) {
       //{{{  no horizontal nor vertical half-pel
-      if (average_flag) {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++) {
-            int v = d[i] + s[i];
-            d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            }
-          s += lx2;
-          d += lx2;
-          }
-        }
+      //if (average_flag) {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++) {
+            //int v = d[i] + s[i];
+            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+            //}
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
 
-      else {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++)
-            d[i] = s[i];
-          s += lx2;
-          d += lx2;
-          }
-        }
-      }
+      //else {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++)
+            //d[i] = s[i];
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}
       //}}}
-    else if (!xh && yh) {
+    //else if (!xh && yh) {
       //{{{  no horizontal but vertical half-pel
-      if (average_flag) {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++) {
-            int v = d[i] + ((uint32_t)(s[i] + s[i+lx] +1) >>1);
-            d[i]= (v + (v >= 0 ? 1 : 0)) >> 1;
-            }
-          s += lx2;
-          d += lx2;
-          }
-        }
-      else {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++)
-            d[i] = (uint32_t)(s[i] + s[i+lx] + 1) >> 1;
-          s += lx2;
-          d += lx2;
-          }
-        }
-      }
+      //if (average_flag) {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++) {
+            //int v = d[i] + ((uint32_t)(s[i] + s[i+lx] +1) >>1);
+            //d[i]= (v + (v >= 0 ? 1 : 0)) >> 1;
+            //}
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //else {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++)
+            //d[i] = (uint32_t)(s[i] + s[i+lx] + 1) >> 1;
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}
       //}}}
-    else if (xh && !yh) {
+    //else if (xh && !yh) {
       //{{{  horizontal but no vertical half-pel
-      if (average_flag) {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++) {
-            int v = d[i] + ((uint32_t)(s[i] + s[i+1] + 1) >> 1);
-            d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            }
-          s += lx2;
-          d += lx2;
-          }
-        }
-      else {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++)
-            d[i] = (uint32_t)(s[i] + s[i+1] + 1) >> 1;
-          s += lx2;
-          d += lx2;
-          }
-        }
-      }
+      //if (average_flag) {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++) {
+            //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + 1) >> 1);
+            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+            //}
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //else {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++)
+            //d[i] = (uint32_t)(s[i] + s[i+1] + 1) >> 1;
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}
       //}}}
-    else {
+    //else {
       //{{{  horizontal and vertical half-pel
-      if (average_flag) {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++) {
-            int v = d[i] + ((uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2);
-            d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            }
-          s += lx2;
-          d += lx2;
-          }
-        }
-      else {
-        for (int j = 0; j < h; j++) {
-          for (int i = 0; i < w; i++)
-            d[i] = (uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2;
-          s += lx2;
-          d += lx2;
-          }
-        }
-      }
+      //if (average_flag) {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++) {
+            //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2);
+            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+            //}
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //else {
+        //for (int j = 0; j < h; j++) {
+          //for (int i = 0; i < w; i++)
+            //d[i] = (uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2;
+          //s += lx2;
+          //d += lx2;
+          //}
+        //}
+      //}
       //}}}
-    }
+    //}
   //}}}
   //{{{
-  void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int w, int h,
-                       int x, int y, int dx, int dy, int average_flag) {
+  //void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int w, int h,
+                       //int x, int y, int dx, int dy, int average_flag) {
 
-    formComponentPrediction (
-      src[0] + (sfield ? lx2 >> 1 : 0), current_frame[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-
-    lx >>= 1;
-    lx2 >>= 1;
-    w >>= 1;
-    x >>= 1;
-    dx /= 2;
-    h >>= 1;
-    y >>= 1;
-    dy /= 2;
-    formComponentPrediction (
-      src[1] + (sfield ? lx2 >> 1 : 0), current_frame[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    formComponentPrediction (
-      src[2] + (sfield ? lx2 >> 1: 0), current_frame[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-  }
+    //formComponentPrediction (
+      //src[0] + (sfield ? lx2 >> 1 : 0), current_frame[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    //lx >>= 1;
+    //lx2 >>= 1;
+    //w >>= 1;
+    //x >>= 1;
+    //dx /= 2;
+    //h >>= 1;
+    //y >>= 1;
+    //dy /= 2;
+    //formComponentPrediction (
+      //src[1] + (sfield ? lx2 >> 1 : 0), current_frame[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+    //formComponentPrediction (
+      //src[2] + (sfield ? lx2 >> 1: 0), current_frame[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
+  //}
   //}}}
-#endif
   //{{{
   void formPredictions (int bx, int by, int macroblock_type, int motion_type, int PMV[2][2][2], int motionVertField[2][2]) {
 
@@ -2133,6 +2124,8 @@ private:
       }
 
     // motion vectors ISO/IEC 13818-2 section 6.3.17.2: Motion vectors decode forward motion vectors
+    //printf ("decodeMacroblock concealment_motion_vectors %d\n", concealment_motion_vectors);
+    //concealment_motion_vectors = 0;
     if ((*macroblock_type & MACROBLOCK_MOTION_FORWARD) || ((*macroblock_type & MACROBLOCK_INTRA) && concealment_motion_vectors))
       motionVectors (PMV, motion_vertical_field_select, 0, motion_vector_count, mv_format, f_code[0][0]-1, f_code[0][1]-1, mvscale);
 
@@ -2224,19 +2217,19 @@ private:
         }
 
       int macroblock_type, motion_type, dct_type;
-      int motion_vertical_field_select[2][2];
+      int motionVertField[2][2];
       if (MBAinc == 1) {
         // not skipped
-        ret = decodeMacroblock (&macroblock_type, &motion_type, &dct_type, PMV, dc_dct_pred, motion_vertical_field_select);
+        ret = decodeMacroblock (&macroblock_type, &motion_type, &dct_type, PMV, dc_dct_pred, motionVertField);
         if (ret == -1)
           return -1;
         if (ret == 0)
           goto resync;
         }
       else // MBAinc != 1 skipped macroblock
-        skippedMacroblock (dc_dct_pred, PMV, &motion_type, motion_vertical_field_select, &macroblock_type);
+        skippedMacroblock (dc_dct_pred, PMV, &motion_type, motionVertField, &macroblock_type);
 
-      motionComp (MBA, macroblock_type, motion_type, PMV, motion_vertical_field_select, dct_type);
+      motionComp (MBA, macroblock_type, motion_type, PMV, motionVertField, dct_type);
       }
 
     return -1; /* all macroblocks decoded */
