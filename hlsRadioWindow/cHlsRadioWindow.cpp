@@ -171,7 +171,7 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    if (makeBitmap (mVidFrame, mBitmap, mVidPts))
+    if (makeBitmap (mVidFrame, mBitmap, mBitmapPts))
       dc->DrawBitmap (mBitmap, D2D1::RectF(0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -324,7 +324,7 @@ private:
   HANDLE mSemaphore;
   int16_t* mSilence = nullptr;
 
-  int64_t mVidPts = 0;
+  int64_t mBitmapPts = 0;
   cYuvFrame* mVidFrame = nullptr;
   ID2D1Bitmap* mBitmap = nullptr;
   //}}}

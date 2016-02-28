@@ -1,63 +1,6 @@
 // cYuvFrame.h
 #pragma once
 
-//{{{  DCT_8_INV_ROWX2
-#define DCT_8_INV_ROWX2(tab1, tab2)  \
-{  \
-  r1 = _mm_shufflelo_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r1 = _mm_shufflehi_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-  a0 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
-  a1 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
-  a2 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
-  a3 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
-  s0 = _mm_add_epi32(_mm_add_epi32(a0, round_row), a2);  \
-  s1 = _mm_add_epi32(a1, a3);  \
-  p0 = _mm_srai_epi32(_mm_add_epi32(s0, s1), 11);  \
-  p1 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r2 = _mm_shufflelo_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  r2 = _mm_shufflehi_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-  b0 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
-  b1 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
-  b2 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
-  b3 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
-  s2 = _mm_add_epi32(_mm_add_epi32(b0, round_row), b2);  \
-  s3 = _mm_add_epi32(b3, b1);  \
-  p2 = _mm_srai_epi32(_mm_add_epi32(s2, s3), 11);  \
-  p3 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-  r1 = _mm_packs_epi32(p0, p1);  \
-  r2 = _mm_packs_epi32(p2, p3);  \
-}
-//}}}
-
-//{{{
-static __declspec(align(64)) short sse2_tab_i_04[] = {
-  16384, 21407, 16384,  8867, 16384, -8867, 16384,-21407,  // w05 w04 w01 w00 w13 w12 w09 w08
-  16384,  8867,-16384,-21407,-16384, 21407, 16384, -8867,  // w07 w06 w03 w02 w15 w14 w11 w10
-  22725, 19266, 19266, -4520, 12873,-22725,  4520,-12873,
-  12873,  4520,-22725,-12873,  4520, 19266, 19266,-22725 };
-//}}}
-//{{{
-static __declspec(align(64)) short sse2_tab_i_17[] = {
-  22725, 29692, 22725, 12299, 22725,-12299, 22725,-29692,
-  22725, 12299,-22725,-29692,-22725, 29692, 22725,-12299,
-  31521, 26722, 26722, -6270, 17855,-31521,  6270,-17855,
-  17855,  6270,-31521,-17855,  6270, 26722, 26722,-31521 };
-//}}}
-//{{{
-static __declspec(align(64)) short sse2_tab_i_26[] = {
-  21407, 27969, 21407, 11585, 21407,-11585, 21407,-27969,
-  21407, 11585,-21407,-27969,-21407, 27969, 21407,-11585,
-  29692, 25172, 25172, -5906, 16819,-29692,  5906,-16819,
-  16819,  5906,-29692,-16819,  5906, 25172, 25172,-29692 };
-//}}}
-//{{{
-static __declspec(align(64)) short sse2_tab_i_35[] = {
-  19266, 25172, 19266, 10426, 19266,-10426, 19266,-25172,
-  19266, 10426,-19266,-25172,-19266, 25172, 19266,-10426,
-  26722, 22654, 22654, -5315, 15137,-26722,  5315,-15137,
-  15137,  5315,-26722,-15137,  5315, 22654, 22654,-26722 };
-//}}}
-
 class cYuvFrame  {
 public:
   //{{{
