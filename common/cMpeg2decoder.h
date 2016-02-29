@@ -658,9 +658,12 @@ private:
     return m32bits;
     }
   //}}}
-  //{{{  getHeader
   //{{{
   void picture_coding_extension() {
+
+    printf ("pex %08x - ", m32bits);
+    for (int i = 0; i < 5; i++)
+      printf ("%02x ", *(mBufferPtr+i));
 
     f_code[0][0] = getBits(4);
     f_code[0][1] = getBits(4);
@@ -687,7 +690,11 @@ private:
       int burst_amplitude   = getBits(7);
       int sub_carrier_phase = getBits(8);
       }
-    printf ("picture_coding_extension %d\n", concealment_motion_vectors);
+    printf ("fc:%2d,%2d,%2d,%2d in:%2d ps:%2d tf:%2d fp:%2d con:%2d qs:%2d iv:%2d as:%2d rf:%2d ch:%2d pr:%2d cdf:%2d\n",
+      f_code[0][0], f_code[0][1], f_code[1][0], f_code[1][1],
+      intra_dc_precision, picture_structure, top_field_first, frame_pred_frame_dct,
+      concealment_motion_vectors, q_scale_type, intra_vlc_format, alternate_scan,
+      repeat_first_field, chroma_420_type, progressive, composite_display_flag);
     }
   //}}}
   //{{{
@@ -719,6 +726,10 @@ private:
   //{{{
   void sequenceHeader() {
 
+    printf ("seq %08x - ", m32bits);
+    for (int i = 0; i < 16; i++)
+      printf ("%02x ", *(mBufferPtr+i));
+
     int horizontal_size = getBits (12);
     int vertical_size = getBits (12);
     int aspect_ratio_information = getBits (4);
@@ -727,6 +738,10 @@ private:
     consumeBits (1);
     int vbv_buffer_size = getBits (10);
     int constrained_parameters_flag = getBits (1);
+
+    printf ("hs:%d :vs%d ar:%d fr:%d br:%d vbv:%d cp:%d \n",
+            horizontal_size, vertical_size , aspect_ratio_information, frame_rate_code,
+            bit_rate_value, vbv_buffer_size, constrained_parameters_flag);
 
     mBwidth = (horizontal_size + 15) / 16;
     mBheight = 2 * ((vertical_size + 31) / 32);
@@ -741,6 +756,10 @@ private:
   //{{{
   /* decode picture header ISO/IEC 13818-2 section 6.2.3 */
   void pictureHeader() {
+
+    printf ("pic %08x - ", m32bits);
+    for (int i = 0; i < 5; i++)
+      printf ("%02x ", *(mBufferPtr+i));
 
     /* unless later overwritten by picture_spatial_scalable_extension() */
     temporal_reference = getBits (10);
@@ -764,10 +783,12 @@ private:
       Extra_Information_Byte_Count++;
       }
 
+    printf ("tr:%d pc:%d vbv:%d ffc:%d bfc:%d\n",
+            temporal_reference, picture_coding_type , vbv_delay, forward_f_code, backward_f_code);
+
     extension_and_user_data();
     }
   //}}}
-
   //{{{
   uint32_t getHeader (bool reportUnexpected) {
 
@@ -801,7 +822,6 @@ private:
 
     return code;
     }
-  //}}}
   //}}}
 
   //{{{  macroBlocks
