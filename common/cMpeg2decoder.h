@@ -495,11 +495,6 @@ public:
   //{{{
   cMpeg2decoder() {
 
-    Clip = (uint8_t*)malloc(1024);
-    Clip += 384;
-    for (int i = -384; i < 640; i++)
-      Clip[i] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
-
     for (int i = 0; i < 64; i++) {
       intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
       chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
@@ -522,8 +517,6 @@ public:
   //}}}
   //{{{
   ~cMpeg2decoder() {
-
-    free (Clip);
 
     // deallocate buffers
     for (int i = 0; i < 3; i++) {
@@ -765,6 +758,30 @@ private:
     //        temporal_reference, picture_coding_type , vbv_delay, forward_f_code, backward_f_code);
 
     extension_and_user_data();
+    }
+  //}}}
+  //{{{
+  void sliceHeader() {
+
+    int quantizer_scale_code = getBits (5);
+    quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code << 1;
+
+    /* slice_id introduced in March 1995 as part of the video corridendum (after the IS was drafted in November 1994) */
+    int slice_picture_id_enable = 0;
+    int slice_picture_id = 0;
+    int extra_information_slice = 0;
+    if (getBits(1)) {
+      intra_slice = getBits (1);
+      slice_picture_id_enable = getBits (1);
+      slice_picture_id = getBits (6);
+      extra_information_slice = 0;
+      while (getBits (1)) {
+        consumeBits (8);
+        extra_information_slice++;
+        }
+      }
+    else
+      intra_slice = 0;
     }
   //}}}
   //{{{
@@ -1838,37 +1855,43 @@ private:
     }
   //}}}
   //{{{
-  void addBlock (int comp, int bx, int by, int dct_type, int add) {
+  void addBlock (int16_t* block, bool luma, int comp, int bx, int by, int dct_type, int set) {
   // move/add 8x8-Block from block[comp] to backward_reference_frame
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
 
+    int lineInc;
     uint8_t* refFramePtr;
-    int iincr;
-    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
-    if (cc == 0) {
+    if (luma) {
       if (dct_type) {
         // luma field DCT coding
+        lineInc = (mWidth << 1) - 8;
         refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
-        iincr = (mWidth << 1) - 8;
         }
       else {
         // luma frame DCT coding
+        lineInc = mWidth - 8;
         refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
-        iincr = mWidth - 8;
         }
       }
     else {
       // chroma scale coordinates, frame DCT coding
-      refFramePtr = current_frame[cc] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
-      iincr = mChromaWidth - 8;
+      lineInc = mChromaWidth - 8;
+      refFramePtr = current_frame[(comp & 1) + 1] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
       }
 
   #ifdef ASM_ADDBLOCK
     //{{{  intrinsics
-    // 128bits is powerless in this case
-    __m64 *src = (__m64*)block[comp];
-
-    if (add) {
+    __m64 *src = (__m64*)block;
+    if (set) {
+      __m64 offset = _mm_set1_pi16 (128);
+      for (int loop = 0; loop < 8; loop++) {
+        __m64 sum1 = _m_paddw (*src++, offset);
+        __m64 sum2 = _m_paddw (*src++, offset);
+        *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
+        refFramePtr += lineInc;
+        }
+      }
+    else {
        __m64 zero = _mm_setzero_si64();
       for (int loop = 0; loop < 8; loop++) {
         __m64 unpacklo = _m_punpcklbw (*(__m64*)refFramePtr, zero);
@@ -1876,44 +1899,30 @@ private:
         __m64 unpackhi = _m_punpckhbw (*(__m64*)refFramePtr, zero);
         __m64 sum2 = _m_paddw (*src++, unpackhi);
         *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
-        refFramePtr += iincr;
-        }
-      }
-
-    else {
-      __m64 offset = _mm_set1_pi16 (128);
-      for (int loop = 0; loop < 8; loop++) {
-        __m64 sum1 = _m_paddw (*src++, offset);
-        __m64 sum2 = _m_paddw (*src++, offset);
-        *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
-        refFramePtr += iincr;
+        refFramePtr += lineInc;
         }
       }
     //}}}
   #else
-    int16_t* src = block[comp];
-
-    if (add) {
+    if (set)
       for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++)
-          *refFramePtr++ = Clip [*src++ + *refFramePtr];
-        refFramePtr += iincr;
+          *refFramePtr++ = *block++ + 128;
+        refFramePtr += lineInc;
         }
-      }
-    else {
+    else
       for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++)
-          *refFramePtr++ = Clip [*src++ + 128];
-        refFramePtr += iincr;
+          *refFramePtr++ += *block++;
+        refFramePtr += lineInc;
         }
-      }
   #endif
     }
   //}}}
   //{{{
   void motionComp (int MBA, int mBtype, int motion_type, int PMV[2][2][2], int motionVertField[2][2], int dct_type) {
 
-    // derive current macroblock position within picture ISO/IEC 13818-2 section 6.3.1.6 and 6.3.1.7
+    // derive current macroblock position within picture
     int bx = 16 * (MBA % mBwidth);
     int by = 16 * (MBA / mBwidth);
 
@@ -1921,112 +1930,24 @@ private:
     if (!(mBtype & MACROBLOCK_INTRA))
       formPredictions (bx, by, mBtype, motion_type, PMV, motionVertField);
 
-    // copy or add block data int32_to picture
+    // copy or add block data into picture
     for (int comp = 0; comp < 6; comp++) {
       idctSSE2 (block[comp]);
-      addBlock (comp, bx, by, dct_type, (mBtype & MACROBLOCK_INTRA) == 0);
+      addBlock (block[comp], comp < 4, comp, bx, by, dct_type, mBtype & MACROBLOCK_INTRA);
       }
     }
   //}}}
 
   //{{{
-  int sliceHeader() {
-
-    int quantizer_scale_code = getBits (5);
-    quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code << 1;
-
-    /* slice_id introduced in March 1995 as part of the video corridendum (after the IS was drafted in November 1994) */
-    int slice_picture_id_enable = 0;
-    int slice_picture_id = 0;
-    int extra_information_slice = 0;
-    if (getBits(1)) {
-      intra_slice = getBits (1);
-      slice_picture_id_enable = getBits (1);
-      slice_picture_id = getBits (6);
-      extra_information_slice = 0;
-      while (getBits (1)) {
-        consumeBits (8);
-        extra_information_slice++;
-        }
-      }
-    else
-      intra_slice = 0;
-
-    return 0;
-    }
-  //}}}
-  //{{{
-  int startOfSlice (int MBAmax, int& MBA, int& MBAinc, int dc_dct_pred[3], int PMV[2][2][2]) {
-  // return -1 - means go to next picture
-
-    Flaw_Flag = 0;
-
-    auto code = getStartCode();
-    if (code < SLICE_START_CODE_MIN || code > SLICE_START_CODE_MAX) {
-      // only slice headers are allowed in picture_data
-      printf ("startOfSlice Premature end of picture\n");
-      return -1;
-      }
-    consumeBits (32);
-
-    // decode slice header - may change quantizer_scale
-    int slice_vert_pos_ext = sliceHeader();
-
-    // decode macroblock address increment
-    MBAinc = getMacroBlockAddressIncrement();
-    if (Flaw_Flag) {
-      printf ("startOfSlice MBAinc unsuccessful\n");
-      return 0;
-      }
-
-    // set current location
-    MBA = ((slice_vert_pos_ext<<7) + (code&255) - 1) * mBwidth + MBAinc - 1;
-
-    // first macroblock in slice: not skipped
-    MBAinc = 1;
-
-    // reset all DC coefficient and motion vector predictors
-    dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
-
-    // Resetting motion vector predictors */
-    PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-    PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
-
-    // successful decode macroblocks in slice
-    return 1;
-    }
-  //}}}
-  //{{{
-  void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
-                          int& motion_type, int motion_vertical_field_select[2][2], int& mBtype) {
-
-    memset (block[0], 0, 128 * sizeof(int16_t) * 6);
-
-    // reset intra_dc predictors  ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
-    dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
-
-    // reset motion vector predictors  ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
-    if (picture_coding_type == P_TYPE)
-      PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-
-    // derive motion_type */
-    motion_type = MC_FRAME;
-
-    // IMPLEMENTATION: clear MACROBLOCK_INTRA */
-    mBtype &= ~MACROBLOCK_INTRA;
-    }
-  //}}}
-  //{{{
-  int decodeMacroblock (int& mBtype, int& motion_type, int& dct_type,
-                        int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
+  void decodeMacroblock (int& mBtype, int& motion_type, int& dct_type,
+                         int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
 
     int motionVecCount;
     int mv_format;
     int mvscale;
     macroBlockModes (mBtype, motion_type, motionVecCount, mv_format, mvscale, dct_type);
-
     if (Flaw_Flag)
-      return 0;  // trigger: go to next slice
+      return;
 
     int quantizer_scale_code;
     if (mBtype & MACROBLOCK_QUANT) {
@@ -2037,16 +1958,14 @@ private:
     // decode forward motion vectors
     if ((mBtype & MACROBLOCK_MOTION_FORWARD) || ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs))
       motionVectors (PMV, motion_vertical_field_select, 0, motionVecCount, mv_format, f_code[0][0]-1, f_code[0][1]-1, mvscale);
-
     if (Flaw_Flag)
-      return 0;  // trigger: go to next slice
+      return;
 
     // decode backward motion vectors
     if (mBtype & MACROBLOCK_MOTION_BACKWARD)
       motionVectors (PMV, motion_vertical_field_select, 1, motionVecCount, mv_format, f_code[1][0]-1, f_code[1][1]-1, mvscale);
-
     if (Flaw_Flag)
-      return 0;  // trigger: go to next slice
+      return;
 
     if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
       consumeBits (1); // remove marker_bit
@@ -2057,9 +1976,8 @@ private:
       coded_block_pattern = getCodedBlockPattern();
     else
       coded_block_pattern = (mBtype & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
-
     if (Flaw_Flag)
-      return 0;  // trigger: go to next slice
+      return;
 
     // decode blocks
     for (auto comp = 0; comp < 6; comp++) {
@@ -2070,7 +1988,7 @@ private:
         else
           decodeNonIntraBlock (comp);
         if (Flaw_Flag)
-          return 0;  // trigger: go to next slice
+          return;
         }
       }
 
@@ -2091,58 +2009,61 @@ private:
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       motion_type = MC_FRAME;
       }
-
-    // successfully decoded macroblock
-    return 1;
     }
   //}}}
   //{{{
   int decodeSlice() {
   // decode all macroblocks of the current picture
 
-    int MBAmax = mBwidth * mBheight;
-    int MBA = 0;
-    int MBAinc = 0;
-    int dc_dct_pred[3];
-    int PMV[2][2][2];
-    int ret = startOfSlice (MBAmax, MBA, MBAinc, dc_dct_pred, PMV);
-    if (ret != 1)
-      return (ret);
+    auto code = getStartCode();
+    if (code < SLICE_START_CODE_MIN || code > SLICE_START_CODE_MAX) {
+      //{{{  error
+      // only slice headers are allowed in picture_data
+      printf ("decodeSlice - premature end\n");
+      return -1;
+      }
+      //}}}
+    consumeBits (32);
 
-    Flaw_Flag = 0;
-    for (; MBA < MBAmax; MBA++, MBAinc--) {
-      if (MBAinc == 0) {
-        if (!peekBits(23) || Flaw_Flag) {
-          // next_start_code or fault
-      resync: // if Flaw_Flag: resynchronize to next next_start_code
-          Flaw_Flag = 0;
-          return 0;     // trigger: go to next slice
-          }
-        else {
-          // neither next_start_code nor Flaw_Flag  decode macroblock address increment
+    sliceHeader();
+
+    // decode macroblock address increment
+    Flaw_Flag = false;
+    int MBAinc = getMacroBlockAddressIncrement();
+    if (Flaw_Flag)
+      return 0;
+
+    int dc_dct_pred[3] = {0,0,0};
+    int PMV[2][2][2] = { 0,0,0,0,0,0,0,0};
+    for (int MBA = ((code&255) - 1) * mBwidth + MBAinc - 1; MBA < mBwidth * mBheight; MBA++, MBAinc--) {
+      if (!MBAinc) {
+        if (peekBits(23))
           MBAinc = getMacroBlockAddressIncrement();
-          if (Flaw_Flag)
-            goto resync;
-          }
+        else
+          return 0;
         }
+      if (Flaw_Flag)
+        return 0;
 
       int mBtype, motion_type, dct_type;
       int motionVertField[2][2];
       if (MBAinc == 1) {
-        // not skipped
-        ret = decodeMacroblock (mBtype, motion_type, dct_type, PMV, dc_dct_pred, motionVertField);
-        if (ret == -1)
-          return -1;
-        if (ret == 0)
-          goto resync;
+        decodeMacroblock (mBtype, motion_type, dct_type, PMV, dc_dct_pred, motionVertField);
+        if (Flaw_Flag)
+          return 0;
         }
-      else // MBAinc != 1 skipped macroblock
-        skippedMacroblock (dc_dct_pred, PMV, motion_type, motionVertField, mBtype);
-
+      else { // skipped
+        dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
+        memset (block[0], 0, 128 * sizeof(int16_t) * 6);
+        if (picture_coding_type == P_TYPE)
+          PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+        motion_type = MC_FRAME;
+        mBtype &= ~MACROBLOCK_INTRA;
+        }
       motionComp (MBA, mBtype, motion_type, PMV, motionVertField, dct_type);
       }
 
-    return -1; /* all macroblocks decoded */
+    return -1;
     }
   //}}}
 
@@ -2171,8 +2092,6 @@ private:
   int non_intra_quantizer_matrix[64];
   int chroma_intra_quantizer_matrix[64];
   int chroma_non_intra_quantizer_matrix[64];
-
-  uint8_t* Clip = NULL;
 
   bool Flaw_Flag = 0;
   bool Second_Field = 0;
