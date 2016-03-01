@@ -1,13 +1,11 @@
 // cMpeg2decoder.h
 //{{{  includes
 #define _CRT_SECURE_NO_WARNINGS
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
 #include <fcntl.h>
 #include <io.h>
-#include <emmintrin.h>
 
 #include "cYuvFrame.h"
 //}}}
@@ -529,15 +527,14 @@ public:
 
     // deallocate buffers
     for (int i = 0; i < 3; i++) {
-      free (backward_reference_frame[i]);
-      free (forward_reference_frame[i]);
-      free (auxframe[i]);
+      _mm_free (backward_reference_frame[i]);
+      _mm_free (forward_reference_frame[i]);
+      _mm_free (auxframe[i]);
       }
 
     _mm_free (block[0]);
     }
   //}}}
-
   //{{{
   bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, cYuvFrame* yuvFrame, uint8_t*& pesPtr) {
   // decode a frame of video, usually a pes packet
@@ -621,18 +618,17 @@ private:
   //{{{
   void consumeBits (int8_t numBits) {
 
-    m32bits <<= numBits;
+    m32bits = (numBits == 32) ? 0 : (m32bits << numBits);
+
     mBitCount -= numBits;
     while (mBitCount <= 24) {
       m32bits |= (*mBufferPtr++) << (24 - mBitCount);
       mBitCount += 8;
       }
-    //printf ("consumeBits %d\n", numBits);
     }
   //}}}
   //{{{
   uint32_t peekBits (int8_t numBits) {
-    //printf ("peekbits %d %x\n", numBits, m32bits >> (32 - numBits));
     return m32bits >> (32 - numBits);
     }
   //}}}
@@ -641,8 +637,6 @@ private:
 
     uint32_t val = m32bits >> (32 - numBits);
     consumeBits (numBits);
-
-    //printf ("getBits %d %x\n",  numBits, val);
     return val;
     }
   //}}}
@@ -653,16 +647,11 @@ private:
     while ((mBufferPtr < mBufferEnd) && (m32bits >> 8) != 0x001)
       consumeBits (8);
 
-    //printf ("getStartCode %x\n",  m32bits);
     return m32bits;
     }
   //}}}
   //{{{
   void picture_coding_extension() {
-
-    printf ("pex %08x - ", m32bits);
-    for (auto i = 0; i < 5; i++)
-      printf ("%02x ", *(mBufferPtr+i));
 
     f_code[0][0] = getBits(4);
     f_code[0][1] = getBits(4);
@@ -690,21 +679,21 @@ private:
       auto sub_carrier_phase = getBits(8);
       }
 
-    printf ("fc:%2d,%2d,%2d,%2d in:%2d ps:%2d tf:%2d fp:%2d con:%2d qs:%2d iv:%2d as:%2d rf:%2d ch:%2d pr:%2d cdf:%2d\n",
-      f_code[0][0], f_code[0][1], f_code[1][0], f_code[1][1],
-      intra_dc_precision, picture_structure, top_field_first, frame_pred_frame_dct,
-      concealmentMotionVecs, q_scale_type, intra_vlc_format, alternate_scan,
-      repeat_first_field, chroma_420_type, progressive, composite_display_flag);
+    //printf ("pex fc:%2d,%2d,%2d,%2d in:%2d ps:%2d tf:%2d fp:%2d con:%2d qs:%2d iv:%2d as:%2d rf:%2d ch:%2d pr:%2d cdf:%2d\n",
+    //  f_code[0][0], f_code[0][1], f_code[1][0], f_code[1][1],
+    //  intra_dc_precision, picture_structure, top_field_first, frame_pred_frame_dct,
+    //  concealmentMotionVecs, q_scale_type, intra_vlc_format, alternate_scan,
+    //  repeat_first_field, chroma_420_type, progressive, composite_display_flag);
     }
   //}}}
   //{{{
   void extension_and_user_data() {
-  /* decode extension and user data  ISO/IEC 13818-2 section 6.2.2.2 */
+  // decode extension and user data
 
     auto code = getStartCode();
     while (code == EXTENSION_START_CODE || code == USER_DATA_START_CODE) {
+      consumeBits (32);
       if (code == EXTENSION_START_CODE) {
-        consumeBits (32);
         int ext_ID = getBits (4);
         switch (ext_ID) {
           case PICTURE_CODING_EXTENSION_ID:
@@ -715,9 +704,7 @@ private:
             break;
           }
         }
-      else
-        /* userData ISO/IEC 13818-2  sections 6.3.4.1 and 6.2.2.2.2 skip ahead to the next start code */
-        consumeBits (32);
+      // else // userData skip ahead to the next start code
 
       code = getStartCode();
       }
@@ -725,10 +712,6 @@ private:
   //}}}
   //{{{
   void sequenceHeader() {
-
-    printf ("seq %08x - ", m32bits);
-    for (auto i = 0; i < 16; i++)
-      printf ("%02x ", *(mBufferPtr+i));
 
     auto horizontal_size = getBits (12);
     auto vertical_size = getBits (12);
@@ -739,9 +722,9 @@ private:
     auto vbv_buffer_size = getBits (10);
     auto constrained_parameters_flag = getBits (1);
 
-    printf ("hs:%d :vs%d ar:%d fr:%d br:%d vbv:%d cp:%d \n",
-            horizontal_size, vertical_size , aspect_ratio_information, frame_rate_code,
-            bit_rate_value, vbv_buffer_size, constrained_parameters_flag);
+    //printf ("seq hs:%d :vs%d ar:%d fr:%d br:%d vbv:%d cp:%d \n",
+    //        horizontal_size, vertical_size , aspect_ratio_information, frame_rate_code,
+    //        bit_rate_value, vbv_buffer_size, constrained_parameters_flag);
 
     mBwidth = (horizontal_size + 15) / 16;
     mBheight = 2 * ((vertical_size + 31) / 32);
@@ -754,12 +737,7 @@ private:
     }
   //}}}
   //{{{
-  /* decode picture header ISO/IEC 13818-2 section 6.2.3 */
   void pictureHeader() {
-
-    printf ("pic %08x - ", m32bits);
-    for (auto i = 0; i < 5; i++)
-      printf ("%02x ", *(mBufferPtr+i));
 
     /* unless later overwritten by picture_spatial_scalable_extension() */
     temporal_reference = getBits (10);
@@ -783,8 +761,8 @@ private:
       Extra_Information_Byte_Count++;
       }
 
-    printf ("tr:%d pc:%d vbv:%d ffc:%d bfc:%d\n",
-            temporal_reference, picture_coding_type , vbv_delay, forward_f_code, backward_f_code);
+    //printf ("pic tr:%d pc:%d vbv:%d ffc:%d bfc:%d\n",
+    //        temporal_reference, picture_coding_type , vbv_delay, forward_f_code, backward_f_code);
 
     extension_and_user_data();
     }
@@ -796,12 +774,10 @@ private:
     auto code = getBits (32);
     switch (code) {
       case 0x100 : // PICTURE_START_CODE:
-        // printf ("getHeader %08x pictureHeader\n", code);
         pictureHeader();
         break;
 
       case 0x1B3 : // SEQUENCE_HEADER_CODE:
-        //printf ("getHeader %x sequenceHeader\n", code);
         sequenceHeader();
         break;
 
@@ -810,7 +786,6 @@ private:
         break;
 
       case 0x1B8 : // GROUP_START_CODE:
-        //printf ("getHeader %08x groupOfPicturesHeader\n", code);
         break;
 
       default:
@@ -1227,11 +1202,11 @@ private:
     }
   //}}}
   //{{{
-  void decodeVector (int* pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
+  void decodeVector (int& pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
   // calculate motion vector component
 
     int lim = 16 << r_size;
-    int vec = full_pel_vector ? (*pred >> 1) : (*pred);
+    int vec = full_pel_vector ? (pred >> 1) : pred;
 
     if (motion_code > 0) {
       vec += ((motion_code-1) << r_size) + motion_residual + 1;
@@ -1244,7 +1219,7 @@ private:
         vec += lim + lim;
       }
 
-    *pred = full_pel_vector ? (vec << 1) : vec;
+    pred = full_pel_vector ? (vec << 1) : vec;
     }
   //}}}
   //{{{
@@ -1254,7 +1229,7 @@ private:
     // horizontal component
     int motion_code = getMotionCode();
     int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits (h_r_size) : 0;
-    decodeVector (&PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
+    decodeVector (PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
 
     // vertical component
     motion_code = getMotionCode();
@@ -1262,7 +1237,7 @@ private:
 
     if (mvscale)
       PMV[1] >>= 1;
-    decodeVector (&PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
+    decodeVector (PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
     if (mvscale)
       PMV[1] <<= 1;
     }
@@ -1618,22 +1593,6 @@ private:
           //}
         //}
       //}}}
-      }
-    }
-  //}}}
-  //{{{
-  //void formComponentPrediction (uint8_t* src, uint8_t* dst, int lx, int lx2, int w, int h,
-                                //int x, int y, int dx, int dy, int average_flag) {
-
-    //// half pel scaling for integer vectors
-    //int xint = dx >> 1;
-    //int yint = dy >> 1;
-    //// derive half pel flags
-    //int xh = dx & 1;
-    //int yh = dy & 1;
-    //// compute the linear address of pel_ref[][] and pel_pred[][] based on cartesian/raster cordinates provided
-    //uint8_t* s = src + lx * (y + yint) + x + xint;
-    //uint8_t* d = dst + lx * y + x;
     //if (!xh && !yh) {
       //{{{  no horizontal nor vertical half-pel
       //if (average_flag) {
@@ -1723,27 +1682,8 @@ private:
         //}
       //}
       //}}}
-    //}
-  //}}}
-  //{{{
-  //void formPrediction (uint8_t* src[], int sfield, int dfield, int lx, int lx2, int w, int h,
-                       //int x, int y, int dx, int dy, int average_flag) {
-
-    //formComponentPrediction (
-      //src[0] + (sfield ? lx2 >> 1 : 0), current_frame[0] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    //lx >>= 1;
-    //lx2 >>= 1;
-    //w >>= 1;
-    //x >>= 1;
-    //dx /= 2;
-    //h >>= 1;
-    //y >>= 1;
-    //dy /= 2;
-    //formComponentPrediction (
-      //src[1] + (sfield ? lx2 >> 1 : 0), current_frame[1] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-    //formComponentPrediction (
-      //src[2] + (sfield ? lx2 >> 1: 0), current_frame[2] + (dfield ? lx2 >> 1 : 0), lx, lx2, w, h, x, y, dx, dy, average_flag);
-  //}
+      }
+    }
   //}}}
   //{{{
   void formPredictions (int bx, int by, int mBtype, int motion_type, int PMV[2][2][2], int motionVertField[2][2]) {
@@ -1788,7 +1728,6 @@ private:
       }
     }
   //}}}
-
   //{{{
   void idctSSE2 (int16_t* block) {
 
@@ -2096,8 +2035,6 @@ private:
       }
 
     // decode forward motion vectors
-    //printf ("decodeMacroblock concealmentMotionVecs %d\n", concealmentMotionVecs);
-    //concealmentMotionVecs = 0;
     if ((mBtype & MACROBLOCK_MOTION_FORWARD) || ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs))
       motionVectors (PMV, motion_vertical_field_select, 0, motionVecCount, mv_format, f_code[0][0]-1, f_code[0][1]-1, mvscale);
 
