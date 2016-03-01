@@ -462,28 +462,28 @@ static const DCTtab DCTtab6[16] =
 //}}}
 
 //{{{
-static __declspec(align(64)) const short sse2_tab_i_04[] = {
+static __declspec(align(64)) const int16_t sse2_tab_i_04[] = {
   16384, 21407, 16384,  8867, 16384, -8867, 16384,-21407,  // w05 w04 w01 w00 w13 w12 w09 w08
   16384,  8867,-16384,-21407,-16384, 21407, 16384, -8867,  // w07 w06 w03 w02 w15 w14 w11 w10
   22725, 19266, 19266, -4520, 12873,-22725,  4520,-12873,
   12873,  4520,-22725,-12873,  4520, 19266, 19266,-22725 };
 //}}}
 //{{{
-static __declspec(align(64)) const short sse2_tab_i_17[] = {
+static __declspec(align(64)) const int16_t sse2_tab_i_17[] = {
   22725, 29692, 22725, 12299, 22725,-12299, 22725,-29692,
   22725, 12299,-22725,-29692,-22725, 29692, 22725,-12299,
   31521, 26722, 26722, -6270, 17855,-31521,  6270,-17855,
   17855,  6270,-31521,-17855,  6270, 26722, 26722,-31521 };
 //}}}
 //{{{
-static __declspec(align(64)) const short sse2_tab_i_26[] = {
+static __declspec(align(64)) const int16_t sse2_tab_i_26[] = {
   21407, 27969, 21407, 11585, 21407,-11585, 21407,-27969,
   21407, 11585,-21407,-27969,-21407, 27969, 21407,-11585,
   29692, 25172, 25172, -5906, 16819,-29692,  5906,-16819,
   16819,  5906,-29692,-16819,  5906, 25172, 25172,-29692 };
 //}}}
 //{{{
-static __declspec(align(64)) const short sse2_tab_i_35[] = {
+static __declspec(align(64)) const int16_t sse2_tab_i_35[] = {
   19266, 25172, 19266, 10426, 19266,-10426, 19266,-25172,
   19266, 10426,-19266,-25172,-19266, 25172, 19266,-10426,
   26722, 22654, 22654, -5315, 15137,-26722,  5315,-15137,
@@ -518,9 +518,9 @@ public:
       }
 
     // dodgy init of block, single _mm_malloc, multiple pointers to comps
-    block[0] = (short*)_mm_malloc (6 * 128 * sizeof(short), 128);
+    block[0] = (int16_t*)_mm_malloc (6 * 128 * sizeof(int16_t), 128);
     for (int i = 1; i < 6; i++)
-      block[i] = block[0] + (i * 128 *sizeof(short));
+      block[i] = block[0] + (i * 128 *sizeof(int16_t));
     }
   //}}}
   //{{{
@@ -1833,7 +1833,7 @@ private:
   //}}}
 
   //{{{
-  void idctSSE2 (short* block) {
+  void idctSSE2 (int16_t* block) {
 
     //{{{  DCT_8_INV_ROWX2 macro
     #define DCT_8_INV_ROWX2(tab1, tab2)  \
@@ -1995,7 +1995,7 @@ private:
       }
     //}}}
   #else
-    short* src = block[comp];
+    int16_t* src = block[comp];
 
     if (add) {
       for (int j = 0; j < 8; j++) {
@@ -2104,7 +2104,7 @@ private:
   void skippedMacroblock (int dc_dct_pred[3], int PMV[2][2][2],
                           int* motion_type, int motion_vertical_field_select[2][2], int* macroblock_type) {
 
-    memset (block[0], 0, 128 * sizeof(short) * 6);
+    memset (block[0], 0, 128 * sizeof(int16_t) * 6);
 
     // reset intra_dc predictors  ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
     dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
@@ -2173,7 +2173,7 @@ private:
 
     // decode blocks
     for (comp = 0; comp < 6; comp++) {
-      memset (block[comp], 0, 128 * sizeof(short));
+      memset (block[comp], 0, 128 * sizeof(int16_t));
       if (coded_block_pattern & (1 << (6 - 1 - comp))) {
         if (*macroblock_type & MACROBLOCK_INTRA)
           decodeIntraBlock (comp, dc_dct_pred);
@@ -2263,14 +2263,14 @@ private:
   uint8_t* mBufferEnd = NULL;
   bool mGotSequenceHeader = false;
 
-  int mWidth;
-  int mHeight;
+  int mWidth = 0;
+  int mHeight = 0;
   int mChromaWidth = 0;
   int mChromaHeight = 0;
   int mBwidth = 0;
   int mBheight = 0;
 
-  short* block[6];
+  int16_t* block[6];
 
   uint8_t* auxframe[3];
   uint8_t* current_frame[3];
