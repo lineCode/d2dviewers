@@ -15,7 +15,7 @@
 #pragma comment(lib,"welsdec.lib")
 //}}}
 
-#define maxVidFrames 10000
+//#define maxVidFrames 10000
 
 class cAppWindow : public cD2dWindow, public cMpeg2decoder {
 public:
@@ -34,16 +34,6 @@ public:
     // loop in windows message pump till quit
     messagePump();
     };
-  //}}}
-  //{{{
-  void writeFrame (unsigned char* src[], int frame, bool progressive, int width, int height, int chromaWidth) {
-
-    int32_t linesize[2];
-    linesize[0] = width;
-    linesize[1] = chromaWidth;
-    mYuvFrames [frame+1].set (0, src, linesize,  width, height, 0, 0);
-    mCurVidFrame++;
-    }
   //}}}
 
 protected:
@@ -96,7 +86,8 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    if (makeBitmap (&mYuvFrames[mCurVidFrame], mBitmap, mBitmapPts))
+    //if (makeBitmap (&mYuvFrames[mCurVidFrame], mBitmap, mBitmapPts))
+    if (makeBitmap (getYuvFrame(mCurVidFrame), mBitmap, mBitmapPts))
       dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -124,109 +115,109 @@ private:
     }
   //}}}
   //{{{
-  void playerReference264 (char* filename) {
+  //void playerReference264 (char* filename) {
 
-    OpenDecoder (filename);
+    //OpenDecoder (filename);
 
-    int frame = 0;
-    int iRet;
-    do  {
-      iRet = DecodeOneFrame (&pDecPicList);
-      int iWidth = pDecPicList->iWidth*((pDecPicList->iBitDepth+7)>>3);
-      int iHeight = pDecPicList->iHeight;
-      int iStride = pDecPicList->iYBufStride;
-      if (iWidth && iHeight) {
-        //makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight, iWidth, iWidth/2);
-        changed();
-        }
-      } while (iRet == DEC_EOS || iRet == DEC_SUCCEED);
+    //int frame = 0;
+    //int iRet;
+    //do  {
+      //iRet = DecodeOneFrame (&pDecPicList);
+      //int iWidth = pDecPicList->iWidth*((pDecPicList->iBitDepth+7)>>3);
+      //int iHeight = pDecPicList->iHeight;
+      //int iStride = pDecPicList->iYBufStride;
+      //if (iWidth && iHeight) {
+        ////makeVidFrame (frame++, pDecPicList->pY, pDecPicList->pU, pDecPicList->pV, iWidth, iHeight, iWidth, iWidth/2);
+        //changed();
+        //}
+      //} while (iRet == DEC_EOS || iRet == DEC_SUCCEED);
 
-    FinitDecoder (&pDecPicList);
-    CloseDecoder();
-    }
+    //FinitDecoder (&pDecPicList);
+    //CloseDecoder();
+    //}
   //}}}
   //{{{
-  void playerOpenH264 (char* filename) {
+  //void playerOpenH264 (char* filename) {
 
     //{{{  init decoder
-    ISVCDecoder* pDecoder = NULL;
-    WelsCreateDecoder (&pDecoder);
+    //ISVCDecoder* pDecoder = NULL;
+    //WelsCreateDecoder (&pDecoder);
 
-    int iLevelSetting = (int)WELS_LOG_WARNING;
-    pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
+    //int iLevelSetting = (int)WELS_LOG_WARNING;
+    //pDecoder->SetOption (DECODER_OPTION_TRACE_LEVEL, &iLevelSetting);
 
-    // init decoder params
-    SDecodingParam sDecParam = {0};
-    sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
-    sDecParam.uiTargetDqLayer = (uint8_t) - 1;
-    sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
-    sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
-    pDecoder->Initialize (&sDecParam);
+    //// init decoder params
+    //SDecodingParam sDecParam = {0};
+    //sDecParam.sVideoProperty.size = sizeof (sDecParam.sVideoProperty);
+    //sDecParam.uiTargetDqLayer = (uint8_t) - 1;
+    //sDecParam.eEcActiveIdc = ERROR_CON_SLICE_COPY;
+    //sDecParam.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_DEFAULT;
+    //pDecoder->Initialize (&sDecParam);
     //}}}
     //{{{  open file, find size, read file and append startCode
-    FILE* pH264File = fopen (filename, "rb");
-    fseek (pH264File, 0L, SEEK_END);
-    int32_t iFileSize = (int32_t) ftell (pH264File);
-    fseek (pH264File, 0L, SEEK_SET);
+    //FILE* pH264File = fopen (filename, "rb");
+    //fseek (pH264File, 0L, SEEK_END);
+    //int32_t iFileSize = (int32_t) ftell (pH264File);
+    //fseek (pH264File, 0L, SEEK_SET);
 
-    // read file
-    uint8_t* pBuf = new uint8_t[iFileSize + 4];
-    fread (pBuf, 1, iFileSize, pH264File);
-    fclose (pH264File);
+    //// read file
+    //uint8_t* pBuf = new uint8_t[iFileSize + 4];
+    //fread (pBuf, 1, iFileSize, pH264File);
+    //fclose (pH264File);
 
-    // append slice startCode
-    uint8_t uiStartCode[4] = {0, 0, 0, 1};
-    memcpy (pBuf + iFileSize, &uiStartCode[0], 4);
+    //// append slice startCode
+    //uint8_t uiStartCode[4] = {0, 0, 0, 1};
+    //memcpy (pBuf + iFileSize, &uiStartCode[0], 4);
     //}}}
     //{{{  set conceal option
-    int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
-    pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
+    //int32_t iErrorConMethod = (int32_t) ERROR_CON_SLICE_MV_COPY_CROSS_IDR_FREEZE_RES_CHANGE;
+    //pDecoder->SetOption (DECODER_OPTION_ERROR_CON_IDC, &iErrorConMethod);
     //}}}
 
-    int32_t iWidth = 0;
-    int32_t iHeight = 0;
-    int frameIndex = 0;
-    unsigned long long uiTimeStamp = 0;
-    int32_t iBufPos = 0;
-    while (true) {
-      // process slice
-      int32_t iEndOfStreamFlag = 0;
-      if (iBufPos >= iFileSize) {
+    //int32_t iWidth = 0;
+    //int32_t iHeight = 0;
+    //int frameIndex = 0;
+    //unsigned long long uiTimeStamp = 0;
+    //int32_t iBufPos = 0;
+    //while (true) {
+      //// process slice
+      //int32_t iEndOfStreamFlag = 0;
+      //if (iBufPos >= iFileSize) {
         //{{{  end of stream
-        iEndOfStreamFlag = true;
-        pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
-        break;
-        }
+        //iEndOfStreamFlag = true;
+        //pDecoder->SetOption (DECODER_OPTION_END_OF_STREAM, (void*)&iEndOfStreamFlag);
+        //break;
+        //}
         //}}}
 
-      // find sliceSize by looking for next slice startCode
-      int32_t iSliceSize;
-      for (iSliceSize = 1; iSliceSize < iFileSize; iSliceSize++)
-        if ((!pBuf[iBufPos+iSliceSize] && !pBuf[iBufPos+iSliceSize+1])  &&
-            ((!pBuf[iBufPos+iSliceSize+2] && pBuf[iBufPos+iSliceSize+3] == 1) || (pBuf[iBufPos+iSliceSize+2] == 1)))
-          break;
+      //// find sliceSize by looking for next slice startCode
+      //int32_t iSliceSize;
+      //for (iSliceSize = 1; iSliceSize < iFileSize; iSliceSize++)
+        //if ((!pBuf[iBufPos+iSliceSize] && !pBuf[iBufPos+iSliceSize+1])  &&
+            //((!pBuf[iBufPos+iSliceSize+2] && pBuf[iBufPos+iSliceSize+3] == 1) || (pBuf[iBufPos+iSliceSize+2] == 1)))
+          //break;
 
-      uint8_t* pData[3]; // yuv ptrs
-      SBufferInfo sDstBufInfo;
-      memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
+      //uint8_t* pData[3]; // yuv ptrs
+      //SBufferInfo sDstBufInfo;
+      //memset (&sDstBufInfo, 0, sizeof (SBufferInfo));
 
-      sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
-      //pDecoder->DecodeFrame2 (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
-      pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      //sDstBufInfo.uiInBsTimeStamp = uiTimeStamp++;
+      ////pDecoder->DecodeFrame2 (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
+      //pDecoder->DecodeFrameNoDelay (pBuf + iBufPos, iSliceSize, pData, &sDstBufInfo);
 
-      if (sDstBufInfo.iBufferStatus == 1) {
-        //makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
-        //              sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
-        iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
-        iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
-        }
-      iBufPos += iSliceSize;
-      }
+      //if (sDstBufInfo.iBufferStatus == 1) {
+        ////makeVidFrame (frameIndex++, pData[0], pData[1], pData[2], 640, 360,
+        ////              sDstBufInfo.UsrData.sSystemBuffer.iStride[0], sDstBufInfo.UsrData.sSystemBuffer.iStride[1]);
+        //iWidth = sDstBufInfo.UsrData.sSystemBuffer.iWidth;
+        //iHeight = sDstBufInfo.UsrData.sSystemBuffer.iHeight;
+        //}
+      //iBufPos += iSliceSize;
+      //}
 
-    delete[] pBuf;
-    pDecoder->Uninitialize();
-    WelsDestroyDecoder (pDecoder);
-    }
+    //delete[] pBuf;
+    //pDecoder->Uninitialize();
+    //WelsDestroyDecoder (pDecoder);
+    //}
   //}}}
   //{{{
   void playerMpeg2 (wchar_t* wFilename,char* filename) {
@@ -241,12 +232,11 @@ private:
 
     auto time = startTimer();
     uint8_t* pesPtr = fileBuffer;
-    for (int i = 0; i < maxVidFrames; i++) {
+    for (int i = 0; i < 10000; i++) {
       if (!(i % 100))
         printf ("frame %d  %4.3fs %4.3fms\n", i, getTimer() - time, 1000.0 * (getTimer() - time) / i);
-      decodePes (pesPtr, fileBuffer + mFileBytes, &mYuvFrames[i], pesPtr);
-      mYuvFrames [i].mPts = i;
-      mCurVidFrame = i;
+      decodePes (pesPtr, fileBuffer + mFileBytes, i, pesPtr);
+      mCurVidFrame = i % 40;
       }
 
     UnmapViewOfFile (fileBuffer);
@@ -256,9 +246,9 @@ private:
 
   int mCurVidFrame = 0;
   int64_t mBitmapPts = -1;
-  cYuvFrame mYuvFrames[maxVidFrames];
-  DecodedPicList* pDecPicList;
   ID2D1Bitmap* mBitmap = nullptr;
+  //cYuvFrame mYuvFrames[maxVidFrames];
+  //DecodedPicList* pDecPicList;
   };
 
 //{{{

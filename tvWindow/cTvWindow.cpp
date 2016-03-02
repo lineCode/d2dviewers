@@ -39,24 +39,29 @@ public:
   //}}}
 
   int getLoadAudFrame() { return mLoadAudFrame; }
-
+  int64_t getBasePts() { return mBasePts; }
   //{{{
   cYuvFrame* getNearestVidFrame (int64_t pts) {
   // find nearestVidFrame to pts
   // - can return nullPtr if no frame loaded yet
 
-    cYuvFrame* yuvFrame = nullptr;
+    if (mMpeg2decoder)
+      return mMpeg2decoder->getNearestVidFrame(pts);
 
-    int64_t nearest = 0;
-    for (int i = 0; i < maxVidFrames; i++) {
-      if (mYuvFrames[i].mPts) {
-        if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
-          yuvFrame = &mYuvFrames[i];
-          nearest = abs(mYuvFrames[i].mPts - pts);
+    else {
+      cYuvFrame* yuvFrame = nullptr;
+
+      int64_t nearest = 0;
+      for (int i = 0; i < maxVidFrames; i++) {
+        if (mYuvFrames[i].mPts) {
+          if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
+            yuvFrame = &mYuvFrames[i];
+            nearest = abs(mYuvFrames[i].mPts - pts);
+            }
           }
         }
+      return yuvFrame;
       }
-    return yuvFrame;
     }
   //}}}
   //{{{
@@ -79,15 +84,38 @@ public:
   //}}}
 
   //{{{
-  int64_t selectService (int index) {
-  // select service by index, return basePts of pts when switched
-
-    mBasePts = cTransportStream::selectService (index);
-    return mBasePts;
+  bool isServiceSelected() {
+    return mSelectedAudPid > 0;
     }
   //}}}
   //{{{
-  int invalidate() {
+  void selectService (int index) {
+
+    auto j = 0;
+    for (auto service : mServiceMap) {
+      if (j == index) {
+        int pcrPid = service.second.getPcrPid();
+        tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pcrPid);
+        if (pidInfoIt != mPidInfoMap.end()) {
+          mSelectedVidPid = service.second.getVidPid();
+          mSelectedAudPid = service.second.getAudPid();
+          printf ("selectService %d vid:%d aud:%d pcr:%d base:%lld\n",
+                  j, mSelectedVidPid, mSelectedAudPid, pcrPid, pidInfoIt->second.mPcr);
+          mBasePts = pidInfoIt->second.mPcr;
+          invalidateFrames();
+          return;
+          }
+        }
+      else
+        j++;
+      }
+    }
+  //}}}
+  //{{{
+  void invalidateFrames() {
+
+    if (mMpeg2decoder)
+      return mMpeg2decoder->invalidateFrames();
 
     for (auto i= 0; i < maxAudFrames; i++)
       mAudFrames[i].invalidate();
@@ -96,8 +124,6 @@ public:
 
     mLoadAudFrame = 0;
     mLoadVidFrame = 0;
-
-    return 0;
     }
   //}}}
 
@@ -138,7 +164,8 @@ public:
       }
 
     for (auto i = 0; i < maxVidFrames; i++) {
-      float x = (client.width/2.0f) + float(mYuvFrames[i].mPts - playAudPts) * pixPerPts;
+      cYuvFrame* yuvFrame = mMpeg2decoder ? mMpeg2decoder->getYuvFrame (i) : &mYuvFrames[i];
+      float x = (client.width/2.0f) + float(yuvFrame->mPts - playAudPts) * pixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
 
       dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellowBrush);
@@ -150,11 +177,11 @@ public:
         case 1: swprintf (wStr, 10, L"I"); break;
         case 2: swprintf (wStr, 10, L"P"); break;
         case 3: swprintf (wStr, 10, L"B"); break;
-        default: swprintf (wStr, 10, L"%d", mYuvFrames[i].mPictType); break;
+        default: swprintf (wStr, 10, L"%d", yuvFrame->mPictType); break;
         }
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
 
-      float l = mYuvFrames[i].mLen / 1000.0f;
+      float l = yuvFrame->mLen / 1000.0f;
       dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
       }
     }
@@ -164,82 +191,84 @@ protected:
   //{{{
   void decodeAudPes (cPidInfo* pidInfo) {
 
-    if (!audParser) { // allocate decoder
-      audParser = av_parser_init (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
-      audCodec = avcodec_find_decoder (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
-      audContext = avcodec_alloc_context3 (audCodec);
-      avcodec_open2 (audContext, audCodec, NULL);
-      }
+    if (pidInfo->mPid == mSelectedAudPid) {
+      if (!audParser) { // allocate decoder
+        audParser = av_parser_init (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
+        audCodec = avcodec_find_decoder (pidInfo->mStreamType == 17 ? AV_CODEC_ID_AAC_LATM : AV_CODEC_ID_MP3);
+        audContext = avcodec_alloc_context3 (audCodec);
+        avcodec_open2 (audContext, audCodec, NULL);
+        }
 
-    mAudPts = pidInfo->mPts;
-    auto interpolatedPts = pidInfo->mPts;
+      mAudPts = pidInfo->mPts;
+      auto interpolatedPts = pidInfo->mPts;
 
-    AVPacket avPacket;
-    av_init_packet (&avPacket);
-    avPacket.data = pidInfo->mBuffer;
-    avPacket.size = 0;
+      AVPacket avPacket;
+      av_init_packet (&avPacket);
+      avPacket.data = pidInfo->mBuffer;
+      avPacket.size = 0;
 
-    auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
-    pidInfo->mBufPtr = pidInfo->mBuffer;
-    while (pesLen) {
-      auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-      pidInfo->mBufPtr += lenUsed;
-      pesLen -= lenUsed;
+      auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+      pidInfo->mBufPtr = pidInfo->mBuffer;
+      while (pesLen) {
+        auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+        pidInfo->mBufPtr += lenUsed;
+        pesLen -= lenUsed;
 
-      if (avPacket.data) {
-        auto got = 0;
-        auto avFrame = av_frame_alloc();
-        auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
-        avPacket.data += bytesUsed;
-        avPacket.size -= bytesUsed;
+        if (avPacket.data) {
+          auto got = 0;
+          auto avFrame = av_frame_alloc();
+          auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
+          avPacket.data += bytesUsed;
+          avPacket.size -= bytesUsed;
 
-        if (got) {
-          mAudFrames[mLoadAudFrame % maxAudFrames].set (interpolatedPts, avFrame->channels, 48000, avFrame->nb_samples);
-          //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
-          interpolatedPts += (avFrame->nb_samples * 90000) / 48000;
+          if (got) {
+            mAudFrames[mLoadAudFrame % maxAudFrames].set (interpolatedPts, avFrame->channels, 48000, avFrame->nb_samples);
+            //printf ("aud %d pts:%x samples:%d \n", mAudFrameLoaded, pts, mSamplesPerAacFrame);
+            interpolatedPts += (avFrame->nb_samples * 90000) / 48000;
 
-          auto samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
-          if (audContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
-            //{{{  16bit signed planar
-            double valueL = 0;
-            double valueR = 0;
-
-            short* leftPtr = (short*)avFrame->data[0];
-            short* rightPtr = (short*)avFrame->data[1];
-            for (int i = 0; i < avFrame->nb_samples; i++) {
-              *samplePtr = *leftPtr++;
-              valueL += pow (*samplePtr++, 2);
-              *samplePtr = *rightPtr++;
-              valueR += pow (*samplePtr++, 2);
-              }
-
-            mAudFrames[mLoadAudFrame % maxAudFrames].mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
-            mAudFrames[mLoadAudFrame % maxAudFrames].mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
-            }
-            //}}}
-          else if (audContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
-            //{{{  32bit float planar
-            for (auto i = 0; i < avFrame->channels; i += 2) {
+            auto samplePtr = (short*)mAudFrames[mLoadAudFrame % maxAudFrames].mSamples;
+            if (audContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
+              //{{{  16bit signed planar
               double valueL = 0;
               double valueR = 0;
 
-              float* leftPtr = (float*)avFrame->data[i];
-              float* rightPtr = (float*)avFrame->data[i+1];
+              short* leftPtr = (short*)avFrame->data[0];
+              short* rightPtr = (short*)avFrame->data[1];
               for (int i = 0; i < avFrame->nb_samples; i++) {
-                *samplePtr = (short)(*leftPtr++ * 0x8000);
+                *samplePtr = *leftPtr++;
                 valueL += pow (*samplePtr++, 2);
-                *samplePtr = (short)(*rightPtr++ * 0x8000);
+                *samplePtr = *rightPtr++;
                 valueR += pow (*samplePtr++, 2);
                 }
 
-              mAudFrames[mLoadAudFrame % maxAudFrames].mPower[i] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
-              mAudFrames[mLoadAudFrame % maxAudFrames].mPower[i+1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
+              mAudFrames[mLoadAudFrame % maxAudFrames].mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
+              mAudFrames[mLoadAudFrame % maxAudFrames].mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
               }
+              //}}}
+            else if (audContext->sample_fmt == AV_SAMPLE_FMT_FLTP) {
+              //{{{  32bit float planar
+              for (auto i = 0; i < avFrame->channels; i += 2) {
+                double valueL = 0;
+                double valueR = 0;
+
+                float* leftPtr = (float*)avFrame->data[i];
+                float* rightPtr = (float*)avFrame->data[i+1];
+                for (int i = 0; i < avFrame->nb_samples; i++) {
+                  *samplePtr = (short)(*leftPtr++ * 0x8000);
+                  valueL += pow (*samplePtr++, 2);
+                  *samplePtr = (short)(*rightPtr++ * 0x8000);
+                  valueR += pow (*samplePtr++, 2);
+                  }
+
+                mAudFrames[mLoadAudFrame % maxAudFrames].mPower[i] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
+                mAudFrames[mLoadAudFrame % maxAudFrames].mPower[i+1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
+                }
+              }
+              //}}}
+            mLoadAudFrame++;
             }
-            //}}}
-          mLoadAudFrame++;
+          av_frame_free (&avFrame);
           }
-        av_frame_free (&avFrame);
         }
       }
     }
@@ -247,60 +276,62 @@ protected:
   //{{{
   void decodeVidPes (cPidInfo* pidInfo) {
 
-    if (!vidParser && (pidInfo->mStreamType == 27)) {
-      // allocate decoder
-      vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-      vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-      vidContext = avcodec_alloc_context3 (vidCodec);
-      avcodec_open2 (vidContext, vidCodec, NULL);
-      }
+    if (pidInfo->mPid == mSelectedVidPid) {
+      if (!pidInfo->mDecoder && (pidInfo->mStreamType == 2)) {
+        pidInfo->mDecoder = new cMpeg2decoder();
+        mMpeg2decoder = pidInfo->mDecoder;
+        }
+      else if (!vidParser && (pidInfo->mStreamType == 27)) {
+        // allocate decoder
+        vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
+        vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
+        vidContext = avcodec_alloc_context3 (vidCodec);
+        avcodec_open2 (vidContext, vidCodec, NULL);
+        }
 
-    auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
-    if (pidInfo->mStreamType == 27) {
-      //{{{  hd ffmpeg decode
-      AVPacket avPacket;
-      av_init_packet (&avPacket);
-      avPacket.data = pidInfo->mBuffer;
-      avPacket.size = 0;
+      auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+      if (pidInfo->mStreamType == 27) {
+        //{{{  hd ffmpeg decode
+        AVPacket avPacket;
+        av_init_packet (&avPacket);
+        avPacket.data = pidInfo->mBuffer;
+        avPacket.size = 0;
 
-      pidInfo->mBufPtr = pidInfo->mBuffer;
-      while (pesLen) {
-        auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-        pidInfo->mBufPtr += lenUsed;
-        pesLen -= lenUsed;
+        pidInfo->mBufPtr = pidInfo->mBuffer;
+        while (pesLen) {
+          auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+          pidInfo->mBufPtr += lenUsed;
+          pesLen -= lenUsed;
 
-        if (avPacket.data) {
-          auto avFrame = av_frame_alloc();
-          auto got = 0;
-          auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
-          avPacket.data += bytesUsed;
-          avPacket.size -= bytesUsed;
-          if (got) {
-            //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
-            if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
-                (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
-              mVidPts = pidInfo->mPts;
-            else // fake pts
-              mVidPts += 90000/25;
-            mYuvFrames [mLoadVidFrame % maxVidFrames].set (
-              mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
-            mLoadVidFrame++;
+          if (avPacket.data) {
+            auto avFrame = av_frame_alloc();
+            auto got = 0;
+            auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+            avPacket.data += bytesUsed;
+            avPacket.size -= bytesUsed;
+            if (got) {
+              //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
+              if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
+                  (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
+                mVidPts = pidInfo->mPts;
+              else // fake pts
+                mVidPts += 90000/25;
+              mYuvFrames [mLoadVidFrame % maxVidFrames].set (
+                mVidPts, avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+              mLoadVidFrame++;
+              }
+            av_frame_free (&avFrame);
             }
-          av_frame_free (&avFrame);
           }
         }
-      }
-      //}}}
-    else {
-      uint8_t* pesPtr;
-      if (mMpeg2decoder.decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, &mYuvFrames[mLoadVidFrame % maxVidFrames], pesPtr)) {
-        // decoded piccy
+        //}}}
+      else if (pidInfo->mStreamType == 2) {
         if (pidInfo->mDts) // use actual pts
           mVidPts = pidInfo->mPts;
         else // fake pts
           mVidPts += 90000/25;
-        mYuvFrames [mLoadVidFrame % maxVidFrames].mPts = mVidPts;
-        mLoadVidFrame++;
+        uint8_t* pesPtr;
+        pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, mVidPts, pesPtr);
         }
       }
     }
@@ -327,7 +358,10 @@ private:
   cAudFrame mAudFrames[maxAudFrames];
   cYuvFrame mYuvFrames[maxVidFrames];
 
-  cMpeg2decoder mMpeg2decoder;
+  int mSelectedVidPid = 0;
+  int mSelectedAudPid = 0;
+
+  cMpeg2decoder* mMpeg2decoder = nullptr;
   };
 //}}}
 
@@ -398,7 +432,7 @@ bool onKey (int key) {
     case 0x36 :
     case 0x37 :
     case 0x38 :
-    case 0x39 : selectService (key - '0'); break;
+    case 0x39 : mTs.selectService (key - '0'); mPlayAudFrame = 0; break;
 
     default   : printf ("key %x\n", key);
     }
@@ -426,15 +460,18 @@ void onMouseDown (bool right, int x, int y) {
 
   if (y > getClientF().height - 20.0f) {
     mFilePtr = 188 * (int64_t)((x / getClientF().width) * (mFileSize / 188));
-    mPlayAudFrame = mTs.invalidate();
+    mTs.invalidateFrames();
+    mPlayAudFrame = 0;
     changed();
     mDownConsumed = true;
     }
 
   else if (x < 80) {
     auto channel = (y / 20) - 1;
-    if (channel >= 0)
-      selectService (channel);
+    if (channel >= 0) {
+      mTs.selectService (channel);
+      mPlayAudFrame = 0;
+      }
     mDownConsumed = true;
     }
   else
@@ -470,7 +507,7 @@ void onDraw (ID2D1DeviceContext* dc) {
   // draw title
   wchar_t wStr[200];
   swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d chan:%d",
-            (mAudPts - mBasePts) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(), mChannelSelector);
+            (mAudPts - mTs.getBasePts()) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(), mChannelSelector);
   dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -493,18 +530,8 @@ private:
   void incPlayFrame (int64_t inc) {
 
     mFilePtr += inc;
-    mPlayAudFrame = mTs.invalidate();
-    }
-  //}}}
-  //{{{
-  void selectService (int index) {
-
-    auto basePts = mTs.selectService (index);
-    if (basePts) {
-      mBasePts = basePts;
-      }
-
-    mPlayAudFrame = mTs.invalidate();
+    mPlayAudFrame = 0;
+    mTs.invalidateFrames();
     }
   //}}}
 
@@ -538,8 +565,10 @@ private:
         while (mPlayAudFrame < mTs.getLoadAudFrame() - (maxAudFrames-6))
           Sleep (1);
 
-        if (mTs.getSelectedAudPid() <= 0)
-         selectService (0);
+        if (!mTs.isServiceSelected()) {
+          mTs.selectService (0);
+          mPlayAudFrame = 0;
+          }
         }
 
       GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
@@ -735,7 +764,6 @@ private:
   int16_t* mSilence;
   int mChannelSelector = 0;
 
-  int64_t mBasePts = 0;
   int64_t mAudPts = 0;
   bool mPlaying = true;
 

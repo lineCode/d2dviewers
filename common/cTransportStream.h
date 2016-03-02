@@ -7,6 +7,8 @@
 
 #include <locale>
 #include <time.h>
+
+class cMpeg2decoder;
 //}}}
 //{{{  macros
 #define HILO(x) (x##_hi << 8 | x##_lo)
@@ -649,6 +651,8 @@ public:
   uint8_t* mBuffer = nullptr;
   uint8_t* mBufPtr = nullptr;
 
+  cMpeg2decoder* mDecoder = nullptr;
+
   // render text for speed,locking
   wchar_t mInfo[100];
   };
@@ -820,9 +824,6 @@ public:
 
   int getPackets() { return mPackets; }
   int getDiscontinuity() { return mDiscontinuity; }
-  int getSelectedAudPid() { return mSelectedAudPid; }
-  int getSelectedVidPid() { return mSelectedVidPid; }
-
   //{{{
   void demux (uint8_t* tsPtr, uint8_t* tsEnd, bool skipped) {
 
@@ -885,7 +886,6 @@ public:
             pidInfoIt->second.mPcr = pcr;
           //}}}
 
-          auto bufferRestOfTsPacket = false;
           if (isSection) {
             //{{{  parse section pids
             if (payStart) {
@@ -973,9 +973,9 @@ public:
               printf ("------- buffering section continuation packet discarded, no buffer started %d\n", pid);
             }
             //}}}
-          else if (pid == mSelectedAudPid) {
-            //{{{  parse aud pid
+          else {
             if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xc0)) {
+              //{{{  start audio pes
               if (pidInfoIt->second.mBufPtr)
                 decodeAudPes (&pidInfoIt->second);
 
@@ -993,13 +993,9 @@ public:
               tsPtr += pesHeaderBytes;
               tsFrameBytesLeft -= pesHeaderBytes;
               }
-
-            bufferRestOfTsPacket = true;
-            }
-            //}}}
-          else if (pid == mSelectedVidPid) {
-            //{{{  parse vid pid
-            if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
+              //}}}
+            else if (payStart && !(*tsPtr) && !(*(tsPtr+1)) && (*(tsPtr+2) == 1) && (*(tsPtr+3) == 0xe0)) {
+              //{{{  start video pes
               if (pidInfoIt->second.mBufPtr)
                 decodeVidPes (&pidInfoIt->second);
 
@@ -1017,13 +1013,9 @@ public:
               tsPtr += pesHeaderBytes;
               tsFrameBytesLeft -= pesHeaderBytes;
               }
-
-            bufferRestOfTsPacket = true;
-            }
-            //}}}
-
-          if (bufferRestOfTsPacket && pidInfoIt->second.mBufPtr) {
-            //{{{  copy tsFrameBytesLeft bytes to buffer, only PES for now
+              //}}}
+            if (pidInfoIt->second.mBufPtr) {
+            //{{{  copy tsFrameBytesLeft bytes to buffer
             memcpy (pidInfoIt->second.mBufPtr, tsPtr, tsFrameBytesLeft);
             pidInfoIt->second.mBufPtr += tsFrameBytesLeft;
 
@@ -1032,6 +1024,7 @@ public:
                       int(pidInfoIt->second.mBufPtr - pidInfoIt->second.mBuffer), pidInfoIt->second.mBufSize);
             }
             //}}}
+            }
 
           tsPtr += tsFrameBytesLeft;
           mPackets++;
@@ -1111,33 +1104,11 @@ public:
   //}}}
 
 protected:
-  //{{{
-  virtual int64_t selectService (int index) {
-
-    auto j = 0;
-    for (auto service :mServiceMap) {
-      if (j == index) {
-        int pcrPid = service.second.getPcrPid();
-        tPidInfoMap::iterator pidInfoIt = mPidInfoMap.find (pcrPid);
-        if (pidInfoIt != mPidInfoMap.end()) {
-          mSelectedVidPid = service.second.getVidPid();
-          mSelectedAudPid = service.second.getAudPid();
-
-          printf ("selectService %d vid:%d aud:%d pcr:%d base:%lld\n",
-                  j, mSelectedVidPid, mSelectedAudPid, pcrPid, pidInfoIt->second.mPcr);
-          return pidInfoIt->second.mPcr;
-          }
-        return 0;
-        }
-      else
-        j++;
-      }
-
-    return 0;
-    }
-  //}}}
   virtual void decodeAudPes (cPidInfo* pidInfo) {}
   virtual void decodeVidPes (cPidInfo* pidInfo) {}
+
+  tServiceMap mServiceMap;
+  tPidInfoMap mPidInfoMap;
 
 private:
   //{{{
@@ -1854,9 +1825,7 @@ private:
   //}}}
 
   //{{{  private vars
-  tPidInfoMap mPidInfoMap;
   tProgramMap mProgramMap;
-  tServiceMap mServiceMap;
 
   int mPackets = 0;
   int mDiscontinuity = 0;
@@ -1865,8 +1834,5 @@ private:
   time_t mCurTime;
   wchar_t wTimeStr[25];
   wchar_t wNetworkNameStr[20];
-
-  int mSelectedVidPid = 0;
-  int mSelectedAudPid = 0;
   //}}}
   };

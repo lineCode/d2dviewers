@@ -488,11 +488,12 @@ static __declspec(align(64)) const int16_t sse2_tab_i_35[] = {
   15137,  5315,-26722,-15137,  5315, 22654, 22654,-26722 };
 //}}}
 //}}}
+#define maxVidFrames 40
 class cMpeg2decoder {
 public:
   //{{{
   cMpeg2decoder() {
-
+    printf ("allocating cMpeg2decoder\n");
     for (int i = 0; i < 64; i++) {
       intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
       chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
@@ -527,7 +528,39 @@ public:
     }
   //}}}
   //{{{
-  bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, cYuvFrame* yuvFrame, uint8_t*& pesPtr) {
+  cYuvFrame* getYuvFrame (int i) {
+    return  &mYuvFrames[i];
+    }
+  //}}}
+  //{{{
+  cYuvFrame* getNearestVidFrame (int64_t pts) {
+  // find nearestVidFrame to pts
+  // - can return nullPtr if no frame loaded yet
+
+    cYuvFrame* yuvFrame = nullptr;
+
+    int64_t nearest = 0;
+    for (int i = 0; i < maxVidFrames; i++) {
+      if (mYuvFrames[i].mPts) {
+        if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
+          yuvFrame = &mYuvFrames[i];
+          nearest = abs(mYuvFrames[i].mPts - pts);
+          }
+        }
+      }
+    return yuvFrame;
+    }
+  //}}}
+  //{{{
+  void invalidateFrames() {
+
+    for (auto i= 0; i < maxVidFrames; i++)
+      mYuvFrames[i].invalidate();
+    mLoadVidFrame = 0;
+    }
+  //}}}
+  //{{{
+  bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, int64_t vidPts, uint8_t*& pesPtr) {
   // decode a frame of video, usually a pes packet
 
     bool frameWritten = false;
@@ -591,8 +624,10 @@ public:
       int32_t linesize[2];
       linesize[0] = mWidth;
       linesize[1] = mChromaWidth;
-      yuvFrame->set (0, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
-                     mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), picture_coding_type);
+      mYuvFrames[mLoadVidFrame % maxVidFrames].set (
+        vidPts, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
+        mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), picture_coding_type);
+      mLoadVidFrame++;
       frameWritten = true;
       //}}}
 
@@ -2141,5 +2176,9 @@ private:
   int concealmentMotionVecs = 0;
   int intra_vlc_format = 0;
   int progressive = 0;
+
+  int mLoadVidFrame = 0;
+  int mMaxVidFrame = maxVidFrames;
+  cYuvFrame mYuvFrames[maxVidFrames];
   //}}}
   };

@@ -1,9 +1,16 @@
 // cYuvFrame.h
 #pragma once
+#define maxSampleBytes 1152*2*6
 
 class cAudFrame  {
 public:
-  cAudFrame() {}
+  //{{{
+  cAudFrame() {
+  #ifdef WIN32
+    mSamples = (int16_t*)malloc (maxSampleBytes);
+  #endif
+    }
+  //}}}
   //{{{
   ~cAudFrame() {
     if (mSamples)
@@ -21,7 +28,8 @@ public:
 
   #ifdef WIN32
     mNumSampleBytes = mChannels * mNumSamples* 2;
-    mSamples = (int16_t*)realloc (mSamples, mNumSampleBytes);
+    if (mNumSampleBytes > maxSampleBytes)
+      printf ("cAudFrame - too many samples\n");
   #else
     if ((mChannels * mNumSamples * 2 != mNumSampleBytes) && mSamples) {
       free (mSamples);
