@@ -488,8 +488,6 @@ static __declspec(align(64)) const int16_t sse2_tab_i_35[] = {
   15137,  5315,-26722,-15137,  5315, 22654, 22654,-26722 };
 //}}}
 //}}}
-//#define ASM_ADDBLOCK
-
 class cMpeg2decoder {
 public:
   //{{{
@@ -1448,16 +1446,16 @@ private:
     uint8_t* dCr = current_frame[1] + dOffset;
     uint8_t* sCb = src[2] + sOffset;
     uint8_t* dCb = current_frame[2] + dOffset;
+
     switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
-      case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+  #ifdef _M_IX86
       //{{{
       case 0: {
         for (int loop = 0; loop < h; loop++) {
           *(__m64*)dCb = *(__m64*)sCb;
           sCb += lx2;
           dCb += lx2;
-          }
-        for (int loop = 0; loop < h; loop++) {
+
           *(__m64*)dCr = *(__m64*)sCr;
           sCr += lx2;
           dCr += lx2;
@@ -1466,240 +1464,267 @@ private:
         break;
       //}}}
       //{{{
-      //case 1: {
-        //for (int loop = 0; loop < h; loop++) {
-          ////*(__m128i*)dCr = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCr), _mm_loadu_si128((__m128i*)(sCr+lx)));
-          ////*(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+lx));
-          //sCr += lx2;
-          //dCr += lx2;
-          //}
-        //for (int loop = 0; loop < h; loop++) {
-          ////*(__m128i*)dCb = _mm_avg_epu8(_mm_loadu_si128((__m128i*)sCb), _mm_loadu_si128((__m128i*)(sCb+lx)));
-          ////*(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+lx));
-          //sCb += lx2;
-          //dCb += lx2;
-          //}
-        ////half_1_sse (sCr, dCr, h, lx, lx2);
-        ////half_1_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
+      case 1:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+lx));
+          sCr += lx2;
+          dCr += lx2;
 
-      //void half_1_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
-        //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          *(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+lx));
+          sCb += lx2;
+          dCb += lx2;
+          }
+        break;
       //}}}
       //{{{
-      //case 2: {
-        ////half_2_sse (sCr, dCr, h, lx2);
-        ////half_2_sse (sCb, dCb, h, lx2);
-        //}
-        //break;
+      case 2:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+1));
+          sCr += lx2;
+          dCr += lx2;
 
-      //void half_2_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
-        //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          *(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+1));
+          sCb += lx2;
+          dCb += lx2;
+          }
+        break;
       //}}}
       //{{{
-      //case 3: {
-        ////half_3_sse (sCr, dCr, h, lx, lx2);
-        ////half_3_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
+      case 3: {
+        __m64 shade = _mm_set1_pi8(1);
+        for (int loop = 0; loop < h; loop++) {
+          __m64 pixel1 = *(__m64*)sCr;
+          __m64 pixel2 = *(__m64*)(sCr+1);
+          __m64 pixel3 = *(__m64*)(sCr+lx);
+          __m64 pixel4 = *(__m64*)(sCr+lx+1);
 
-      //void half_3_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
-        //__m64 shade = _mm_set1_pi8(1);
-        //for (int loop = 0; loop < h; loop++) {
-          //__m64 pixel1 = *(__m64*)s;
-          //__m64 pixel2 = *(__m64*)(s+1);
-          //__m64 pixel3 = *(__m64*)(s+lx);
-          //__m64 pixel4 = *(__m64*)(s+lx+1);
-          //__m64 avg12 = _m_pavgb(pixel1, pixel2);
-          //__m64 avg34 = _m_pavgb(pixel3, pixel4);
-          //__m64 avg = _m_pavgb(avg12, avg34);
-          //__m64 xor12 = _m_pxor(pixel1, pixel2);
-          //__m64 xor34 = _m_pxor(pixel3, pixel4);
-          //__m64 or1234 = _m_por(xor12, xor34);
-          //__m64 xoravg = _m_pxor(avg12, avg34);
-          //__m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
-          //*(__m64*)d = _m_psubb(avg, offset);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          __m64 avg12 = _m_pavgb(pixel1, pixel2);
+          __m64 avg34 = _m_pavgb(pixel3, pixel4);
+          __m64 avg =   _m_pavgb(avg12, avg34);
+
+          __m64 xor12 = _m_pxor(pixel1, pixel2);
+          __m64 xor34 = _m_pxor(pixel3, pixel4);
+          __m64 or1234 = _m_por(xor12, xor34);
+          __m64 xoravg = _m_pxor(avg12, avg34);
+
+          __m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
+          *(__m64*)dCr = _m_psubb(avg, offset);
+          sCr += lx2;
+          dCr += lx2;
+
+          pixel1 = *(__m64*)sCb;
+          pixel2 = *(__m64*)(sCb+1);
+          pixel3 = *(__m64*)(sCb+lx);
+          pixel4 = *(__m64*)(sCb+lx+1);
+
+          avg12 = _m_pavgb(pixel1, pixel2);
+          avg34 = _m_pavgb(pixel3, pixel4);
+          avg =   _m_pavgb(avg12, avg34);
+          xor12 = _m_pxor(pixel1, pixel2);
+
+          xor34 = _m_pxor(pixel3, pixel4);
+          or1234 = _m_por(xor12, xor34);
+          xoravg = _m_pxor(avg12, avg34);
+
+          offset = _m_pand(_m_pand(or1234, xoravg), shade);
+          *(__m64*)dCb = _m_psubb(avg, offset);
+          sCb += lx2;
+          dCb += lx2;
+          }
+        }
+        break;
       //}}}
       //{{{
-      //case 4: {
-        ////half_4_sse (sCr, dCr, h, lx2);
-        ////half_4_sse (sCb, dCb, h, lx2);
-        //}
-        //break;
+      case 4:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCr = _m_pavgb(*(__m64*)sCr, *(__m64*)dCr);
+          sCr += lx2;
+          dCr += lx2;
 
-      //void half_4_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
-        //for (int loop = 0; loop < h; loop++) {
-          //*(__m64*)d = _m_pavgb(*(__m64*)s, *(__m64*)d);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          *(__m64*)dCb = _m_pavgb(*(__m64*)sCb, *(__m64*)dCb);
+          sCb += lx2;
+          dCb += lx2;
+          }
+        break;
       //}}}
       //{{{
-      //case 5: {
-        ////half_5_sse (sCr, dCr, h, lx, lx2);
-        ////half_5_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
+      case 5:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCr = _m_pavgb (_m_pavgb(*(__m64*)sCr, *(__m64*)(sCr+lx)), *(__m64*)dCr);
+          sCr += lx2;
+          dCr += lx2;
 
-      //void half_5_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
-        //for (int loop = 0; loop < h; loop++) {
-          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+lx));
-          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          *(__m64*)dCb = _m_pavgb (_m_pavgb(*(__m64*)sCb, *(__m64*)(sCb+lx)), *(__m64*)dCb);
+          sCb += lx2;
+          dCb += lx2;
+          }
+        break;
       //}}}
       //{{{
-      //case 6: {
-       //// half_6_sse (sCr, dCr, h, lx2);
-        ////half_6_sse (sCb, dCb, h, lx2);
-        //}
-        //break;
+      case 6:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCr = _m_pavgb (_m_pavgb (*(__m64*)sCr, *(__m64*)(sCr+1)), *(__m64*)dCr);
+          sCr += lx2;
+          dCr += lx2;
 
-      //void half_6_sse (uint8_t* s, uint8_t* d, int h, int lx2) {
-        //for (int loop = 0; loop < h; loop++) {
-          //__m64 avg = _m_pavgb(*(__m64*)s, *(__m64*)(s+1));
-          //*(__m64*)d = _m_pavgb(avg, *(__m64*)d);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+          *(__m64*)dCb = _m_pavgb (_m_pavgb (*(__m64*)sCb, *(__m64*)(sCb+1)), *(__m64*)dCb);
+          sCb += lx2;
+          dCb += lx2;
+          }
+        break;
       //}}}
       //{{{
-      //case 7: {
-        ////half_7_sse (sCr, dCr, h, lx, lx2);
-        ////half_7_sse (sCb, dCb, h, lx, lx2);
-        //}
-        //break;
+      case 7: {
+        __m64 shade = _mm_set1_pi8(1);
 
-      //void half_7_sse (uint8_t* s, uint8_t* d, int h, int lx, int lx2) {
-        //__m64 shade = _mm_set1_pi8(1);
-        //for (int loop = 0; loop < h; loop++) {
-          //__m64 pixel1 = *(__m64*)s;
-          //__m64 pixel2 = *(__m64*)(s+1);
-          //__m64 pixel3 = *(__m64*)(s+lx);
-          //__m64 pixel4 = *(__m64*)(s+lx+1);
-          //__m64 avg12 = _m_pavgb(pixel1, pixel2);
-          //__m64 avg34 = _m_pavgb(pixel3, pixel4);
-          //__m64 avg = _m_pavgb(avg12, avg34);
-          //__m64 xor12 = _m_pxor(pixel1, pixel2);
-          //__m64 xor34 = _m_pxor(pixel3, pixel4);
-          //__m64 or1234 = _m_por(xor12, xor34);
-          //__m64 xoravg = _m_pxor(avg12, avg34);
-          //__m64 offset = _m_pand(_m_pand(or1234, xoravg), shade);
-          //*(__m64*)d = _m_pavgb(_m_psubb(avg, offset), *(__m64*)d);
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}}}
-    //if (!xh && !yh) {
-      //{{{  no horizontal nor vertical half-pel
-      //if (average_flag) {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++) {
-            //int v = d[i] + s[i];
-            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            //}
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
+        for (int loop = 0; loop < h; loop++) {
+          __m64 pixel1 = *(__m64*)sCr;
+          __m64 pixel2 = *(__m64*)(sCr+1);
+          __m64 pixel3 = *(__m64*)(sCr+lx);
+          __m64 pixel4 = *(__m64*)(sCr+lx+1);
 
-      //else {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++)
-            //d[i] = s[i];
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}
-      //}}}
-    //else if (!xh && yh) {
-      //{{{  no horizontal but vertical half-pel
-      //if (average_flag) {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++) {
-            //int v = d[i] + ((uint32_t)(s[i] + s[i+lx] +1) >>1);
-            //d[i]= (v + (v >= 0 ? 1 : 0)) >> 1;
-            //}
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //else {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++)
-            //d[i] = (uint32_t)(s[i] + s[i+lx] + 1) >> 1;
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}
-      //}}}
-    //else if (xh && !yh) {
-      //{{{  horizontal but no vertical half-pel
-      //if (average_flag) {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++) {
-            //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + 1) >> 1);
-            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            //}
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //else {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++)
-            //d[i] = (uint32_t)(s[i] + s[i+1] + 1) >> 1;
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}
-      //}}}
-    //else {
-      //{{{  horizontal and vertical half-pel
-      //if (average_flag) {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++) {
-            //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2);
-            //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
-            //}
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //else {
-        //for (int j = 0; j < h; j++) {
-          //for (int i = 0; i < w; i++)
-            //d[i] = (uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2;
-          //s += lx2;
-          //d += lx2;
-          //}
-        //}
-      //}
+          __m64 avg12 = _m_pavgb (pixel1, pixel2);
+          __m64 avg34 = _m_pavgb (pixel3, pixel4);
+          __m64 avg =   _m_pavgb (avg12, avg34);
+          __m64 xor12 = _m_pxor (pixel1, pixel2);
+          __m64 xor34 = _m_pxor (pixel3, pixel4);
+
+          __m64 or1234 = _m_por (xor12, xor34);
+          __m64 xoravg = _m_pxor (avg12, avg34);
+          __m64 offset = _m_pand (_m_pand (or1234, xoravg), shade);
+
+          *(__m64*)dCr = _m_pavgb (_m_psubb (avg, offset), *(__m64*)dCr);
+          sCr += lx2;
+          dCr += lx2;
+
+          pixel1 = *(__m64*)sCb;
+          pixel2 = *(__m64*)(sCb+1);
+          pixel3 = *(__m64*)(sCb+lx);
+          pixel4 = *(__m64*)(sCb+lx+1);
+
+          avg12 = _m_pavgb (pixel1, pixel2);
+          avg34 = _m_pavgb (pixel3, pixel4);
+          avg =   _m_pavgb (avg12, avg34);
+          xor12 = _m_pxor (pixel1, pixel2);
+          xor34 = _m_pxor (pixel3, pixel4);
+
+          or1234 = _m_por (xor12, xor34);
+          xoravg = _m_pxor (avg12, avg34);
+          offset = _m_pand (_m_pand (or1234, xoravg), shade);
+
+          *(__m64*)dCb = _m_pavgb (_m_psubb (avg, offset), *(__m64*)dCb);
+          sCb += lx2;
+          dCb += lx2;
+          }
+        }
+        break;
       //}}}
       }
+  #else
+      //{{{
+      case 0: case 1: case 2: case 3: case 4: case 5: case 6: case 7:
+        for (int loop = 0; loop < h; loop++) {
+          *(__m64*)dCb = *(__m64*)sCb;
+          sCb += lx2;
+          dCb += lx2;
+          *(__m64*)dCr = *(__m64*)sCr;
+          sCr += lx2;
+          dCr += lx2;
+          }
+        break;
+
+      //if (!xh && !yh) {
+        //{{{  no horizontal nor vertical half-pel
+        //if (average_flag) {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++) {
+              //int v = d[i] + s[i];
+              //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+              //}
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+
+        //else {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++)
+              //d[i] = s[i];
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //}
+        //}}}
+      //else if (!xh && yh) {
+        //{{{  no horizontal but vertical half-pel
+        //if (average_flag) {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++) {
+              //int v = d[i] + ((uint32_t)(s[i] + s[i+lx] +1) >>1);
+              //d[i]= (v + (v >= 0 ? 1 : 0)) >> 1;
+              //}
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //else {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++)
+              //d[i] = (uint32_t)(s[i] + s[i+lx] + 1) >> 1;
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //}
+        //}}}
+      //else if (xh && !yh) {
+        //{{{  horizontal but no vertical half-pel
+        //if (average_flag) {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++) {
+              //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + 1) >> 1);
+              //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+              //}
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //else {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++)
+              //d[i] = (uint32_t)(s[i] + s[i+1] + 1) >> 1;
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //}
+        //}}}
+      //else {
+        //{{{  horizontal and vertical half-pel
+        //if (average_flag) {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++) {
+              //int v = d[i] + ((uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2);
+              //d[i] = (v + (v >= 0 ? 1 : 0)) >> 1;
+              //}
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //else {
+          //for (int j = 0; j < h; j++) {
+            //for (int i = 0; i < w; i++)
+              //d[i] = (uint32_t)(s[i] + s[i+1] + s[i+lx] + s[i+lx+1] + 2) >> 2;
+            //s += lx2;
+            //d += lx2;
+            //}
+          //}
+        //}
+        //}}}
+      //}}}
+      }
+  #endif
     }
   //}}}
   //{{{
@@ -1879,11 +1904,12 @@ private:
       refFramePtr = current_frame[(comp & 1) + 1] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
       }
 
-  #ifdef ASM_ADDBLOCK
-    //{{{  intrinsics
+  #ifdef nnn //_M_IX86
+    //{{{  x86 intrinsics
     __m64 *src = (__m64*)block;
+
     if (intra) {
-      __m64 offset = _mm_set1_pi16 (128);
+      __m64 offset = _mm_set1_pi16(128);
       for (int loop = 0; loop < 8; loop++) {
         __m64 sum1 = _m_paddw (*src++, offset);
         __m64 sum2 = _m_paddw (*src++, offset);
@@ -1894,10 +1920,8 @@ private:
     else {
        __m64 zero = _mm_setzero_si64();
       for (int loop = 0; loop < 8; loop++) {
-        __m64 unpacklo = _m_punpcklbw (*(__m64*)refFramePtr, zero);
-        __m64 sum1 = _m_paddw(*src++, unpacklo);
-        __m64 unpackhi = _m_punpckhbw (*(__m64*)refFramePtr, zero);
-        __m64 sum2 = _m_paddw (*src++, unpackhi);
+        __m64 sum1 = _m_paddw (*src++, _m_punpcklbw (*(__m64*)refFramePtr, zero));
+        __m64 sum2 = _m_paddw (*src++, _m_punpckhbw (*(__m64*)refFramePtr, zero));
         *(__m64*)refFramePtr = _m_packuswb (sum1, sum2);
         refFramePtr += lineInc;
         }
