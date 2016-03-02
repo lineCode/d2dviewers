@@ -6,7 +6,7 @@ public:
   //{{{
   void set (int64_t pts, uint8_t** yuv, int* strides, int width, int height, int len, int pictType) {
 
-    bool sizeChanged = (mWidth != width) || (mHeight != height) || (mYStride != strides[0]) || (mUVStride != strides[1]);
+    mPts = 0;
     mWidth = width;
     mHeight = height;
     mLen = len;
@@ -15,19 +15,11 @@ public:
     mYStride = strides[0];
     mUVStride = strides[1];
 
-    if (sizeChanged && mYbuf)
-      free (mYbuf);
-    mYbuf = (uint8_t*)_mm_malloc (height * mYStride, 128);
+    mYbuf = (uint8_t*)_aligned_realloc (mYbuf, height * mYStride, 128);
     memcpy (mYbuf, yuv[0], height * mYStride);
-
-    if (sizeChanged && mUbuf)
-      free (mUbuf);
-    mUbuf = (uint8_t*)_mm_malloc ((height/2) * mUVStride, 128);
+    mUbuf = (uint8_t*)_aligned_realloc (mUbuf, (height/2) * mUVStride, 128);
     memcpy (mUbuf, yuv[1], (height/2) * mUVStride);
-
-    if (sizeChanged && mVbuf)
-      free (mVbuf);
-    mVbuf = (uint8_t*)_mm_malloc ((height/2) * mUVStride, 128);
+    mVbuf = (uint8_t*)_aligned_realloc (mVbuf, (height/2) * mUVStride, 128);
     memcpy (mVbuf, yuv[2], (height/2) * mUVStride);
 
     mPts = pts;
@@ -176,16 +168,13 @@ public:
     mYStride = 0;
     mUVStride = 0;
 
-    if (mYbuf)
-      _mm_free (mYbuf);
+    _aligned_free (mYbuf);
     mYbuf = nullptr;
 
-    if (mUbuf)
-      _mm_free (mUbuf);
+    _aligned_free (mUbuf);
     mUbuf = nullptr;
 
-    if (mVbuf)
-      _mm_free (mVbuf);
+    _aligned_free (mVbuf);
     mVbuf = nullptr;
     }
   //}}}
@@ -197,6 +186,7 @@ public:
     }
   //}}}
 
+  // vars
   int64_t mPts = 0;
   int mWidth = 0;
   int mHeight = 0;

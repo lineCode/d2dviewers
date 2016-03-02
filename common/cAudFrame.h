@@ -19,6 +19,10 @@ public:
     mNumSamples = numSamples;
     mSampleRate = sampleRate;
 
+  #ifdef WIN32
+    mNumSampleBytes = mChannels * mNumSamples* 2;
+    mSamples = (int16_t*)realloc (mSamples, mNumSampleBytes);
+  #else
     if ((mChannels * mNumSamples * 2 != mNumSampleBytes) && mSamples) {
       free (mSamples);
       mSamples = nullptr;
@@ -29,6 +33,7 @@ public:
       mNumSampleBytes = mChannels * mNumSamples* 2;
       mSamples = (int16_t*)malloc (mNumSampleBytes);
       }
+  #endif
     }
   //}}}
   //{{{

@@ -510,7 +510,7 @@ public:
       }
 
     // dodgy init of block, single _mm_malloc, multiple pointers to comps
-    block[0] = (int16_t*)_mm_malloc (6 * 128 * sizeof(int16_t), 128);
+    block[0] = (int16_t*)_aligned_malloc (6 * 128 * sizeof(int16_t), 128);
     for (int i = 1; i < 6; i++)
       block[i] = block[0] + (i * 128 *sizeof(int16_t));
     }
@@ -520,12 +520,12 @@ public:
 
     // deallocate buffers
     for (int i = 0; i < 3; i++) {
-      _mm_free (backward_reference_frame[i]);
-      _mm_free (forward_reference_frame[i]);
-      _mm_free (auxframe[i]);
+      _aligned_free (backward_reference_frame[i]);
+      _aligned_free (forward_reference_frame[i]);
+      _aligned_free (auxframe[i]);
       }
 
-    _mm_free (block[0]);
+    _aligned_free (block[0]);
     }
   //}}}
   //{{{
@@ -549,9 +549,9 @@ public:
           //{{{  allocate buffers from sequenceHeader width, height
           for (int cc = 0; cc < 3; cc++) {
             int size = (cc == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
-            auxframe[cc] = (uint8_t*)_mm_malloc (size, 128);
-            forward_reference_frame[cc] = (uint8_t*)_mm_malloc (size, 128);
-            backward_reference_frame[cc] = (uint8_t*)_mm_malloc (size, 128);
+            auxframe[cc] = (uint8_t*)_aligned_malloc (size, 128);
+            forward_reference_frame[cc] = (uint8_t*)_aligned_malloc (size, 128);
+            backward_reference_frame[cc] = (uint8_t*)_aligned_malloc (size, 128);
             }
           mGotSequenceHeader = true;
           break;
@@ -1855,7 +1855,7 @@ private:
     }
   //}}}
   //{{{
-  void addBlock (int16_t* block, bool luma, int comp, int bx, int by, int dct_type, int set) {
+  void addBlock (int16_t* block, bool luma, int comp, int bx, int by, int dct_type, int intra) {
   // move/add 8x8-Block from block[comp] to backward_reference_frame
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
 
@@ -1882,7 +1882,7 @@ private:
   #ifdef ASM_ADDBLOCK
     //{{{  intrinsics
     __m64 *src = (__m64*)block;
-    if (set) {
+    if (intra) {
       __m64 offset = _mm_set1_pi16 (128);
       for (int loop = 0; loop < 8; loop++) {
         __m64 sum1 = _m_paddw (*src++, offset);
@@ -1904,7 +1904,7 @@ private:
       }
     //}}}
   #else
-    if (set)
+    if (intra)
       for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++)
           *refFramePtr++ = *block++ + 128;
