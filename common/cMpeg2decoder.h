@@ -597,7 +597,7 @@ public:
       }
 
     if (mBufferPtr < mBufferEnd) {
-      //{{{  updatePictureBuffers;
+      //{{{  updatePictureBuffers description
       // B pics do not need to be save for future reference
       // the previously decoded reference frame is stored coincident with the location where the backward
       // reference frame is stored (backwards prediction is not needed in P pictures)
@@ -2070,17 +2070,16 @@ private:
         goto getNextStartCode;
 
       int dcDctPred[3] = {0,0,0};
-      int PMV[2][2][2] = { 0,0,0,0,0,0,0,0};
-      for (int MBA = ((code&255) - 1) * mBwidth + MBAinc - 1; MBA < mBwidth * mBheight; MBA++) {
+      int PMV[2][2][2] = {0,0,0,0,0,0,0,0};
+      for (int MBA = (((code & 255) - 1) * mBwidth) + MBAinc - 1; MBA < (mBwidth * mBheight); MBA++) {
         if (!MBAinc) {
-          if (peekBits(23)) {
-            MBAinc = getMacroBlockAddressIncrement();
-            if (mFlawFlag)
-              goto getNextStartCode;
-            }
-          else
+          if (peekBits(23) == 0)
             goto getNextStartCode;
+          else 
+            MBAinc = getMacroBlockAddressIncrement();
           }
+        if (mFlawFlag)
+          goto getNextStartCode;
 
         int mBtype, motionType, dctType;
         int motionVertField[2][2];
