@@ -637,7 +637,6 @@ public:
 
   int mStreamType = 0;
   int64_t mPts = 0;
-  int64_t mFakePts = 0;
   int64_t mDts = 0;
   int64_t mPcr = 0;
 
@@ -652,7 +651,9 @@ public:
   uint8_t* mBuffer = nullptr;
   uint8_t* mBufPtr = nullptr;
 
+  // temps
   cMpeg2decoder* mDecoder = nullptr;
+  int64_t mFakePts = 0;
 
   // render text for speed,locking
   wchar_t mInfo[100];

@@ -941,7 +941,7 @@ private:
       }
 
     int dct_diff = 0;
-    if (!size == 0) {
+    if (size) {
       dct_diff = getBits (size);
       if ((dct_diff & (1 << (size - 1))) == 0)
         dct_diff -= (1 << size) - 1;
@@ -966,7 +966,7 @@ private:
       }
 
     int dct_diff = 0;
-    if (!size == 0) {
+    if (size) {
       dct_diff = getBits (size);
       if ((dct_diff & (1 << (size - 1))) == 0)
         dct_diff -= (1 << size) - 1;
@@ -1182,29 +1182,27 @@ private:
   //}}}
   //{{{
   void motionVector (int* PMV, int hrSize, int vrSize, int mvScale, int fullPelVector) {
-  // get and decode motion vector and differential motion vector for one prediction */
+  // get and decode motion vector and differential motion vector for one prediction
 
     // horizontal component
-    int motion_code = getMotionCode();
-    int motion_residual = (hrSize != 0 && motion_code != 0) ? getBits (hrSize) : 0;
-    decodeVector (PMV[0], hrSize, motion_code, motion_residual, fullPelVector);
+    int motionCode = getMotionCode();
+    int motionResidual = (hrSize && motionCode) ? getBits (hrSize) : 0;
+    decodeVector (PMV[0], hrSize, motionCode, motionResidual, fullPelVector);
 
     // vertical component
-    motion_code = getMotionCode();
-    motion_residual = (vrSize != 0 && motion_code != 0) ? getBits (vrSize) : 0;
-
     if (mvScale)
       PMV[1] >>= 1;
-    decodeVector (PMV[1], vrSize, motion_code, motion_residual, fullPelVector);
+    motionCode = getMotionCode();
+    motionResidual = (vrSize && motionCode) ? getBits (vrSize) : 0;
+    decodeVector (PMV[1], vrSize, motionCode, motionResidual, fullPelVector);
     if (mvScale)
       PMV[1] <<= 1;
     }
   //}}}
   //{{{
-  void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2],
-                      int s, int motionVecCount, int mv_format, int h_r_size, int v_r_size, int mvscale) {
+  void motionVectors (int PMV[2][2][2], int motion_vertical_field_select[2][2], int s, int motionVecCount, int mv_format, 
+                      int h_r_size, int v_r_size, int mvscale) {
 
-    //printf ("motionVectors\n");
     if (motionVecCount == 1) {
       if (mv_format == MV_FIELD) {
         int bits = getBits(1);
