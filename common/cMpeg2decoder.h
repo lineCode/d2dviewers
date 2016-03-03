@@ -494,41 +494,33 @@ public:
   //{{{
   cMpeg2decoder() {
 
-    block[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
+    mBlock[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
     for (int i = 1; i < 6; i++)
-      block[i] = block[i-1] + 128;
+      mBlock[i] = mBlock[i-1] + 128;
 
     for (int i = 0; i < 3; i++) {
-      auxframe[i] = nullptr;
-      current_frame[i] = nullptr;
-      forward_reference_frame[i] = nullptr;
-      backward_reference_frame[i] = nullptr;
-      }
-
-    for (int i = 0; i < 64; i++) {
-      intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
-      chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
-      non_intra_quantizer_matrix[i] = 16;
-      chroma_non_intra_quantizer_matrix[i] = 16;
+      mAuxFrame[i] = nullptr;
+      mCurrentFrame[i] = nullptr;
+      mForwardRefFrame[i] = nullptr;
+      mBackwardRefFrame[i] = nullptr;
       }
     }
   //}}}
   //{{{
   ~cMpeg2decoder() {
 
-    // deallocate buffers
     for (int i = 0; i < 3; i++) {
-      _aligned_free (backward_reference_frame[i]);
-      _aligned_free (forward_reference_frame[i]);
-      _aligned_free (auxframe[i]);
+      _aligned_free (mBackwardRefFrame[i]);
+      _aligned_free (mForwardRefFrame[i]);
+      _aligned_free (mAuxFrame[i]);
       }
 
-    _aligned_free (block[0]);
+    _aligned_free (mBlock[0]);
     }
   //}}}
   //{{{
   cYuvFrame* getYuvFrame (int i) {
-    return  &mYuvFrames[i];
+    return &mYuvFrames[i];
     }
   //}}}
   //{{{
@@ -555,6 +547,7 @@ public:
 
     for (auto i= 0; i < maxVidFrames; i++)
       mYuvFrames[i].invalidate();
+
     mLoadVidFrame = 0;
     }
   //}}}
@@ -576,9 +569,9 @@ public:
           //{{{  allocate buffers from sequenceHeader width, height
           for (int i = 0; i < 3; i++) {
             int size = (i == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
-            auxframe[i] = (uint8_t*)_aligned_malloc (size, 128);
-            forward_reference_frame[i] = (uint8_t*)_aligned_malloc (size, 128);
-            backward_reference_frame[i] = (uint8_t*)_aligned_malloc (size, 128);
+            mAuxFrame[i] = (uint8_t*)_aligned_malloc (size, 128);
+            mForwardRefFrame[i] = (uint8_t*)_aligned_malloc (size, 128);
+            mBackwardRefFrame[i] = (uint8_t*)_aligned_malloc (size, 128);
             }
           mGotSequenceHeader = true;
           //}}}
@@ -599,13 +592,13 @@ public:
       // - since any subsequent B pictures will use the previously decoded I or P frame as the backward_reference_frame
       //}}}
       for (int i = 0; i < 3; i++)
-        if (picture_coding_type == B_TYPE)
-          current_frame[i] = auxframe[i];
+        if (mPictureCodingType == B_TYPE)
+          mCurrentFrame[i] = mAuxFrame[i];
         else {
-          uint8_t* tmp = forward_reference_frame[i];
-          forward_reference_frame[i] = backward_reference_frame[i];
-          backward_reference_frame[i] = tmp;
-          current_frame[i] = backward_reference_frame[i];
+          uint8_t* tmp = mForwardRefFrame[i];
+          mForwardRefFrame[i] = mBackwardRefFrame[i];
+          mBackwardRefFrame[i] = tmp;
+          mCurrentFrame[i] = mBackwardRefFrame[i];
           }
 
       decodeSlices();
@@ -613,8 +606,8 @@ public:
       // reorderFrames write or display current or previously decoded reference frame
       int32_t linesize[2] = { mWidth,  mChromaWidth};
       mYuvFrames[mLoadVidFrame % maxVidFrames].set (vidPts,
-        (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
-        mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), picture_coding_type);
+        (mPictureCodingType == B_TYPE) ? mAuxFrame : mForwardRefFrame, linesize,
+        mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), mPictureCodingType);
       mLoadVidFrame++;
       pesPtr = mBufferPtr - 4;
       return true;
@@ -664,19 +657,19 @@ private:
   //{{{
   void picture_coding_extension() {
 
-    f_code[0][0] = getBits(4);
-    f_code[0][1] = getBits(4);
-    f_code[1][0] = getBits(4);
-    f_code[1][1] = getBits(4);
+    mFcode[0][0] = getBits(4);
+    mFcode[0][1] = getBits(4);
+    mFcode[1][0] = getBits(4);
+    mFcode[1][1] = getBits(4);
 
-    intra_dc_precision    = getBits(2);
-    picture_structure     = getBits(2);
-    top_field_first       = getBits(1);
-    frame_pred_frame_dct  = getBits(1);
-    concealmentMotionVecs = getBits(1);
-    qScaleType            = getBits(1);
-    intra_vlc_format      = getBits(1);
-    alternate_scan        = getBits(1);
+    mIntraDcPrecision      = getBits(2);
+    auto picture_structure = getBits(2);
+    auto top_field_first   = getBits(1);
+    mFramePredFrameDct     = getBits(1);
+    mConcealmentMotionVecs = getBits(1);
+    qScaleType             = getBits(1);
+    mIntraVlcFormat        = getBits(1);
+    mAlternateScan         = getBits(1);
     }
   //}}}
   //{{{
@@ -722,18 +715,18 @@ private:
   //{{{
   void pictureHeader() {
 
-    temporal_reference = getBits (10);
-    picture_coding_type = getBits (3);
-    int32_t vbv_delay = getBits (16);
+    auto temporal_reference = getBits (10);
+    mPictureCodingType = getBits (3);
+    auto  vbv_delay = getBits (16);
 
-    if (picture_coding_type == P_TYPE || picture_coding_type == B_TYPE) {
-      full_pel_forward_vector = getBits(1);
-      forward_f_code = getBits(3);
+    if (mPictureCodingType == P_TYPE || mPictureCodingType == B_TYPE) {
+      auto fullPelForwardVector = getBits(1);
+      auto forwardFcode = getBits(3);
       }
 
-    if (picture_coding_type == B_TYPE) {
-      full_pel_backward_vector = getBits(1);
-      backward_f_code = getBits(3);
+    if (mPictureCodingType == B_TYPE) {
+      auto fullPelBackwardVector = getBits(1);
+      auto backwardFcode = getBits(3);
       }
 
     // consume extraBytes
@@ -742,10 +735,6 @@ private:
       consumeBits (8);
       Extra_Information_Byte_Count++;
       }
-
-    //printf ("pic tr:%d pc:%d vbv:%d ffc:%d bfc:%d\n",
-    //        temporal_reference, picture_coding_type , vbv_delay, forward_f_code, backward_f_code);
-
     extension_and_user_data();
     }
   //}}}
@@ -753,14 +742,14 @@ private:
   void sliceHeader() {
 
     auto quantizerScaleCode = getBits (5);
-    quantizerScale = qScaleType ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
+    mQuantizerScale = qScaleType ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
 
     auto slice_picture_id_enable = 0;
     auto slice_picture_id = 0;
     auto extra_information_slice = 0;
 
     if (getBits(1)) {
-      intra_slice = getBits (1);
+      auto mIntraSlice = getBits (1);
       slice_picture_id_enable = getBits (1);
       slice_picture_id = getBits (6);
       extra_information_slice = 0;
@@ -769,8 +758,6 @@ private:
         extra_information_slice++;
         }
       }
-    else
-      intra_slice = 0;
     }
   //}}}
   //{{{
@@ -807,7 +794,7 @@ private:
   //{{{
   int getMacroBlockType() {
 
-    switch (picture_coding_type) {
+    switch (mPictureCodingType) {
       case I_TYPE:
         if (getBits (1))
           return 1;
@@ -921,8 +908,8 @@ private:
     // get frame/field motion type
     motionType = 0;
     if (mBtype & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_MOTION_BACKWARD))
-      motionType = frame_pred_frame_dct ? MC_FRAME : getBits(2);
-    else if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
+      motionType = mFramePredFrameDct ? MC_FRAME : getBits(2);
+    else if ((mBtype & MACROBLOCK_INTRA) && mConcealmentMotionVecs)
       motionType = MC_FRAME;
 
     // derive motionVecCount, mv_format and dmv
@@ -933,7 +920,7 @@ private:
     mvScale = mvFormat == MV_FIELD;
 
     // get dctType (frame DCT / field DCT)
-    dctType = (!frame_pred_frame_dct) && (mBtype & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
+    dctType = (!mFramePredFrameDct) && (mBtype & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
     }
   //}}}
 
@@ -1002,20 +989,20 @@ private:
       val = (dcDctPred[2] += getChromaDCdctDiff());
 
     // decode AC coefficients
-    block[comp][0] = val << (3 - intra_dc_precision);
+    mBlock[comp][0] = val << (3 - mIntraDcPrecision);
     for (auto i = 1; ; i++) {
       const DCTtab* tab;
       uint32_t code = peekBits (16);
-      if (code >= 16384 && !intra_vlc_format)
+      if (code >= 16384 && !mIntraVlcFormat)
         tab = &DCTtabnext[(code >> 12) - 4];
       else if (code >= 1024) {
-        if (intra_vlc_format)
+        if (mIntraVlcFormat)
           tab = &DCTtab0a[(code >> 8) - 4];
         else
           tab = &DCTtab0[(code >> 8) - 4];
         }
       else if (code >= 512) {
-        if (intra_vlc_format)
+        if (mIntraVlcFormat)
           tab = &DCTtab1a[(code >> 6) - 8];
         else
           tab = &DCTtab1[(code >> 6) - 8];
@@ -1068,9 +1055,9 @@ private:
         }
         //}}}
 
-      auto j = scan [alternate_scan][i];
-      val = (val * quantizerScale * intra_quantizer_matrix[j]) >> 4;
-      block[comp][j] = sign ? -val : val;
+      auto j = scan [mAlternateScan][i];
+      val = (val * mQuantizerScale * default_intra_quantizer_matrix[j]) >> 4;
+      mBlock[comp][j] = sign ? -val : val;
       }
     }
   //}}}
@@ -1138,9 +1125,9 @@ private:
         }
         //}}}
 
-      auto j = scan [alternate_scan][i];
-      val = (((val << 1) + 1) * quantizerScale * non_intra_quantizer_matrix [j]) >> 5;
-      block[comp][j] = sign ? -val : val;
+      auto j = scan [mAlternateScan][i];
+      val = (((val << 1) + 1) * mQuantizerScale * 16) >> 5;
+      mBlock[comp][j] = sign ? -val : val;
       }
     }
   //}}}
@@ -1264,7 +1251,7 @@ private:
 
     int srcOffset = (sfield ? lx2 >> 1 : 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
     uint8_t* sY = src[0] + srcOffset;
-    uint8_t* dY = current_frame[0] + (dfield ? lx2 >> 1 : 0) + lx * y + x;
+    uint8_t* dY = mCurrentFrame[0] + (dfield ? lx2 >> 1 : 0) + lx * y + x;
     switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
       //{{{
       case 0: { // d[i] = s[i];
@@ -1395,9 +1382,9 @@ private:
     int sOffset = (sfield ? lx2 >> 1: 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
     int dOffset = (dfield ? lx2 >> 1: 0) + lx * y + x;
     uint8_t* sCr = src[1] + sOffset;
-    uint8_t* dCr = current_frame[1] + dOffset;
+    uint8_t* dCr = mCurrentFrame[1] + dOffset;
     uint8_t* sCb = src[2] + sOffset;
-    uint8_t* dCb = current_frame[2] + dOffset;
+    uint8_t* dCb = mCurrentFrame[2] + dOffset;
 
     switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
   #ifdef _M_IX86
@@ -1683,18 +1670,18 @@ private:
   void formPredictions (int bx, int by, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2]) {
 
     bool average = false;
-    if ((mBtype & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
+    if ((mBtype & MACROBLOCK_MOTION_FORWARD) || mPictureCodingType == P_TYPE) {
       if (motionType == MC_FRAME || !(mBtype & MACROBLOCK_MOTION_FORWARD)) {
         // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
-        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        formPrediction (mForwardRefFrame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        formPrediction (mForwardRefFrame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
         }
       else {
         // top field prediction
-        formPrediction (forward_reference_frame, motionVertField[0][0], 0, mWidth << 1, mWidth << 1, 8,
+        formPrediction (mForwardRefFrame, motionVertField[0][0], 0, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[0][0][0], PMV[0][0][1]>>1, 0);
         // bottom field prediction
-        formPrediction (forward_reference_frame, motionVertField[1][0], 1, mWidth << 1, mWidth << 1, 8,
+        formPrediction (mForwardRefFrame, motionVertField[1][0], 1, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
         }
       average = true;
@@ -1703,15 +1690,15 @@ private:
     if (mBtype & MACROBLOCK_MOTION_BACKWARD) {
       if (motionType == MC_FRAME) {
         // frame-based prediction
-        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
-        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
+        formPrediction (mBackwardRefFrame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
+        formPrediction (mBackwardRefFrame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
         }
       else {
         // top field prediction
-        formPrediction (backward_reference_frame, motionVertField[0][1], 0, mWidth << 1, mWidth << 1, 8,
+        formPrediction (mBackwardRefFrame, motionVertField[0][1], 0, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[0][1][0], PMV[0][1][1]>>1, average);
         // bottom field prediction
-        formPrediction (backward_reference_frame, motionVertField[1][1], 1, mWidth << 1, mWidth << 1, 8,
+        formPrediction (mBackwardRefFrame, motionVertField[1][1], 1, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[1][1][0], PMV[1][1][1]>>1, average);
         }
       }
@@ -1837,18 +1824,18 @@ private:
       if (dctType) {
         // luma field DCT coding
         lineInc = (mWidth << 1) - 8;
-        refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
+        refFramePtr = mCurrentFrame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
         }
       else {
         // luma frame DCT coding
         lineInc = mWidth - 8;
-        refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
+        refFramePtr = mCurrentFrame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
         }
       }
     else {
       // chroma scale coordinates, frame DCT coding
       lineInc = mChromaWidth - 8;
-      refFramePtr = current_frame[(comp & 1) + 1] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
+      refFramePtr = mCurrentFrame[(comp & 1) + 1] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
       }
 
   #ifdef nnn //_M_IX86
@@ -1902,8 +1889,8 @@ private:
       formPredictions (bx, by, mbType, motionType, PMV, motionVertField);
 
     for (int i = 0; i < 6; i++) {
-      idctSSE2 (block[i]);
-      addBlock (block[i], i < 4, i, bx, by, dctType, mbType & MACROBLOCK_INTRA);
+      idctSSE2 (mBlock[i]);
+      addBlock (mBlock[i], i < 4, i, bx, by, dctType, mbType & MACROBLOCK_INTRA);
       }
     }
   //}}}
@@ -1920,14 +1907,14 @@ private:
       }
 
     // decode forward motion vectors
-    if ((mbType & MACROBLOCK_MOTION_FORWARD) || ((mbType & MACROBLOCK_INTRA) && concealmentMotionVecs))
-      motionVectors (PMV, motionVertField, 0, mvCount, mvFormat, f_code[0][0]-1, f_code[0][1]-1, mvScale);
+    if ((mbType & MACROBLOCK_MOTION_FORWARD) || ((mbType & MACROBLOCK_INTRA) && mConcealmentMotionVecs))
+      motionVectors (PMV, motionVertField, 0, mvCount, mvFormat, mFcode[0][0]-1, mFcode[0][1]-1, mvScale);
 
     // decode backward motion vectors
     if (mbType & MACROBLOCK_MOTION_BACKWARD)
-      motionVectors (PMV, motionVertField, 1, mvCount, mvFormat, f_code[1][0]-1, f_code[1][1]-1, mvScale);
+      motionVectors (PMV, motionVertField, 1, mvCount, mvFormat, mFcode[1][0]-1, mFcode[1][1]-1, mvScale);
 
-    if ((mbType & MACROBLOCK_INTRA) && concealmentMotionVecs)
+    if ((mbType & MACROBLOCK_INTRA) && mConcealmentMotionVecs)
       consumeBits (1); // remove marker_bit
 
     // mBpattern ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern
@@ -1938,7 +1925,7 @@ private:
       coded_block_pattern = (mbType & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
 
     // decode blocks
-    memset (block[0], 0, 128 * sizeof(int16_t)*6);
+    memset (mBlock[0], 0, 128 * sizeof(int16_t)*6);
     for (auto i = 0; i < 6; i++)
       if (coded_block_pattern & (1 << (6 - 1 - i)))
         (mbType & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
@@ -1948,14 +1935,14 @@ private:
       dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
 
     // reset motion vector predictors
-    if ((mbType & MACROBLOCK_INTRA) && !concealmentMotionVecs) {
+    if ((mbType & MACROBLOCK_INTRA) && !mConcealmentMotionVecs) {
       // intra mb without concealment motion vectors ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
       }
 
     // special "No_MC" mBtype case prediction in P
-    if ((picture_coding_type == P_TYPE) && !(mbType & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_INTRA))) {
+    if ((mPictureCodingType == P_TYPE) && !(mbType & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_INTRA))) {
       // non-intra mb without forward mv in P
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       motionType = MC_FRAME;
@@ -1987,8 +1974,8 @@ private:
           decodeMacroblock (mBtype, motionType, dctType, PMV, dcDctPred, motionVertField);
         else { // skip macroBlock
           dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
-          memset (block[0], 0, 128 * sizeof(int16_t) * 6);
-          if (picture_coding_type == P_TYPE)
+          memset (mBlock[0], 0, 128 * sizeof(int16_t) * 6);
+          if (mPictureCodingType == P_TYPE)
             PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
           motionType = MC_FRAME;
           mBtype &= ~MACROBLOCK_INTRA;
@@ -2006,21 +1993,16 @@ private:
   //}}}
 
   //{{{  vars
-  int16_t* block[6];
+  int16_t* mBlock[6];
 
-  uint8_t* auxframe[3];
-  uint8_t* current_frame[3];
-  uint8_t* forward_reference_frame[3];
-  uint8_t* backward_reference_frame[3];
+  uint8_t* mAuxFrame[3];
+  uint8_t* mCurrentFrame[3];
+  uint8_t* mForwardRefFrame[3];
+  uint8_t* mBackwardRefFrame[3];
 
   int mLoadVidFrame = 0;
   int mMaxVidFrame = maxVidFrames;
   cYuvFrame mYuvFrames[maxVidFrames];
-
-  int intra_quantizer_matrix[64];
-  int non_intra_quantizer_matrix[64];
-  int chroma_intra_quantizer_matrix[64];
-  int chroma_non_intra_quantizer_matrix[64];
 
   // bitStream
   int8_t mBitCount = 0;
@@ -2037,29 +2019,15 @@ private:
   int mBwidth = 0;
   int mBheight = 0;
 
-  // stuff
-  bool Second_Field = false;
+  // header values
   int qScaleType = 0;
-  int pict_scal = 0;
-  int alternate_scan = 0;
-  int quantizerScale = 0;
-  int intra_slice = 0;
-
-  int temporal_reference = 0;
-  int picture_coding_type = 0;
-
-  int full_pel_forward_vector = 0;
-  int forward_f_code = 0;
-  int full_pel_backward_vector = 0;
-  int backward_f_code = 0;
-
-  int f_code[2][2];
-  int intra_dc_precision = 0;
-  int picture_structure = 0;
-  int top_field_first = 0;
-  int frame_pred_frame_dct = 0;
-  int concealmentMotionVecs = 0;
-  int intra_vlc_format = 0;
-  int progressive = 0;
+  int mAlternateScan = 0;
+  int mQuantizerScale = 0;
+  int mPictureCodingType = 0;
+  int mFcode[2][2];
+  int mIntraDcPrecision = 0;
+  int mFramePredFrameDct = 0;
+  int mConcealmentMotionVecs = 0;
+  int mIntraVlcFormat = 0;
   //}}}
   };
