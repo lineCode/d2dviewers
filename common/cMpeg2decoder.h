@@ -570,11 +570,9 @@ public:
     pesPtr = pesBuffer;
     consumeBits (0);
 
-    if (!mGotSequenceHeader) {
-      // wait for  sequenceHeaderCode
-      while (mBufferPtr < mBufferEnd) {
-        uint32_t code = getHeader (false);
-        if (code == 0x1B3) { // sequenceHeaderCode
+    if (!mGotSequenceHeader)
+      while (mBufferPtr < mBufferEnd)
+        if (getHeader (false) == 0x1B3) { // sequenceHeaderCode
           //{{{  allocate buffers from sequenceHeader width, height
           for (int i = 0; i < 3; i++) {
             int size = (i == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
@@ -583,18 +581,13 @@ public:
             backward_reference_frame[i] = (uint8_t*)_aligned_malloc (size, 128);
             }
           mGotSequenceHeader = true;
+          //}}}
           break;
           }
-          //}}}
-        }
-      }
 
-    // wait for pictureStartCode
-    while (mBufferPtr < mBufferEnd) {
-      uint32_t code = getHeader (true);
-      if (code == 0x100) // pictureStartCode
+    while (mBufferPtr < mBufferEnd)
+      if (getHeader (true) == 0x100) // pictureStartCode
         break;
-      }
 
     if (mBufferPtr < mBufferEnd) {
       //{{{  updatePictureBuffers description
@@ -605,15 +598,15 @@ public:
       // can erase over old backward reference frame since it is not used in a P picture
       // - since any subsequent B pictures will use the previously decoded I or P frame as the backward_reference_frame
       //}}}
-      for (int i = 0; i < 3; i++) {
-        current_frame[i] = (picture_coding_type == B_TYPE) ? auxframe[i] : backward_reference_frame[i];
-        if (picture_coding_type != B_TYPE) {
+      for (int i = 0; i < 3; i++)
+        if (picture_coding_type == B_TYPE)
+          current_frame[i] = auxframe[i];
+        else {
           uint8_t* tmp = forward_reference_frame[i];
           forward_reference_frame[i] = backward_reference_frame[i];
           backward_reference_frame[i] = tmp;
           current_frame[i] = backward_reference_frame[i];
           }
-        }
 
       decodeSlices();
 
@@ -1969,7 +1962,7 @@ private:
     }
   //}}}
   //{{{
-  void motionComp (int MBA, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
+  void motionCompensation (int MBA, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
 
     // derive current macroblock position within picture
     int bx = 16 * (MBA % mBwidth);
@@ -2075,7 +2068,7 @@ private:
         if (!MBAinc) {
           if (peekBits(23) == 0)
             goto getNextStartCode;
-          else 
+          else
             MBAinc = getMacroBlockAddressIncrement();
           }
         if (mFlawFlag)
@@ -2096,7 +2089,8 @@ private:
           motionType = MC_FRAME;
           mBtype &= ~MACROBLOCK_INTRA;
           }
-        motionComp (MBA, mBtype, motionType, PMV, motionVertField, dctType);
+
+        motionCompensation (MBA, mBtype, motionType, PMV, motionVertField, dctType);
         MBAinc--;
         }
       return;
@@ -2108,19 +2102,6 @@ private:
   //}}}
 
   //{{{  vars
-  int8_t mBitCount = 0;
-  uint32_t m32bits = 0;
-  uint8_t* mBufferPtr = NULL;
-  uint8_t* mBufferEnd = NULL;
-  bool mGotSequenceHeader = false;
-
-  int mWidth = 0;
-  int mHeight = 0;
-  int mChromaWidth = 0;
-  int mChromaHeight = 0;
-  int mBwidth = 0;
-  int mBheight = 0;
-
   int16_t* block[6];
 
   uint8_t* auxframe[3];
@@ -2128,11 +2109,31 @@ private:
   uint8_t* forward_reference_frame[3];
   uint8_t* backward_reference_frame[3];
 
+  int mLoadVidFrame = 0;
+  int mMaxVidFrame = maxVidFrames;
+  cYuvFrame mYuvFrames[maxVidFrames];
+
   int intra_quantizer_matrix[64];
   int non_intra_quantizer_matrix[64];
   int chroma_intra_quantizer_matrix[64];
   int chroma_non_intra_quantizer_matrix[64];
 
+  // bitStream
+  int8_t mBitCount = 0;
+  uint32_t m32bits = 0;
+  uint8_t* mBufferPtr = NULL;
+  uint8_t* mBufferEnd = NULL;
+  bool mGotSequenceHeader = false;
+
+  // pic size
+  int mWidth = 0;
+  int mHeight = 0;
+  int mChromaWidth = 0;
+  int mChromaHeight = 0;
+  int mBwidth = 0;
+  int mBheight = 0;
+
+  // stuff
   bool mFlawFlag = 0;
   bool Second_Field = 0;
   int q_scale_type = 0;
@@ -2157,9 +2158,5 @@ private:
   int concealmentMotionVecs = 0;
   int intra_vlc_format = 0;
   int progressive = 0;
-
-  int mLoadVidFrame = 0;
-  int mMaxVidFrame = maxVidFrames;
-  cYuvFrame mYuvFrames[maxVidFrames];
   //}}}
   };
