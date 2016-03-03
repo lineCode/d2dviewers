@@ -496,12 +496,11 @@ public:
   //{{{
   cMpeg2decoder() {
 
-    if (!Clip) {
+    if (!Clip)
       Clip = (uint8_t*)malloc(1024);
-      Clip += 384;
-      for (int i = -384; i < 640; i++)
-        Clip[i] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
-      }
+    Clip += 384;
+    for (int i = -384; i < 640; i++)
+      Clip[i] = (i < 0) ? 0 : ((i > 255) ? 255 : i);
 
     mBlock[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
     for (int i = 1; i < 6; i++)
@@ -1870,35 +1869,38 @@ private:
     //}}}
   #else
     //{{{
-    //if (intra)
-      //for (int j = 0; j < 8; j++) {
-        //for (int i = 0; i < 8; i++)
-          //*refFramePtr++ = *block++ + 128;
-        //refFramePtr += lineInc;
-        //}
-    //else
-      //for (int j = 0; j < 8; j++) {
-        //for (int i = 0; i < 8; i++)
-          //*refFramePtr++ += *block++;
-        //refFramePtr += lineInc;
-        //}
+    if (intra)
+      for (int j = 0; j < 8; j++) {
+        for (int i = 0; i < 8; i++)
+          *refFramePtr++ = *block++ + 128;
+        refFramePtr += lineInc;
+        }
+    else
+      for (int j = 0; j < 8; j++) {
+        for (int i = 0; i < 8; i++)
+          *refFramePtr++ += *block++;
+        refFramePtr += lineInc;
+        }
     //}}}
+
     //{{{
-    if (intra) {
-      for (int j = 0; j < 8; j++) {
-        for (int i = 0; i < 8; i++)
-          *refFramePtr++ = Clip [*block++ + 128];
-        refFramePtr += lineInc;
-        }
-      }
-    else {
-      for (int j = 0; j < 8; j++) {
-        for (int i = 0; i < 8; i++)
-          *refFramePtr++ = Clip [*block++ + *refFramePtr];
-        refFramePtr += lineInc;
-        }
-      }
+    //short* src = block;
+    //if (intra) {
+      //for (int j = 0; j < 8; j++) {
+        //for (int i = 0; i < 8; i++)
+          //*refFramePtr++ = Clip [*src++ + 128];
+        //refFramePtr += lineInc;
+        //}
+      //}
+    //else {
+      //for (int j = 0; j < 8; j++) {
+        //for (int i = 0; i < 8; i++)
+          //*refFramePtr++ = Clip [*src++ + *refFramePtr];
+        //refFramePtr += lineInc;
+        //}
+      //}
     //}}}
+
   #endif
     }
   //}}}
