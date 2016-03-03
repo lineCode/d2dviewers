@@ -674,7 +674,7 @@ private:
     top_field_first       = getBits(1);
     frame_pred_frame_dct  = getBits(1);
     concealmentMotionVecs = getBits(1);
-    q_scale_type          = getBits(1);
+    qScaleType            = getBits(1);
     intra_vlc_format      = getBits(1);
     alternate_scan        = getBits(1);
     }
@@ -753,7 +753,7 @@ private:
   void sliceHeader() {
 
     auto quantizerScaleCode = getBits (5);
-    quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
+    quantizerScale = qScaleType ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
 
     auto slice_picture_id_enable = 0;
     auto slice_picture_id = 0;
@@ -811,10 +811,8 @@ private:
       case I_TYPE:
         if (getBits (1))
           return 1;
-        if (!getBits (1)) {
+        if (!getBits (1))
           printf ("getMacroblockType - invalid mBtype code\n");
-          mFlawFlag = true;
-          }
         return 17;
 
       case P_TYPE: {
@@ -826,7 +824,6 @@ private:
           }
         if (code == 0) {
           printf ("getMacroblockType - invalid mBtype code\n");
-          mFlawFlag = true;
           return 0;
           }
 
@@ -843,7 +840,6 @@ private:
           }
         if (code == 0) {
           printf ("getMacroblockType - invalid mBtype code\n");
-          mFlawFlag = true;
           return 0;
           }
         consumeBits(BMBtab1[code].len);
@@ -872,7 +868,6 @@ private:
       }
     if (code < 1) {
       printf ("getCodedBlockPattern - invalid coded_block_pattern code\n");
-      mFlawFlag = true;
       return 0;
       }
 
@@ -892,7 +887,6 @@ private:
           val += 33;
         else {
           printf ("getMacroBlockAddressInc - invalid mBaddressInc code\n");
-          mFlawFlag = true;
           return 1;
           }
         }
@@ -923,8 +917,6 @@ private:
   void macroBlockModes (int& mBtype, int& motionType, int& mvCount, int& mvFormat, int& mvScale, int& dctType) {
 
     mBtype = getMacroBlockType();
-    if (mFlawFlag)
-      return;
 
     // get frame/field motion type
     motionType = 0;
@@ -1008,8 +1000,6 @@ private:
       val = (dcDctPred[1] += getChromaDCdctDiff());
     else
       val = (dcDctPred[2] += getChromaDCdctDiff());
-    if (mFlawFlag)
-      return;
 
     // decode AC coefficients
     block[comp][0] = val << (3 - intra_dc_precision);
@@ -1043,7 +1033,6 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Intra_Block() code:%d %d \n", code, mBitCount);
-        mFlawFlag = true;
         return;
         }
         //}}}
@@ -1059,7 +1048,6 @@ private:
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          mFlawFlag = true;
           return;
           }
 
@@ -1076,13 +1064,12 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (intra2)\n");
-        mFlawFlag = true;
         return;
         }
         //}}}
 
       auto j = scan [alternate_scan][i];
-      val = (val * quantizer_scale * intra_quantizer_matrix[j]) >> 4;
+      val = (val * quantizerScale * intra_quantizer_matrix[j]) >> 4;
       block[comp][j] = sign ? -val : val;
       }
     }
@@ -1116,7 +1103,6 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
-        mFlawFlag = true;
         return;
         }
         //}}}
@@ -1132,7 +1118,6 @@ private:
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          mFlawFlag = true;
           return;
           }
 
@@ -1149,13 +1134,12 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (inter2)\n");
-        mFlawFlag = true;
         return;
         }
         //}}}
 
       auto j = scan [alternate_scan][i];
-      val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
+      val = (((val << 1) + 1) * quantizerScale * non_intra_quantizer_matrix [j]) >> 5;
       block[comp][j] = sign ? -val : val;
       }
     }
@@ -1181,7 +1165,6 @@ private:
       }
 
     if ((code -= 12) < 0) {
-      mFlawFlag = true;
       return 0;
       }
 
@@ -1908,79 +1891,71 @@ private:
     }
   //}}}
   //{{{
-  void motionCompensation (int MBA, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
+  void motionCompensation (int mbAddress, int mbType, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
 
     // derive current macroblock position within picture
-    int bx = 16 * (MBA % mBwidth);
-    int by = 16 * (MBA / mBwidth);
+    int bx = 16 * (mbAddress % mBwidth);
+    int by = 16 * (mbAddress / mBwidth);
 
     // motion compensation
-    if (!(mBtype & MACROBLOCK_INTRA))
-      formPredictions (bx, by, mBtype, motionType, PMV, motionVertField);
+    if (!(mbType & MACROBLOCK_INTRA))
+      formPredictions (bx, by, mbType, motionType, PMV, motionVertField);
 
     for (int i = 0; i < 6; i++) {
       idctSSE2 (block[i]);
-      addBlock (block[i], i < 4, i, bx, by, dctType, mBtype & MACROBLOCK_INTRA);
+      addBlock (block[i], i < 4, i, bx, by, dctType, mbType & MACROBLOCK_INTRA);
       }
     }
   //}}}
   //{{{
-  void decodeMacroblock (int& mBtype, int& motionType, int& dctType, int PMV[2][2][2], int dcDctPred[3], int motionVertField[2][2]) {
+  void decodeMacroblock (int& mbType, int& motionType, int& dctType, int PMV[2][2][2], int dcDctPred[3], int motionVertField[2][2]) {
 
     int mvCount, mvFormat, mvScale;
-    macroBlockModes (mBtype, motionType, mvCount, mvFormat, mvScale, dctType);
-    if (mFlawFlag)
-      return;
+    macroBlockModes (mbType, motionType, mvCount, mvFormat, mvScale, dctType);
 
     int quantizerScaleCode;
-    if (mBtype & MACROBLOCK_QUANT) {
-      quantizerScaleCode = getBits(5);
-      quantizerScaleCode = q_scale_type ? Non_Linear_quantizer_scale[quantizerScaleCode] : (quantizerScaleCode << 1);
+    if (mbType & MACROBLOCK_QUANT) {
+      quantizerScaleCode = getBits (5);
+      quantizerScaleCode = qScaleType ? Non_Linear_quantizer_scale[quantizerScaleCode] : (quantizerScaleCode << 1);
       }
 
     // decode forward motion vectors
-    if ((mBtype & MACROBLOCK_MOTION_FORWARD) || ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs))
+    if ((mbType & MACROBLOCK_MOTION_FORWARD) || ((mbType & MACROBLOCK_INTRA) && concealmentMotionVecs))
       motionVectors (PMV, motionVertField, 0, mvCount, mvFormat, f_code[0][0]-1, f_code[0][1]-1, mvScale);
-    if (mFlawFlag)
-      return;
 
     // decode backward motion vectors
-    if (mBtype & MACROBLOCK_MOTION_BACKWARD)
+    if (mbType & MACROBLOCK_MOTION_BACKWARD)
       motionVectors (PMV, motionVertField, 1, mvCount, mvFormat, f_code[1][0]-1, f_code[1][1]-1, mvScale);
-    if (mFlawFlag)
-      return;
 
-    if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
+    if ((mbType & MACROBLOCK_INTRA) && concealmentMotionVecs)
       consumeBits (1); // remove marker_bit
 
     // mBpattern ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern
     int coded_block_pattern;
-    if (mBtype & MACROBLOCK_PATTERN)
+    if (mbType & MACROBLOCK_PATTERN)
       coded_block_pattern = getCodedBlockPattern();
     else
-      coded_block_pattern = (mBtype & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
-    if (mFlawFlag)
-      return;
+      coded_block_pattern = (mbType & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
 
     // decode blocks
     memset (block[0], 0, 128 * sizeof(int16_t)*6);
     for (auto i = 0; i < 6; i++)
       if (coded_block_pattern & (1 << (6 - 1 - i)))
-        (mBtype & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
+        (mbType & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
 
     // reset intra_dc predictors ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
-    if (!(mBtype & MACROBLOCK_INTRA))
+    if (!(mbType & MACROBLOCK_INTRA))
       dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
 
     // reset motion vector predictors
-    if ((mBtype & MACROBLOCK_INTRA) && !concealmentMotionVecs) {
+    if ((mbType & MACROBLOCK_INTRA) && !concealmentMotionVecs) {
       // intra mb without concealment motion vectors ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
       }
 
     // special "No_MC" mBtype case prediction in P
-    if ((picture_coding_type == P_TYPE) && !(mBtype & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_INTRA))) {
+    if ((picture_coding_type == P_TYPE) && !(mbType & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_INTRA))) {
       // non-intra mb without forward mv in P
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       motionType = MC_FRAME;
@@ -2063,12 +2038,11 @@ private:
   int mBheight = 0;
 
   // stuff
-  bool mFlawFlag = false;
   bool Second_Field = false;
-  int q_scale_type = 0;
+  int qScaleType = 0;
   int pict_scal = 0;
   int alternate_scan = 0;
-  int quantizer_scale = 0;
+  int quantizerScale = 0;
   int intra_slice = 0;
 
   int temporal_reference = 0;
