@@ -28,7 +28,7 @@ class cDecodeTransportStream : public cTransportStream {
 public:
   //{{{
   cDecodeTransportStream() {
-    for (auto i = 0; i < 10; i++) 
+    for (auto i = 0; i < 10; i++)
       mMpeg2decoders[i] = nullptr;
     }
   //}}}
@@ -312,7 +312,6 @@ protected:
         }
 
       case 27:
-         printf ("HD decodeVidPes %d\n", pidInfo->mPid);
         if (pidInfo->mPid == mSelectedVidPid) {
           if (!vidParser) {
             //{{{  allocate decoder
@@ -533,7 +532,7 @@ void onDraw (ID2D1DeviceContext* dc) {
     if (makeBitmap (mTs.mMpeg2decoders[i]->getNearestVidFrame (mAudPts), mBitmaps[i], mBitmapPts))
       dc->DrawBitmap (mBitmaps[i],
         RectF ((i%3) * getClientF().width/6, (i/3) * getClientF().height/6,
-               ((i%3)+1) * getClientF().width/6, ((i/3)+1) * getClientF().height/6));
+               (((i%3)+1) * getClientF().width/6) - 4, (((i/3)+1) * getClientF().height/6) - 4));
 
   auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
   dc->FillRectangle (rMid, getGreyBrush());

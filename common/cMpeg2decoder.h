@@ -562,11 +562,12 @@ public:
   bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, int64_t vidPts, uint8_t*& pesPtr) {
   // decode a frame of video, usually a pes packet
 
-    m32bits = 0;
-    mBitCount = 0;
     mBufferPtr = pesBuffer;
     mBufferEnd = pesBufferEnd;
     pesPtr = pesBuffer;
+
+    m32bits = 0;
+    mBitCount = 0;
     consumeBits (0);
 
     if (!mGotSequenceHeader)
@@ -659,6 +660,7 @@ private:
     return m32bits;
     }
   //}}}
+
   //{{{
   void picture_coding_extension() {
 
@@ -679,7 +681,7 @@ private:
     auto chroma_420_type  = getBits(1);
     progressive           = getBits(1);
 
-    int composite_display_flag  = getBits(1);
+    auto composite_display_flag  = getBits(1);
     if (composite_display_flag) {
       auto v_axis            = getBits(1);
       auto field_sequence    = getBits(3);
@@ -748,7 +750,6 @@ private:
   //{{{
   void pictureHeader() {
 
-    /* unless later overwritten by picture_spatial_scalable_extension() */
     temporal_reference = getBits (10);
     picture_coding_type = getBits (3);
     int32_t vbv_delay = getBits (16);
@@ -779,12 +780,13 @@ private:
   //{{{
   void sliceHeader() {
 
-    int quantizerScaleCode = getBits (5);
+    auto quantizerScaleCode = getBits (5);
     quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
 
-    int slice_picture_id_enable = 0;
-    int slice_picture_id = 0;
-    int extra_information_slice = 0;
+    auto slice_picture_id_enable = 0;
+    auto slice_picture_id = 0;
+    auto extra_information_slice = 0;
+
     if (getBits(1)) {
       intra_slice = getBits (1);
       slice_picture_id_enable = getBits (1);
@@ -838,8 +840,8 @@ private:
         if (getBits (1))
           return 1;
         if (!getBits (1)) {
-          printf ("getMacroblockType Invalid mBtype code\n");
-          mFlawFlag = 1;
+          printf ("getMacroblockType - invalid mBtype code\n");
+          mFlawFlag = true;
           }
         return 17;
 
@@ -851,8 +853,8 @@ private:
           return PMBtab0[code].val;
           }
         if (code == 0) {
-          printf ("getMacroblockType Invalid mBtype code\n");
-          mFlawFlag = 1;
+          printf ("getMacroblockType - invalid mBtype code\n");
+          mFlawFlag = true;
           return 0;
           }
 
@@ -868,8 +870,8 @@ private:
           return BMBtab0[code].val;
           }
         if (code == 0) {
-          printf ("getMacroblockType Invalid mBtype code\n");
-          mFlawFlag = 1;
+          printf ("getMacroblockType - invalid mBtype code\n");
+          mFlawFlag = true;
           return 0;
           }
         consumeBits(BMBtab1[code].len);
@@ -877,7 +879,7 @@ private:
         }
 
       default:
-        printf ("getMacroblockType unrecognized picture coding type\n");
+        printf ("getMacroblockType - unrecognized picture coding type\n");
         return 0;
       }
     }
@@ -885,7 +887,7 @@ private:
   //{{{
   int getCodedBlockPattern() {
 
-    int code = peekBits(9);
+    auto code = peekBits(9);
     if (code >= 128) {
       code >>= 4;
       consumeBits (CBPtab0[code].len);
@@ -897,8 +899,8 @@ private:
       return CBPtab1[code].val;
       }
     if (code < 1) {
-      printf ("getCodedBlockPattern - Invalid coded_block_pattern code\n");
-      mFlawFlag = 1;
+      printf ("getCodedBlockPattern - invalid coded_block_pattern code\n");
+      mFlawFlag = true;
       return 0;
       }
 
@@ -907,7 +909,7 @@ private:
     }
   //}}}
   //{{{
-  int getMacroBlockAddressIncrement() {
+  int getMacroBlockAddressInc() {
 
     int val = 0;
 
@@ -917,15 +919,15 @@ private:
         if (code == 8)  // if mBescape
           val += 33;
         else {
-          printf ("getMacroBlockAddressIncrement - invalid mBaddress_increment code\n");
-          mFlawFlag = 1;
+          printf ("getMacroBlockAddressInc - invalid mBaddressInc code\n");
+          mFlawFlag = true;
           return 1;
           }
         }
       consumeBits (11);
       }
 
-    // mBaddress_increment == 1 ('1' is in the MSB position of the lookahead)
+    // mBaddress_inc == 1 ('1' is in the MSB position of the lookahead)
     if (code >= 1024) {
       consumeBits (1);
       return val + 1;
@@ -948,34 +950,25 @@ private:
   //{{{
   void macroBlockModes (int& mBtype, int& motionType, int& mvCount, int& mvFormat, int& mvScale, int& dctType) {
 
-    motionType = 0;
-
-    /* get mBtype */
     mBtype = getMacroBlockType();
-
     if (mFlawFlag)
       return;
 
-    /* get frame/field motion type */
+    // get frame/field motion type
+    motionType = 0;
     if (mBtype & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_MOTION_BACKWARD))
       motionType = frame_pred_frame_dct ? MC_FRAME : getBits(2);
     else if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
-      /* concealment motion vectors */
       motionType = MC_FRAME;
 
-    /* derive motionVecCount, mv_format and dmv, (table 6-17, 6-18) */
+    // derive motionVecCount, mv_format and dmv
     mvCount = (motionType == MC_FIELD) ? 2 : 1;
     mvFormat = (motionType == MC_FRAME) ? MV_FRAME : MV_FIELD;
 
-    /* field mv predictions in frame pictures have to be scaled
-     * ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
-     * IMPLEMENTATION: mvscale is derived for later use in motion_vectors()
-     * it displaces the stage:
-     *    if((mv_format=="field")&&(t==1)&&(picture_structure=="Frame picture"))
-     *      prediction = PMV[r][s][t] DIV 2; */
+    // field mv predictions in frame pictures have to be scaled
     mvScale = mvFormat == MV_FIELD;
 
-    /* get dctType (frame DCT / field DCT) */
+    // get dctType (frame DCT / field DCT)
     dctType = (!frame_pred_frame_dct) && (mBtype & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
     }
   //}}}
@@ -984,27 +977,23 @@ private:
   int getLumaDCdctDiff() {
   // parse VLC and perform dct_diff arithmetic.
 
-    // decode length
-    int code = peekBits(5);
-
     int size;
+    auto code = peekBits (5);
     if (code < 31) {
       size = DClumtab0[code].val;
       consumeBits (DClumtab0[code].len);
       }
     else {
-      code = peekBits(9) - 0x1f0;
+      code = peekBits (9) - 0x1f0;
       size = DClumtab1[code].val;
       consumeBits (DClumtab1[code].len);
       }
 
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
+    int dct_diff = 0;
+    if (!size == 0) {
       dct_diff = getBits (size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
+      if ((dct_diff & (1 << (size - 1))) == 0)
+        dct_diff -= (1 << size) - 1;
       }
 
     return dct_diff;
@@ -1013,26 +1002,23 @@ private:
   //{{{
   int getChromaDCdctDiff() {
 
-    // decode length
     int size;
-    int code = peekBits (5);
-    if (code<31) {
+    auto code = peekBits (5);
+    if (code < 31) {
       size = DCchromtab0[code].val;
       consumeBits (DCchromtab0[code].len);
       }
     else {
-      code = peekBits(10) - 0x3e0;
+      code = peekBits (10) - 0x3e0;
       size = DCchromtab1[code].val;
       consumeBits (DCchromtab1[code].len);
       }
 
-    int dct_diff;
-    if (size == 0)
-      dct_diff = 0;
-    else {
-      dct_diff = getBits(size);
-      if ((dct_diff & (1<<(size-1)))==0)
-        dct_diff-= (1<<size) - 1;
+    int dct_diff = 0;
+    if (!size == 0) {
+      dct_diff = getBits (size);
+      if ((dct_diff & (1 << (size - 1))) == 0)
+        dct_diff -= (1 << size) - 1;
       }
 
     return dct_diff;
@@ -1041,10 +1027,9 @@ private:
   //{{{
   void decodeIntraBlock (int comp, int dcDctPred[]) {
 
-    int val, sign, run;
-
     // decode DC coefficients
-    int cc = (comp < 4) ? 0 : (comp & 1) + 1;
+    int val;
+    auto cc = (comp < 4) ? 0 : (comp & 1) + 1;
     if (cc == 0)
       val = (dcDctPred[0] += getLumaDCdctDiff());
     else if (cc == 1)
@@ -1056,7 +1041,7 @@ private:
 
     // decode AC coefficients
     block[comp][0] = val << (3 - intra_dc_precision);
-    for (int i = 1; ; i++) {
+    for (auto i = 1; ; i++) {
       const DCTtab* tab;
       uint32_t code = peekBits (16);
       if (code >= 16384 && !intra_vlc_format)
@@ -1086,7 +1071,7 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Intra_Block() code:%d %d \n", code, mBitCount);
-        mFlawFlag = 1;
+        mFlawFlag = true;
         return;
         }
         //}}}
@@ -1095,21 +1080,23 @@ private:
       if (tab->run == 64) // end_of_block
         return;
 
+      int sign, run;
       if (tab->run == 65) {
         //{{{  escape
         i += run = getBits (6);
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          mFlawFlag = 1;
+          mFlawFlag = true;
           return;
           }
+
         if ((sign = (val >= 2048)))
           val = 4096 - val;
         }
         //}}}
       else {
-        i+= run = tab->run;
+        i += run = tab->run;
         val = tab->level;
         sign = getBits (1);
       }
@@ -1117,12 +1104,12 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (intra2)\n");
-        mFlawFlag = 1;
+        mFlawFlag = true;
         return;
         }
         //}}}
 
-      uint8_t j = scan [alternate_scan][i];
+      auto j = scan [alternate_scan][i];
       val = (val * quantizer_scale * intra_quantizer_matrix[j]) >> 4;
       block[comp][j] = sign ? -val : val;
       }
@@ -1131,12 +1118,9 @@ private:
   //{{{
   void decodeNonIntraBlock (int comp) {
 
-    int val, sign, run;
-
-    // decode AC coefficients
-    for (int i = 0; ; i++) {
+    for (auto i = 0; ; i++) {
       const DCTtab* tab;
-      uint32_t code = peekBits (16);
+      auto code = peekBits (16);
       if (code >= 16384) {
         if (i == 0)
           tab = &DCTtabfirst[(code>>12)-4];
@@ -1160,7 +1144,7 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
-        mFlawFlag = 1;
+        mFlawFlag = true;
         return;
         }
         //}}}
@@ -1169,15 +1153,17 @@ private:
       if (tab->run == 64) // end_of_block
         return;
 
+      int val, sign, run;
       if (tab->run == 65) {
         //{{{  escape
         i += run = getBits (6);
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          mFlawFlag = 1;
+          mFlawFlag = true;
           return;
           }
+
         if ((sign = (val >= 2048)))
           val = 4096 - val;
         }
@@ -1191,12 +1177,12 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (inter2)\n");
-        mFlawFlag = 1;
+        mFlawFlag = true;
         return;
         }
         //}}}
 
-      uint8_t j = scan [alternate_scan][i];
+      auto j = scan [alternate_scan][i];
       val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
       block[comp][j] = sign ? -val : val;
       }
@@ -1223,7 +1209,7 @@ private:
       }
 
     if ((code -= 12) < 0) {
-      mFlawFlag = 1;
+      mFlawFlag = true;
       return 0;
       }
 
@@ -1232,11 +1218,11 @@ private:
     }
   //}}}
   //{{{
-  void decodeVector (int& pred, int r_size, int motion_code, int motion_residual, int full_pel_vector) {
+  void decodeVector (int& pred, int r_size, int motion_code, int motion_residual, int fullPelVector) {
   // calculate motion vector component
 
     int lim = 16 << r_size;
-    int vec = full_pel_vector ? (pred >> 1) : pred;
+    int vec = fullPelVector ? (pred >> 1) : pred;
 
     if (motion_code > 0) {
       vec += ((motion_code-1) << r_size) + motion_residual + 1;
@@ -1249,17 +1235,17 @@ private:
         vec += lim + lim;
       }
 
-    pred = full_pel_vector ? (vec << 1) : vec;
+    pred = fullPelVector ? (vec << 1) : vec;
     }
   //}}}
   //{{{
-  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int full_pel_vector) {
+  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int fullPelVector) {
   // get and decode motion vector and differential motion vector for one prediction */
 
     // horizontal component
     int motion_code = getMotionCode();
-    int motion_residual = (h_r_size!=0 && motion_code!=0) ? getBits (h_r_size) : 0;
-    decodeVector (PMV[0], h_r_size, motion_code, motion_residual, full_pel_vector);
+    int motion_residual = (h_r_size != 0 && motion_code != 0) ? getBits (h_r_size) : 0;
+    decodeVector (PMV[0], h_r_size, motion_code, motion_residual, fullPelVector);
 
     // vertical component
     motion_code = getMotionCode();
@@ -1267,7 +1253,7 @@ private:
 
     if (mvscale)
       PMV[1] >>= 1;
-    decodeVector (PMV[1], v_r_size, motion_code, motion_residual, full_pel_vector);
+    decodeVector (PMV[1], v_r_size, motion_code, motion_residual, fullPelVector);
     if (mvscale)
       PMV[1] <<= 1;
     }
@@ -2048,7 +2034,7 @@ private:
       sliceHeader();
 
       mFlawFlag = false;
-      int MBAinc = getMacroBlockAddressIncrement();
+      int MBAinc = getMacroBlockAddressInc();
       if (mFlawFlag)
         goto getNextStartCode;
 
@@ -2059,7 +2045,7 @@ private:
           if (peekBits(23) == 0)
             goto getNextStartCode;
           else
-            MBAinc = getMacroBlockAddressIncrement();
+            MBAinc = getMacroBlockAddressInc();
           }
         if (mFlawFlag)
           goto getNextStartCode;
@@ -2124,8 +2110,8 @@ private:
   int mBheight = 0;
 
   // stuff
-  bool mFlawFlag = 0;
-  bool Second_Field = 0;
+  bool mFlawFlag = false;
+  bool Second_Field = false;
   int q_scale_type = 0;
   int pict_scal = 0;
   int alternate_scan = 0;
