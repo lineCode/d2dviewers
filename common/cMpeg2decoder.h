@@ -669,32 +669,14 @@ private:
     f_code[1][0] = getBits(4);
     f_code[1][1] = getBits(4);
 
-    intra_dc_precision   = getBits(2);
-    picture_structure    = getBits(2);
-    top_field_first      = getBits(1);
-    frame_pred_frame_dct = getBits(1);
+    intra_dc_precision    = getBits(2);
+    picture_structure     = getBits(2);
+    top_field_first       = getBits(1);
+    frame_pred_frame_dct  = getBits(1);
     concealmentMotionVecs = getBits(1);
     q_scale_type          = getBits(1);
     intra_vlc_format      = getBits(1);
     alternate_scan        = getBits(1);
-    auto repeat_first_field = getBits(1);
-    auto chroma_420_type  = getBits(1);
-    progressive           = getBits(1);
-
-    auto composite_display_flag  = getBits(1);
-    if (composite_display_flag) {
-      auto v_axis            = getBits(1);
-      auto field_sequence    = getBits(3);
-      auto sub_carrier       = getBits(1);
-      auto burst_amplitude   = getBits(7);
-      auto sub_carrier_phase = getBits(8);
-      }
-
-    //printf ("pex fc:%2d,%2d,%2d,%2d in:%2d ps:%2d tf:%2d fp:%2d con:%2d qs:%2d iv:%2d as:%2d rf:%2d ch:%2d pr:%2d cdf:%2d\n",
-    //  f_code[0][0], f_code[0][1], f_code[1][0], f_code[1][1],
-    //  intra_dc_precision, picture_structure, top_field_first, frame_pred_frame_dct,
-    //  concealmentMotionVecs, q_scale_type, intra_vlc_format, alternate_scan,
-    //  repeat_first_field, chroma_420_type, progressive, composite_display_flag);
     }
   //}}}
   //{{{
@@ -726,16 +708,6 @@ private:
 
     auto horizontal_size = getBits (12);
     auto vertical_size = getBits (12);
-    auto aspect_ratio_information = getBits (4);
-    auto frame_rate_code = getBits (4);
-    auto bit_rate_value = getBits (18);
-    consumeBits (1);
-    auto vbv_buffer_size = getBits (10);
-    auto constrained_parameters_flag = getBits (1);
-
-    //printf ("seq hs:%d :vs%d ar:%d fr:%d br:%d vbv:%d cp:%d \n",
-    //        horizontal_size, vertical_size , aspect_ratio_information, frame_rate_code,
-    //        bit_rate_value, vbv_buffer_size, constrained_parameters_flag);
 
     mBwidth = (horizontal_size + 15) / 16;
     mBheight = 2 * ((vertical_size + 31) / 32);
@@ -1218,19 +1190,19 @@ private:
     }
   //}}}
   //{{{
-  void decodeVector (int& pred, int r_size, int motion_code, int motion_residual, int fullPelVector) {
+  void decodeVector (int& pred, int rSize, int motion_code, int motion_residual, int fullPelVector) {
   // calculate motion vector component
 
-    int lim = 16 << r_size;
+    int lim = 16 << rSize;
     int vec = fullPelVector ? (pred >> 1) : pred;
 
     if (motion_code > 0) {
-      vec += ((motion_code-1) << r_size) + motion_residual + 1;
+      vec += ((motion_code-1) << rSize) + motion_residual + 1;
       if (vec >= lim)
         vec -= lim + lim;
       }
     else if (motion_code < 0) {
-      vec -= ((-motion_code - 1) << r_size) + motion_residual + 1;
+      vec -= ((-motion_code - 1) << rSize) + motion_residual + 1;
       if (vec < -lim)
         vec += lim + lim;
       }
@@ -1239,22 +1211,22 @@ private:
     }
   //}}}
   //{{{
-  void motionVector (int* PMV, int h_r_size, int v_r_size, int mvscale, int fullPelVector) {
+  void motionVector (int* PMV, int hrSize, int vrSize, int mvScale, int fullPelVector) {
   // get and decode motion vector and differential motion vector for one prediction */
 
     // horizontal component
     int motion_code = getMotionCode();
-    int motion_residual = (h_r_size != 0 && motion_code != 0) ? getBits (h_r_size) : 0;
-    decodeVector (PMV[0], h_r_size, motion_code, motion_residual, fullPelVector);
+    int motion_residual = (hrSize != 0 && motion_code != 0) ? getBits (hrSize) : 0;
+    decodeVector (PMV[0], hrSize, motion_code, motion_residual, fullPelVector);
 
     // vertical component
     motion_code = getMotionCode();
-    motion_residual = (v_r_size != 0 && motion_code != 0) ? getBits (v_r_size) : 0;
+    motion_residual = (vrSize != 0 && motion_code != 0) ? getBits (vrSize) : 0;
 
-    if (mvscale)
+    if (mvScale)
       PMV[1] >>= 1;
-    decodeVector (PMV[1], v_r_size, motion_code, motion_residual, fullPelVector);
-    if (mvscale)
+    decodeVector (PMV[1], vrSize, motion_code, motion_residual, fullPelVector);
+    if (mvScale)
       PMV[1] <<= 1;
     }
   //}}}
@@ -1308,10 +1280,6 @@ private:
   //}}}
 
     int srcOffset = (sfield ? lx2 >> 1 : 0) + lx * (y + (dy >> 1)) + x + (dx >> 1);
-    if (srcOffset < 0) {
-      printf ("srcOffset:%d - sfield:%d dx:%d, dy:%d\n", sfield, srcOffset, dx, dy);
-      return;
-      }
     uint8_t* sY = src[0] + srcOffset;
     uint8_t* dY = current_frame[0] + (dfield ? lx2 >> 1 : 0) + lx * y + x;
     switch ((average << 2) + ((dx & 1) << 1) + (dy & 1)) {
@@ -1735,10 +1703,8 @@ private:
     if ((mBtype & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
       if (motionType == MC_FRAME || !(mBtype & MACROBLOCK_MOTION_FORWARD)) {
         // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
-        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
-                        bx, by, PMV[0][0][0], PMV[0][0][1], 0);
-        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8,
-                        bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
+        formPrediction (forward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][0][0], PMV[0][0][1], 0);
         }
       else {
         // top field prediction
@@ -1748,17 +1714,14 @@ private:
         formPrediction (forward_reference_frame, motionVertField[1][0], 1, mWidth << 1, mWidth << 1, 8,
                         bx, by >> 1, PMV[1][0][0], PMV[1][0][1]>>1, 0);
         }
-
       average = true;
       }
 
     if (mBtype & MACROBLOCK_MOTION_BACKWARD) {
       if (motionType == MC_FRAME) {
         // frame-based prediction
-        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
-                        bx, by, PMV[0][1][0], PMV[0][1][1], average);
-        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8,
-                        bx, by, PMV[0][1][0], PMV[0][1][1], average);
+        formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
+        formPrediction (backward_reference_frame, 1, 1, mWidth, mWidth << 1, 8, bx, by, PMV[0][1][0], PMV[0][1][1], average);
         }
       else {
         // top field prediction
@@ -2026,38 +1989,28 @@ private:
   //}}}
   //{{{
   void decodeSlices() {
-  // !!! not understood MBAinc yet !!!
 
     auto code = getStartCode();
     while ((code >= SLICE_START_CODE_MIN) && (code <= SLICE_START_CODE_MAX)) {
       consumeBits (32);
       sliceHeader();
 
-      mFlawFlag = false;
-      int MBAinc = getMacroBlockAddressInc();
-      if (mFlawFlag)
-        goto getNextStartCode;
-
       int dcDctPred[3] = {0,0,0};
       int PMV[2][2][2] = {0,0,0,0,0,0,0,0};
-      for (int MBA = (((code & 255) - 1) * mBwidth) + MBAinc - 1; MBA < (mBwidth * mBheight); MBA++) {
-        if (!MBAinc) {
+
+      int mbAddressInc = getMacroBlockAddressInc();
+      for (int mbAddress = ((code & 255) - 1) * mBwidth; mbAddress < (mBwidth * mBheight); mbAddress++) {
+        if (mbAddressInc == 0) {
           if (peekBits(23) == 0)
             goto getNextStartCode;
           else
-            MBAinc = getMacroBlockAddressInc();
+            mbAddressInc = getMacroBlockAddressInc();
           }
-        if (mFlawFlag)
-          goto getNextStartCode;
 
-        int mBtype, motionType, dctType;
-        int motionVertField[2][2];
-        if (MBAinc == 1) {
+        int mBtype, motionType, dctType, motionVertField[2][2];
+        if (mbAddressInc == 1)
           decodeMacroblock (mBtype, motionType, dctType, PMV, dcDctPred, motionVertField);
-          if (mFlawFlag)
-            goto getNextStartCode;
-          }
-        else { // skip macroblock
+        else { // skip macroBlock
           dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
           memset (block[0], 0, 128 * sizeof(int16_t) * 6);
           if (picture_coding_type == P_TYPE)
@@ -2066,8 +2019,8 @@ private:
           mBtype &= ~MACROBLOCK_INTRA;
           }
 
-        motionCompensation (MBA, mBtype, motionType, PMV, motionVertField, dctType);
-        MBAinc--;
+        motionCompensation (mbAddress, mBtype, motionType, PMV, motionVertField, dctType);
+        mbAddressInc--;
         }
       return;
 
