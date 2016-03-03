@@ -508,10 +508,9 @@ public:
       backward_reference_frame[i] = nullptr;
       }
 
-    // dodgy init of block, single _mm_malloc, multiple pointers to comps
-    block[0] = (int16_t*)_aligned_malloc (6 * 128 * sizeof(int16_t), 128);
+    block[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
     for (int i = 1; i < 6; i++)
-      block[i] = block[0] + (i * 128 *sizeof(int16_t));
+      block[i] = block[i-1] + 128;
     }
   //}}}
   //{{{
@@ -1040,25 +1039,23 @@ private:
     }
   //}}}
   //{{{
-  void decodeIntraBlock (int comp, int dc_dct_pred[]) {
+  void decodeIntraBlock (int comp, int dcDctPred[]) {
 
     int val, sign, run;
 
     // decode DC coefficients
     int cc = (comp < 4) ? 0 : (comp & 1) + 1;
     if (cc == 0)
-      val = (dc_dct_pred[0] += getLumaDCdctDiff());
+      val = (dcDctPred[0] += getLumaDCdctDiff());
     else if (cc == 1)
-      val = (dc_dct_pred[1] += getChromaDCdctDiff());
+      val = (dcDctPred[1] += getChromaDCdctDiff());
     else
-      val = (dc_dct_pred[2] += getChromaDCdctDiff());
-
+      val = (dcDctPred[2] += getChromaDCdctDiff());
     if (mFlawFlag)
       return;
 
-    block[comp][0] = val << (3 - intra_dc_precision);
-
     // decode AC coefficients
+    block[comp][0] = val << (3 - intra_dc_precision);
     for (int i = 1; ; i++) {
       const DCTtab* tab;
       uint32_t code = peekBits (16);
@@ -1127,7 +1124,7 @@ private:
 
       uint8_t j = scan [alternate_scan][i];
       val = (val * quantizer_scale * intra_quantizer_matrix[j]) >> 4;
-      block [comp][j] = sign ? -val : val;
+      block[comp][j] = sign ? -val : val;
       }
     }
   //}}}
@@ -1201,7 +1198,7 @@ private:
 
       uint8_t j = scan [alternate_scan][i];
       val = (((val << 1) + 1) * quantizer_scale * non_intra_quantizer_matrix [j]) >> 5;
-      block [comp][j] = sign ? -val : val;
+      block[comp][j] = sign ? -val : val;
       }
     }
   //}}}
@@ -1972,10 +1969,9 @@ private:
     if (!(mBtype & MACROBLOCK_INTRA))
       formPredictions (bx, by, mBtype, motionType, PMV, motionVertField);
 
-    // copy or add block data into picture
-    for (int comp = 0; comp < 6; comp++) {
-      idctSSE2 (block[comp]);
-      addBlock (block[comp], comp < 4, comp, bx, by, dctType, mBtype & MACROBLOCK_INTRA);
+    for (int i = 0; i < 6; i++) {
+      idctSSE2 (block[i]);
+      addBlock (block[i], i < 4, i, bx, by, dctType, mBtype & MACROBLOCK_INTRA);
       }
     }
   //}}}
@@ -2018,17 +2014,10 @@ private:
       return;
 
     // decode blocks
-    for (auto i = 0; i < 6; i++) {
-      memset (block[i], 0, 128 * sizeof(int16_t));
-      if (coded_block_pattern & (1 << (6 - 1 - i))) {
-        if (mBtype & MACROBLOCK_INTRA)
-          decodeIntraBlock (i, dcDctPred);
-        else
-          decodeNonIntraBlock (i);
-        if (mFlawFlag)
-          return;
-        }
-      }
+    memset (block[0], 0, 128 * sizeof(int16_t)*6);
+    for (auto i = 0; i < 6; i++) 
+      if (coded_block_pattern & (1 << (6 - 1 - i)))
+        (mBtype & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
 
     // reset intra_dc predictors ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
     if (!(mBtype & MACROBLOCK_INTRA))
@@ -2051,6 +2040,7 @@ private:
   //}}}
   //{{{
   void decodeSlices() {
+  // !!! not understood MBAinc yet !!!
 
     auto code = getStartCode();
     while ((code >= SLICE_START_CODE_MIN) && (code <= SLICE_START_CODE_MAX)) {

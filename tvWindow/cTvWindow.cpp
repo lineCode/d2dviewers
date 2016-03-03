@@ -286,8 +286,6 @@ protected:
             }
           }
         }
-      //else
-      //  printf ("* ignore audPes %d %d\n", pidInfo->mPid, pidInfo->mStreamType);
       }
     //else
     //  printf ("**** unrecognised aud streamtype pid:%d type:%d\n", pidInfo->mPid, pidInfo->mStreamType);
@@ -299,7 +297,6 @@ protected:
     switch (pidInfo->mStreamType) {
       case 2:
         if (pidInfo->mPid == mSelectedVidPid) {
-          printf ("SD decodeVidPes %d\n", pidInfo->mPid);
           if (!pidInfo->mDecoder) {
             pidInfo->mDecoder = new cMpeg2decoder();
             mMpeg2decoder[0] = pidInfo->mDecoder;
@@ -313,8 +310,6 @@ protected:
           uint8_t* pesPtr;
           pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, pidInfo->mFakePts, pesPtr);
           }
-        //else
-        //  printf ("* ignere SD vidPes %d %d\n", pidInfo->mPid, pidInfo->mStreamType);
         break;
 
       case 27:
@@ -364,6 +359,7 @@ protected:
           //}}}
           }
         break;
+
       default:
         //printf ("**** unrecognised vid stream type pid:%d type:%d\n", pidInfo->mPid, pidInfo->mStreamType);
         break;
