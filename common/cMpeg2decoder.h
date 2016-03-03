@@ -702,10 +702,10 @@ private:
     auto horizontal_size = getBits (12);
     auto vertical_size = getBits (12);
 
-    mBwidth = (horizontal_size + 15) / 16;
-    mBheight = 2 * ((vertical_size + 31) / 32);
-    mWidth = 16 * mBwidth;
-    mHeight = 16 * mBheight;
+    mMbWidth = (horizontal_size + 15) / 16;
+    mMbHeight = 2 * ((vertical_size + 31) / 32);
+    mWidth = 16 * mMbWidth;
+    mHeight = 16 * mMbHeight;
     mChromaWidth = mWidth >> 1;
     mChromaHeight = mHeight >> 1;
 
@@ -715,9 +715,9 @@ private:
   //{{{
   void pictureHeader() {
 
-    auto temporal_reference = getBits (10);
+    mTemporalReference = getBits (10);
     mPictureCodingType = getBits (3);
-    auto  vbv_delay = getBits (16);
+    auto vbv_delay = getBits (16);
 
     if (mPictureCodingType == P_TYPE || mPictureCodingType == B_TYPE) {
       auto fullPelForwardVector = getBits(1);
@@ -1881,8 +1881,8 @@ private:
   void motionCompensation (int mbAddress, int mbType, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
 
     // derive current macroblock position within picture
-    int bx = 16 * (mbAddress % mBwidth);
-    int by = 16 * (mbAddress / mBwidth);
+    int bx = 16 * (mbAddress % mMbWidth);
+    int by = 16 * (mbAddress / mMbWidth);
 
     // motion compensation
     if (!(mbType & MACROBLOCK_INTRA))
@@ -1961,7 +1961,7 @@ private:
       int PMV[2][2][2] = {0,0,0,0,0,0,0,0};
 
       int mbAddressInc = getMacroBlockAddressInc();
-      for (int mbAddress = ((code & 255) - 1) * mBwidth; mbAddress < (mBwidth * mBheight); mbAddress++) {
+      for (int mbAddress = ((code & 255) - 1) * mMbWidth; mbAddress < (mMbWidth * mMbHeight); mbAddress++) {
         if (mbAddressInc == 0) {
           if (peekBits(23) == 0)
             goto getNextStartCode;
@@ -2016,14 +2016,16 @@ private:
   int mHeight = 0;
   int mChromaWidth = 0;
   int mChromaHeight = 0;
-  int mBwidth = 0;
-  int mBheight = 0;
+  int mMbWidth = 0;
+  int mMbHeight = 0;
 
   // header values
+  int mTemporalReference = 0;
+  int mPictureCodingType = 0;
+
   int qScaleType = 0;
   int mAlternateScan = 0;
   int mQuantizerScale = 0;
-  int mPictureCodingType = 0;
   int mFcode[2][2];
   int mIntraDcPrecision = 0;
   int mFramePredFrameDct = 0;
