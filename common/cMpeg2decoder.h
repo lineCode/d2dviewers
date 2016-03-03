@@ -787,10 +787,9 @@ private:
   //{{{
   void sliceHeader() {
 
-    int quantizer_scale_code = getBits (5);
-    quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : quantizer_scale_code << 1;
+    int quantizerScaleCode = getBits (5);
+    quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizerScaleCode] : quantizerScaleCode << 1;
 
-    /* slice_id introduced in March 1995 as part of the video corridendum (after the IS was drafted in November 1994) */
     int slice_picture_id_enable = 0;
     int slice_picture_id = 0;
     int extra_information_slice = 0;
@@ -848,7 +847,7 @@ private:
           return 1;
         if (!getBits (1)) {
           printf ("getMacroblockType Invalid mBtype code\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           }
         return 17;
 
@@ -861,7 +860,7 @@ private:
           }
         if (code == 0) {
           printf ("getMacroblockType Invalid mBtype code\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           return 0;
           }
 
@@ -878,7 +877,7 @@ private:
           }
         if (code == 0) {
           printf ("getMacroblockType Invalid mBtype code\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           return 0;
           }
         consumeBits(BMBtab1[code].len);
@@ -907,7 +906,7 @@ private:
       }
     if (code < 1) {
       printf ("getCodedBlockPattern - Invalid coded_block_pattern code\n");
-      Flaw_Flag = 1;
+      mFlawFlag = 1;
       return 0;
       }
 
@@ -927,7 +926,7 @@ private:
           val += 33;
         else {
           printf ("getMacroBlockAddressIncrement - invalid mBaddress_increment code\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           return 1;
           }
         }
@@ -955,26 +954,26 @@ private:
     }
   //}}}
   //{{{
-  void macroBlockModes (int& mBtype, int& motion_type, int& motionVecCount, int& mv_format, int& mvscale, int& dct_type) {
+  void macroBlockModes (int& mBtype, int& motionType, int& mvCount, int& mvFormat, int& mvScale, int& dctType) {
 
-    motion_type = 0;
+    motionType = 0;
 
     /* get mBtype */
     mBtype = getMacroBlockType();
 
-    if (Flaw_Flag)
+    if (mFlawFlag)
       return;
 
     /* get frame/field motion type */
     if (mBtype & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_MOTION_BACKWARD))
-      motion_type = frame_pred_frame_dct ? MC_FRAME : getBits(2);
+      motionType = frame_pred_frame_dct ? MC_FRAME : getBits(2);
     else if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
       /* concealment motion vectors */
-      motion_type = MC_FRAME;
+      motionType = MC_FRAME;
 
     /* derive motionVecCount, mv_format and dmv, (table 6-17, 6-18) */
-    motionVecCount = (motion_type == MC_FIELD) ? 2 : 1;
-    mv_format = (motion_type == MC_FRAME) ? MV_FRAME : MV_FIELD;
+    mvCount = (motionType == MC_FIELD) ? 2 : 1;
+    mvFormat = (motionType == MC_FRAME) ? MV_FRAME : MV_FIELD;
 
     /* field mv predictions in frame pictures have to be scaled
      * ISO/IEC 13818-2 section 7.6.3.1 Decoding the motion vectors
@@ -982,10 +981,10 @@ private:
      * it displaces the stage:
      *    if((mv_format=="field")&&(t==1)&&(picture_structure=="Frame picture"))
      *      prediction = PMV[r][s][t] DIV 2; */
-    mvscale = mv_format == MV_FIELD;
+    mvScale = mvFormat == MV_FIELD;
 
-    /* get dct_type (frame DCT / field DCT) */
-    dct_type = (!frame_pred_frame_dct) && (mBtype & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
+    /* get dctType (frame DCT / field DCT) */
+    dctType = (!frame_pred_frame_dct) && (mBtype & (MACROBLOCK_PATTERN | MACROBLOCK_INTRA)) ? getBits(1) : 0;
     }
   //}}}
 
@@ -1061,7 +1060,7 @@ private:
     else
       val = (dc_dct_pred[2] += getChromaDCdctDiff());
 
-    if (Flaw_Flag)
+    if (mFlawFlag)
       return;
 
     block[comp][0] = val << (3 - intra_dc_precision);
@@ -1097,7 +1096,7 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Intra_Block() code:%d %d \n", code, mBitCount);
-        Flaw_Flag = 1;
+        mFlawFlag = 1;
         return;
         }
         //}}}
@@ -1112,7 +1111,7 @@ private:
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           return;
           }
         if ((sign = (val >= 2048)))
@@ -1128,7 +1127,7 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (intra2)\n");
-        Flaw_Flag = 1;
+        mFlawFlag = 1;
         return;
         }
         //}}}
@@ -1171,7 +1170,7 @@ private:
       else {
         //{{{  flaw
         printf ("invalid Huffman code in Decode_MPEG2_Non_Intra_Block()\n");
-        Flaw_Flag = 1;
+        mFlawFlag = 1;
         return;
         }
         //}}}
@@ -1186,7 +1185,7 @@ private:
         val = getBits (12);
         if ((val & 2047) == 0) {
           printf ("invalid escape in Decode_MPEG2_Intra_Block()\n");
-          Flaw_Flag = 1;
+          mFlawFlag = 1;
           return;
           }
         if ((sign = (val >= 2048)))
@@ -1202,7 +1201,7 @@ private:
       if (i >= 64) {
         //{{{  flaw
         printf ("DCT coeff index (i) out of bounds (inter2)\n");
-        Flaw_Flag = 1;
+        mFlawFlag = 1;
         return;
         }
         //}}}
@@ -1234,7 +1233,7 @@ private:
       }
 
     if ((code -= 12) < 0) {
-      Flaw_Flag = 1;
+      mFlawFlag = 1;
       return 0;
       }
 
@@ -1754,11 +1753,11 @@ private:
     }
   //}}}
   //{{{
-  void formPredictions (int bx, int by, int mBtype, int motion_type, int PMV[2][2][2], int motionVertField[2][2]) {
+  void formPredictions (int bx, int by, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2]) {
 
     bool average = false;
     if ((mBtype & MACROBLOCK_MOTION_FORWARD) || picture_coding_type == P_TYPE) {
-      if (motion_type == MC_FRAME || !(mBtype & MACROBLOCK_MOTION_FORWARD)) {
+      if (motionType == MC_FRAME || !(mBtype & MACROBLOCK_MOTION_FORWARD)) {
         // frame-based prediction, broken into top and bottom halves for spatial scalability prediction purposes
         formPrediction (forward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
                         bx, by, PMV[0][0][0], PMV[0][0][1], 0);
@@ -1778,7 +1777,7 @@ private:
       }
 
     if (mBtype & MACROBLOCK_MOTION_BACKWARD) {
-      if (motion_type == MC_FRAME) {
+      if (motionType == MC_FRAME) {
         // frame-based prediction
         formPrediction (backward_reference_frame, 0, 0, mWidth, mWidth << 1, 8,
                         bx, by, PMV[0][1][0], PMV[0][1][1], average);
@@ -1906,14 +1905,14 @@ private:
     }
   //}}}
   //{{{
-  void addBlock (int16_t* block, bool luma, int comp, int bx, int by, int dct_type, int intra) {
+  void addBlock (int16_t* block, bool luma, int comp, int bx, int by, int dctType, int intra) {
   // move/add 8x8-Block from block[comp] to backward_reference_frame
   // copy reconstructed 8x8 block from block[comp] to current_frame[]
 
     int lineInc;
     uint8_t* refFramePtr;
     if (luma) {
-      if (dct_type) {
+      if (dctType) {
         // luma field DCT coding
         lineInc = (mWidth << 1) - 8;
         refFramePtr = current_frame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
@@ -1970,7 +1969,7 @@ private:
     }
   //}}}
   //{{{
-  void motionComp (int MBA, int mBtype, int motion_type, int PMV[2][2][2], int motionVertField[2][2], int dct_type) {
+  void motionComp (int MBA, int mBtype, int motionType, int PMV[2][2][2], int motionVertField[2][2], int dctType) {
 
     // derive current macroblock position within picture
     int bx = 16 * (MBA % mBwidth);
@@ -1978,42 +1977,39 @@ private:
 
     // motion compensation
     if (!(mBtype & MACROBLOCK_INTRA))
-      formPredictions (bx, by, mBtype, motion_type, PMV, motionVertField);
+      formPredictions (bx, by, mBtype, motionType, PMV, motionVertField);
 
     // copy or add block data into picture
     for (int comp = 0; comp < 6; comp++) {
       idctSSE2 (block[comp]);
-      addBlock (block[comp], comp < 4, comp, bx, by, dct_type, mBtype & MACROBLOCK_INTRA);
+      addBlock (block[comp], comp < 4, comp, bx, by, dctType, mBtype & MACROBLOCK_INTRA);
       }
     }
   //}}}
   //{{{
-  void decodeMacroblock (int& mBtype, int& motion_type, int& dct_type,
-                         int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
+  void decodeMacroblock (int& mBtype, int& motionType, int& dctType, int PMV[2][2][2], int dcDctPred[3], int motionVertField[2][2]) {
 
-    int motionVecCount;
-    int mv_format;
-    int mvscale;
-    macroBlockModes (mBtype, motion_type, motionVecCount, mv_format, mvscale, dct_type);
-    if (Flaw_Flag)
+    int mvCount, mvFormat, mvScale;
+    macroBlockModes (mBtype, motionType, mvCount, mvFormat, mvScale, dctType);
+    if (mFlawFlag)
       return;
 
-    int quantizer_scale_code;
+    int quantizerScaleCode;
     if (mBtype & MACROBLOCK_QUANT) {
-      quantizer_scale_code = getBits(5);
-      quantizer_scale = q_scale_type ? Non_Linear_quantizer_scale[quantizer_scale_code] : (quantizer_scale_code << 1);
+      quantizerScaleCode = getBits(5);
+      quantizerScaleCode = q_scale_type ? Non_Linear_quantizer_scale[quantizerScaleCode] : (quantizerScaleCode << 1);
       }
 
     // decode forward motion vectors
     if ((mBtype & MACROBLOCK_MOTION_FORWARD) || ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs))
-      motionVectors (PMV, motion_vertical_field_select, 0, motionVecCount, mv_format, f_code[0][0]-1, f_code[0][1]-1, mvscale);
-    if (Flaw_Flag)
+      motionVectors (PMV, motionVertField, 0, mvCount, mvFormat, f_code[0][0]-1, f_code[0][1]-1, mvScale);
+    if (mFlawFlag)
       return;
 
     // decode backward motion vectors
     if (mBtype & MACROBLOCK_MOTION_BACKWARD)
-      motionVectors (PMV, motion_vertical_field_select, 1, motionVecCount, mv_format, f_code[1][0]-1, f_code[1][1]-1, mvscale);
-    if (Flaw_Flag)
+      motionVectors (PMV, motionVertField, 1, mvCount, mvFormat, f_code[1][0]-1, f_code[1][1]-1, mvScale);
+    if (mFlawFlag)
       return;
 
     if ((mBtype & MACROBLOCK_INTRA) && concealmentMotionVecs)
@@ -2025,7 +2021,7 @@ private:
       coded_block_pattern = getCodedBlockPattern();
     else
       coded_block_pattern = (mBtype & MACROBLOCK_INTRA) ? (1 << 6) - 1 : 0;
-    if (Flaw_Flag)
+    if (mFlawFlag)
       return;
 
     // decode blocks
@@ -2033,17 +2029,17 @@ private:
       memset (block[i], 0, 128 * sizeof(int16_t));
       if (coded_block_pattern & (1 << (6 - 1 - i))) {
         if (mBtype & MACROBLOCK_INTRA)
-          decodeIntraBlock (i, dc_dct_pred);
+          decodeIntraBlock (i, dcDctPred);
         else
           decodeNonIntraBlock (i);
-        if (Flaw_Flag)
+        if (mFlawFlag)
           return;
         }
       }
 
     // reset intra_dc predictors ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
     if (!(mBtype & MACROBLOCK_INTRA))
-      dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
+      dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
 
     // reset motion vector predictors
     if ((mBtype & MACROBLOCK_INTRA) && !concealmentMotionVecs) {
@@ -2056,69 +2052,59 @@ private:
     if ((picture_coding_type == P_TYPE) && !(mBtype & (MACROBLOCK_MOTION_FORWARD | MACROBLOCK_INTRA))) {
       // non-intra mb without forward mv in P
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-      motion_type = MC_FRAME;
+      motionType = MC_FRAME;
       }
-    }
-  //}}}
-  //{{{
-  int decodeSlice() {
-  // decode all macroblocks of the current picture
-
-    auto code = getStartCode();
-    if (code < SLICE_START_CODE_MIN || code > SLICE_START_CODE_MAX) {
-      //{{{  error
-      // only slice headers are allowed in picture_data
-      printf ("decodeSlice - premature end\n");
-      return -1;
-      }
-      //}}}
-    consumeBits (32);
-
-    sliceHeader();
-
-    // decode macroblock address increment
-    Flaw_Flag = false;
-    int MBAinc = getMacroBlockAddressIncrement();
-    if (Flaw_Flag)
-      return 0;
-
-    int dc_dct_pred[3] = {0,0,0};
-    int PMV[2][2][2] = { 0,0,0,0,0,0,0,0};
-    for (int MBA = ((code&255) - 1) * mBwidth + MBAinc - 1; MBA < mBwidth * mBheight; MBA++, MBAinc--) {
-      if (!MBAinc) {
-        if (peekBits(23))
-          MBAinc = getMacroBlockAddressIncrement();
-        else
-          return 0;
-        }
-      if (Flaw_Flag)
-        return 0;
-
-      int mBtype, motion_type, dct_type;
-      int motionVertField[2][2];
-      if (MBAinc == 1) {
-        decodeMacroblock (mBtype, motion_type, dct_type, PMV, dc_dct_pred, motionVertField);
-        if (Flaw_Flag)
-          return 0;
-        }
-      else { // skipped
-        dc_dct_pred[0] = dc_dct_pred[1] = dc_dct_pred[2] = 0;
-        memset (block[0], 0, 128 * sizeof(int16_t) * 6);
-        if (picture_coding_type == P_TYPE)
-          PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
-        motion_type = MC_FRAME;
-        mBtype &= ~MACROBLOCK_INTRA;
-        }
-      motionComp (MBA, mBtype, motion_type, PMV, motionVertField, dct_type);
-      }
-
-    return -1;
     }
   //}}}
   //{{{
   void decodeSlices() {
 
-    while (decodeSlice() >= 0);
+    auto code = getStartCode();
+    while ((code >= SLICE_START_CODE_MIN) && (code <= SLICE_START_CODE_MAX)) {
+      consumeBits (32);
+      sliceHeader();
+
+      mFlawFlag = false;
+      int MBAinc = getMacroBlockAddressIncrement();
+      if (mFlawFlag)
+        goto getNextStartCode;
+
+      int dcDctPred[3] = {0,0,0};
+      int PMV[2][2][2] = { 0,0,0,0,0,0,0,0};
+      for (int MBA = ((code&255) - 1) * mBwidth + MBAinc - 1; MBA < mBwidth * mBheight; MBA++) {
+        if (!MBAinc) {
+          if (peekBits(23)) {
+            MBAinc = getMacroBlockAddressIncrement();
+            if (mFlawFlag)
+              goto getNextStartCode;
+            }
+          else
+            goto getNextStartCode;
+          }
+
+        int mBtype, motionType, dctType;
+        int motionVertField[2][2];
+        if (MBAinc == 1) {
+          decodeMacroblock (mBtype, motionType, dctType, PMV, dcDctPred, motionVertField);
+          if (mFlawFlag)
+            goto getNextStartCode;
+          }
+        else { // skip macroblock
+          dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
+          memset (block[0], 0, 128 * sizeof(int16_t) * 6);
+          if (picture_coding_type == P_TYPE)
+            PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
+          motionType = MC_FRAME;
+          mBtype &= ~MACROBLOCK_INTRA;
+          }
+        motionComp (MBA, mBtype, motionType, PMV, motionVertField, dctType);
+        MBAinc--;
+        }
+      return;
+
+   getNextStartCode:
+      code = getStartCode();
+      }
     }
   //}}}
 
@@ -2148,7 +2134,7 @@ private:
   int chroma_intra_quantizer_matrix[64];
   int chroma_non_intra_quantizer_matrix[64];
 
-  bool Flaw_Flag = 0;
+  bool mFlawFlag = 0;
   bool Second_Field = 0;
   int q_scale_type = 0;
   int pict_scal = 0;
