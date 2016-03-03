@@ -493,13 +493,10 @@ class cMpeg2decoder {
 public:
   //{{{
   cMpeg2decoder() {
-    printf ("cMpeg2decoder construtor\n");
-    for (int i = 0; i < 64; i++) {
-      intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
-      chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
-      non_intra_quantizer_matrix[i] = 16;
-      chroma_non_intra_quantizer_matrix[i] = 16;
-      }
+
+    block[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
+    for (int i = 1; i < 6; i++)
+      block[i] = block[i-1] + 128;
 
     for (int i = 0; i < 3; i++) {
       auxframe[i] = nullptr;
@@ -508,9 +505,12 @@ public:
       backward_reference_frame[i] = nullptr;
       }
 
-    block[0] = (int16_t*)_aligned_malloc (128 * sizeof(int16_t) * 6, 128);
-    for (int i = 1; i < 6; i++)
-      block[i] = block[i-1] + 128;
+    for (int i = 0; i < 64; i++) {
+      intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+      chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
+      non_intra_quantizer_matrix[i] = 16;
+      chroma_non_intra_quantizer_matrix[i] = 16;
+      }
     }
   //}}}
   //{{{
@@ -2015,7 +2015,7 @@ private:
 
     // decode blocks
     memset (block[0], 0, 128 * sizeof(int16_t)*6);
-    for (auto i = 0; i < 6; i++) 
+    for (auto i = 0; i < 6; i++)
       if (coded_block_pattern & (1 << (6 - 1 - i)))
         (mBtype & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
 

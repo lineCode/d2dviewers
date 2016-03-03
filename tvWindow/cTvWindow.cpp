@@ -28,10 +28,8 @@ class cDecodeTransportStream : public cTransportStream {
 public:
   //{{{
   cDecodeTransportStream() {
-    for (auto i = 0; i < 10; i++) {
-      pids[i] = 0;
-      mMpeg2decoder[i] = nullptr;
-      }
+    for (auto i = 0; i < 10; i++) 
+      mMpeg2decoders[i] = nullptr;
     }
   //}}}
   //{{{
@@ -55,8 +53,8 @@ public:
   // find nearestVidFrame to pts
   // - can return nullPtr if no frame loaded yet
 
-    if (mMpeg2decoder[0])
-      return mMpeg2decoder[0]->getNearestVidFrame (pts);
+    if (mMpeg2decoders[0])
+      return mMpeg2decoders[0]->getNearestVidFrame (pts);
 
     else {
       cYuvFrame* yuvFrame = nullptr;
@@ -123,8 +121,8 @@ public:
   //{{{
   void invalidateFrames() {
 
-    if (mMpeg2decoder[0])
-      mMpeg2decoder[0]->invalidateFrames();
+    if (mMpeg2decoders[0])
+      mMpeg2decoders[0]->invalidateFrames();
 
     for (auto i= 0; i < maxAudFrames; i++)
       mAudFrames[i].invalidate();
@@ -174,7 +172,7 @@ public:
 
     for (auto i = 0; i < maxVidFrames; i++) {
       //{{{  draw vidFrame graphic
-      cYuvFrame* yuvFrame = mMpeg2decoder[0] ? mMpeg2decoder[0]->getYuvFrame (i) : &mYuvFrames[i];
+      cYuvFrame* yuvFrame = mMpeg2decoders[0] ? mMpeg2decoders[0]->getYuvFrame (i) : &mYuvFrames[i];
       float x = (client.width/2.0f) + float(yuvFrame->mPts - playAudPts) * pixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
 
@@ -197,6 +195,9 @@ public:
       //}}}
     }
   //}}}
+
+  int mNumVids = 0;
+  cMpeg2decoder* mMpeg2decoders[10];
 
 protected:
   //{{{
@@ -295,22 +296,20 @@ protected:
   void decodeVidPes (cPidInfo* pidInfo) {
 
     switch (pidInfo->mStreamType) {
-      case 2:
-        if (pidInfo->mPid == mSelectedVidPid) {
-          if (!pidInfo->mDecoder) {
-            pidInfo->mDecoder = new cMpeg2decoder();
-            mMpeg2decoder[0] = pidInfo->mDecoder;
-            pids[0] = pidInfo->mPid;
-            }
-
-          if (pidInfo->mDts) // use actual pts
-            pidInfo->mFakePts = pidInfo->mPts;
-          else // fake pts
-            pidInfo->mFakePts += 90000/25;
-          uint8_t* pesPtr;
-          pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, pidInfo->mFakePts, pesPtr);
+      case 2: {
+        if (!pidInfo->mDecoder) {
+          pidInfo->mDecoder = new cMpeg2decoder();
+          mMpeg2decoders[mNumVids++] = pidInfo->mDecoder;
           }
+
+        if (pidInfo->mDts) // use actual pts
+          pidInfo->mFakePts = pidInfo->mPts;
+        else // fake pts
+          pidInfo->mFakePts += 90000/25;
+        uint8_t* pesPtr;
+        pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, pidInfo->mFakePts, pesPtr);
         break;
+        }
 
       case 27:
          printf ("HD decodeVidPes %d\n", pidInfo->mPid);
@@ -375,8 +374,6 @@ private:
   int64_t mBasePts = 0;
 
   int mSelectedVidPid = 0;
-  int pids[10];
-  cMpeg2decoder* mMpeg2decoder[10];
 
   int mSelectedAudPid = 0;
   int mLoadAudFrame = 0;
@@ -399,6 +396,9 @@ public:
   cTvWindow() {
     mSilence = (int16_t*)malloc (2048*4);
     memset (mSilence, 0, 2048*4);
+
+    for (auto i = 0; i < 10; i++)
+      mBitmaps[i] = nullptr;
     }
   //}}}
   virtual ~cTvWindow() {}
@@ -528,6 +528,12 @@ void onDraw (ID2D1DeviceContext* dc) {
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
   else
     dc->Clear (ColorF (ColorF::Black));
+
+  for (auto i = 0; i < mTs.mNumVids; i++)
+    if (makeBitmap (mTs.mMpeg2decoders[i]->getNearestVidFrame (mAudPts), mBitmaps[i], mBitmapPts))
+      dc->DrawBitmap (mBitmaps[i],
+        RectF ((i%3) * getClientF().width/6, (i/3) * getClientF().height/6,
+               ((i%3)+1) * getClientF().width/6, ((i/3)+1) * getClientF().height/6));
 
   auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
   dc->FillRectangle (rMid, getGreyBrush());
@@ -807,6 +813,7 @@ private:
 
   int64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
+  ID2D1Bitmap* mBitmaps[10];
 
   IDWriteTextFormat* mSmallTextFormat = nullptr;
   //}}}
