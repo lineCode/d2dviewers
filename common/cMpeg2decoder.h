@@ -493,7 +493,7 @@ class cMpeg2decoder {
 public:
   //{{{
   cMpeg2decoder() {
-    printf ("allocating cMpeg2decoder\n");
+    printf ("cMpeg2decoder construtor\n");
     for (int i = 0; i < 64; i++) {
       intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
       chroma_intra_quantizer_matrix[i] = default_intra_quantizer_matrix[i];
@@ -563,8 +563,6 @@ public:
   bool decodePes (uint8_t* pesBuffer, uint8_t* pesBufferEnd, int64_t vidPts, uint8_t*& pesPtr) {
   // decode a frame of video, usually a pes packet
 
-    bool frameWritten = false;
-
     m32bits = 0;
     mBitCount = 0;
     mBufferPtr = pesBuffer;
@@ -573,16 +571,16 @@ public:
     consumeBits (0);
 
     if (!mGotSequenceHeader) {
-      // get sequenceHeaderCode
+      // wait for  sequenceHeaderCode
       while (mBufferPtr < mBufferEnd) {
         uint32_t code = getHeader (false);
         if (code == 0x1B3) { // sequenceHeaderCode
           //{{{  allocate buffers from sequenceHeader width, height
-          for (int cc = 0; cc < 3; cc++) {
-            int size = (cc == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
-            auxframe[cc] = (uint8_t*)_aligned_malloc (size, 128);
-            forward_reference_frame[cc] = (uint8_t*)_aligned_malloc (size, 128);
-            backward_reference_frame[cc] = (uint8_t*)_aligned_malloc (size, 128);
+          for (int i = 0; i < 3; i++) {
+            int size = (i == 0) ? mWidth * mHeight : mChromaWidth * mChromaHeight;
+            auxframe[i] = (uint8_t*)_aligned_malloc (size, 128);
+            forward_reference_frame[i] = (uint8_t*)_aligned_malloc (size, 128);
+            backward_reference_frame[i] = (uint8_t*)_aligned_malloc (size, 128);
             }
           mGotSequenceHeader = true;
           break;
@@ -591,7 +589,7 @@ public:
         }
       }
 
-    // get pictureStartCode
+    // wait for pictureStartCode
     while (mBufferPtr < mBufferEnd) {
       uint32_t code = getHeader (true);
       if (code == 0x100) // pictureStartCode
@@ -599,39 +597,32 @@ public:
       }
 
     if (mBufferPtr < mBufferEnd) {
-      // decodePicture
       //{{{  updatePictureBuffers;
-      for (int cc = 0; cc < 3; cc++) {
-        current_frame[cc] = (picture_coding_type == B_TYPE) ? auxframe[cc] : backward_reference_frame[cc];
-
+      // B pics do not need to be save for future reference
+      // the previously decoded reference frame is stored coincident with the location where the backward
+      // reference frame is stored (backwards prediction is not needed in P pictures)
+      // update pointer for potential future B pictures
+      // can erase over old backward reference frame since it is not used in a P picture
+      // - since any subsequent B pictures will use the previously decoded I or P frame as the backward_reference_frame
+      //}}}
+      for (int i = 0; i < 3; i++) {
+        current_frame[i] = (picture_coding_type == B_TYPE) ? auxframe[i] : backward_reference_frame[i];
         if (picture_coding_type != B_TYPE) {
-          // B pics do not need to be save for future reference
-          // the previously decoded reference frame is stored coincident with the location where the backward
-          // reference frame is stored (backwards prediction is not needed in P pictures)
-          // update pointer for potential future B pictures
-          uint8_t* tmp = forward_reference_frame[cc];
-          forward_reference_frame[cc] = backward_reference_frame[cc];
-          backward_reference_frame[cc] = tmp;
-
-          // can erase over old backward reference frame since it is not used in a P picture
-          // - since any subsequent B pictures will use the previously decoded I or P frame as the backward_reference_frame
-          current_frame[cc] = backward_reference_frame[cc];
+          uint8_t* tmp = forward_reference_frame[i];
+          forward_reference_frame[i] = backward_reference_frame[i];
+          backward_reference_frame[i] = tmp;
+          current_frame[i] = backward_reference_frame[i];
           }
         }
-      //}}}
-      while (decodeSlice() >= 0);
-      //{{{  reorderFrames write or display current or previously decoded reference frame
-      int32_t linesize[2];
-      linesize[0] = mWidth;
-      linesize[1] = mChromaWidth;
-      mYuvFrames[mLoadVidFrame % maxVidFrames].set (
-        vidPts, (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
+
+      decodeSlices();
+
+      // reorderFrames write or display current or previously decoded reference frame
+      int32_t linesize[2] = { mWidth,  mChromaWidth};
+      mYuvFrames[mLoadVidFrame % maxVidFrames].set (vidPts,
+        (picture_coding_type == B_TYPE) ? auxframe : forward_reference_frame, linesize,
         mWidth, mHeight, (int)(pesBufferEnd - pesBuffer), picture_coding_type);
       mLoadVidFrame++;
-      frameWritten = true;
-      //}}}
-
-      // crude bodge to rewind buffer pointer for next time
       pesPtr = mBufferPtr - 4;
       return true;
       }
@@ -1996,7 +1987,6 @@ private:
       }
     }
   //}}}
-
   //{{{
   void decodeMacroblock (int& mBtype, int& motion_type, int& dct_type,
                          int PMV[2][2][2], int dc_dct_pred[3], int motion_vertical_field_select[2][2]) {
@@ -2039,13 +2029,13 @@ private:
       return;
 
     // decode blocks
-    for (auto comp = 0; comp < 6; comp++) {
-      memset (block[comp], 0, 128 * sizeof(int16_t));
-      if (coded_block_pattern & (1 << (6 - 1 - comp))) {
+    for (auto i = 0; i < 6; i++) {
+      memset (block[i], 0, 128 * sizeof(int16_t));
+      if (coded_block_pattern & (1 << (6 - 1 - i))) {
         if (mBtype & MACROBLOCK_INTRA)
-          decodeIntraBlock (comp, dc_dct_pred);
+          decodeIntraBlock (i, dc_dct_pred);
         else
-          decodeNonIntraBlock (comp);
+          decodeNonIntraBlock (i);
         if (Flaw_Flag)
           return;
         }
@@ -2123,6 +2113,12 @@ private:
       }
 
     return -1;
+    }
+  //}}}
+  //{{{
+  void decodeSlices() {
+
+    while (decodeSlice() >= 0);
     }
   //}}}
 

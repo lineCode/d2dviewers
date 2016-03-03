@@ -85,7 +85,7 @@ ID2D1Bitmap* cD2dWindow::makeBitmap (cYuvFrame* yuvFrame, ID2D1Bitmap*& bitmap, 
 
       auto bgraBuf = yuvFrame->bgra();
       bitmap->CopyFromMemory (&RectU (0, 0, yuvFrame->mWidth, yuvFrame->mHeight), bgraBuf, yuvFrame->mWidth * 4);
-      _mm_free (bgraBuf);
+      _aligned_free (bgraBuf);
       }
     }
   else if (bitmap) {

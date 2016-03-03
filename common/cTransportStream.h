@@ -637,6 +637,7 @@ public:
 
   int mStreamType = 0;
   int64_t mPts = 0;
+  int64_t mFakePts = 0;
   int64_t mDts = 0;
   int64_t mPcr = 0;
 
