@@ -2,11 +2,11 @@
 //{{{  includes
 #include "pch.h"
 
-#include "../common/cAudFrame.h"
-#include "../common/winAudio.h"
-
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
+
+#include "../common/cAudFrame.h"
+#include "../common/winAudio.h"
 
 #pragma comment(lib,"avutil.lib")
 #pragma comment(lib,"avcodec.lib")
@@ -14,18 +14,22 @@
 //}}}
 
 #define maxAudFrames 500000
-cAudFrame* mAudFrames[maxAudFrames];
 
 class cAppWindow : public cD2dWindow {
 public:
-  cAppWindow() {}
+  //{{{
+  cAppWindow() {
+    mSilence = (int16_t*)malloc (2048*4);
+    memset (mSilence, 0, 2048*4);
+    }
+  //}}}
   ~cAppWindow() {}
   //{{{
-  void run (wchar_t* title, int width, int height, wchar_t* wFilename, char* filename) {
+  void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
 
     initialise (title, width, height);
 
-    std::thread ([=]() { loader (wFilename, filename); }).detach();
+    std::thread ([=]() { loader (wFilename); }).detach();
     std::thread ([=]() { player(); }).detach();
 
     // loop in windows message pump till quit
@@ -41,22 +45,19 @@ protected:
       case 0x00 : break;
       case 0x1B : return true;
 
-      //case 0x20 : stopped = !stopped; break;
+      case 0x20 : mPlaying = !mPlaying; break;
 
-      //case 0x21 : playFrame -= 5.0f * audFramesPerSec; changed(); break;
-      //case 0x22 : playFrame += 5.0f * audFramesPerSec; changed(); break;
+      case 0x21 : mPlayAudFrame -= 5 * mAudFramesPerSec; changed(); break;
+      case 0x22 : mPlayAudFrame += 5 * mAudFramesPerSec; changed(); break;
 
-      //case 0x23 : playFrame = audFramesLoaded - 1.0f; changed(); break;
-      //case 0x24 : playFrame = 0; break;
+      case 0x23 : mPlayAudFrame = mLoadAudFrame - 1; changed(); break;
+      case 0x24 : mPlayAudFrame = 0; break;
 
-      //case 0x25 : playFrame -= 1.0f * audFramesPerSec; changed(); break;
-      //case 0x27 : playFrame += 1.0f * audFramesPerSec; changed(); break;
+      case 0x25 : mPlayAudFrame -= 1 * mAudFramesPerSec; changed(); break;
+      case 0x27 : mPlayAudFrame += 1 * mAudFramesPerSec; changed(); break;
 
-      //case 0x26 : stopped = true; playFrame -=2; changed(); break;
-      //case 0x28 : stopped = true; playFrame +=2; changed(); break;
-
-      //case 0x2d : markFrame = playFrame - 2.0f; changed(); break;
-      //case 0x2e : playFrame = markFrame; changed(); break;
+      case 0x26 : mPlaying = false; mPlayAudFrame -=2; changed(); break;
+      case 0x28 : mPlaying = false; mPlayAudFrame +=2; changed(); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -67,7 +68,7 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    //playFrame -= xInc;
+    mPlayAudFrame -= xInc;
 
     changed();
     }
@@ -110,13 +111,12 @@ protected:
 
 private:
   //{{{
-  void loader (wchar_t* wFilename,char* filename) {
+  void loader (wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE)
       return;
-
-    int mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
@@ -132,9 +132,8 @@ private:
     avPacket.size = 0;
 
     auto time = startTimer();
-
-    int pesLen = mFileBytes;
-    uint8_t* pesPtr = fileBuffer;
+    auto pesPtr = fileBuffer;
+    auto pesLen = mFileBytes;
     while (pesLen) {
       auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pesPtr += lenUsed;
@@ -151,13 +150,13 @@ private:
           if (got) {
             mSampleRate = avFrame->sample_rate;
             mAudFrames[mLoadAudFrame] = new cAudFrame();
-            mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, 48000, avFrame->nb_samples);
+            mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, avFrame->sample_rate, avFrame->nb_samples);
             auto samplePtr = (short*)mAudFrames[mLoadAudFrame]->mSamples;
-            double valueL = 0;
-            double valueR = 0;
-            short* leftPtr = (short*)avFrame->data[0];
-            short* rightPtr = (short*)avFrame->data[1];
-            for (int i = 0; i < avFrame->nb_samples; i++) {
+            auto valueL = 0.0;
+            auto valueR = 0.0;
+            auto leftPtr = (short*)avFrame->data[0];
+            auto rightPtr = (short*)avFrame->data[1];
+            for (auto i = 0; i < avFrame->nb_samples; i++) {
               *samplePtr = *leftPtr++;
               valueL += pow (*samplePtr++, 2);
               *samplePtr = *rightPtr++;
@@ -188,8 +187,12 @@ private:
 
     mPlayAudFrame = 0;
     while (true) {
-      winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
-      mPlayAudFrame++;
+      if (mPlaying) {
+        winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
+        mPlayAudFrame++;
+        }
+      else
+        winAudioPlay (mSilence, 4096, 1.0f);
       changed();
       }
 
@@ -197,22 +200,23 @@ private:
     }
   //}}}
 
+  int16_t* mSilence;
+
+  bool mPlaying = true;
   int mSampleRate = 0;
   int mPlayAudFrame = 0;
   int mLoadAudFrame = 0;
+  int mAudFramesPerSec = 50;
+  cAudFrame* mAudFrames[maxAudFrames];
   };
+
+static cAppWindow appWindow;
 
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
-  char filename[100];
-  strcpy (filename, "C:\\Users\\colin\\Desktop\\d2dviewers\\test.264");
-  if (argv[1])
-    std::wcstombs (filename, argv[1], wcslen(argv[1])+1);
+  printf ("mp3wWindow/n");
 
-  printf ("Player %d %s/n", argc, filename);
-
-  cAppWindow appWindow;
-  appWindow.run (L"appWindow", 1280, 720, argv[1], filename);
+  appWindow.run (L"appWindow", 1280, 720, argv[1]);
   }
 //}}}
