@@ -22,7 +22,7 @@
 #pragma comment(lib,"avformat.lib")
 //}}}
 
-#define maxAudFrames 500000
+#define maxAudFrames 1000
 #define kMaxVidFrames 10000
 cAudFrame* mAudFrames[maxAudFrames];
 
@@ -36,12 +36,13 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    std::thread ([=]() { playerffMp3 (wFilename, filename); }).detach();
-    //std::thread ([=]() { playerffMpeg2 (wFilename, filename); }).detach();
+    std::thread ([=]() { playerffMpeg2 (wFilename, filename); }).detach();
     //std::thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
     //std::thread ([=]() { playerReference264(); }).detach();
     //std::thread ([=]() { playerOpenH264(); }).detach();
-    std::thread ([=]() { audioPlayer(); }).detach();
+
+    //std::thread ([=]() { playerffMp3 (wFilename, filename); }).detach();
+    //std::thread ([=]() { audioPlayer(); }).detach();
 
     // loop in windows message pump till quit
     messagePump();
@@ -96,7 +97,7 @@ protected:
     }
   //}}}
   //{{{
-  void onDrawVideo (ID2D1DeviceContext* dc) {
+  void onDraw (ID2D1DeviceContext* dc) {
 
     if (makeBitmap (&mYuvFrames[mLoadVidFrame], mBitmap, mBitmapPts))
     //if (makeBitmap (getYuvFrame (mCurVidFrame), mBitmap, mBitmapPts))
@@ -112,35 +113,66 @@ protected:
                   RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
     }
   //}}}
+
+private:
   //{{{
-  void onDraw (ID2D1DeviceContext* dc) {
+  void playerffMpeg2 (wchar_t* wFilename,char* filename) {
 
-    dc->Clear (ColorF(ColorF::Black));
+    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+      return;
 
-    uint8_t* power = nullptr;
-    int frame = mPlayAudFrame;
-    auto frames = 0;
-    auto rWave = RectF (0,0,1,0);
-    for (int i = 0; i < 10; i++) {
-      for (float f = 0.0f; f < getClientF().width; f++) {
-        auto rWave = RectF ((i & 1) ? f : (getClientF().width-f), 0, (i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
-        if (mAudFrames[frame]) {
-          rWave.top = i * (getClientF().height / 10.0f) + mAudFrames[frame]->mPower[0];
-          rWave.bottom = rWave.top + mAudFrames[frame]->mPower[1];
-          dc->FillRectangle (rWave, getBlueBrush());
+    int mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    av_register_all();
+
+    AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
+    AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
+    AVCodecContext* vidContext = avcodec_alloc_context3 (vidCodec);
+    avcodec_open2 (vidContext, vidCodec, NULL);
+
+    //  hd ffmpeg decode
+    AVPacket avPacket;
+    av_init_packet (&avPacket);
+    avPacket.data = fileBuffer;
+    avPacket.size = 0;
+
+    auto time = startTimer();
+
+    int pesLen = mFileBytes;
+    uint8_t* mBufPtr = fileBuffer;
+    while (pesLen) {
+      auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      mBufPtr += lenUsed;
+      pesLen -= lenUsed;
+
+      if (avPacket.data) {
+        auto avFrame = av_frame_alloc();
+        auto got = 0;
+        auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+        if (bytesUsed >= 0) {
+          avPacket.data += bytesUsed;
+          avPacket.size -= bytesUsed;
           }
-        frame++;
+        if (got) {
+          mYuvFrames [mCurVidFrame % kMaxVidFrames].set (mCurVidFrame,
+            avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+          mLoadVidFrame = mCurVidFrame;
+          mCurVidFrame++;
+          if (mLoadVidFrame && !(mLoadVidFrame % 100))
+            printf ("frame %d  %4.3fs %4.3fms\n", mLoadVidFrame, getTimer() - time, 1000.0 * (getTimer() - time) / mLoadVidFrame);
+          }
+        av_frame_free (&avFrame);
         }
       }
 
-    wchar_t wStr[200];
-    swprintf (wStr, 200, L"helloColin %d %d", mLoadAudFrame, mPlayAudFrame);
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
     }
   //}}}
 
-private:
   //{{{
   uint8_t limit (double v) {
 
@@ -282,64 +314,6 @@ private:
     CloseHandle (fileHandle);
     }
   //}}}
-  //{{{
-  void playerffMpeg2 (wchar_t* wFilename,char* filename) {
-
-    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (fileHandle == INVALID_HANDLE_VALUE)
-      return;
-
-    int mFileBytes = GetFileSize (fileHandle, NULL);
-    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
-
-    av_register_all();
-
-    AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
-    AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
-    AVCodecContext* vidContext = avcodec_alloc_context3 (vidCodec);
-    avcodec_open2 (vidContext, vidCodec, NULL);
-
-    //  hd ffmpeg decode
-    AVPacket avPacket;
-    av_init_packet (&avPacket);
-    avPacket.data = fileBuffer;
-    avPacket.size = 0;
-
-    auto time = startTimer();
-
-    int pesLen = mFileBytes;
-    uint8_t* mBufPtr = fileBuffer;
-    while (pesLen) {
-      auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-      mBufPtr += lenUsed;
-      pesLen -= lenUsed;
-
-      if (avPacket.data) {
-        auto avFrame = av_frame_alloc();
-        auto got = 0;
-        auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
-        if (bytesUsed >= 0) {
-          avPacket.data += bytesUsed;
-          avPacket.size -= bytesUsed;
-          }
-        if (got) {
-          mYuvFrames [mCurVidFrame % kMaxVidFrames].set (mCurVidFrame,
-            avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
-          mLoadVidFrame = mCurVidFrame;
-          mCurVidFrame++;
-          if (mLoadVidFrame && !(mLoadVidFrame % 100))
-            printf ("frame %d  %4.3fs %4.3fms\n", mLoadVidFrame, getTimer() - time, 1000.0 * (getTimer() - time) / mLoadVidFrame);
-          }
-        av_frame_free (&avFrame);
-        }
-      }
-
-    UnmapViewOfFile (fileBuffer);
-    CloseHandle (fileHandle);
-    }
-  //}}}
-
   //{{{
   void playerffMp3 (wchar_t* wFilename,char* filename) {
 
