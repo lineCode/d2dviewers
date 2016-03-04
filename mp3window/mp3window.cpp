@@ -86,16 +86,16 @@ protected:
 
     dc->Clear (ColorF(ColorF::Black));
 
-    uint8_t* power = nullptr;
+    int rows = 8;
+
     int frame = mPlayAudFrame;
-    auto frames = 0;
     auto rWave = RectF (0,0,1,0);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < rows; i++) {
       for (float f = 0.0f; f < getClientF().width; f++) {
         auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
         if (mAudFrames[frame]) {
-          rWave.top = i * (getClientF().height / 10.0f) + mAudFrames[frame]->mPower[0];
-          rWave.bottom = rWave.top + mAudFrames[frame]->mPower[1];
+          rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mAudFrames[frame]->mPower[0];
+          rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mAudFrames[frame]->mPower[1];
           dc->FillRectangle (rWave, getBlueBrush());
           }
         frame++;
