@@ -40,7 +40,7 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{64E48C36-98A4-49F9-8E8C-765B09052454}</ProjectGuid>
+    <ProjectGuid>{CEA7C040-DE49-4415-8226-14C64D206C47}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>

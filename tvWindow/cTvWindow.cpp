@@ -16,9 +16,9 @@
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
-#pragma comment(lib,"avutil.lib")
-#pragma comment(lib,"avcodec.lib")
-#pragma comment(lib,"avformat.lib")
+#pragma comment (lib,"avutil.lib")
+#pragma comment (lib,"avcodec.lib")
+#pragma comment (lib,"avformat.lib")
 //}}}
 #define maxAudFrames 32
 #define maxVidFrames 40
@@ -338,6 +338,9 @@ protected:
   void decodeVidPes (cPidInfo* pidInfo) {
 
     switch (pidInfo->mStreamType) {
+      case 27:
+        if (pidInfo->mPid != mSelectedVidPid)
+          break;
       case 2: {
         // find decodeContext for pid
         int contextIndex = 0;
@@ -349,9 +352,6 @@ protected:
             }
           contextIndex++;
           }
-        if (contextIndex >= maxVidDecodes)
-          printf ("**** cockup %d %d %d\n", contextIndex, maxVidDecodes, pidInfo->mPid);
-
         if (!decodeContext) {
           //{{{  not found, create it with decoder
           //printf ("allocate %d pid:%d\n", contextIndex, pidInfo->mPid);
@@ -359,15 +359,13 @@ protected:
           mDecodeContexts[contextIndex] = decodeContext;
 
           // allocate decoder
-          decodeContext->mVidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
-          decodeContext->mVidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
+          decodeContext->mVidParser = av_parser_init (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
+          decodeContext->mVidCodec = avcodec_find_decoder (pidInfo->mStreamType == 27 ? AV_CODEC_ID_H264 : AV_CODEC_ID_MPEG2VIDEO);
           decodeContext->mVidContext = avcodec_alloc_context3 (decodeContext->mVidCodec);
           avcodec_open2 (decodeContext->mVidContext, decodeContext->mVidCodec, NULL);
-          // decodeContext->mMpeg2decoder = new cMpeg2decoder();
           }
           //}}}
 
-        //{{{  ffmpeg decode
         AVPacket avPacket;
         av_init_packet (&avPacket);
         avPacket.data = pidInfo->mBuffer;
@@ -375,15 +373,12 @@ protected:
 
         auto pesPtr = pidInfo->mBuffer;
         auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
-
         //printf ("vidPes pid:%d i:%d - len:%d\n", pidInfo->mPid, contextIndex, pesLen);
-
         while (pesLen) {
           auto lenUsed = av_parser_parse2 (decodeContext->mVidParser, decodeContext->mVidContext,
                                            &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
           pesPtr += lenUsed;
           pesLen -= lenUsed;
-
           if (avPacket.data) {
             auto avFrame = av_frame_alloc();
             auto got = 0;
@@ -392,82 +387,36 @@ protected:
               avPacket.data += bytesUsed;
               avPacket.size -= bytesUsed;
               if (got) {
-                //printf ("pid:%d vid pts:%x dts:%x len:%d type:%d\n",
-                //         pidInfo->mPid, pidInfo->mPts, pidInfo->mDts, pesLen, avFrame->pict_type);
-                if (pidInfo->mDts) // use actual pts
+                //{{{  got frame
+                //printf ("pid:%d vid pts:%3.1f dts:%3.1f len:%d type:%d\n",
+                //        pidInfo->mPid, (pidInfo->mPts-mBasePts)/3600.0f, (pidInfo->mDts-mBasePts)/3600.0f, pesLen, avFrame->pict_type);
+
+                if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) || ((pidInfo->mStreamType == 2) && pidInfo->mDts))
+                  // use actual pts
                   decodeContext->mFakePts = pidInfo->mPts;
-                else // fake pts
+                else
+                  // use fake pts
                   decodeContext->mFakePts += 90000/25;
-                decodeContext->mYuvFrames [decodeContext->mLoadVidFrame % maxVidFrames].set (decodeContext->mFakePts,
+
+                decodeContext->mYuvFrames [decodeContext->mLoadVidFrame % maxVidFrames].set (
+                  decodeContext->mFakePts,
                   avFrame->data, avFrame->linesize, decodeContext->mVidContext->width, decodeContext->mVidContext->height,
                   pesLen, avFrame->pict_type);
+
                 decodeContext->mLoadVidFrame++;
                 }
+                //}}}
               }
             av_frame_free (&avFrame);
             }
           }
-        //}}}
-        //{{{  mpeg2decoder
-        //if (pidInfo->mDts) // use actual pts
-        //  decodeContext->mFakePts = pidInfo->mPts;
-        //else // fake pts
-        //  decodeContext->mFakePts += 90000/25;
-        //uint8_t* pesPtr;
-        //pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, decodeContext->mFakePts, pesPtr);
-        //}}}
         break;
         }
-
-      case 27:
-        //{{{  hd
-        //if (pidInfo->mPid == mSelectedVidPid) {
-          //if (!vidParser) {
-            //{{{  allocate decoder
-            //vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-            //vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-            //vidContext = avcodec_alloc_context3 (vidCodec);
-            //avcodec_open2 (vidContext, vidCodec, NULL);
-            //}
-            //}}}
-          //auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
-          //{{{  hd ffmpeg decode
-          //AVPacket avPacket;
-          //av_init_packet (&avPacket);
-          //avPacket.data = pidInfo->mBuffer;
-          //avPacket.size = 0;
-
-          //pidInfo->mBufPtr = pidInfo->mBuffer;
-          //while (pesLen) {
-            //auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-            //pidInfo->mBufPtr += lenUsed;
-            //pesLen -= lenUsed;
-
-            //if (avPacket.data) {
-              //auto avFrame = av_frame_alloc();
-              //auto got = 0;
-              //auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
-              //avPacket.data += bytesUsed;
-              //avPacket.size -= bytesUsed;
-              //if (got) {
-                ////printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
-                //if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
-                    //(((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
-                  //pidInfo->mFakePts = pidInfo->mPts;
-                //else // fake pts
-                  //pidInfo->mFakePts += 90000/25;
-                //mYuvFrames [mLoadVidFrame % maxVidFrames].set (pidInfo->mFakePts,
-                  //avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
-                //mLoadVidFrame++;
-                //}
-              //av_frame_free (&avFrame);
-              //}
-            //}
-          //}}}
-          //}
-        //}}}
-        break;
-
+      //{{{  mpeg2decoder
+      //decodeContext->mMpeg2decoder = new cMpeg2decoder();
+      //uint8_t* pesPtr;
+      //pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, decodeContext->mFakePts, pesPtr);
+      //}}}
       default:
         //printf ("**** unrecognised vid stream type pid:%d type:%d\n", pidInfo->mPid, pidInfo->mStreamType);
         break;
