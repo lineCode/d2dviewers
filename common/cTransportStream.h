@@ -651,10 +651,6 @@ public:
   uint8_t* mBuffer = nullptr;
   uint8_t* mBufPtr = nullptr;
 
-  // temps
-  cMpeg2decoder* mDecoder = nullptr;
-  int64_t mFakePts = 0;
-
   // render text for speed,locking
   wchar_t mInfo[100];
   };
@@ -1003,7 +999,7 @@ public:
 
               //  start next vidPES
               if (!pidInfoIt->second.mBuffer) {
-                // first audPES, allocate buffer
+                // first vidPES, allocate buffer
                 pidInfoIt->second.mBufSize = 500000;
                 pidInfoIt->second.mBuffer= (uint8_t*)malloc (pidInfoIt->second.mBufSize);
                 }

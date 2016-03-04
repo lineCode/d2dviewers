@@ -22,16 +22,73 @@
 //}}}
 #define maxAudFrames 32
 #define maxVidFrames 40
+#define maxVidDecodes 12
 
+//{{{
+class cDecodeContext {
+public:
+  cDecodeContext (int pid) : mPid(pid) {}
+  //{{{
+  ~cDecodeContext() {
+    if (mVidParser)
+      av_parser_close (mVidParser);
+    if (mVidContext)
+      avcodec_close (mVidContext);
+    }
+  //}}}
+
+  //{{{
+  cYuvFrame* getYuvFrame (int i) {
+    return &mYuvFrames[i];
+    }
+  //}}}
+  //{{{
+  cYuvFrame* getNearestVidFrame (int64_t pts) {
+  // find nearestVidFrame to pts
+  // - can return nullPtr if no frame loaded yet
+
+    cYuvFrame* yuvFrame = nullptr;
+    int64_t nearest = 0;
+    for (int i = 0; i < maxVidFrames; i++) {
+      if (mYuvFrames[i].mPts) {
+        if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
+          yuvFrame = &mYuvFrames[i];
+          nearest = abs(mYuvFrames[i].mPts - pts);
+          }
+        }
+      }
+    return yuvFrame;
+    }
+  //}}}
+  //{{{
+  void invalidateFrames() {
+
+    for (auto i = 0; i < maxVidFrames; i++)
+      mYuvFrames[i].invalidate();
+
+    mLoadVidFrame = 0;
+    }
+  //}}}
+
+  // vars
+  int mPid = 0;
+
+  AVCodecParserContext* mVidParser = nullptr;
+  AVCodec* mVidCodec = nullptr;
+  AVCodecContext* mVidContext = nullptr;
+
+  //cMpeg2decoder* mMpeg2decoder = nullptr;
+
+  cYuvFrame mYuvFrames[maxVidFrames];
+  int mLoadVidFrame = 0;
+
+  int64_t mFakePts = 0;
+  };
+//}}}
 //{{{
 class cDecodeTransportStream : public cTransportStream {
 public:
-  //{{{
-  cDecodeTransportStream() {
-    for (auto i = 0; i < 10; i++)
-      mMpeg2decoders[i] = nullptr;
-    }
-  //}}}
+  cDecodeTransportStream() {}
   //{{{
   virtual ~cDecodeTransportStream() {
 
@@ -39,38 +96,11 @@ public:
       avcodec_close (audContext);
     if (audParser)
       av_parser_close (audParser);
-    if (vidContext)
-      avcodec_close (vidContext);
-    if (vidParser)
-      av_parser_close (vidParser);
     }
   //}}}
 
   int getLoadAudFrame() { return mLoadAudFrame; }
   int64_t getBasePts() { return mBasePts; }
-  //{{{
-  cYuvFrame* getNearestVidFrame (int64_t pts) {
-  // find nearestVidFrame to pts
-  // - can return nullPtr if no frame loaded yet
-
-    if (mMpeg2decoders[0])
-      return mMpeg2decoders[0]->getNearestVidFrame (pts);
-
-    else {
-      cYuvFrame* yuvFrame = nullptr;
-      int64_t nearest = 0;
-      for (int i = 0; i < maxVidFrames; i++) {
-        if (mYuvFrames[i].mPts) {
-          if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
-            yuvFrame = &mYuvFrames[i];
-            nearest = abs(mYuvFrames[i].mPts - pts);
-            }
-          }
-        }
-      return yuvFrame;
-      }
-    }
-  //}}}
   //{{{
   void getAudSamples (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
 
@@ -87,6 +117,15 @@ public:
       samples = nullptr;
       numSampleBytes = 0;
       }
+    }
+  //}}}
+  //{{{
+  cYuvFrame* getSelectedVid (int64_t pts) {
+
+    if (mDecodeContexts[0])
+      return mDecodeContexts[0]->getNearestVidFrame (pts);
+    else
+      return nullptr;
     }
   //}}}
 
@@ -109,7 +148,12 @@ public:
           printf ("selectService %d vid:%d aud:%d pcr:%d base:%lld\n",
                   j, mSelectedVidPid, mSelectedAudPid, pcrPid, pidInfoIt->second.mPcr);
           mBasePts = pidInfoIt->second.mPcr;
-          invalidateFrames();
+
+          //invalidateFrames();
+    for (auto i= 0; i < maxAudFrames; i++)
+      mAudFrames[i].invalidate();
+    mLoadAudFrame = 0;
+
           return;
           }
         }
@@ -121,16 +165,12 @@ public:
   //{{{
   void invalidateFrames() {
 
-    if (mMpeg2decoders[0])
-      mMpeg2decoders[0]->invalidateFrames();
+    if (mDecodeContexts[0])
+      mDecodeContexts[0]->invalidateFrames();
 
     for (auto i= 0; i < maxAudFrames; i++)
       mAudFrames[i].invalidate();
-    for (auto i= 0; i < maxVidFrames; i++)
-      mYuvFrames[i].invalidate();
-
     mLoadAudFrame = 0;
-    mLoadVidFrame = 0;
     }
   //}}}
 
@@ -170,34 +210,36 @@ public:
       dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y, x+w-g, y+h), blackBrush);
       }
 
-    for (auto i = 0; i < maxVidFrames; i++) {
-      //{{{  draw vidFrame graphic
-      cYuvFrame* yuvFrame = mMpeg2decoders[0] ? mMpeg2decoders[0]->getYuvFrame (i) : &mYuvFrames[i];
-      float x = (client.width/2.0f) + float(yuvFrame->mPts - playAudPts) * pixPerPts;
-      float w = u * vidFrameWidthPts / audFrameWidthPts;
+    cDecodeContext* decodeContext = mDecodeContexts[0];
+    if (decodeContext)
+      for (auto i = 0; i < maxVidFrames; i++) {
+        //{{{  draw vidFrame graphic
+        cYuvFrame* yuvFrame = decodeContext->getYuvFrame (i);
+        float x = (client.width/2.0f) + float(yuvFrame->mPts - playAudPts) * pixPerPts;
+        float w = u * vidFrameWidthPts / audFrameWidthPts;
 
-      dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellowBrush);
-      swprintf (wStr, 10, L"%d", i);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
+        dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellowBrush);
+        swprintf (wStr, 10, L"%d", i);
+        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
 
-      dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), whiteBrush);
-      switch (mYuvFrames[i].mPictType) {
-        case 1: swprintf (wStr, 10, L"I"); break;
-        case 2: swprintf (wStr, 10, L"P"); break;
-        case 3: swprintf (wStr, 10, L"B"); break;
-        default: swprintf (wStr, 10, L"%d", yuvFrame->mPictType); break;
+        dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), whiteBrush);
+        switch (yuvFrame->mPictType) {
+          case 1: swprintf (wStr, 10, L"I"); break;
+          case 2: swprintf (wStr, 10, L"P"); break;
+          case 3: swprintf (wStr, 10, L"B"); break;
+          default: swprintf (wStr, 10, L"%d", yuvFrame->mPictType); break;
+          }
+        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
+
+        float l = yuvFrame->mLen / 1000.0f;
+        dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
         }
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
-
-      float l = yuvFrame->mLen / 1000.0f;
-      dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
-      }
-      //}}}
+        //}}}
     }
   //}}}
 
-  int mNumVids = 0;
-  cMpeg2decoder* mMpeg2decoders[10];
+  cDecodeContext* mDecodeContexts[maxVidDecodes];
+  int mSelectedVidPid = 0;
 
 protected:
   //{{{
@@ -297,65 +339,133 @@ protected:
 
     switch (pidInfo->mStreamType) {
       case 2: {
-        if (!pidInfo->mDecoder) {
-          pidInfo->mDecoder = new cMpeg2decoder();
-          mMpeg2decoders[mNumVids++] = pidInfo->mDecoder;
+        // find decodeContext for pid
+        int contextIndex = 0;
+        cDecodeContext* decodeContext = nullptr;
+        while ((contextIndex < maxVidDecodes) && mDecodeContexts[contextIndex]) {
+          if (pidInfo->mPid == mDecodeContexts[contextIndex]->mPid) {
+            decodeContext = mDecodeContexts[contextIndex];
+            break;
+            }
+          contextIndex++;
           }
+        if (contextIndex >= maxVidDecodes)
+          printf ("**** cockup %d %d %d\n", contextIndex, maxVidDecodes, pidInfo->mPid);
 
-        if (pidInfo->mDts) // use actual pts
-          pidInfo->mFakePts = pidInfo->mPts;
-        else // fake pts
-          pidInfo->mFakePts += 90000/25;
-        uint8_t* pesPtr;
-        pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, pidInfo->mFakePts, pesPtr);
+        if (!decodeContext) {
+          //{{{  not found, create it with decoder
+          //printf ("allocate %d pid:%d\n", contextIndex, pidInfo->mPid);
+          decodeContext = new cDecodeContext (pidInfo->mPid);
+          mDecodeContexts[contextIndex] = decodeContext;
+
+          // allocate decoder
+          decodeContext->mVidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
+          decodeContext->mVidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
+          decodeContext->mVidContext = avcodec_alloc_context3 (decodeContext->mVidCodec);
+          avcodec_open2 (decodeContext->mVidContext, decodeContext->mVidCodec, NULL);
+          // decodeContext->mMpeg2decoder = new cMpeg2decoder();
+          }
+          //}}}
+
+        //{{{  ffmpeg decode
+        AVPacket avPacket;
+        av_init_packet (&avPacket);
+        avPacket.data = pidInfo->mBuffer;
+        avPacket.size = 0;
+
+        auto pesPtr = pidInfo->mBuffer;
+        auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+
+        //printf ("vidPes pid:%d i:%d - len:%d\n", pidInfo->mPid, contextIndex, pesLen);
+
+        while (pesLen) {
+          auto lenUsed = av_parser_parse2 (decodeContext->mVidParser, decodeContext->mVidContext,
+                                           &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+          pesPtr += lenUsed;
+          pesLen -= lenUsed;
+
+          if (avPacket.data) {
+            auto avFrame = av_frame_alloc();
+            auto got = 0;
+            auto bytesUsed = avcodec_decode_video2 (decodeContext->mVidContext, avFrame, &got, &avPacket);
+            if (bytesUsed >= 0) {
+              avPacket.data += bytesUsed;
+              avPacket.size -= bytesUsed;
+              if (got) {
+                //printf ("pid:%d vid pts:%x dts:%x len:%d type:%d\n",
+                //         pidInfo->mPid, pidInfo->mPts, pidInfo->mDts, pesLen, avFrame->pict_type);
+                if (pidInfo->mDts) // use actual pts
+                  decodeContext->mFakePts = pidInfo->mPts;
+                else // fake pts
+                  decodeContext->mFakePts += 90000/25;
+                decodeContext->mYuvFrames [decodeContext->mLoadVidFrame % maxVidFrames].set (decodeContext->mFakePts,
+                  avFrame->data, avFrame->linesize, decodeContext->mVidContext->width, decodeContext->mVidContext->height,
+                  pesLen, avFrame->pict_type);
+                decodeContext->mLoadVidFrame++;
+                }
+              }
+            av_frame_free (&avFrame);
+            }
+          }
+        //}}}
+        //{{{  mpeg2decoder
+        //if (pidInfo->mDts) // use actual pts
+        //  decodeContext->mFakePts = pidInfo->mPts;
+        //else // fake pts
+        //  decodeContext->mFakePts += 90000/25;
+        //uint8_t* pesPtr;
+        //pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, decodeContext->mFakePts, pesPtr);
+        //}}}
         break;
         }
 
       case 27:
-        if (pidInfo->mPid == mSelectedVidPid) {
-          if (!vidParser) {
+        //{{{  hd
+        //if (pidInfo->mPid == mSelectedVidPid) {
+          //if (!vidParser) {
             //{{{  allocate decoder
-            vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-            vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
-            vidContext = avcodec_alloc_context3 (vidCodec);
-            avcodec_open2 (vidContext, vidCodec, NULL);
-            }
+            //vidParser = av_parser_init (AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
+            //vidCodec = avcodec_find_decoder(AV_CODEC_ID_H264); // AV_CODEC_ID_MPEG2VIDEO
+            //vidContext = avcodec_alloc_context3 (vidCodec);
+            //avcodec_open2 (vidContext, vidCodec, NULL);
+            //}
             //}}}
-          auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
+          //auto pesLen = int (pidInfo->mBufPtr - pidInfo->mBuffer);
           //{{{  hd ffmpeg decode
-          AVPacket avPacket;
-          av_init_packet (&avPacket);
-          avPacket.data = pidInfo->mBuffer;
-          avPacket.size = 0;
+          //AVPacket avPacket;
+          //av_init_packet (&avPacket);
+          //avPacket.data = pidInfo->mBuffer;
+          //avPacket.size = 0;
 
-          pidInfo->mBufPtr = pidInfo->mBuffer;
-          while (pesLen) {
-            auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-            pidInfo->mBufPtr += lenUsed;
-            pesLen -= lenUsed;
+          //pidInfo->mBufPtr = pidInfo->mBuffer;
+          //while (pesLen) {
+            //auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, pidInfo->mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+            //pidInfo->mBufPtr += lenUsed;
+            //pesLen -= lenUsed;
 
-            if (avPacket.data) {
-              auto avFrame = av_frame_alloc();
-              auto got = 0;
-              auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
-              avPacket.data += bytesUsed;
-              avPacket.size -= bytesUsed;
-              if (got) {
-                //printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
-                if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
-                    (((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
-                  pidInfo->mFakePts = pidInfo->mPts;
-                else // fake pts
-                  pidInfo->mFakePts += 90000/25;
-                mYuvFrames [mLoadVidFrame % maxVidFrames].set (pidInfo->mFakePts,
-                  avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
-                mLoadVidFrame++;
-                }
-              av_frame_free (&avFrame);
-              }
-            }
+            //if (avPacket.data) {
+              //auto avFrame = av_frame_alloc();
+              //auto got = 0;
+              //auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+              //avPacket.data += bytesUsed;
+              //avPacket.size -= bytesUsed;
+              //if (got) {
+                ////printf ("vid pts:%x dts:%x\n", pidInfo->mPts, pidInfo->mDts);
+                //if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) ||
+                    //(((pidInfo->mStreamType == 2) && pidInfo->mDts))) // use actual pts
+                  //pidInfo->mFakePts = pidInfo->mPts;
+                //else // fake pts
+                  //pidInfo->mFakePts += 90000/25;
+                //mYuvFrames [mLoadVidFrame % maxVidFrames].set (pidInfo->mFakePts,
+                  //avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+                //mLoadVidFrame++;
+                //}
+              //av_frame_free (&avFrame);
+              //}
+            //}
           //}}}
-          }
+          //}
+        //}}}
         break;
 
       default:
@@ -372,20 +482,14 @@ private:
   int64_t mVidPts = 0;
   int64_t mBasePts = 0;
 
-  int mSelectedVidPid = 0;
-
   int mSelectedAudPid = 0;
-  int mLoadAudFrame = 0;
-  cAudFrame mAudFrames[maxAudFrames];
+
   AVCodecParserContext* audParser  = nullptr;
   AVCodec* audCodec = nullptr;
   AVCodecContext* audContext = nullptr;
 
-  int mLoadVidFrame = 0;
-  cYuvFrame mYuvFrames[maxVidFrames];
-  AVCodecParserContext* vidParser = nullptr;
-  AVCodec* vidCodec = nullptr;
-  AVCodecContext* vidContext = nullptr;
+  int mLoadAudFrame = 0;
+  cAudFrame mAudFrames[maxAudFrames];
   };
 //}}}
 
@@ -396,8 +500,10 @@ public:
     mSilence = (int16_t*)malloc (2048*4);
     memset (mSilence, 0, 2048*4);
 
-    for (auto i = 0; i < 10; i++)
+    for (auto i = 0; i < 10; i++) {
       mBitmaps[i] = nullptr;
+      mBitmapPts[i] = 0;
+      }
     }
   //}}}
   virtual ~cTvWindow() {}
@@ -523,16 +629,22 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  if (makeBitmap (mTs.getNearestVidFrame (mAudPts), mBitmap, mBitmapPts))
-    dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
-  else
-    dc->Clear (ColorF (ColorF::Black));
+  //dc->Clear (ColorF (ColorF::Black));
 
-  for (auto i = 0; i < mTs.mNumVids; i++)
-    if (makeBitmap (mTs.mMpeg2decoders[i]->getNearestVidFrame (mAudPts), mBitmaps[i], mBitmapPts))
-      dc->DrawBitmap (mBitmaps[i],
-        RectF ((i%3) * getClientF().width/6, (i/3) * getClientF().height/6,
-               (((i%3)+1) * getClientF().width/6) - 4, (((i/3)+1) * getClientF().height/6) - 4));
+  int i = 0;
+  int pip = 0;
+  while (mTs.mDecodeContexts[i]) {
+    if (makeBitmap (mTs.mDecodeContexts[i]->getNearestVidFrame (mAudPts), mBitmaps[i], mBitmapPts[i])) {
+      if (mTs.mDecodeContexts[i]->mPid == mTs.mSelectedVidPid)
+        dc->DrawBitmap (mBitmaps[i], RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
+      else {
+        dc->DrawBitmap (mBitmaps[i], RectF ((pip%3) * getClientF().width/6, (pip/3) * getClientF().height/6,
+                                            (((pip%3)+1) * getClientF().width/6)-4, (((pip/3)+1) * getClientF().height/6)-4));
+        pip++;
+        }
+      }
+    i++;
+    }
 
   auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
   dc->FillRectangle (rMid, getGreyBrush());
@@ -810,11 +922,10 @@ private:
   bool mShowChannel = false;
   bool mShowTransportStream = false;
 
-  int64_t mBitmapPts = 0;
-  ID2D1Bitmap* mBitmap = nullptr;
-  ID2D1Bitmap* mBitmaps[10];
-
   IDWriteTextFormat* mSmallTextFormat = nullptr;
+
+  int64_t mBitmapPts[maxVidDecodes];
+  ID2D1Bitmap* mBitmaps[maxVidDecodes];
   //}}}
   };
 

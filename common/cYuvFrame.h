@@ -67,8 +67,8 @@ public:
       dstrgb128r1 = (__m128i *)(argb + argbStride*y + argbStride);
 
       for (x = 0; x < mWidth; x += 16) {
-        u0 = _mm_loadl_epi64( (__m128i *)srcu64 ); srcu64++;
-        v0 = _mm_loadl_epi64( (__m128i *)srcv64 ); srcv64++;
+        u0 = _mm_loadl_epi64 ((__m128i *)srcu64 ); srcu64++;
+        v0 = _mm_loadl_epi64 ((__m128i *)srcv64 ); srcv64++;
 
         y0r0 = _mm_load_si128( srcy128r0++ );
         y0r1 = _mm_load_si128( srcy128r1++ );
@@ -120,10 +120,10 @@ public:
         rgb89ab = _mm_unpacklo_epi16 (gbgb, r01);
         rgbcdef = _mm_unpackhi_epi16 (gbgb, r01);
 
-        _mm_store_si128 (dstrgb128r0++, rgb0123);
-        _mm_store_si128 (dstrgb128r0++, rgb4567);
-        _mm_store_si128 (dstrgb128r0++, rgb89ab);
-        _mm_store_si128 (dstrgb128r0++, rgbcdef);
+        _mm_stream_si128 (dstrgb128r0++, rgb0123);
+        _mm_stream_si128 (dstrgb128r0++, rgb4567);
+        _mm_stream_si128 (dstrgb128r0++, rgb89ab);
+        _mm_stream_si128 (dstrgb128r0++, rgbcdef);
 
         // row 1
         r00 = _mm_srai_epi16 (_mm_add_epi16 (y00r1, rv00), 6);
@@ -147,10 +147,10 @@ public:
         rgb89ab = _mm_unpacklo_epi16 (gbgb, r01);
         rgbcdef = _mm_unpackhi_epi16 (gbgb, r01);
 
-        _mm_store_si128 (dstrgb128r1++, rgb0123);
-        _mm_store_si128 (dstrgb128r1++, rgb4567);
-        _mm_store_si128 (dstrgb128r1++, rgb89ab);
-        _mm_store_si128 (dstrgb128r1++, rgbcdef);
+        _mm_stream_si128 (dstrgb128r1++, rgb0123);
+        _mm_stream_si128 (dstrgb128r1++, rgb4567);
+        _mm_stream_si128 (dstrgb128r1++, rgb89ab);
+        _mm_stream_si128 (dstrgb128r1++, rgbcdef);
         }
       }
 

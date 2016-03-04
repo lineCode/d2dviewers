@@ -6,7 +6,6 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <io.h>
-
 #include "cYuvFrame.h"
 //}}}
 //{{{  const
@@ -489,8 +488,8 @@ static __declspec(align(64)) const int16_t sse2_tab_i_35[] = {
 //}}}
 //}}}
 static uint8_t* Clip;
-
 #define maxVidFrames 40
+
 class cMpeg2decoder {
 public:
   //{{{
@@ -1715,34 +1714,33 @@ private:
   void idctSSE2 (int16_t* block) {
 
     //{{{  DCT_8_INV_ROWX2 macro
-    #define DCT_8_INV_ROWX2(tab1, tab2)  \
-    {  \
-      r1 = _mm_shufflelo_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-      r1 = _mm_shufflehi_epi16(r1, _MM_SHUFFLE(3, 1, 2, 0));  \
-      a0 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
-      a1 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
-      a2 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
-      a3 = _mm_madd_epi16(_mm_shuffle_epi32(r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
-      s0 = _mm_add_epi32(_mm_add_epi32(a0, round_row), a2);  \
-      s1 = _mm_add_epi32(a1, a3);  \
-      p0 = _mm_srai_epi32(_mm_add_epi32(s0, s1), 11);  \
-      p1 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-      r2 = _mm_shufflelo_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-      r2 = _mm_shufflehi_epi16(r2, _MM_SHUFFLE(3, 1, 2, 0));  \
-      b0 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
-      b1 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
-      b2 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
-      b3 = _mm_madd_epi16(_mm_shuffle_epi32(r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
-      s2 = _mm_add_epi32(_mm_add_epi32(b0, round_row), b2);  \
-      s3 = _mm_add_epi32(b3, b1);  \
-      p2 = _mm_srai_epi32(_mm_add_epi32(s2, s3), 11);  \
-      p3 = _mm_shuffle_epi32(_mm_srai_epi32(_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
-      r1 = _mm_packs_epi32(p0, p1);  \
-      r2 = _mm_packs_epi32(p2, p3);  \
+    #define DCT_8_INV_ROWX2(tab1, tab2) {  \
+      r1 = _mm_shufflelo_epi16 (r1, _MM_SHUFFLE(3, 1, 2, 0));  \
+      r1 = _mm_shufflehi_epi16 (r1, _MM_SHUFFLE(3, 1, 2, 0));  \
+      a0 = _mm_madd_epi16 (_mm_shuffle_epi32 (r1, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab1+8*0));  \
+      a1 = _mm_madd_epi16 (_mm_shuffle_epi32 (r1, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab1+8*2));  \
+      a2 = _mm_madd_epi16 (_mm_shuffle_epi32 (r1, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab1+8*1));  \
+      a3 = _mm_madd_epi16 (_mm_shuffle_epi32 (r1, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab1+8*3));  \
+      s0 = _mm_add_epi32 (_mm_add_epi32 (a0, round_row), a2);  \
+      s1 = _mm_add_epi32 (a1, a3);  \
+      p0 = _mm_srai_epi32 (_mm_add_epi32 (s0, s1), 11);  \
+      p1 = _mm_shuffle_epi32 (_mm_srai_epi32 (_mm_sub_epi32(s0, s1), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
+      r2 = _mm_shufflelo_epi16 (r2, _MM_SHUFFLE(3, 1, 2, 0));  \
+      r2 = _mm_shufflehi_epi16 (r2, _MM_SHUFFLE(3, 1, 2, 0));  \
+      b0 = _mm_madd_epi16 (_mm_shuffle_epi32 (r2, _MM_SHUFFLE(0, 0, 0, 0)), *(__m128i*)(tab2+8*0));  \
+      b1 = _mm_madd_epi16 (_mm_shuffle_epi32 (r2, _MM_SHUFFLE(1, 1, 1, 1)), *(__m128i*)(tab2+8*2));  \
+      b2 = _mm_madd_epi16 (_mm_shuffle_epi32 (r2, _MM_SHUFFLE(2, 2, 2, 2)), *(__m128i*)(tab2+8*1));  \
+      b3 = _mm_madd_epi16 (_mm_shuffle_epi32 (r2, _MM_SHUFFLE(3, 3, 3, 3)), *(__m128i*)(tab2+8*3));  \
+      s2 = _mm_add_epi32 (_mm_add_epi32 (b0, round_row), b2);  \
+      s3 = _mm_add_epi32 (b3, b1);  \
+      p2 = _mm_srai_epi32 (_mm_add_epi32 (s2, s3), 11);  \
+      p3 = _mm_shuffle_epi32 (_mm_srai_epi32 (_mm_sub_epi32(s2, s3), 11), _MM_SHUFFLE(0, 1, 2, 3));  \
+      r1 = _mm_packs_epi32 (p0, p1);  \
+      r2 = _mm_packs_epi32 (p2, p3);  \
     }
     //}}}
     __m128i r1, r2, a0, a1, a2, a3, b0, b1, b2, b3, s0, s1, s2, s3, p0, p1, p2, p3;
-    __m128i round_row = _mm_set_epi16(0, 1024, 0, 1024, 0, 1024, 0, 1024);
+    __m128i round_row = _mm_set_epi16 (0, 1024, 0, 1024, 0, 1024, 0, 1024);
 
     r1 = *(__m128i*)(block+8*0);
     r2 = *(__m128i*)(block+8*1);
@@ -1777,47 +1775,47 @@ private:
     __m128i x6 = *(__m128i*)(block+8*6);
     __m128i x7 = *(__m128i*)(block+8*7);
 
-    __m128i tan1 = _mm_set1_epi16(13036);
-    __m128i tan2 = _mm_set1_epi16(27146);
-    __m128i tan3 = _mm_set1_epi16(-21746);
-    __m128i cos4 = _mm_set1_epi16(-19195);
-    __m128i round_err = _mm_set1_epi16(1);
-    __m128i round_col = _mm_set1_epi16(32);
-    __m128i round_corr = _mm_set1_epi16(31);
+    __m128i tan1 = _mm_set1_epi16 (13036);
+    __m128i tan2 = _mm_set1_epi16 (27146);
+    __m128i tan3 = _mm_set1_epi16 (-21746);
+    __m128i cos4 = _mm_set1_epi16 (-19195);
+    __m128i round_err = _mm_set1_epi16 (1);
+    __m128i round_col = _mm_set1_epi16 (32);
+    __m128i round_corr = _mm_set1_epi16 (31);
 
-    __m128i tp765 = _mm_adds_epi16(_mm_mulhi_epi16(x7, tan1), x1);
-    __m128i tp465 = _mm_subs_epi16(_mm_mulhi_epi16(x1, tan1), x7);
-    __m128i tm765 = _mm_adds_epi16(_mm_mulhi_epi16(x5, tan3), _mm_adds_epi16(x5, x3));
-    __m128i tm465 = _mm_subs_epi16(x5, _mm_adds_epi16(_mm_mulhi_epi16(x3, tan3), x3));
+    __m128i tp765 = _mm_adds_epi16 (_mm_mulhi_epi16 (x7, tan1), x1);
+    __m128i tp465 = _mm_subs_epi16 (_mm_mulhi_epi16 (x1, tan1), x7);
+    __m128i tm765 = _mm_adds_epi16 (_mm_mulhi_epi16 (x5, tan3), _mm_adds_epi16 (x5, x3));
+    __m128i tm465 = _mm_subs_epi16 (x5, _mm_adds_epi16 (_mm_mulhi_epi16 (x3, tan3), x3));
 
-    __m128i t7 = _mm_adds_epi16(_mm_adds_epi16(tp765, tm765), round_err);
-    __m128i tp65 = _mm_subs_epi16(tp765, tm765);
-    __m128i t4 = _mm_adds_epi16(tp465, tm465);
-    __m128i tm65 = _mm_adds_epi16(_mm_subs_epi16(tp465, tm465), round_err);
+    __m128i t7 = _mm_adds_epi16 (_mm_adds_epi16(tp765, tm765), round_err);
+    __m128i tp65 = _mm_subs_epi16 (tp765, tm765);
+    __m128i t4 = _mm_adds_epi16 (tp465, tm465);
+    __m128i tm65 = _mm_adds_epi16 (_mm_subs_epi16(tp465, tm465), round_err);
 
-    __m128i tmp1 = _mm_adds_epi16(tp65, tm65);
-    __m128i t6 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp1, cos4), tmp1), round_err);
-    __m128i tmp2 = _mm_subs_epi16(tp65, tm65);
-    __m128i t5 = _mm_or_si128(_mm_adds_epi16(_mm_mulhi_epi16(tmp2, cos4), tmp2), round_err);
+    __m128i tmp1 = _mm_adds_epi16 (tp65, tm65);
+    __m128i t6 = _mm_or_si128 (_mm_adds_epi16(_mm_mulhi_epi16 (tmp1, cos4), tmp1), round_err);
+    __m128i tmp2 = _mm_subs_epi16 (tp65, tm65);
+    __m128i t5 = _mm_or_si128 (_mm_adds_epi16(_mm_mulhi_epi16 (tmp2, cos4), tmp2), round_err);
 
-    __m128i tp03 = _mm_adds_epi16(x0, x4);
-    __m128i tp12 = _mm_subs_epi16(x0, x4);
-    __m128i tm03 = _mm_adds_epi16(_mm_mulhi_epi16(x6, tan2), x2);
-    __m128i tm12 = _mm_subs_epi16(_mm_mulhi_epi16(x2, tan2), x6);
+    __m128i tp03 = _mm_adds_epi16 (x0, x4);
+    __m128i tp12 = _mm_subs_epi16 (x0, x4);
+    __m128i tm03 = _mm_adds_epi16 (_mm_mulhi_epi16( x6, tan2), x2);
+    __m128i tm12 = _mm_subs_epi16 (_mm_mulhi_epi16 (x2, tan2), x6);
 
-    __m128i t0 = _mm_adds_epi16(_mm_adds_epi16(tp03, tm03), round_col);
-    __m128i t3 = _mm_adds_epi16(_mm_subs_epi16(tp03, tm03), round_corr);
-    __m128i t1 = _mm_adds_epi16(_mm_adds_epi16(tp12, tm12), round_col);
-    __m128i t2 = _mm_adds_epi16(_mm_subs_epi16(tp12, tm12), round_corr);
+    __m128i t0 = _mm_adds_epi16 (_mm_adds_epi16 (tp03, tm03), round_col);
+    __m128i t3 = _mm_adds_epi16 (_mm_subs_epi16 (tp03, tm03), round_corr);
+    __m128i t1 = _mm_adds_epi16 (_mm_adds_epi16 (tp12, tm12), round_col);
+    __m128i t2 = _mm_adds_epi16 (_mm_subs_epi16 (tp12, tm12), round_corr);
 
-    *(__m128i*)(block+8*0) = _mm_srai_epi16(_mm_adds_epi16(t0, t7), 6);
-    *(__m128i*)(block+8*7) = _mm_srai_epi16(_mm_subs_epi16(t0, t7), 6);
-    *(__m128i*)(block+8*1) = _mm_srai_epi16(_mm_adds_epi16(t1, t6), 6);
-    *(__m128i*)(block+8*6) = _mm_srai_epi16(_mm_subs_epi16(t1, t6), 6);
-    *(__m128i*)(block+8*2) = _mm_srai_epi16(_mm_adds_epi16(t2, t5), 6);
-    *(__m128i*)(block+8*5) = _mm_srai_epi16(_mm_subs_epi16(t2, t5), 6);
-    *(__m128i*)(block+8*3) = _mm_srai_epi16(_mm_adds_epi16(t3, t4), 6);
-    *(__m128i*)(block+8*4) = _mm_srai_epi16(_mm_subs_epi16(t3, t4), 6);
+    *(__m128i*)(block+8*0) = _mm_srai_epi16 (_mm_adds_epi16(t0, t7), 6);
+    *(__m128i*)(block+8*7) = _mm_srai_epi16 (_mm_subs_epi16(t0, t7), 6);
+    *(__m128i*)(block+8*1) = _mm_srai_epi16 (_mm_adds_epi16(t1, t6), 6);
+    *(__m128i*)(block+8*6) = _mm_srai_epi16 (_mm_subs_epi16(t1, t6), 6);
+    *(__m128i*)(block+8*2) = _mm_srai_epi16 (_mm_adds_epi16(t2, t5), 6);
+    *(__m128i*)(block+8*5) = _mm_srai_epi16 (_mm_subs_epi16(t2, t5), 6);
+    *(__m128i*)(block+8*3) = _mm_srai_epi16 (_mm_adds_epi16(t3, t4), 6);
+    *(__m128i*)(block+8*4) = _mm_srai_epi16 (_mm_subs_epi16(t3, t4), 6);
     }
   //}}}
   //{{{
@@ -1830,27 +1828,27 @@ private:
     if (luma) {
       if (dctType) {
         // luma field DCT coding
-        lineInc = (mWidth << 1) - 8;
+        lineInc = (mWidth << 1);
         refFramePtr = mCurrentFrame[0] + mWidth * (by + ((comp & 2) >> 1)) + bx + ((comp & 1) << 3);
         }
       else {
         // luma frame DCT coding
-        lineInc = mWidth - 8;
+        lineInc = mWidth;
         refFramePtr = mCurrentFrame[0] + mWidth * (by + ((comp & 2) << 2)) + bx + ((comp & 1) << 3);
         }
       }
     else {
       // chroma scale coordinates, frame DCT coding
-      lineInc = mChromaWidth - 8;
+      lineInc = mChromaWidth;
       refFramePtr = mCurrentFrame[(comp & 1) + 1] + mChromaWidth * ((by >> 1) + ((comp & 2) << 2)) + (bx >> 1) + (comp & 8);
       }
 
-  #ifdef nnn //_M_IX86
+  //#ifdef _M_X64
+  #ifdef _M_IX86
     //{{{  x86 intrinsics
     __m64 *src = (__m64*)block;
-
     if (intra) {
-      __m64 offset = _mm_set1_pi16(128);
+      __m64 offset = _mm_set1_pi16 (128);
       for (int loop = 0; loop < 8; loop++) {
         __m64 sum1 = _m_paddw (*src++, offset);
         __m64 sum2 = _m_paddw (*src++, offset);
@@ -1870,6 +1868,7 @@ private:
     //}}}
   #else
     //{{{
+    //lineInc -= 8;
     //if (intra)
       //for (int j = 0; j < 8; j++) {
         //for (int i = 0; i < 8; i++)
@@ -1884,6 +1883,8 @@ private:
         //}
     //}}}
     //{{{
+    lineInc -= 8;
+
     if (intra) {
       for (int j = 0; j < 8; j++) {
         for (int i = 0; i < 8; i++)
@@ -1942,7 +1943,6 @@ private:
     if ((mbType & MACROBLOCK_INTRA) && mConcealmentMotionVecs)
       consumeBits (1); // remove marker_bit
 
-    // mBpattern ISO/IEC 13818-2 section 6.3.17.4: Coded block pattern
     int coded_block_pattern;
     if (mbType & MACROBLOCK_PATTERN)
       coded_block_pattern = getCodedBlockPattern();
@@ -1955,13 +1955,13 @@ private:
       if (coded_block_pattern & (1 << (6 - 1 - i)))
         (mbType & MACROBLOCK_INTRA) ? decodeIntraBlock (i, dcDctPred) : decodeNonIntraBlock (i);
 
-    // reset intra_dc predictors ISO/IEC 13818-2 section 7.2.1: DC coefficients in intra blocks
+    // reset intra_dc predictors
     if (!(mbType & MACROBLOCK_INTRA))
       dcDctPred[0] = dcDctPred[1] = dcDctPred[2] = 0;
 
     // reset motion vector predictors
     if ((mbType & MACROBLOCK_INTRA) && !mConcealmentMotionVecs) {
-      // intra mb without concealment motion vectors ISO/IEC 13818-2 section 7.6.3.4: Resetting motion vector predictors
+      // intra mb without concealment motion vectors, reset motion vector predictors
       PMV[0][0][0] = PMV[0][0][1] = PMV[1][0][0] = PMV[1][0][1] = 0;
       PMV[0][1][0] = PMV[0][1][1] = PMV[1][1][0] = PMV[1][1][1] = 0;
       }

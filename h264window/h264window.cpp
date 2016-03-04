@@ -2,6 +2,9 @@
 //{{{  includes
 #include "pch.h"
 
+#include "../common/cAudFrame.h"
+#include "../common/winAudio.h"
+
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
 #include "../common/cYuvFrame.h"
@@ -13,9 +16,15 @@
 #include "codec_app_def.h"
 #include "codec_api.h"
 #pragma comment(lib,"welsdec.lib")
+
+#pragma comment(lib,"avutil.lib")
+#pragma comment(lib,"avcodec.lib")
+#pragma comment(lib,"avformat.lib")
 //}}}
 
-//#define maxVidFrames 10000
+#define maxAudFrames 500000
+#define kMaxVidFrames 10000
+cAudFrame* mAudFrames[maxAudFrames];
 
 class cAppWindow : public cD2dWindow, public cMpeg2decoder {
 public:
@@ -27,9 +36,12 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    std::thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
+    std::thread ([=]() { playerffMp3 (wFilename, filename); }).detach();
+    //std::thread ([=]() { playerffMpeg2 (wFilename, filename); }).detach();
+    //std::thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
     //std::thread ([=]() { playerReference264(); }).detach();
     //std::thread ([=]() { playerOpenH264(); }).detach();
+    std::thread ([=]() { audioPlayer(); }).detach();
 
     // loop in windows message pump till quit
     messagePump();
@@ -84,10 +96,10 @@ protected:
     }
   //}}}
   //{{{
-  void onDraw (ID2D1DeviceContext* dc) {
+  void onDrawVideo (ID2D1DeviceContext* dc) {
 
-    //if (makeBitmap (&mYuvFrames[mCurVidFrame], mBitmap, mBitmapPts))
-    if (makeBitmap (getYuvFrame(mCurVidFrame), mBitmap, mBitmapPts))
+    if (makeBitmap (&mYuvFrames[mLoadVidFrame], mBitmap, mBitmapPts))
+    //if (makeBitmap (getYuvFrame (mCurVidFrame), mBitmap, mBitmapPts))
       dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
@@ -96,6 +108,33 @@ protected:
 
     wchar_t wStr[200];
     swprintf (wStr, 200, L"helloColin");
+    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                  RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+    }
+  //}}}
+  //{{{
+  void onDraw (ID2D1DeviceContext* dc) {
+
+    dc->Clear (ColorF(ColorF::Black));
+
+    uint8_t* power = nullptr;
+    int frame = mPlayAudFrame;
+    auto frames = 0;
+    auto rWave = RectF (0,0,1,0);
+    for (int i = 0; i < 10; i++) {
+      for (float f = 0.0f; f < getClientF().width; f++) {
+        auto rWave = RectF ((i & 1) ? f : (getClientF().width-f), 0, (i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
+        if (mAudFrames[frame]) {
+          rWave.top = i * (getClientF().height / 10.0f) + mAudFrames[frame]->mPower[0];
+          rWave.bottom = rWave.top + mAudFrames[frame]->mPower[1];
+          dc->FillRectangle (rWave, getBlueBrush());
+          }
+        frame++;
+        }
+      }
+
+    wchar_t wStr[200];
+    swprintf (wStr, 200, L"helloColin %d %d", mLoadAudFrame, mPlayAudFrame);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
     }
@@ -243,12 +282,162 @@ private:
     CloseHandle (fileHandle);
     }
   //}}}
+  //{{{
+  void playerffMpeg2 (wchar_t* wFilename,char* filename) {
+
+    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+      return;
+
+    int mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    av_register_all();
+
+    AVCodecParserContext* vidParser = av_parser_init (AV_CODEC_ID_MPEG2VIDEO);
+    AVCodec* vidCodec = avcodec_find_decoder (AV_CODEC_ID_MPEG2VIDEO);
+    AVCodecContext* vidContext = avcodec_alloc_context3 (vidCodec);
+    avcodec_open2 (vidContext, vidCodec, NULL);
+
+    //  hd ffmpeg decode
+    AVPacket avPacket;
+    av_init_packet (&avPacket);
+    avPacket.data = fileBuffer;
+    avPacket.size = 0;
+
+    auto time = startTimer();
+
+    int pesLen = mFileBytes;
+    uint8_t* mBufPtr = fileBuffer;
+    while (pesLen) {
+      auto lenUsed = av_parser_parse2 (vidParser, vidContext, &avPacket.data, &avPacket.size, mBufPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      mBufPtr += lenUsed;
+      pesLen -= lenUsed;
+
+      if (avPacket.data) {
+        auto avFrame = av_frame_alloc();
+        auto got = 0;
+        auto bytesUsed = avcodec_decode_video2 (vidContext, avFrame, &got, &avPacket);
+        if (bytesUsed >= 0) {
+          avPacket.data += bytesUsed;
+          avPacket.size -= bytesUsed;
+          }
+        if (got) {
+          mYuvFrames [mCurVidFrame % kMaxVidFrames].set (mCurVidFrame,
+            avFrame->data, avFrame->linesize, vidContext->width, vidContext->height, pesLen, avFrame->pict_type);
+          mLoadVidFrame = mCurVidFrame;
+          mCurVidFrame++;
+          if (mLoadVidFrame && !(mLoadVidFrame % 100))
+            printf ("frame %d  %4.3fs %4.3fms\n", mLoadVidFrame, getTimer() - time, 1000.0 * (getTimer() - time) / mLoadVidFrame);
+          }
+        av_frame_free (&avFrame);
+        }
+      }
+
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
+    }
+  //}}}
+
+  //{{{
+  void playerffMp3 (wchar_t* wFilename,char* filename) {
+
+    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+      return;
+
+    int mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    av_register_all();
+    AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
+    AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
+    AVCodecContext*audContext = avcodec_alloc_context3 (audCodec);
+    avcodec_open2 (audContext, audCodec, NULL);
+
+    AVPacket avPacket;
+    av_init_packet (&avPacket);
+    avPacket.data = fileBuffer;
+    avPacket.size = 0;
+
+    auto time = startTimer();
+
+    int pesLen = mFileBytes;
+    uint8_t* pesPtr = fileBuffer;
+    while (pesLen) {
+      auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      pesPtr += lenUsed;
+      pesLen -= lenUsed;
+
+      if (avPacket.data) {
+        auto got = 0;
+        auto avFrame = av_frame_alloc();
+        auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
+        if (bytesUsed >= 0) {
+          avPacket.data += bytesUsed;
+          avPacket.size -= bytesUsed;
+
+          if (got) {
+            mSampleRate = avFrame->sample_rate;
+            mAudFrames[mLoadAudFrame] = new cAudFrame();
+            mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, 48000, avFrame->nb_samples);
+            auto samplePtr = (short*)mAudFrames[mLoadAudFrame]->mSamples;
+            double valueL = 0;
+            double valueR = 0;
+            short* leftPtr = (short*)avFrame->data[0];
+            short* rightPtr = (short*)avFrame->data[1];
+            for (int i = 0; i < avFrame->nb_samples; i++) {
+              *samplePtr = *leftPtr++;
+              valueL += pow (*samplePtr++, 2);
+              *samplePtr = *rightPtr++;
+              valueR += pow (*samplePtr++, 2);
+              }
+            mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
+            mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
+            mLoadAudFrame++;
+            changed();
+            }
+          av_frame_free (&avFrame);
+          }
+        }
+      }
+
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
+    }
+  //}}}
+  //{{{
+  void audioPlayer() {
+
+    CoInitialize (NULL);  // for winAudio
+
+    while (mLoadAudFrame < 8)
+      Sleep(10);
+    winAudioOpen (mSampleRate, 16, 2);
+
+    mPlayAudFrame = 0;
+    while (true) {
+      winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
+      mPlayAudFrame++;
+      changed();
+      }
+
+    CoUninitialize();
+    }
+  //}}}
 
   int mCurVidFrame = 0;
+  int mLoadVidFrame = 0;
   int64_t mBitmapPts = -1;
   ID2D1Bitmap* mBitmap = nullptr;
-  //cYuvFrame mYuvFrames[maxVidFrames];
-  //DecodedPicList* pDecPicList;
+  cYuvFrame mYuvFrames[kMaxVidFrames];
+  DecodedPicList* pDecPicList;
+
+  int mSampleRate = 0;
+  int mPlayAudFrame = 0;
+  int mLoadAudFrame = 0;
   };
 
 //{{{
