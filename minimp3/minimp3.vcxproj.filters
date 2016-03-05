@@ -18,9 +18,6 @@
     <ClCompile Include="minimp3.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="player_win32.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libc.h">

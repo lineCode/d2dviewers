@@ -15,15 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="kjmp2.c">
+    <ClCompile Include="minimp3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="mp2play_win32.c">
+    <ClCompile Include="..\common\Xaudio2.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="kjmp2.h">
+    <ClInclude Include="..\common\winAudio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

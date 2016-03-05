@@ -107,7 +107,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="minimp3.c" />
-    <ClCompile Include="player_win32.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libc.h" />
