@@ -81,13 +81,6 @@ typedef struct _vlc {
   } vlc_t;
 //}}}
 //{{{
-typedef struct _mp3_info {
-  int sample_rate;
-  int channels;
-  int audio_bytes;  // generated amount of audio per frame
-  } mp3_info_t;
-//}}}
-//{{{
 typedef struct _granule {
   uint8_t scfsi;
   int part2_3_length;
@@ -119,6 +112,12 @@ typedef struct _huff_table {
   } huff_table_t;
 //}}}
 //{{{  const tables
+//{{{
+static const int idxtab[16] = {
+  3,3,2,2,1,1,1,1,0,0,0,0,0,0,0,0
+  };
+//}}}
+
 //{{{
 static const uint16_t mp3_bitrate_tab[2][15] = {
     {0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320 },
@@ -191,7 +190,7 @@ static const uint16_t mp3_huffcodes_1[4] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_1[4] = {
+static const uint8_t  mp3_huffbits_1[4] = {
   1,  3,  2,  3,
 };
 //}}}
@@ -202,7 +201,7 @@ static const uint16_t mp3_huffcodes_2[9] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_2[9] = {
+static const uint8_t  mp3_huffbits_2[9] = {
   1,  3,  6,  3,  3,  5,  5,  5,
   6,
 };
@@ -214,7 +213,7 @@ static const uint16_t mp3_huffcodes_3[9] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_3[9] = {
+static const uint8_t  mp3_huffbits_3[9] = {
   2,  2,  6,  3,  2,  5,  5,  5,
   6,
 };
@@ -226,7 +225,7 @@ static const uint16_t mp3_huffcodes_5[16] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_5[16] = {
+static const uint8_t  mp3_huffbits_5[16] = {
   1,  3,  6,  7,  3,  3,  6,  7,
   6,  6,  7,  8,  7,  6,  7,  8,
 };
@@ -238,7 +237,7 @@ static const uint16_t mp3_huffcodes_6[16] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_6[16] = {
+static const uint8_t  mp3_huffbits_6[16] = {
   3,  3,  5,  7,  3,  2,  4,  5,
   4,  4,  5,  6,  6,  5,  6,  7,
 };
@@ -253,7 +252,7 @@ static const uint16_t mp3_huffcodes_7[36] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_7[36] = {
+static const uint8_t  mp3_huffbits_7[36] = {
   1,  3,  6,  8,  8,  9,  3,  4,
   6,  7,  7,  8,  6,  5,  7,  8,
   8,  9,  7,  7,  8,  9,  9,  9,
@@ -271,7 +270,7 @@ static const uint16_t mp3_huffcodes_8[36] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_8[36] = {
+static const uint8_t  mp3_huffbits_8[36] = {
   2,  3,  6,  8,  8,  9,  3,  2,
   4,  8,  8,  8,  6,  4,  6,  8,
   8,  9,  8,  8,  8,  9,  9, 10,
@@ -289,7 +288,7 @@ static const uint16_t mp3_huffcodes_9[36] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_9[36] = {
+static const uint8_t  mp3_huffbits_9[36] = {
   3,  3,  5,  6,  8,  9,  3,  3,
   4,  5,  6,  8,  4,  4,  5,  6,
   7,  8,  6,  5,  6,  7,  7,  8,
@@ -310,7 +309,7 @@ static const uint16_t mp3_huffcodes_10[64] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_10[64] = {
+static const uint8_t  mp3_huffbits_10[64] = {
   1,  3,  6,  8,  9,  9,  9, 10,
   3,  4,  6,  7,  8,  9,  8,  8,
   6,  6,  7,  8,  9, 10,  9,  9,
@@ -334,7 +333,7 @@ static const uint16_t mp3_huffcodes_11[64] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_11[64] = {
+static const uint8_t  mp3_huffbits_11[64] = {
   2,  3,  5,  7,  8,  9,  8,  9,
   3,  3,  4,  6,  8,  8,  7,  8,
   5,  5,  6,  7,  8,  9,  8,  8,
@@ -358,7 +357,7 @@ static const uint16_t mp3_huffcodes_12[64] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_12[64] = {
+static const uint8_t  mp3_huffbits_12[64] = {
   4,  3,  5,  7,  8,  9,  9,  9,
   3,  3,  4,  5,  7,  7,  8,  8,
   5,  4,  5,  6,  7,  8,  7,  8,
@@ -406,7 +405,7 @@ static const uint16_t mp3_huffcodes_13[256] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_13[256] = {
+static const uint8_t  mp3_huffbits_13[256] = {
   1,  4,  6,  7,  8,  9,  9, 10,
   9, 10, 11, 11, 12, 12, 13, 13,
   3,  4,  6,  7,  8,  8,  9,  9,
@@ -478,7 +477,7 @@ static const uint16_t mp3_huffcodes_15[256] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_15[256] = {
+static const uint8_t  mp3_huffbits_15[256] = {
   3,  4,  5,  7,  7,  8,  9,  9,
   9, 10, 10, 11, 11, 11, 12, 13,
   4,  3,  5,  6,  7,  7,  8,  8,
@@ -550,7 +549,7 @@ static const uint16_t mp3_huffcodes_16[256] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_16[256] = {
+static const uint8_t  mp3_huffbits_16[256] = {
   1,  4,  6,  8,  9,  9, 10, 10,
  11, 11, 11, 12, 12, 12, 13,  9,
   3,  4,  6,  7,  8,  9,  9,  9,
@@ -622,7 +621,7 @@ static const uint16_t mp3_huffcodes_24[256] = {
 };
 //}}}
 //{{{
-static const uint8_t mp3_huffbits_24[256] = {
+static const uint8_t  mp3_huffbits_24[256] = {
   4,  4,  6,  7,  8,  9,  9, 10,
  10, 11, 11, 11, 11, 11, 12,  9,
   4,  4,  5,  6,  7,  8,  8,  9,
@@ -657,6 +656,7 @@ static const uint8_t mp3_huffbits_24[256] = {
   7,  7,  7,  8,  8,  8,  8,  4,
 };
 //}}}
+
 //{{{
 static const huff_table_t mp3_huff_tables[16] = {
 { 1, NULL, NULL },
@@ -677,7 +677,6 @@ static const huff_table_t mp3_huff_tables[16] = {
 { 16, mp3_huffbits_24, mp3_huffcodes_24 },
 };
 //}}}
-
 //{{{
 static const uint8_t mp3_huff_data[32][2] = {
 { 0, 0 },
@@ -815,47 +814,45 @@ static const int icos36h[9] = {
 //}}}
 //{{{  dct defines
 //{{{
-#define SUM8(sum, op, w, p) \
-{                                               \
-    sum op MULS((w)[0 * 64], p[0 * 64]);\
-    sum op MULS((w)[1 * 64], p[1 * 64]);\
-    sum op MULS((w)[2 * 64], p[2 * 64]);\
-    sum op MULS((w)[3 * 64], p[3 * 64]);\
-    sum op MULS((w)[4 * 64], p[4 * 64]);\
-    sum op MULS((w)[5 * 64], p[5 * 64]);\
-    sum op MULS((w)[6 * 64], p[6 * 64]);\
-    sum op MULS((w)[7 * 64], p[7 * 64]);\
-}
+#define SUM8(sum, op, w, p) {\
+  sum op MULS((w)[0 * 64], p[0 * 64]);\
+  sum op MULS((w)[1 * 64], p[1 * 64]);\
+  sum op MULS((w)[2 * 64], p[2 * 64]);\
+  sum op MULS((w)[3 * 64], p[3 * 64]);\
+  sum op MULS((w)[4 * 64], p[4 * 64]);\
+  sum op MULS((w)[5 * 64], p[5 * 64]);\
+  sum op MULS((w)[6 * 64], p[6 * 64]);\
+  sum op MULS((w)[7 * 64], p[7 * 64]);\
+  }
 //}}}
 //{{{
-#define SUM8P2(sum1, op1, sum2, op2, w1, w2, p) \
-{                                               \
-    int tmp;\
-    tmp = p[0 * 64];\
-    sum1 op1 MULS((w1)[0 * 64], tmp);\
-    sum2 op2 MULS((w2)[0 * 64], tmp);\
-    tmp = p[1 * 64];\
-    sum1 op1 MULS((w1)[1 * 64], tmp);\
-    sum2 op2 MULS((w2)[1 * 64], tmp);\
-    tmp = p[2 * 64];\
-    sum1 op1 MULS((w1)[2 * 64], tmp);\
-    sum2 op2 MULS((w2)[2 * 64], tmp);\
-    tmp = p[3 * 64];\
-    sum1 op1 MULS((w1)[3 * 64], tmp);\
-    sum2 op2 MULS((w2)[3 * 64], tmp);\
-    tmp = p[4 * 64];\
-    sum1 op1 MULS((w1)[4 * 64], tmp);\
-    sum2 op2 MULS((w2)[4 * 64], tmp);\
-    tmp = p[5 * 64];\
-    sum1 op1 MULS((w1)[5 * 64], tmp);\
-    sum2 op2 MULS((w2)[5 * 64], tmp);\
-    tmp = p[6 * 64];\
-    sum1 op1 MULS((w1)[6 * 64], tmp);\
-    sum2 op2 MULS((w2)[6 * 64], tmp);\
-    tmp = p[7 * 64];\
-    sum1 op1 MULS((w1)[7 * 64], tmp);\
-    sum2 op2 MULS((w2)[7 * 64], tmp);\
-}
+#define SUM8P2(sum1, op1, sum2, op2, w1, w2, p) {\
+  int tmp;\
+  tmp = p[0 * 64];\
+  sum1 op1 MULS((w1)[0 * 64], tmp);\
+  sum2 op2 MULS((w2)[0 * 64], tmp);\
+  tmp = p[1 * 64];\
+  sum1 op1 MULS((w1)[1 * 64], tmp);\
+  sum2 op2 MULS((w2)[1 * 64], tmp);\
+  tmp = p[2 * 64];\
+  sum1 op1 MULS((w1)[2 * 64], tmp);\
+  sum2 op2 MULS((w2)[2 * 64], tmp);\
+  tmp = p[3 * 64];\
+  sum1 op1 MULS((w1)[3 * 64], tmp);\
+  sum2 op2 MULS((w2)[3 * 64], tmp);\
+  tmp = p[4 * 64];\
+  sum1 op1 MULS((w1)[4 * 64], tmp);\
+  sum2 op2 MULS((w2)[4 * 64], tmp);\
+  tmp = p[5 * 64];\
+  sum1 op1 MULS((w1)[5 * 64], tmp);\
+  sum2 op2 MULS((w2)[5 * 64], tmp);\
+  tmp = p[6 * 64];\
+  sum1 op1 MULS((w1)[6 * 64], tmp);\
+  sum2 op2 MULS((w2)[6 * 64], tmp);\
+  tmp = p[7 * 64];\
+  sum1 op1 MULS((w1)[7 * 64], tmp);\
+  sum2 op2 MULS((w2)[7 * 64], tmp);\
+  }
 //}}}
 
 //{{{  cos defines
@@ -897,32 +894,29 @@ static const int icos36h[9] = {
 //}}}
 
 //{{{
-#define BF(a, b, c, s)\
-{\
-    tmp0 = tab[a] + tab[b];\
-    tmp1 = tab[a] - tab[b];\
-    tab[a] = tmp0;\
-    tab[b] = MULH(tmp1<<(s), c);\
-}
+#define BF(a, b, c, s){\
+  tmp0 = tab[a] + tab[b];\
+  tmp1 = tab[a] - tab[b];\
+  tab[a] = tmp0;\
+  tab[b] = MULH(tmp1<<(s), c);\
+  }
 //}}}
 //{{{
-#define BF1(a, b, c, d)\
-{\
-    BF(a, b, COS4_0, 1);\
-    BF(c, d,-COS4_0, 1);\
-    tab[c] += tab[d];\
-}
+#define BF1(a, b, c, d) {\
+  BF(a, b, COS4_0, 1);\
+  BF(c, d,-COS4_0, 1);\
+  tab[c] += tab[d];\
+  }
 //}}}
 //{{{
-#define BF2(a, b, c, d)\
-{\
-    BF(a, b, COS4_0, 1);\
-    BF(c, d,-COS4_0, 1);\
-    tab[c] += tab[d];\
-    tab[a] += tab[c];\
-    tab[c] += tab[b];\
-    tab[b] += tab[d];\
-}
+#define BF2(a, b, c, d) {\
+  BF(a, b, COS4_0, 1);\
+  BF(c, d,-COS4_0, 1);\
+  tab[c] += tab[d];\
+  tab[a] += tab[c];\
+  tab[c] += tab[b];\
+  tab[b] += tab[d];\
+  }
 //}}}
 
 #define ADD(a, b) tab[a] += tab[b]
@@ -948,293 +942,20 @@ static int32_t mdct_win[8][36];
 static int16_t window[512];
 //}}}
 
-//{{{  bit reader
-#define MIN_CACHE_BITS 25
-#define NEG_SSR32(a,s) ((( int32_t)(a))>>(32-(s)))
-#define NEG_USR32(a,s) (((uint32_t)(a))>>(32-(s)))
-//{{{
-#define OPEN_READER(name, gb) \
-        int name##_index= (gb)->index;\
-        int name##_cache= 0;\
-//}}}
-//{{{
-#define CLOSE_READER(name, gb)\
-        (gb)->index= name##_index;\
-//}}}
-//{{{
-#define UPDATE_CACHE(name, gb)\
-        name##_cache= unaligned32_be(&((gb)->buffer[name##_index>>3])) << (name##_index&0x07); \
-//}}}
-//{{{
-#define SKIP_CACHE(name, gb, num)\
-        name##_cache <<= (num);
-//}}}
-//{{{
-#define SKIP_COUNTER(name, gb, num)\
-        name##_index += (num);\
-//}}}
-//{{{
-#define SKIP_BITS(name, gb, num)\
-        {\
-            SKIP_CACHE(name, gb, num)\
-            SKIP_COUNTER(name, gb, num)\
-        }\
-//}}}
-#define LAST_SKIP_BITS(name, gb, num) SKIP_COUNTER(name, gb, num)
-#define LAST_SKIP_CACHE(name, gb, num) ;
-//{{{
-#define SHOW_UBITS(name, gb, num)\
-        NEG_USR32(name##_cache, num)
-//}}}
-//{{{
-#define SHOW_SBITS(name, gb, num)\
-        NEG_SSR32(name##_cache, num)
-//}}}
-//{{{
-#define GET_CACHE(name, gb)\
-        ((uint32_t)name##_cache)
-//}}}
-//{{{
-#define GET_DATA(v, table, i, wrap, size) \
-{\
-    const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
-    switch(size) {\
-    case 1:\
-        v = *(const uint8_t *)ptr;\
-        break;\
-    case 2:\
-        v = *(const uint16_t *)ptr;\
-        break;\
-    default:\
-        v = *(const uint32_t *)ptr;\
-        break;\
-    }\
-}
-//}}}
-//{{{
-#define GET_VLC(code, name, gb, table, bits, max_depth)\
-{\
-    int n, index, nb_bits;\
-\
-    index= SHOW_UBITS(name, gb, bits);\
-    code = table[index][0];\
-    n    = table[index][1];\
-\
-    if(max_depth > 1 && n < 0){\
-        LAST_SKIP_BITS(name, gb, bits)\
-        UPDATE_CACHE(name, gb)\
-\
-        nb_bits = -n;\
-\
-        index= SHOW_UBITS(name, gb, nb_bits) + code;\
-        code = table[index][0];\
-        n    = table[index][1];\
-        if(max_depth > 2 && n < 0){\
-            LAST_SKIP_BITS(name, gb, nb_bits)\
-            UPDATE_CACHE(name, gb)\
-\
-            nb_bits = -n;\
-\
-            index= SHOW_UBITS(name, gb, nb_bits) + code;\
-            code = table[index][0];\
-            n    = table[index][1];\
-        }\
-    }\
-    SKIP_BITS(name, gb, n)\
-}
-//}}}
-
-//{{{
-static int unaligned32_be(const uint8_t *p)
-{
-        return (((p[0]<<8) | p[1])<<16) | (p[2]<<8) | (p[3]);
-}
-//}}}
-//{{{
-static int get_bits_count (bitstream_t *s){
-    return s->index;
-}
-//}}}
-//{{{
-static void skip_bits_long (bitstream_t *s, int n){
-    s->index += n;
-}
-//}}}
-#define skip_bits skip_bits_long
-
-//{{{
-static void init_get_bits (bitstream_t *s, const uint8_t *buffer, int bit_size) {
-    int buffer_size= (bit_size+7)>>3;
-    if(buffer_size < 0 || bit_size < 0) {
-        buffer_size = bit_size = 0;
-        buffer = NULL;
-    }
-    s->buffer= buffer;
-    s->size_in_bits= bit_size;
-    s->buffer_end= buffer + buffer_size;
-    s->index=0;
-}
-//}}}
-//{{{
-static unsigned int get_bits (bitstream_t *s, int n){
-    register int tmp;
-    OPEN_READER(re, s)
-    UPDATE_CACHE(re, s)
-    tmp = SHOW_UBITS(re, s, n);
-    LAST_SKIP_BITS(re, s, n)
-    CLOSE_READER(re, s)
-    return tmp;
-}
-//}}}
-//{{{
-static int get_bitsz (bitstream_t *s, int n)
-{
-    if (n == 0)
-        return 0;
-    else
-        return get_bits(s, n);
-}
-//}}}
-//{{{
-static unsigned int get_bits1 (bitstream_t *s){
-    int index= s->index;
-    uint8_t result= s->buffer[ index>>3 ];
-    result<<= (index&0x07);
-    result>>= 8 - 1;
-    index++;
-    s->index= index;
-    return result;
-}
-//}}}
-//{{{
-static void align_get_bits (bitstream_t *s)
-{
-    int n= (-get_bits_count(s)) & 7;
-    if(n) skip_bits(s, n);
-}
-//}}}
-
-//{{{
-static int alloc_table (vlc_t* vlc, int size) {
-
-  int index;
-  index = vlc->table_size;
-  vlc->table_size += size;
-  if (vlc->table_size > vlc->table_allocated) {
-    vlc->table_allocated += (1 << vlc->bits);
-    vlc->table = (int16_t(*)[2]) realloc(vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
-    if (!vlc->table)
-      return -1;
-    }
-  return index;
-  }
-//}}}
-//{{{
-static int build_table (vlc_t *vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
-                        const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
-
-    int i, j, k, n, table_size, table_index, nb, n1, index, code_prefix2;
-    uint32_t code;
-    int16_t (*table)[2];
-
-    table_size = 1 << table_nb_bits;
-    table_index = alloc_table(vlc, table_size);
-    if (table_index < 0)
-      return -1;
-    table = &vlc->table[table_index];
-
-    for (i = 0; i < table_size; i++) {
-      table[i][1] = 0; //bits
-      table[i][0] = -1; //codes
-      }
-
-    for (i = 0; i < nb_codes; i++) {
-        GET_DATA(n, bits, i, bits_wrap, bits_size);
-        GET_DATA(code, codes, i, codes_wrap, codes_size);
-        if (n <= 0)
-            continue;
-        n -= n_prefix;
-        code_prefix2= code >> n;
-        if (n > 0 && code_prefix2 == code_prefix) {
-            if (n <= table_nb_bits) {
-                j = (code << (table_nb_bits - n)) & (table_size - 1);
-                nb = 1 << (table_nb_bits - n);
-                for(k=0;k<nb;k++) {
-                    if (table[j][1] /*bits*/ != 0) {
-                        return -1;
-                    }
-                    table[j][1] = n; //bits
-                    table[j][0] = i; //code
-                    j++;
-                }
-            } else {
-                n -= table_nb_bits;
-                j = (code >> n) & ((1 << table_nb_bits) - 1);
-                n1 = -table[j][1]; //bits
-                if (n > n1)
-                    n1 = n;
-                table[j][1] = -n1; //bits
-            }
-        }
-    }
-    for(i=0;i<table_size;i++) {
-        n = table[i][1]; //bits
-        if (n < 0) {
-            n = -n;
-            if (n > table_nb_bits) {
-                n = table_nb_bits;
-                table[i][1] = -n; //bits
-            }
-            index = build_table(vlc, n, nb_codes,
-                                bits, bits_wrap, bits_size,
-                                codes, codes_wrap, codes_size,
-                                (code_prefix << table_nb_bits) | i,
-                                n_prefix + table_nb_bits);
-            if (index < 0)
-                return -1;
-            table = &vlc->table[table_index];
-            table[i][0] = index; //code
-        }
-    }
-  return table_index;
-  }
-//}}}
-//{{{
-static int init_vlc (vlc_t *vlc, int nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
-                     const void *codes, int codes_wrap, int codes_size) {
-
-  vlc->bits = nb_bits;
-  if (build_table(vlc, nb_bits, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size, 0, 0) < 0) {
-    free (vlc->table);
-    return -1;
-    }
-  return 0;
-  }
-//}}}
-//{{{
-static int get_vlc2 (bitstream_t *s, int16_t(*table)[2], int bits, int max_depth) {
-
-  int code;
-  OPEN_READER(re, s)
-  UPDATE_CACHE(re, s)
-  GET_VLC(code, re, s, table, bits, max_depth)
-  CLOSE_READER(re, s)
-  return code;
-  }
-//}}}
-//}}}
 
 class cMp3Decoder {
 public:
   //{{{
   cMp3Decoder() {
 
-     memset (&gb, 0, sizeof(bitstream_t));
-     memset (&in_gb, 0, sizeof(bitstream_t));
+    memset (&gb, 0, sizeof(bitstream_t));
+    memset (&in_gb, 0, sizeof(bitstream_t));
+    memset (synth_buf, 0, sizeof (synth_buf));
+    memset (sb_samples, 0, sizeof (sb_samples));
+    memset (mdct_buf, 0, sizeof (mdct_buf));
 
-    int i, j, k;
     //{{{  synth init
-    for (i = 0; i < 257; i++) {
+    for (int i = 0; i < 257; i++) {
       int v = mp3_enwindow[i];
 
     #if WFRAC_BITS < 16
@@ -1250,23 +971,20 @@ public:
       }
     //}}}
     //{{{  huffman decode tables
-    for (i = 1; i < 16; i++) {
-      const huff_table_t *h = &mp3_huff_tables[i];
-      int xsize, x, y;
-      unsigned int n;
-      uint8_t  tmp_bits [512];
+    for (int i = 1; i < 16; i++) {
+      uint8_t  tmp_bits[512];
+      memset (tmp_bits , 0, sizeof (tmp_bits));
       uint16_t tmp_codes[512];
+      memset (tmp_codes, 0, sizeof (tmp_codes));
 
-      memset(tmp_bits , 0, sizeof(tmp_bits ));
-      memset(tmp_codes, 0, sizeof(tmp_codes));
+      const huff_table_t* h = &mp3_huff_tables[i];
+      int xsize = h->xsize;
+      unsigned int n = xsize * xsize;
 
-      xsize = h->xsize;
-      n = xsize * xsize;
-
-      j = 0;
-      for (x = 0; x < xsize; x++) {
-        for (y = 0; y < xsize; y++){
-          tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j  ];
+      int j = 0;
+      for (int x = 0; x < xsize; x++) {
+        for (int y = 0; y < xsize; y++){
+          tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j];
           tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
           }
         }
@@ -1274,12 +992,12 @@ public:
       init_vlc (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2);
       }
 
-    for (i = 0; i < 2; i++)
+    for (int i = 0; i < 2; i++)
       init_vlc (&huff_quad_vlc[i], i == 0 ? 7 : 4, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
 
-    for (i = 0; i < 9; i++) {
-      k = 0;
-      for (j = 0; j < 22; j++) {
+    for (int i = 0; i < 9; i++) {
+      int k = 0;
+      for (int j = 0; j < 22; j++) {
         band_index_long[i][j] = k;
         k += band_size_long[i][j];
         }
@@ -1289,31 +1007,28 @@ public:
     //{{{  compute n ^ (4/3) and store it in mantissa/exp format
     table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
     table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
-
-    for (i = 1; i < TABLE_4_3_SIZE; i++) {
-      double f, fm;
-      int e, m;
-      f = pow((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
-      fm = frexp(f, &e);
-      m = (uint32_t)(fm*(1LL<<31) + 0.5);
-      e+= FRAC_BITS - 31 + 5 - 100;
+    for (int i = 1; i < TABLE_4_3_SIZE; i++) {
+      int e;
+      double f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
+      double fm = frexp (f, &e);
+      int m = (uint32_t)(fm * (1LL << 31) + 0.5);
+      e += FRAC_BITS - 31 + 5 - 100;
       table_4_3_value[i] = m;
       table_4_3_exp[i] = -e;
       }
 
-    for (i = 0; i < 512*16; i++){
-      int exponent= (i>>4);
-      double f = pow(i&15, 4.0 / 3.0) * pow(2, (exponent-400)*0.25 + FRAC_BITS + 5);
-      expval_table[exponent][i&15]= f;
+    for (int i = 0; i < 512*16; i++){
+      int exponent = (i >> 4);
+      double f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
+      expval_table[exponent][i & 15] = (uint32_t)f;
       if ((i & 15) == 1)
-        exp_table[exponent]= f;
+        exp_table[exponent]= (uint32_t)f;
       }
 
-    for (i = 0; i < 7; i++) {
-      float f;
+    for (int i = 0; i < 7; i++) {
       int v;
       if (i != 6) {
-        f = tan((double)i * M_PI / 12.0);
+        float f = (float)tan ((double)i * M_PI / 12.0);
         v = FIXR(f / (1.0 + f));
         }
       else
@@ -1322,26 +1037,23 @@ public:
       is_table[1][6 - i] = v;
       }
 
-    for (i = 7; i < 16; i++)
-      is_table[0][i] = is_table[1][i] = 0.0;
+    for (int i = 7; i < 16; i++)
+      is_table[0][i] = is_table[1][i] = 0;
 
-    for (i = 0; i < 16; i++) {
-      double f;
-      int e, k;
-      for(j = 0; j < 2; j++) {
-        e = -(j + 1) * ((i + 1) >> 1);
-        f = pow(2.0, e / 4.0);
-        k = i & 1;
+    for (int i = 0; i < 16; i++) {
+      for (int j = 0; j < 2; j++) {
+        int e = -(j + 1) * ((i + 1) >> 1);
+        double f = pow(2.0, e / 4.0);
+        int k = i & 1;
         is_table_lsf[j][k ^ 1][i] = FIXR(f);
         is_table_lsf[j][k][i] = FIXR(1.0);
         }
       }
 
-    for (i = 0; i < 8; i++) {
-      float ci, cs, ca;
-      ci = ci_table[i];
-      cs = 1.0 / sqrt(1.0 + ci * ci);
-      ca = cs * ci;
+    for (int i = 0; i < 8; i++) {
+      float ci = ci_table[i];
+      float cs = (float)(1.0 / sqrt(1.0 + ci * ci));
+      float ca = cs * ci;
       csa_table[i][0] = FIXHR(cs/4);
       csa_table[i][1] = FIXHR(ca/4);
       csa_table[i][2] = FIXHR(ca/4) + FIXHR(cs/4);
@@ -1353,19 +1065,17 @@ public:
       }
     //}}}
     //{{{  compute mdct windows
-    for (i = 0; i < 36; i++) {
-      for (j = 0; j < 4; j++){
-        double d;
-
+    for (int i = 0; i < 36; i++) {
+      for (int j = 0; j < 4; j++){
         if (j == 2 && i % 3 != 1)
           continue;
 
-        d = sin(M_PI * (i + 0.5) / 36.0);
-        if (j == 1){
-            if (i>=30)
+        double d = sin (M_PI * (i + 0.5) / 36.0);
+        if (j == 1) {
+            if (i >= 30)
               d = 0;
-            else if(i>=24)
-              d = sin(M_PI * (i - 18 + 0.5) / 12.0);
+            else if (i >= 24)
+              d = sin (M_PI * (i - 18 + 0.5) / 12.0);
             else if (i >= 18)
               d = 1;
           }
@@ -1377,7 +1087,7 @@ public:
           else if (i < 18)
             d = 1;
           }
-        d *= 0.5 / cos(M_PI*(2*i + 19)/72);
+        d *= 0.5 / cos (M_PI*(2*i + 19)/72);
         if (j == 2)
           mdct_win[j][i/3] = FIXHR((d / (1<<5)));
         else
@@ -1385,8 +1095,8 @@ public:
         }
       }
 
-    for (j = 0; j < 4; j++) {
-      for (i = 0; i < 36; i += 2) {
+    for (int j = 0; j < 4; j++) {
+      for (int i = 0; i < 36; i += 2) {
         mdct_win[j + 4][i] = mdct_win[j][i];
         mdct_win[j + 4][i + 1] = -mdct_win[j][i + 1];
         }
@@ -1395,26 +1105,309 @@ public:
     }
   //}}}
   //{{{
-  int mp3_decode (uint8_t* buf, int bytes, signed short* out, mp3_info_t* info) {
+  int decode (uint8_t* buf, int bytes, signed short* out) {
 
-    int res;
     int size = -1;
-
-    res = mp3_decode_frame ((int16_t*)out, &size, buf, bytes);
-    if (res < 0) return 0;
-    if (info) {
-      info->sample_rate = sample_rate;
-      info->channels = nb_channels;
-      info->audio_bytes = size;
-      }
+    int res = decodeFrame ((int16_t*)out, &size, buf, bytes);
+    if (res < 0)
+      return 0;
 
     return frame_size;
     }
   //}}}
 
 private:
+  //{{{  bit reader
+  #define MIN_CACHE_BITS 25
+  #define NEG_SSR32(a,s) ((( int32_t)(a))>>(32-(s)))
+  #define NEG_USR32(a,s) (((uint32_t)(a))>>(32-(s)))
+
   //{{{
-  int mp3_check_header (uint32_t header) {
+  #define OPEN_READER(name, gb) \
+          int name##_index= (gb)->index;\
+          int name##_cache= 0;\
+  //}}}
+  //{{{
+  #define CLOSE_READER(name, gb)\
+          (gb)->index= name##_index;\
+  //}}}
+  //{{{
+  #define UPDATE_CACHE(name, gb)\
+          name##_cache= unaligned32_be(&((gb)->buffer[name##_index>>3])) << (name##_index&0x07); \
+  //}}}
+
+  //{{{
+  #define SKIP_CACHE(name, gb, num)\
+          name##_cache <<= (num);
+  //}}}
+  //{{{
+  #define SKIP_COUNTER(name, gb, num)\
+          name##_index += (num);\
+  //}}}
+  //{{{
+  #define SKIP_BITS(name, gb, num)\
+          {\
+              SKIP_CACHE(name, gb, num)\
+              SKIP_COUNTER(name, gb, num)\
+          }\
+  //}}}
+  #define LAST_SKIP_BITS(name, gb, num) SKIP_COUNTER(name, gb, num)
+  #define LAST_SKIP_CACHE(name, gb, num) ;
+
+  //{{{
+  #define SHOW_UBITS(name, gb, num)\
+          NEG_USR32(name##_cache, num)
+  //}}}
+  //{{{
+  #define SHOW_SBITS(name, gb, num)\
+          NEG_SSR32(name##_cache, num)
+  //}}}
+
+  //{{{
+  #define GET_CACHE(name, gb)\
+          ((uint32_t)name##_cache)
+  //}}}
+  //{{{
+  #define GET_DATA(v, table, i, wrap, size) \
+  {\
+      const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
+      switch(size) {\
+      case 1:\
+          v = *(const uint8_t *)ptr;\
+          break;\
+      case 2:\
+          v = *(const uint16_t *)ptr;\
+          break;\
+      default:\
+          v = *(const uint32_t *)ptr;\
+          break;\
+      }\
+  }
+  //}}}
+  //{{{
+  #define GET_VLC(code, name, gb, table, bits, max_depth)\
+  {\
+      int n, index, nb_bits;\
+  \
+      index= SHOW_UBITS(name, gb, bits);\
+      code = table[index][0];\
+      n    = table[index][1];\
+  \
+      if(max_depth > 1 && n < 0){\
+          LAST_SKIP_BITS(name, gb, bits)\
+          UPDATE_CACHE(name, gb)\
+  \
+          nb_bits = -n;\
+  \
+          index= SHOW_UBITS(name, gb, nb_bits) + code;\
+          code = table[index][0];\
+          n    = table[index][1];\
+          if(max_depth > 2 && n < 0){\
+              LAST_SKIP_BITS(name, gb, nb_bits)\
+              UPDATE_CACHE(name, gb)\
+  \
+              nb_bits = -n;\
+  \
+              index= SHOW_UBITS(name, gb, nb_bits) + code;\
+              code = table[index][0];\
+              n    = table[index][1];\
+          }\
+      }\
+      SKIP_BITS(name, gb, n)\
+  }
+  //}}}
+
+  //{{{
+  int unaligned32_be (const uint8_t *p) {
+    return (((p[0]<<8) | p[1])<<16) | (p[2]<<8) | (p[3]);
+    }
+  //}}}
+  //{{{
+  int get_bits_count (bitstream_t *s){
+    return s->index;
+    }
+  //}}}
+  //{{{
+  void skip_bits_long (bitstream_t *s, int n){
+    s->index += n;
+    }
+  //}}}
+  #define skip_bits skip_bits_long
+
+  //{{{
+  void init_get_bits (bitstream_t *s, const uint8_t *buffer, int bit_size) {
+
+    int buffer_size = (bit_size + 7) >> 3;
+    if (buffer_size < 0 || bit_size < 0) {
+      buffer_size = bit_size = 0;
+      buffer = NULL;
+      }
+
+    s->buffer = buffer;
+    s->size_in_bits = bit_size;
+    s->buffer_end = buffer + buffer_size;
+    s->index = 0;
+    }
+  //}}}
+  //{{{
+  unsigned int get_bits (bitstream_t *s, int n){
+
+    register int tmp;
+    OPEN_READER(re, s)
+    UPDATE_CACHE(re, s)
+    tmp = SHOW_UBITS(re, s, n);
+
+    LAST_SKIP_BITS(re, s, n)
+    CLOSE_READER(re, s)
+    return tmp;
+    }
+  //}}}
+  //{{{
+  int get_bitsz (bitstream_t *s, int n) {
+
+    if (n == 0)
+      return 0;
+    else
+     return get_bits(s, n);
+    }
+  //}}}
+  //{{{
+  unsigned int get_bits1 (bitstream_t *s){
+
+    int index= s->index;
+    uint8_t result= s->buffer[ index>>3 ];
+    result<<= (index&0x07);
+    result>>= 8 - 1;
+    index++;
+    s->index= index;
+
+    return result;
+    }
+  //}}}
+  //{{{
+  void align_get_bits (bitstream_t *s) {
+    int n = (-get_bits_count(s)) & 7;
+    if (n)
+      skip_bits(s, n);
+    }
+  //}}}
+
+  //{{{
+  int alloc_table (vlc_t* vlc, int size) {
+
+    int index = vlc->table_size;
+    vlc->table_size += size;
+
+    if (vlc->table_size > vlc->table_allocated) {
+      vlc->table_allocated += (1 << vlc->bits);
+      vlc->table = (int16_t(*)[2]) realloc(vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
+      if (!vlc->table)
+        return -1;
+      }
+
+    return index;
+    }
+  //}}}
+  //{{{
+  int build_table (vlc_t *vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
+                   const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
+
+    int j, k, n, table_size, table_index, nb, n1, index, code_prefix2;
+    uint32_t code;
+    int16_t (*table)[2];
+
+    table_size = 1 << table_nb_bits;
+    table_index = alloc_table(vlc, table_size);
+    if (table_index < 0)
+      return -1;
+    table = &vlc->table[table_index];
+
+    for (int i = 0; i < table_size; i++) {
+      table[i][1] = 0; //bits
+      table[i][0] = -1; //codes
+      }
+
+    for (int i = 0; i < nb_codes; i++) {
+      GET_DATA(n, bits, i, bits_wrap, bits_size);
+      GET_DATA(code, codes, i, codes_wrap, codes_size);
+      if (n <= 0)
+          continue;
+      n -= n_prefix;
+      code_prefix2 = code >> n;
+      if (n > 0 && code_prefix2 == code_prefix) {
+        if (n <= table_nb_bits) {
+          j = (code << (table_nb_bits - n)) & (table_size - 1);
+          nb = 1 << (table_nb_bits - n);
+          for(k=0;k<nb;k++) {
+            if (table[j][1] /*bits*/ != 0) {
+              return -1;
+              }
+            table[j][1] = n; //bits
+            table[j][0] = i; //code
+            j++;
+            }
+          }
+        else {
+          n -= table_nb_bits;
+          j = (code >> n) & ((1 << table_nb_bits) - 1);
+          n1 = -table[j][1]; //bits
+          if (n > n1)
+            n1 = n;
+          table[j][1] = -n1; //bits
+          }
+        }
+      }
+
+    for (int i = 0; i < table_size; i++) {
+      n = table[i][1]; //bits
+      if (n < 0) {
+        n = -n;
+        if (n > table_nb_bits) {
+          n = table_nb_bits;
+          table[i][1] = -n; //bits
+          }
+        index = build_table (vlc, n, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size,
+                             (code_prefix << table_nb_bits) | i, n_prefix + table_nb_bits);
+        if (index < 0)
+          return -1;
+        table = &vlc->table[table_index];
+        table[i][0] = index; //code
+        }
+      }
+
+    return table_index;
+    }
+  //}}}
+  //{{{
+  int init_vlc (vlc_t *vlc, int nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
+                       const void *codes, int codes_wrap, int codes_size) {
+
+    vlc->bits = nb_bits;
+    if (build_table (vlc, nb_bits, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size, 0, 0) < 0) {
+      free (vlc->table);
+      return -1;
+      }
+
+    return 0;
+    }
+  //}}}
+  //{{{
+  int get_vlc2 (bitstream_t *s, int16_t(*table)[2], int bits, int max_depth) {
+
+    int code;
+
+    OPEN_READER(re, s)
+    UPDATE_CACHE(re, s)
+    GET_VLC(code, re, s, table, bits, max_depth)
+    CLOSE_READER(re, s)
+
+    return code;
+    }
+  //}}}
+  //}}}
+
+  //{{{
+  int checkHeader (uint32_t header) {
 
     // header
     if ((header & 0xffe00000) != 0xffe00000)
@@ -1436,10 +1429,9 @@ private:
     }
   //}}}
   //{{{
-  int decode_header (uint32_t header) {
+  int decodeHeader (uint32_t header) {
 
-    int sample_rate, frame_size, mpeg25, padding;
-    int sample_rate_index, bitrate_index;
+    int mpeg25;
     if (header & (1 << 20)) {
       lsf = (header & (1 << 19)) ? 0 : 1;
       mpeg25 = 0;
@@ -1452,12 +1444,11 @@ private:
     sample_rate_index = (header >> 10) & 3;
     sample_rate = mp3_freq_tab[sample_rate_index] >> (lsf + mpeg25);
     sample_rate_index += 3 * (lsf + mpeg25);
-    sample_rate_index = sample_rate_index;
     error_protection = ((header >> 16) & 1) ^ 1;
     sample_rate = sample_rate;
 
-    bitrate_index = (header >> 12) & 0xf;
-    padding = (header >> 9) & 1;
+    int bitrate_index = (header >> 12) & 0xf;
+    int padding = (header >> 9) & 1;
     mode = (header >> 6) & 3;
     mode_ext = (header >> 4) & 3;
     nb_channels = (mode == MP3_MONO) ? 1 : 2;
@@ -1475,21 +1466,21 @@ private:
   //}}}
 
   //{{{
-  void switch_buffer (int* pos, int* end_pos, int* end_pos2) {
+  void switchBuffer (int* pos, int* end_pos, int* end_pos2) {
 
     if (in_gb.buffer && *pos >= gb.size_in_bits) {
       gb = in_gb;
       in_gb.buffer = NULL;
       skip_bits_long (&gb, *pos - *end_pos);
 
-      *end_pos2 = *end_pos= *end_pos2 + get_bits_count (&gb) - *pos;
+      *end_pos2 = *end_pos = *end_pos2 + get_bits_count (&gb) - *pos;
       *pos = get_bits_count (&gb);
       }
     }
   //}}}
 
   //{{{
-  void lsf_sf_expand (int* slen, int sf, int n1, int n2, int n3 ) {
+  void lsfsfExpand (int* slen, int sf, int n1, int n2, int n3 ) {
 
     if (n3) {
       slen[3] = sf % n3;
@@ -1513,20 +1504,18 @@ private:
   //{{{
   int l3_unscale (int value, int exponent) {
 
-    int e = table_4_3_exp  [4*value + (exponent&3)];
-
-    unsigned int m = table_4_3_value[4*value + (exponent&3)];
-
+    int e = table_4_3_exp[4 * value + (exponent & 3)];
     e -= (exponent >> 2);
     if (e > 31)
       return 0;
 
+    unsigned int m = table_4_3_value[4 * value + (exponent & 3)];
     m = (m + (1 << (e-1))) >> e;
     return m;
     }
   //}}}
   //{{{
-  int round_sample (int* sum) {
+  int roundSample (int* sum) {
 
     int sum1 = (*sum) >> OUT_SHIFT;
     *sum &= (1<<OUT_SHIFT)-1;
@@ -1540,7 +1529,7 @@ private:
     }
   //}}}
   //{{{
-  void exponents_from_scale_factors (granule_t* g, int16_t* exponents) {
+  void exponentsFromScaleFactors (granule_t* g, int16_t* exponents) {
 
     int16_t* exp_ptr = exponents;
     int gain = g->global_gain - 210;
@@ -1574,15 +1563,12 @@ private:
     }
   //}}}
   //{{{
-  void reorder_block (granule_t* g) {
-
-    int i, j, len;
-    int32_t *ptr, *dst, *ptr1;
-    int32_t tmp[576];
+  void reorderBlock (granule_t* g) {
 
     if (g->block_type != 2)
       return;
 
+    int32_t* ptr;
     if (g->switch_point) {
       if (sample_rate_index != 8)
         ptr = g->sb_hybrid + 36;
@@ -1592,11 +1578,12 @@ private:
     else
       ptr = g->sb_hybrid;
 
-    for (i = g->short_start; i < 13; i++) {
-      len = band_size_short[sample_rate_index][i];
-      ptr1 = ptr;
-      dst = tmp;
-      for (j = len; j > 0; j--) {
+    int32_t tmp[576];
+    for (int i = g->short_start; i < 13; i++) {
+      int len = band_size_short[sample_rate_index][i];
+      int32_t* ptr1 = ptr;
+      int32_t* dst = tmp;
+      for (int j = len; j > 0; j--) {
         *dst++ = ptr[0*len];
         *dst++ = ptr[1*len];
         *dst++ = ptr[2*len];
@@ -1608,13 +1595,12 @@ private:
       }
     }
   //}}}
+
   //{{{
-  void compute_antialias (granule_t* g) {
+  void computeAntialias (granule_t* g) {
 
-    int32_t *ptr, *csa;
-    int n, i;
-
-    /* we antialias only "long" bands */
+    // we antialias only "long" bands
+    int n;
     if (g->block_type == 2) {
       if (!g->switch_point)
         return;
@@ -1624,10 +1610,10 @@ private:
     else
       n = SBLIMIT - 1;
 
-    ptr = g->sb_hybrid + 18;
-    for (i = n;i > 0;i--) {
+    int32_t* ptr = g->sb_hybrid + 18;
+    for (int i = n; i > 0; i--) {
       int tmp0, tmp1, tmp2;
-       csa = &csa_table[0][0];
+      int32_t* csa = &csa_table[0][0];
 
       #define INT_AA(j) \
             tmp0 = ptr[-1-j];\
@@ -1649,16 +1635,13 @@ private:
     }
   //}}}
   //{{{
-  void compute_stereo (granule_t* g0, granule_t* g1) {
+  void computeStereo (granule_t* g0, granule_t* g1) {
 
-    int i, j, k, l;
     int32_t v1, v2;
     int sf_max, tmp0, tmp1, sf, len, non_zero_found;
     int32_t (*is_tab)[16];
     int non_zero_found_short[3];
 
-    int32_t* tab0;
-    int32_t* tab1;
     if (mode_ext & MODE_EXT_I_STEREO) {
       if (!lsf) {
         is_tab = is_table;
@@ -1669,24 +1652,24 @@ private:
         sf_max = 16;
         }
 
-      tab0 = g0->sb_hybrid + 576;
-      tab1 = g1->sb_hybrid + 576;
+      int32_t* tab0 = g0->sb_hybrid + 576;
+      int32_t* tab1 = g1->sb_hybrid + 576;
 
       non_zero_found_short[0] = 0;
       non_zero_found_short[1] = 0;
       non_zero_found_short[2] = 0;
-      k = (13 - g1->short_start) * 3 + g1->long_end - 3;
-      for (i = 12;i >= g1->short_start;i--) {
-        /* for last band, use previous scale factor */
+      int k = (13 - g1->short_start) * 3 + g1->long_end - 3;
+      for (int i = 12;i >= g1->short_start;i--) {
+        //{{{  for last band, use previous scale factor
         if (i != 11)
           k -= 3;
         len = band_size_short[sample_rate_index][i];
-        for (l = 2; l >= 0; l--) {
+        for (int l = 2; l >= 0; l--) {
           tab0 -= len;
           tab1 -= len;
           if (!non_zero_found_short[l]) {
             /* test if non zero band. if so, stop doing i-stereo */
-            for (j = 0; j < len; j++) {
+            for (int j = 0; j < len; j++) {
               if (tab1[j] != 0) {
                 non_zero_found_short[l] = 1;
                 goto found1;
@@ -1698,17 +1681,17 @@ private:
 
             v1 = is_tab[0][sf];
             v2 = is_tab[1][sf];
-            for(j = 0; j < len; j++) {
+            for (int j = 0; j < len; j++) {
               tmp0 = tab0[j];
               tab0[j] = MULL(tmp0, v1);
               tab1[j] = MULL(tmp0, v2);
               }
             }
           else {
-          found1:
+        found1:
             if (mode_ext & MODE_EXT_MS_STEREO) {
               /* lower part of the spectrum : do ms stereo if enabled */
-              for(j = 0; j < len; j++) {
+              for (int j = 0; j < len; j++) {
                 tmp0 = tab0[j];
                 tmp1 = tab1[j];
                 tab0[j] = MULL(tmp0 + tmp1, ISQRT2);
@@ -1718,85 +1701,87 @@ private:
             }
           }
         }
+        //}}}
 
       non_zero_found = non_zero_found_short[0] | non_zero_found_short[1] | non_zero_found_short[2];
 
-      for (i = g1->long_end - 1;i >= 0;i--) {
+      for (int i = g1->long_end - 1; i >= 0; i--) {
         len = band_size_long[sample_rate_index][i];
         tab0 -= len;
         tab1 -= len;
-        /* test if non zero band. if so, stop doing i-stereo */
+
+        //  test if non zero band. if so, stop doing i-stereo */
         if (!non_zero_found) {
-          for (j = 0; j < len; j++) {
+          for (int j = 0; j < len; j++) {
             if (tab1[j] != 0) {
               non_zero_found = 1;
               goto found2;
               }
             }
 
-          /* for last band, use previous scale factor */
+          //{{{  for last band, use previous scale factor
           k = (i == 21) ? 20 : i;
           sf = g1->scale_factors[k];
           if (sf >= sf_max)
             goto found2;
           v1 = is_tab[0][sf];
           v2 = is_tab[1][sf];
-          for (j=0;j<len;j++) {
+          for (int j = 0; j < len; j++) {
             tmp0 = tab0[j];
             tab0[j] = MULL(tmp0, v1);
             tab1[j] = MULL(tmp0, v2);
             }
+          //}}}
           }
         else {
         found2:
           if (mode_ext & MODE_EXT_MS_STEREO) {
-            /* lower part of the spectrum : do ms stereo if enabled */
-            for (j = 0; j < len; j++) {
+            //{{{  lower part of the spectrum : do ms stereo if enabled
+            for (int j = 0; j < len; j++) {
               tmp0 = tab0[j];
               tmp1 = tab1[j];
               tab0[j] = MULL(tmp0 + tmp1, ISQRT2);
               tab1[j] = MULL(tmp0 - tmp1, ISQRT2);
               }
             }
+            //}}}
           }
         }
       }
 
     else if (mode_ext & MODE_EXT_MS_STEREO) {
-      /* ms stereo ONLY the 1/sqrt(2) normalization factor is included in the global gain */
-      tab0 = g0->sb_hybrid;
-      tab1 = g1->sb_hybrid;
-      for (i=0; i<576; i++) {
+      //{{{  ms stereo ONLY the 1/sqrt(2) normalization factor is included in the global gain
+      int32_t* tab0 = g0->sb_hybrid;
+      int32_t* tab1 = g1->sb_hybrid;
+      for (int i = 0; i < 576; i++) {
         tmp0 = tab0[i];
         tmp1 = tab1[i];
         tab0[i] = tmp0 + tmp1;
         tab1[i] = tmp0 - tmp1;
         }
       }
+      //}}}
     }
   //}}}
   //{{{
-  int huffman_decode (granule_t* g, int16_t* exponents, int end_pos2) {
+  int huffmanDecode (granule_t* g, int16_t* exponents, int end_pos2) {
 
-    int s_index;
-    int i;
     int last_pos, bits_left;
     vlc_t *vlc;
     int end_pos= gb.size_in_bits;
     if (end_pos2 < end_pos) end_pos = end_pos2;
 
-    /* low frequencies (called big values) */
-    s_index = 0;
-    for (i = 0; i < 3; i++) {
-      int j, k, l, linbits;
-      j = g->region_size[i];
+    //{{{  low frequencies (called big values)
+    int s_index = 0;
+    for (int i = 0; i < 3; i++) {
+      int j = g->region_size[i];
       if (j == 0)
         continue;
 
       /* select vlc table */
-      k = g->table_select[i];
-      l = mp3_huff_data[k][0];
-      linbits = mp3_huff_data[k][1];
+      int k = g->table_select[i];
+      int l = mp3_huff_data[k][0];
+      int linbits = mp3_huff_data[k][1];
       vlc = &huff_vlc[l];
       if (!l) {
         memset (&g->sb_hybrid[s_index], 0, sizeof(*g->sb_hybrid)*2*j);
@@ -1805,12 +1790,12 @@ private:
         }
 
       /* read huffcode and compute each couple */
-      for(; j > 0; j--) {
+      for (; j > 0; j--) {
         int exponent, x, y, v;
         int pos = get_bits_count(&gb);
 
         if (pos >= end_pos){
-          switch_buffer (&pos, &end_pos, &end_pos2);
+          switchBuffer (&pos, &end_pos, &end_pos2);
           if (pos >= end_pos)
             break;
           }
@@ -1823,7 +1808,7 @@ private:
           continue;
           }
 
-        exponent= exponents[s_index];
+        exponent = exponents[s_index];
 
         if (y & 16) {
           x = y >> 5;
@@ -1865,8 +1850,8 @@ private:
         s_index+=2;
         }
       }
-
-    /* high frequencies */
+    //}}}
+    //{{{  high frequencies
     vlc = &huff_quad_vlc[g->count1table_select];
     last_pos = 0;
     while (s_index <= 572) {
@@ -1879,92 +1864,91 @@ private:
           skip_bits_long(&gb, last_pos - pos);
           break;
           }
-        switch_buffer(&pos, &end_pos, &end_pos2);
+        switchBuffer (&pos, &end_pos, &end_pos2);
         if (pos >= end_pos)
           break;
         }
       last_pos= pos;
 
-      code = get_vlc2(&gb, vlc->table, vlc->bits, 1);
+      code = get_vlc2 (&gb, vlc->table, vlc->bits, 1);
       g->sb_hybrid[s_index+0]=
       g->sb_hybrid[s_index+1]=
       g->sb_hybrid[s_index+2]=
       g->sb_hybrid[s_index+3]= 0;
-      while(code){
-        const static int idxtab[16]={3,3,2,2,1,1,1,1,0,0,0,0,0,0,0,0};
+      while (code){
         int v;
-        int pos= s_index+idxtab[code];
-        code ^= 8>>idxtab[code];
-        v = exp_table[ exponents[pos] ];
-        if (get_bits1(&gb))
+        int pos = s_index + idxtab[code];
+        code ^= 8 >> idxtab[code];
+        v = exp_table[exponents[pos] ];
+        if (get_bits1 (&gb))
           v = -v;
         g->sb_hybrid[pos] = v;
         }
       s_index += 4;
       }
+    //}}}
 
-    memset (&g->sb_hybrid[s_index], 0, sizeof(*g->sb_hybrid)*(576 - s_index));
+    memset (&g->sb_hybrid[s_index], 0, sizeof(*g->sb_hybrid) * (576 - s_index));
 
-    /* skip extension bits */
-    bits_left = end_pos2 - get_bits_count(&gb);
+    // skip extension bits
+    bits_left = end_pos2 - get_bits_count (&gb);
     if (bits_left < 0)
       return -1;
-    skip_bits_long(&gb, bits_left);
+    skip_bits_long (&gb, bits_left);
 
-    i = get_bits_count(&gb);
-    switch_buffer(&i, &end_pos, &end_pos2);
+    int i = get_bits_count (&gb);
+    switchBuffer (&i, &end_pos, &end_pos2);
 
     return 0;
     }
   //}}}
+
   //{{{
   void imdct12 (int* out, int* in) {
 
-    int in0, in1, in2, in3, in4, in5, t1, t2;
-
-    in0 = in[0*3];
-    in1 = in[1*3] + in[0*3];
-    in2 = in[2*3] + in[1*3];
-    in3 = in[3*3] + in[2*3];
-    in4 = in[4*3] + in[3*3];
-    in5 = in[5*3] + in[4*3];
+    int in0 = in[0*3];
+    int in1 = in[1*3] + in[0*3];
+    int in2 = in[2*3] + in[1*3];
+    int in3 = in[3*3] + in[2*3];
+    int in4 = in[4*3] + in[3*3];
+    int in5 = in[5*3] + in[4*3];
     in5 += in3;
     in3 += in1;
 
     in2 = MULH(2*in2, C3);
     in3 = MULH(4*in3, C3);
 
-    t1 = in0 - in4;
-    t2 = MULH(2*(in1 - in5), icos36h[4]);
+    int t1 = in0 - in4;
+    int t2 = MULH(2*(in1 - in5), icos36h[4]);
 
-    out[ 7] = out[10]= t1 + t2;
-    out[ 1] = out[ 4]= t1 - t2;
+    out[ 7] = out[10] = t1 + t2;
+    out[ 1] = out[ 4] = t1 - t2;
 
     in0 += in4>>1;
     in4 = in0 + in2;
     in5 += 2*in1;
     in1 = MULH(in5 + in3, icos36h[1]);
-    out[8]= out[9]= in4 + in1;
-    out[2]= out[3]= in4 - in1;
+    out[8] = out[9] = in4 + in1;
+    out[2] = out[3] = in4 - in1;
 
     in0 -= in2;
     in5 = MULH(2*(in5 - in3), icos36h[7]);
-    out[0]= out[5]= in0 - in5;
-    out[6]= out[11]= in0 + in5;
+    out[0] = out[5] = in0 - in5;
+    out[6] = out[11] = in0 + in5;
     }
   //}}}
   //{{{
   void imdct36 (int* out, int* buf, int* in, int* win) {
 
-    int i, j, t0, t1, t2, t3, s0, s1, s2, s3;
+    int t0, t1, t2, t3, s0, s1, s2, s3;
     int tmp[18], *tmp1, *in1;
 
-    for (i = 17; i >= 1; i--)
+    for (int i = 17; i >= 1; i--)
       in[i] += in[i-1];
-    for (i = 17; i >= 3; i -= 2)
+    for (int i = 17; i >= 3; i -= 2)
       in[i] += in[i-2];
 
-    for (j = 0; j < 2; j++) {
+    for (int j = 0; j < 2; j++) {
       tmp1 = tmp + j;
       in1 = in + j;
       t2 = in1[2*4] + in1[2*8] - in1[2*2];
@@ -1994,8 +1978,8 @@ private:
       tmp1[ 8] = t3 - t1 - t0;
       }
 
-    i = 0;
-    for (j = 0; j < 4; j++) {
+    int i = 0;
+    for (int j = 0; j < 4; j++) {
       t0 = tmp[i];
       t1 = tmp[i + 2];
       s0 = t1 + t0;
@@ -2037,9 +2021,9 @@ private:
 
     int32_t *ptr, *win, *win1, *buf, *out_ptr, *ptr1;
     int32_t out2[12];
-    int i, j, mdct_long_end, v, sblimit;
+    int mdct_long_end, v, sblimit;
 
-    /* find last non zero block */
+    // find last non zero block
     ptr = g->sb_hybrid + 576;
     ptr1 = g->sb_hybrid + 2 * 18;
     while (ptr >= ptr1) {
@@ -2051,7 +2035,7 @@ private:
     sblimit = ((ptr - g->sb_hybrid) / 18) + 1;
 
     if (g->block_type == 2) {
-      /* XXX: check for 8000 Hz */
+      // XXX: check for 8000 Hz
       if (g->switch_point)
         mdct_long_end = 2;
       else
@@ -2062,15 +2046,15 @@ private:
 
     buf = mdct_buf;
     ptr = g->sb_hybrid;
-    for (j = 0; j < mdct_long_end; j++) {
-      /* apply window & overlap with previous buffer */
+    for (int j = 0; j < mdct_long_end; j++) {
+      // apply window & overlap with previous buffer
       out_ptr = sb_samples + j;
-      /* select window */
+      // select window
       if (g->switch_point && j < 2)
         win1 = mdct_win[0];
       else
         win1 = mdct_win[g->block_type];
-      /* select frequency inversion */
+      // select frequency inversion
       win = win1 + ((4 * 36) & -(j & 1));
       imdct36(out_ptr, buf, ptr, win);
       out_ptr += 18*SBLIMIT;
@@ -2078,30 +2062,30 @@ private:
       buf += 18;
       }
 
-    for(j = mdct_long_end; j < sblimit; j++) {
-      /* select frequency inversion */
+    for (int j = mdct_long_end; j < sblimit; j++) {
+      // select frequency inversion
       win = mdct_win[2] + ((4 * 36) & -(j & 1));
       out_ptr = sb_samples + j;
 
-      for (i = 0; i < 6; i++){
+      for (int i = 0; i < 6; i++){
         *out_ptr = buf[i];
         out_ptr += SBLIMIT;
         }
       imdct12 (out2, ptr + 0);
-      for (i = 0; i < 6;i++) {
+      for (int i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*1];
         buf[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += SBLIMIT;
         }
-      imdct12(out2, ptr + 1);
-      for (i = 0; i < 6;i++) {
+      imdct12 (out2, ptr + 1);
+      for (int i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*2];
         buf[i + 6*0] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += SBLIMIT;
         }
 
       imdct12 (out2, ptr + 2);
-      for (i = 0; i < 6; i++) {
+      for (int i = 0; i < 6; i++) {
         buf[i + 6*0] = MULH(out2[i], win[i]) + buf[i + 6*0];
         buf[i + 6*1] = MULH(out2[i + 6], win[i + 6]);
         buf[i + 6*2] = 0;
@@ -2110,11 +2094,11 @@ private:
       buf += 18;
       }
 
-    /* zero bands */
-    for (j = sblimit; j < SBLIMIT; j++) {
-      /* overlap */
+    // zero bands
+    for (int j = sblimit; j < SBLIMIT; j++) {
+      // overlap
       out_ptr = sb_samples + j;
-      for (i = 0; i < 18;i++) {
+      for (int i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
         out_ptr += SBLIMIT;
@@ -2127,42 +2111,51 @@ private:
   void dct32 (int32_t* out, int32_t* tab) {
 
     int tmp0, tmp1;
-
-    /* pass 1 */
+    //{{{  pass 1
     BF( 0, 31, COS0_0 , 1);
     BF(15, 16, COS0_15, 5);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 0, 15, COS1_0 , 1);
     BF(16, 31,-COS1_0 , 1);
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 7, 24, COS0_7 , 1);
     BF( 8, 23, COS0_8 , 1);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 7,  8, COS1_7 , 4);
     BF(23, 24,-COS1_7 , 4);
-    /* pass 3 */
+    //}}}
+    //{{{  pass 3
     BF( 0,  7, COS2_0 , 1);
     BF( 8, 15,-COS2_0 , 1);
     BF(16, 23, COS2_0 , 1);
     BF(24, 31,-COS2_0 , 1);
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 3, 28, COS0_3 , 1);
     BF(12, 19, COS0_12, 2);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 3, 12, COS1_3 , 1);
     BF(19, 28,-COS1_3 , 1);
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 4, 27, COS0_4 , 1);
     BF(11, 20, COS0_11, 2);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 4, 11, COS1_4 , 1);
     BF(20, 27,-COS1_4 , 1);
-    /* pass 3 */
+    //}}}
+    //{{{  pass 3
     BF( 3,  4, COS2_3 , 3);
     BF(11, 12,-COS2_3 , 3);
     BF(19, 20, COS2_3 , 3);
     BF(27, 28,-COS2_3 , 3);
-    /* pass 4 */
+    //}}}
+    //{{{  pass 4
     BF( 0,  3, COS3_0 , 1);
     BF( 4,  7,-COS3_0 , 1);
     BF( 8, 11, COS3_0 , 1);
@@ -2171,43 +2164,52 @@ private:
     BF(20, 23,-COS3_0 , 1);
     BF(24, 27, COS3_0 , 1);
     BF(28, 31,-COS3_0 , 1);
-
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 1, 30, COS0_1 , 1);
     BF(14, 17, COS0_14, 3);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 1, 14, COS1_1 , 1);
     BF(17, 30,-COS1_1 , 1);
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 6, 25, COS0_6 , 1);
     BF( 9, 22, COS0_9 , 1);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 6,  9, COS1_6 , 2);
     BF(22, 25,-COS1_6 , 2);
-    /* pass 3 */
+    //}}}
+    //{{{  pass 3
     BF( 1,  6, COS2_1 , 1);
     BF( 9, 14,-COS2_1 , 1);
     BF(17, 22, COS2_1 , 1);
     BF(25, 30,-COS2_1 , 1);
-
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 2, 29, COS0_2 , 1);
     BF(13, 18, COS0_13, 3);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 2, 13, COS1_2 , 1);
     BF(18, 29,-COS1_2 , 1);
-    /* pass 1 */
+    //}}}
+    //{{{  pass 1
     BF( 5, 26, COS0_5 , 1);
     BF(10, 21, COS0_10, 1);
-    /* pass 2 */
+    //}}}
+    //{{{  pass 2
     BF( 5, 10, COS1_5 , 2);
     BF(21, 26,-COS1_5 , 2);
-    /* pass 3 */
+    //}}}
+    //{{{  pass 3
     BF( 2,  5, COS2_2 , 1);
     BF(10, 13,-COS2_2 , 1);
     BF(18, 21, COS2_2 , 1);
     BF(26, 29,-COS2_2 , 1);
-    /* pass 4 */
+    //}}}
+    //{{{  pass 4
     BF( 1,  2, COS3_1 , 2);
     BF( 5,  6,-COS3_1 , 2);
     BF( 9, 10, COS3_1 , 2);
@@ -2216,8 +2218,8 @@ private:
     BF(21, 22,-COS3_1 , 2);
     BF(25, 26, COS3_1 , 2);
     BF(29, 30,-COS3_1 , 2);
-
-    /* pass 5 */
+    //}}}
+    //{{{  pass 5
     BF1( 0,  1,  2,  3);
     BF2( 4,  5,  6,  7);
     BF1( 8,  9, 10, 11);
@@ -2226,8 +2228,8 @@ private:
     BF2(20, 21, 22, 23);
     BF1(24, 25, 26, 27);
     BF2(28, 29, 30, 31);
-
-    /* pass 6 */
+    //}}}
+    //{{{  pass 6
     ADD( 8, 12);
     ADD(12, 10);
     ADD(10, 14);
@@ -2235,6 +2237,7 @@ private:
     ADD( 9, 13);
     ADD(13, 11);
     ADD(11, 15);
+    //}}}
 
     out[ 0] = tab[0];
     out[16] = tab[1];
@@ -2281,24 +2284,24 @@ private:
   //}}}
 
   //{{{
-  void mp3_synth_filter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t *window, int *dither_state,
-                                int16_t *samples, int incr, int32_t sb_samples[SBLIMIT]) {
+  void synthFilter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t *window, int *dither_state,
+                         int16_t *samples, int incr, int32_t sb_samples[SBLIMIT]) {
 
     int32_t tmp[32];
-    register int16_t *synth_buf;
-    register const int16_t *w, *w2, *p;
-    int j, offset, v;
-    int16_t *samples2;
+    int16_t* synth_buf;
+    const int16_t *w, *w2, *p;
+    int offset, v;
+    int16_t* samples2;
     int sum, sum2;
 
-    dct32(tmp, sb_samples);
+    dct32 (tmp, sb_samples);
 
     offset = *synth_buf_offset;
     synth_buf = synth_buf_ptr + offset;
 
-    for (j = 0; j < 32; j++) {
+    for (int j = 0; j < 32; j++) {
       v = tmp[j];
-      /* NOTE: can cause a loss in precision if very high amplitude sound */
+      // NOTE: can cause a loss in precision if very high amplitude sound
       if (v > 32767)
         v = 32767;
       else if (v < -32768)
@@ -2306,7 +2309,7 @@ private:
       synth_buf[j] = v;
       }
 
-    /* copy to avoid wrap */
+    // copy to avoid wrap
     memcpy (synth_buf + 512, synth_buf, 32 * sizeof(int16_t));
 
     samples2 = samples + 31 * incr;
@@ -2318,23 +2321,22 @@ private:
     SUM8(sum, +=, w, p);
     p = synth_buf + 48;
     SUM8(sum, -=, w + 32, p);
-    *samples = round_sample(&sum);
+    *samples = roundSample (&sum);
     samples += incr;
     w++;
 
-    /* we calculate two samples at the same time to avoid one memory
-       access per two sample */
-    for (j = 1; j < 16; j++) {
+    // we calculate two samples at the same time to avoid one memory access per two sample
+    for (int j = 1; j < 16; j++) {
       sum2 = 0;
       p = synth_buf + 16 + j;
       SUM8P2(sum, +=, sum2, -=, w, w2, p);
       p = synth_buf + 48 - j;
       SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
 
-      *samples = round_sample(&sum);
+      *samples = roundSample(&sum);
       samples += incr;
       sum += sum2;
-      *samples2 = round_sample(&sum);
+      *samples2 = roundSample (&sum);
       samples2 -= incr;
       w++;
       w2--;
@@ -2342,8 +2344,8 @@ private:
 
     p = synth_buf + 32;
     SUM8(sum, -=, w + 32, p);
-    *samples = round_sample(&sum);
-    *dither_state= sum;
+    *samples = roundSample(&sum);
+    *dither_state = sum;
 
     offset = (offset - 32) & 511;
     *synth_buf_offset = offset;
@@ -2351,13 +2353,11 @@ private:
   //}}}
 
   //{{{
-  int mp_decode_layer3() {
+  int decodeLayer3() {
 
     int nb_granules, main_data_begin, private_bits;
-    int gr, ch, blocksplit_flag, i, j, k, n, bits_pos;
+    int blocksplit_flag, i, j, k, n, bits_pos;
     granule_t *g;
-    static granule_t granules[2][2];
-    static int16_t exponents[576];
     const uint8_t *ptr;
 
     if (lsf) {
@@ -2372,107 +2372,117 @@ private:
       else
         private_bits = get_bits (&gb, 5);
       nb_granules = 2;
-      for (ch = 0; ch < nb_channels; ch++) {
+      for (int ch = 0; ch < nb_channels; ch++) {
         granules[ch][0].scfsi = 0; /* all scale factors are transmitted */
-        granules[ch][1].scfsi = get_bits(&gb, 4);
+        granules[ch][1].scfsi = get_bits (&gb, 4);
         }
       }
 
-    for (gr = 0; gr < nb_granules; gr++) {
-        for(ch = 0; ch < nb_channels; ch++) {
-            g = &granules[ch][gr];
-            g->part2_3_length = get_bits(&gb, 12);
-            g->big_values = get_bits(&gb, 9);
-            g->global_gain = get_bits(&gb, 8);
-            /* if MS stereo only is selected, we precompute the 1/sqrt(2) renormalization factor */
-            if ((mode_ext & (MODE_EXT_MS_STEREO | MODE_EXT_I_STEREO)) == MODE_EXT_MS_STEREO)
-              g->global_gain -= 2;
-            if (lsf)
-              g->scalefac_compress = get_bits(&gb, 9);
+    for (int gr = 0; gr < nb_granules; gr++) {
+      for (int ch = 0; ch < nb_channels; ch++) {
+        //{{{  per channel
+        g = &granules[ch][gr];
+        g->part2_3_length = get_bits(&gb, 12);
+        g->big_values = get_bits(&gb, 9);
+        g->global_gain = get_bits(&gb, 8);
+
+        // if MS stereo only is selected, we precompute the 1/sqrt(2) renormalization factor
+        if ((mode_ext & (MODE_EXT_MS_STEREO | MODE_EXT_I_STEREO)) == MODE_EXT_MS_STEREO)
+          g->global_gain -= 2;
+        if (lsf)
+          g->scalefac_compress = get_bits(&gb, 9);
+        else
+          g->scalefac_compress = get_bits(&gb, 4);
+        blocksplit_flag = get_bits(&gb, 1);
+        if (blocksplit_flag) {
+          g->block_type = get_bits(&gb, 2);
+          if (g->block_type == 0)
+              return -1;
+          g->switch_point = get_bits(&gb, 1);
+          for (int i = 0; i < 2; i++)
+            g->table_select[i] = get_bits(&gb, 5);
+          for (int i = 0; i < 3; i++)
+            g->subblock_gain[i] = get_bits(&gb, 3);
+
+          //{{{  compute huffman coded region sizes
+          if (g->block_type == 2)
+            g->region_size[0] = (36 / 2);
+          else {
+            if (sample_rate_index <= 2)
+              g->region_size[0] = (36 / 2);
+            else if (sample_rate_index != 8)
+              g->region_size[0] = (54 / 2);
             else
-              g->scalefac_compress = get_bits(&gb, 4);
-            blocksplit_flag = get_bits(&gb, 1);
-            if (blocksplit_flag) {
-                g->block_type = get_bits(&gb, 2);
-                if (g->block_type == 0)
-                    return -1;
-                g->switch_point = get_bits(&gb, 1);
-                for(i=0;i<2;i++)
-                    g->table_select[i] = get_bits(&gb, 5);
-                for(i=0;i<3;i++)
-                    g->subblock_gain[i] = get_bits(&gb, 3);
-                /* compute huffman coded region sizes */
-                if (g->block_type == 2)
-                    g->region_size[0] = (36 / 2);
-                else {
-                    if (sample_rate_index <= 2)
-                        g->region_size[0] = (36 / 2);
-                    else if (sample_rate_index != 8)
-                        g->region_size[0] = (54 / 2);
-                    else
-                        g->region_size[0] = (108 / 2);
-                }
-                g->region_size[1] = (576 / 2);
-            } else {
-                int region_address1, region_address2, l;
-                g->block_type = 0;
-                g->switch_point = 0;
-                for (i = 0; i < 3; i++)
-                  g->table_select[i] = get_bits(&gb, 5);
-                /* compute huffman coded region sizes */
-                region_address1 = get_bits(&gb, 4);
-                region_address2 = get_bits(&gb, 3);
-                g->region_size[0] = band_index_long[sample_rate_index][region_address1 + 1] >> 1;
-                l = region_address1 + region_address2 + 2;
-                /* should not overflow */
-                if (l > 22)
-                  l = 22;
-                g->region_size[1] = band_index_long[sample_rate_index][l] >> 1;
+              g->region_size[0] = (108 / 2);
             }
-            /* convert region offsets to region sizes and truncate size to big_values */
-            g->region_size[2] = (576 / 2);
-            j = 0;
-            for (i = 0; i < 3; i++) {
-                k = g->region_size[i];
-                if (g->big_values < k) k = g->big_values;
-                g->region_size[i] = k - j;
-                j = k;
+          g->region_size[1] = (576 / 2);
+          //}}}
+          }
+
+        else {
+          int region_address1, region_address2, l;
+          g->block_type = 0;
+          g->switch_point = 0;
+          for (i = 0; i < 3; i++)
+            g->table_select[i] = get_bits(&gb, 5);
+          //{{{  compute huffman coded region sizes
+          region_address1 = get_bits(&gb, 4);
+          region_address2 = get_bits(&gb, 3);
+          g->region_size[0] = band_index_long[sample_rate_index][region_address1 + 1] >> 1;
+          l = region_address1 + region_address2 + 2;
+          // should not overflow
+          if (l > 22)
+            l = 22;
+          g->region_size[1] = band_index_long[sample_rate_index][l] >> 1;
+          //}}}
+          }
+
+        //{{{  convert region offsets to region sizes and truncate size to big_values
+        g->region_size[2] = (576 / 2);
+        j = 0;
+        for (i = 0; i < 3; i++) {
+          k = g->region_size[i];
+          if (g->big_values < k)
+            k = g->big_values;
+          g->region_size[i] = k - j;
+          j = k;
+          }
+        //}}}
+        //{{{  compute band indexes
+        if (g->block_type == 2) {
+          if (g->switch_point) {
+            // if switched mode, we handle the 36 first samples as long blocks.  For 8000Hz, we handle the 48 first
+            //   exponents as long blocks (XXX: check this!)
+            if (sample_rate_index <= 2)
+              g->long_end = 8;
+            else if (sample_rate_index != 8)
+              g->long_end = 6;
+            else
+              g->long_end = 4; /* 8000 Hz */
+            g->short_start = 2 + (sample_rate_index != 8);
             }
-
-            /* compute band indexes */
-            if (g->block_type == 2) {
-                if (g->switch_point) {
-                    /* if switched mode, we handle the 36 first samples as long blocks.  For 8000Hz, we handle the 48 first
-                       exponents as long blocks (XXX: check this!) */
-                    if (sample_rate_index <= 2)
-                      g->long_end = 8;
-                    else if (sample_rate_index != 8)
-                      g->long_end = 6;
-                    else
-                      g->long_end = 4; /* 8000 Hz */
-
-                    g->short_start = 2 + (sample_rate_index != 8);
-                  }
-                else {
-                  g->long_end = 0;
-                  g->short_start = 0;
-                  }
-              }
-            else {
-              g->short_start = 13;
-              g->long_end = 22;
-              }
-
-            g->preflag = 0;
-            if (!lsf)
-              g->preflag = get_bits(&gb, 1);
-            g->scalefac_scale = get_bits(&gb, 1);
-            g->count1table_select = get_bits(&gb, 1);
+          else {
+            g->long_end = 0;
+            g->short_start = 0;
+            }
+          }
+        else {
+          g->short_start = 13;
+          g->long_end = 22;
+          }
+        //}}}
+        g->preflag = 0;
+        if (!lsf)
+          g->preflag = get_bits(&gb, 1);
+        g->scalefac_scale = get_bits(&gb, 1);
+        g->count1table_select = get_bits(&gb, 1);
         }
-    }
+        //}}}
+      }
 
     ptr = gb.buffer + (get_bits_count (&gb) >> 3);
-    /* now we get bits from the main_data_begin offset */
+
+    // now we get bits from the main_data_begin offset
     if (main_data_begin > last_buf_size)
       last_buf_size= main_data_begin;
 
@@ -2480,186 +2490,193 @@ private:
     in_gb = gb;
     init_get_bits (&gb, last_buf + last_buf_size - main_data_begin, main_data_begin*8);
 
-    for (gr = 0; gr < nb_granules; gr++) {
-        for (ch = 0; ch < nb_channels; ch++) {
-            g = &granules[ch][gr];
+    for (int gr = 0; gr < nb_granules; gr++) {
+      for (int ch = 0; ch < nb_channels; ch++) {
+        //{{{  per channel
+        g = &granules[ch][gr];
 
-            bits_pos = get_bits_count(&gb);
-            if (!lsf) {
-                uint8_t *sc;
-                int slen, slen1, slen2;
+        bits_pos = get_bits_count(&gb);
+        if (!lsf) {
+          uint8_t *sc;
+          int slen, slen1, slen2;
 
-                /* MPEG1 scale factors */
-                slen1 = slen_table[0][g->scalefac_compress];
-                slen2 = slen_table[1][g->scalefac_compress];
-                if (g->block_type == 2) {
-                    n = g->switch_point ? 17 : 18;
-                    j = 0;
-                    if (slen1){
-                      for (i = 0; i < n; i++)
-                        g->scale_factors[j++] = get_bits(&gb, slen1);
-                      }
-                    else {
-                      memset((void*) &g->scale_factors[j], 0, n);
-                      j += n;
-                      //for(i=0;i<n;i++)  g->scale_factors[j++] = 0;
-                      }
-                    if (slen2){
-                      for (i = 0; i < 18; i++)
-                        g->scale_factors[j++] = get_bits(&gb, slen2);
-                      for (i = 0; i < 3; i++)
-                        g->scale_factors[j++] = 0;
-                      }
-                    else {
-                      for (i = 0; i < 21; i++)
-                        g->scale_factors[j++] = 0;
-                      }
+          /* MPEG1 scale factors */
+          slen1 = slen_table[0][g->scalefac_compress];
+          slen2 = slen_table[1][g->scalefac_compress];
+          if (g->block_type == 2) {
+            n = g->switch_point ? 17 : 18;
+            j = 0;
+            if (slen1){
+              for (i = 0; i < n; i++)
+                g->scale_factors[j++] = get_bits(&gb, slen1);
+              }
+            else {
+              memset((void*) &g->scale_factors[j], 0, n);
+              j += n;
+              //for(i=0;i<n;i++)  g->scale_factors[j++] = 0;
+              }
+            if (slen2){
+              for (i = 0; i < 18; i++)
+                g->scale_factors[j++] = get_bits(&gb, slen2);
+              for (i = 0; i < 3; i++)
+                g->scale_factors[j++] = 0;
+              }
+            else {
+              for (i = 0; i < 21; i++)
+                g->scale_factors[j++] = 0;
+              }
+            }
+          else {
+            sc = granules[ch][0].scale_factors;
+            j = 0;
+            for (k = 0; k < 4; k++) {
+              n = (k == 0 ? 6 : 5);
+              if ((g->scfsi & (0x8 >> k)) == 0) {
+                slen = (k < 2) ? slen1 : slen2;
+                if (slen) {
+                  for (i = 0; i < n; i++)
+                    g->scale_factors[j++] = get_bits(&gb, slen);
                   }
                 else {
-                    sc = granules[ch][0].scale_factors;
-                    j = 0;
-                    for(k=0;k<4;k++) {
-                        n = (k == 0 ? 6 : 5);
-                        if ((g->scfsi & (0x8 >> k)) == 0) {
-                            slen = (k < 2) ? slen1 : slen2;
-                            if(slen){
-                                for(i=0;i<n;i++)
-                                    g->scale_factors[j++] = get_bits(&gb, slen);
-                            }else{
-                                memset((void*) &g->scale_factors[j], 0, n);
-                                j += n;
-  //                                for(i=0;i<n;i++)
-  //                                    g->scale_factors[j++] = 0;
-                            }
-                        } else {
-                            /* simply copy from last granule */
-                            for(i=0;i<n;i++) {
-                                g->scale_factors[j] = sc[j];
-                                j++;
-                            }
-                        }
-                    }
-                    g->scale_factors[j++] = 0;
-                }
-            } else {
-                int tindex, tindex2, slen[4], sl, sf;
-
-                /* LSF scale factors */
-                if (g->block_type == 2) {
-                    tindex = g->switch_point ? 2 : 1;
-                } else {
-                    tindex = 0;
-                }
-                sf = g->scalefac_compress;
-                if ((mode_ext & MODE_EXT_I_STEREO) && ch == 1) {
-                    /* intensity stereo case */
-                    sf >>= 1;
-                    if (sf < 180) {
-                        lsf_sf_expand(slen, sf, 6, 6, 0);
-                        tindex2 = 3;
-                    } else if (sf < 244) {
-                        lsf_sf_expand(slen, sf - 180, 4, 4, 0);
-                        tindex2 = 4;
-                    } else {
-                        lsf_sf_expand(slen, sf - 244, 3, 0, 0);
-                        tindex2 = 5;
-                    }
-                } else {
-                    /* normal case */
-                    if (sf < 400) {
-                        lsf_sf_expand(slen, sf, 5, 4, 4);
-                        tindex2 = 0;
-                    } else if (sf < 500) {
-                        lsf_sf_expand(slen, sf - 400, 5, 4, 0);
-                        tindex2 = 1;
-                    } else {
-                        lsf_sf_expand(slen, sf - 500, 3, 0, 0);
-                        tindex2 = 2;
-                        g->preflag = 1;
-                    }
-                }
-
-                j = 0;
-                for (k = 0; k < 4; k++) {
-                    n = lsf_nsf_table[tindex2][tindex][k];
-                    sl = slen[k];
-                    if(sl){
-                        for(i=0;i<n;i++)
-                            g->scale_factors[j++] = get_bits(&gb, sl);
-                      }
-                    else{
-                      memset((void*) &g->scale_factors[j], 0, n);
-                      j += n;
-                      //for(i=0;i<n;i++)  g->scale_factors[j++] = 0;
-                      }
+                  memset((void*) &g->scale_factors[j], 0, n);
+                  j += n;
+                  //  for(i=0;i<n;i++) g->scale_factors[j++] = 0;
                   }
-                /* XXX: should compute exact size */
-                memset((void*) &g->scale_factors[j], 0, 40 - j);
-                //for(;j<40;j++) g->scale_factors[j] = 0;
+                }
+              else {
+                /* simply copy from last granule */
+                for(i=0;i<n;i++) {
+                  g->scale_factors[j] = sc[j];
+                  j++;
+                  }
+                }
+              }
+            g->scale_factors[j++] = 0;
+            }
+          }
+
+        else {
+          int tindex, tindex2, slen[4], sl, sf;
+
+          /* LSF scale factors */
+          if (g->block_type == 2) {
+            tindex = g->switch_point ? 2 : 1;
+            }
+          else {
+            tindex = 0;
             }
 
-            exponents_from_scale_factors(g, exponents);
+          sf = g->scalefac_compress;
+          if ((mode_ext & MODE_EXT_I_STEREO) && ch == 1) {
+            /* intensity stereo case */
+            sf >>= 1;
+            if (sf < 180) {
+              lsfsfExpand(slen, sf, 6, 6, 0);
+              tindex2 = 3;
+              }
+            else if (sf < 244) {
+              lsfsfExpand(slen, sf - 180, 4, 4, 0);
+              tindex2 = 4;
+              }
+            else {
+              lsfsfExpand(slen, sf - 244, 3, 0, 0);
+              tindex2 = 5;
+              }
+            }
+          else {
+            /* normal case */
+            if (sf < 400) {
+              lsfsfExpand(slen, sf, 5, 4, 4);
+              tindex2 = 0;
+              }
+            else if (sf < 500) {
+              lsfsfExpand(slen, sf - 400, 5, 4, 0);
+              tindex2 = 1;
+              }
+            else {
+              lsfsfExpand(slen, sf - 500, 3, 0, 0);
+              tindex2 = 2;
+              g->preflag = 1;
+              }
+            }
 
-            /* read Huffman coded residue */
-            if (huffman_decode (g, exponents, bits_pos + g->part2_3_length) < 0)
-                return -1;
-        } /* ch */
+          j = 0;
+          for (k = 0; k < 4; k++) {
+            n = lsf_nsf_table[tindex2][tindex][k];
+            sl = slen[k];
+            if (sl) {
+              for (i = 0; i < n; i++)
+                g->scale_factors[j++] = get_bits(&gb, sl);
+              }
+            else{
+              memset ((void*) &g->scale_factors[j], 0, n);
+              j += n;
+              //for(i=0;i<n;i++)  g->scale_factors[j++] = 0;
+              }
+            }
+          /* XXX: should compute exact size */
+          memset((void*) &g->scale_factors[j], 0, 40 - j);
+          //for(;j<40;j++) g->scale_factors[j] = 0;
+          }
 
+        exponentsFromScaleFactors (g, exponents);
+
+        // read Huffman coded residue
+        if (huffmanDecode (g, exponents, bits_pos + g->part2_3_length) < 0)
+          return -1;
+        }
+        //}}}
       if (nb_channels == 2)
-        compute_stereo (&granules[0][gr], &granules[1][gr]);
-
-      for(ch = 0; ch < nb_channels; ch++) {
+        computeStereo (&granules[0][gr], &granules[1][gr]);
+      for (int ch = 0; ch < nb_channels; ch++) {
         g = &granules[ch][gr];
-        reorder_block (g);
-        compute_antialias (g);
+        reorderBlock (g);
+        computeAntialias (g);
         compute_imdct (g, &sb_samples[ch][18 * gr][0], mdct_buf[ch]);
         }
-      } /* gr */
+      }
 
     return nb_granules * 18;
     }
   //}}}
   //{{{
-  int mp3_decode_main (int16_t* samples, const uint8_t* buf, int buf_size) {
-
-    int i, nb_frames, ch;
-    int16_t *samples_ptr;
+  int decodeMain (int16_t* samples, const uint8_t* buf, int buf_size) {
 
     init_get_bits (&gb, buf + HEADER_SIZE, (buf_size - HEADER_SIZE)*8);
-
     if (error_protection)
       get_bits (&gb, 16);
 
-    nb_frames = mp_decode_layer3();
+    int nb_frames = decodeLayer3();
 
     last_buf_size = 0;
     if (in_gb.buffer){
       align_get_bits (&gb);
-      i = (gb.size_in_bits - get_bits_count (&gb))>>3;
+      int i = (gb.size_in_bits - get_bits_count (&gb)) >> 3;
       if (i >= 0 && i <= BACKSTEP_SIZE){
-        memmove(last_buf, gb.buffer + (get_bits_count(&gb)>>3), i);
+        memmove (last_buf, gb.buffer + (get_bits_count (&gb) >> 3), i);
         last_buf_size = i;
         }
-      gb= in_gb;
+      gb = in_gb;
       }
 
     align_get_bits (&gb);
-    i = (gb.size_in_bits - get_bits_count (&gb))>>3;
+    int i = (gb.size_in_bits - get_bits_count (&gb)) >> 3;
 
-    if (i < 0 || i > BACKSTEP_SIZE || nb_frames<0) {
+    if (i < 0 || i > BACKSTEP_SIZE || nb_frames < 0) {
       i = buf_size - HEADER_SIZE;
-      if (BACKSTEP_SIZE < i) i = BACKSTEP_SIZE;
+      if (BACKSTEP_SIZE < i)
+        i = BACKSTEP_SIZE;
       }
 
     memcpy (last_buf + last_buf_size, gb.buffer + buf_size - HEADER_SIZE - i, i);
     last_buf_size += i;
 
-    /* apply the synthesis filter */
-    for (ch = 0; ch < nb_channels; ch++) {
-      samples_ptr = samples + ch;
-      for(i = 0; i < nb_frames; i++) {
-        mp3_synth_filter (synth_buf[ch], &(synth_buf_offset[ch]), window, &dither_state,
-                          samples_ptr, nb_channels, sb_samples[ch][i]);
+    // apply the synthesis filter
+    for (int ch = 0; ch < nb_channels; ch++) {
+      int16_t* samples_ptr = samples + ch;
+      for (int i = 0; i < nb_frames; i++) {
+        synthFilter (synth_buf[ch], &(synth_buf_offset[ch]), window, &dither_state,
+                     samples_ptr, nb_channels, sb_samples[ch][i]);
         samples_ptr += 32 * nb_channels;
         }
       }
@@ -2668,199 +2685,23 @@ private:
     }
   //}}}
   //{{{
-  int mp3_decode_init () {
+  int decodeFrame (int16_t* out_samples, int* data_size, uint8_t* buf, int buf_size) {
 
-    static int init = 0;
-    int i, j, k;
-
-    if (!init) {
-      //{{{  synth init
-      for (i = 0; i < 257; i++) {
-
-        int v = mp3_enwindow[i];
-      #if WFRAC_BITS < 16
-        v = (v + (1 << (16 - WFRAC_BITS - 1))) >> (16 - WFRAC_BITS);
-      #endif
-        window[i] = v;
-        if ((i & 63) != 0)
-          v = -v;
-        if (i != 0)
-          window[512 - i] = v;
-        }
-      //}}}
-      //{{{  huffman decode tables
-      for(i=1;i<16;i++) {
-          const huff_table_t *h = &mp3_huff_tables[i];
-          int xsize, x, y;
-          unsigned int n;
-          uint8_t  tmp_bits [512];
-          uint16_t tmp_codes[512];
-
-          memset(tmp_bits , 0, sizeof(tmp_bits ));
-          memset(tmp_codes, 0, sizeof(tmp_codes));
-
-          xsize = h->xsize;
-          n = xsize * xsize;
-
-          j = 0;
-          for(x=0;x<xsize;x++) {
-              for(y=0;y<xsize;y++){
-                  tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j  ];
-                  tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
-              }
-          }
-
-          init_vlc(&huff_vlc[i], 7, 512,
-                   tmp_bits, 1, 1, tmp_codes, 2, 2);
-      }
-      for(i=0;i<2;i++) {
-          init_vlc(&huff_quad_vlc[i], i == 0 ? 7 : 4, 16,
-                   mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
-      }
-
-      for(i=0;i<9;i++) {
-          k = 0;
-          for(j=0;j<22;j++) {
-              band_index_long[i][j] = k;
-              k += band_size_long[i][j];
-          }
-          band_index_long[i][22] = k;
-      }
-      //}}}
-      //{{{  compute n ^ (4/3) and store it in mantissa/exp format
-      table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
-      if (!table_4_3_exp)
-        return -1;
-      table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
-      if (!table_4_3_value)
-        return -1;
-
-      for (i = 1; i < TABLE_4_3_SIZE; i++) {
-        double f, fm;
-        int e, m;
-        f = pow((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
-        fm = frexp(f, &e);
-        m = (uint32_t)(fm*(1LL<<31) + 0.5);
-        e+= FRAC_BITS - 31 + 5 - 100;
-        table_4_3_value[i] = m;
-        table_4_3_exp[i] = -e;
-        }
-      for (i = 0; i < 512*16; i++){
-        int exponent= (i>>4);
-        double f = pow(i&15, 4.0 / 3.0) * pow(2, (exponent-400)*0.25 + FRAC_BITS + 5);
-        expval_table[exponent][i&15]= f;
-        if ((i & 15) == 1)
-          exp_table[exponent]= f;
-        }
-
-      for (i = 0; i < 7; i++) {
-        float f;
-        int v;
-        if (i != 6) {
-          f = tan((double)i * M_PI / 12.0);
-          v = FIXR(f / (1.0 + f));
-          }
-        else
-          v = FIXR(1.0);
-        is_table[0][i] = v;
-        is_table[1][6 - i] = v;
-        }
-      for (i = 7; i < 16; i++)
-        is_table[0][i] = is_table[1][i] = 0.0;
-
-      for (i = 0; i < 16; i++) {
-        double f;
-        int e, k;
-        for(j = 0; j < 2; j++) {
-          e = -(j + 1) * ((i + 1) >> 1);
-          f = pow(2.0, e / 4.0);
-          k = i & 1;
-          is_table_lsf[j][k ^ 1][i] = FIXR(f);
-          is_table_lsf[j][k][i] = FIXR(1.0);
-          }
-        }
-
-      for (i = 0; i < 8; i++) {
-        float ci, cs, ca;
-        ci = ci_table[i];
-        cs = 1.0 / sqrt(1.0 + ci * ci);
-        ca = cs * ci;
-        csa_table[i][0] = FIXHR(cs/4);
-        csa_table[i][1] = FIXHR(ca/4);
-        csa_table[i][2] = FIXHR(ca/4) + FIXHR(cs/4);
-        csa_table[i][3] = FIXHR(ca/4) - FIXHR(cs/4);
-        csa_table_float[i][0] = cs;
-        csa_table_float[i][1] = ca;
-        csa_table_float[i][2] = ca + cs;
-        csa_table_float[i][3] = ca - cs;
-        }
-      //}}}
-      //{{{  compute mdct windows
-      for (i = 0; i < 36; i++) {
-        for (j = 0; j < 4; j++){
-          double d;
-
-          if (j == 2 && i % 3 != 1)
-            continue;
-
-          d = sin(M_PI * (i + 0.5) / 36.0);
-          if (j == 1){
-              if (i>=30)
-                d = 0;
-              else if(i>=24)
-                d = sin(M_PI * (i - 18 + 0.5) / 12.0);
-              else if (i >= 18)
-                d = 1;
-            }
-          else if (j == 3){
-            if (i <  6)
-              d = 0;
-            else if (i < 12)
-              d = sin (M_PI * (i -  6 + 0.5) / 12.0);
-            else if (i < 18)
-              d = 1;
-            }
-          d *= 0.5 / cos(M_PI*(2*i + 19)/72);
-          if (j == 2)
-            mdct_win[j][i/3] = FIXHR((d / (1<<5)));
-          else
-            mdct_win[j][i  ] = FIXHR((d / (1<<5)));
-          }
-        }
-
-      for (j = 0; j < 4; j++) {
-        for (i = 0; i < 36; i += 2) {
-          mdct_win[j + 4][i] = mdct_win[j][i];
-          mdct_win[j + 4][i + 1] = -mdct_win[j][i + 1];
-          }
-        }
-      //}}}
-      init = 1;
-      }
-
-    return 0;
-    }
-  //}}}
-  //{{{
-  int mp3_decode_frame (int16_t* out_samples, int* data_size, uint8_t* buf, int buf_size) {
-
-    uint32_t header;
-    int out_size;
     int extra_bytes = 0;
 
   retry:
     if (buf_size < HEADER_SIZE)
       return -1;
 
-    header = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
-    if (mp3_check_header(header) < 0){
+    uint32_t header = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    if (checkHeader(header) < 0){
       buf++;
       buf_size--;
       extra_bytes++;
       goto retry;
       }
 
-    if (decode_header (header) == 1) {
+    if (decodeHeader (header) == 1) {
       frame_size = -1;
       return -1;
       }
@@ -2872,7 +2713,7 @@ private:
     if (frame_size < buf_size)
       buf_size = frame_size;
 
-    out_size = mp3_decode_main(out_samples, buf, buf_size);
+    int out_size = decodeMain (out_samples, buf, buf_size);
     if (out_size >= 0)
       *data_size = out_size;
     // else: Error while decoding MPEG audio frame.
@@ -2884,30 +2725,33 @@ private:
   //}}}
 
   //{{{  vars
-  uint8_t last_buf [2*BACKSTEP_SIZE + EXTRABYTES];
-  int last_buf_size = 0;
-  int frame_size = 0;
-  uint32_t free_format_next_header = 0;
-
-  int error_protection = 0;
-  int sample_rate = 0;
-  int sample_rate_index = 0;
-  int bit_rate = 0;
-
   bitstream_t gb;
   bitstream_t in_gb;
 
+  uint8_t last_buf [2*BACKSTEP_SIZE + EXTRABYTES];
+  int last_buf_size = 0;
+  uint32_t free_format_next_header = 0;
+
+  int frame_size = 0;
+
+  int bit_rate = 0;
+  int sample_rate = 0;
+  int sample_rate_index = 0;
   int nb_channels = 0;
   int mode = 0;
   int mode_ext = 0;
   int lsf = 0;
+  int dither_state = 0;
+  int error_protection = 0;
+
+  int synth_buf_offset [MP3_MAX_CHANNELS] = {0,0};
 
   int16_t synth_buf [MP3_MAX_CHANNELS][512 * 2];
-  int synth_buf_offset [MP3_MAX_CHANNELS];
   int32_t sb_samples [MP3_MAX_CHANNELS][36][SBLIMIT];
   int32_t mdct_buf [MP3_MAX_CHANNELS][SBLIMIT * 18];
 
-  int dither_state = 0;
+  granule_t granules[2][2];
+  int16_t exponents[576];
   //}}}
   };
 
@@ -2921,25 +2765,23 @@ int main (int argc, char* argv[]) {
   HANDLE hFile = CreateFile (argv[1], GENERIC_READ, 0, NULL, OPEN_EXISTING, 0, NULL);
   HANDLE hMap = CreateFileMapping (hFile, NULL, PAGE_READONLY, 0, 0, NULL);
 
-  unsigned char* stream_pos = (unsigned char*)MapViewOfFile (hMap, FILE_MAP_READ, 0, 0, 0);
+  uint8_t* stream_pos = (uint8_t*)MapViewOfFile (hMap, FILE_MAP_READ, 0, 0, 0);
   int bytes_left = GetFileSize (hFile, NULL) - 128;
 
   // check for a ID3 tag
-  char* inptr = (char*)stream_pos + bytes_left;
+  uint8_t* inptr = stream_pos + bytes_left;
   for (auto i = 0; i < 32; i++)
-    printf ("%02x ", (uint8_t)(*(inptr+i)));
+    printf ("%02x ", *(inptr+i));
   printf ("\n");
 
   // set up minimp3 and decode the first frame
   winAudioOpen (44100, 16, 2);
 
   cMp3Decoder mMp3Decoder;
-
   while (true) {
-    signed short sample_buffer[1152*2];
-    mp3_info_t info;
-    int byte_count = mMp3Decoder.mp3_decode (stream_pos, bytes_left, sample_buffer, &info);
-    printf ("%d\n", byte_count);
+    int16_t sample_buffer[1152*2];
+    int byte_count = mMp3Decoder.decode (stream_pos, bytes_left, sample_buffer);
+    //printf ("%d\n", byte_count);
     if (byte_count) {
       stream_pos += byte_count;
       bytes_left -= byte_count;
