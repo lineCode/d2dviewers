@@ -1082,7 +1082,7 @@ public:
     int extraBytes = 0;
     while (bufferBytes >= 4) {
       uint32_t header = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
-      if (checkHeader (header) >= 0) {
+      if (checkHeader (header)) {
         auto frame_size = decodeHeader (header);
         if (frame_size < bufferBytes)
           bufferBytes = frame_size;
@@ -1392,25 +1392,25 @@ private:
   //}}}
   //}}}
   //{{{
-  int checkHeader (uint32_t header) {
+  bool checkHeader (uint32_t header) {
 
     // header
     if ((header & 0xffe00000) != 0xffe00000)
-      return -1;
+      return false;
 
     // layer check
     if ((header & (3 << 17)) != (1 << 17))
-      return -1;
+      return false;
 
     // bit rate
     if ((header & (0xf << 12)) == 0xf << 12)
-      return -1;
+      return false;
 
     // frequency
     if ((header & (3 << 10)) == 3 << 10)
-      return -1;
+      return false;
 
-    return 0;
+    return true;
     }
   //}}}
   //{{{
@@ -1452,7 +1452,7 @@ private:
   int roundSample (int& sum) {
 
     int sum1 = sum >> OUT_SHIFT;
-    sum &= (1<<OUT_SHIFT)-1;
+    sum &= (1 << OUT_SHIFT) - 1;
 
     if (sum1 < OUT_MIN)
       sum1 = OUT_MIN;
@@ -1498,7 +1498,7 @@ private:
     }
   //}}}
   //{{{
-  int l3unscale (int value, int exponent) {
+  int layer3unscale (int value, int exponent) {
 
     int e = table_4_3_exp[4 * value + (exponent & 3)];
     e -= (exponent >> 2);
@@ -1572,7 +1572,7 @@ private:
         ptr++;
         }
 
-      ptr += 2*len;
+      ptr += 2 * len;
       memcpy (ptr1, tmp, len * 3 * sizeof(*ptr1));
       }
     }
@@ -1619,11 +1619,8 @@ private:
   //{{{
   void computeStereo (granule_t* g0, granule_t* g1) {
 
-    int32_t v1, v2;
-    int sf_max, tmp0, tmp1, sf, len, non_zero_found;
     int32_t (*is_tab)[16];
-    int non_zero_found_short[3];
-
+    int sf_max, tmp0, tmp1, sf;
     if (mModeExt & MODE_EXT_I_STEREO) {
       if (!mLsf) {
         is_tab = is_table;
@@ -1637,6 +1634,7 @@ private:
       int32_t* tab0 = g0->sb_hybrid + 576;
       int32_t* tab1 = g1->sb_hybrid + 576;
 
+      int non_zero_found_short[3];
       non_zero_found_short[0] = 0;
       non_zero_found_short[1] = 0;
       non_zero_found_short[2] = 0;
@@ -1645,7 +1643,8 @@ private:
         //{{{  for last band, use previous scale factor
         if (i != 11)
           k -= 3;
-        len = band_size_short[mSampleRateIndex][i];
+
+        int len = band_size_short[mSampleRateIndex][i];
         for (int l = 2; l >= 0; l--) {
           tab0 -= len;
           tab1 -= len;
@@ -1661,8 +1660,8 @@ private:
             if (sf >= sf_max)
               goto found1;
 
-            v1 = is_tab[0][sf];
-            v2 = is_tab[1][sf];
+            int32_t v1 = is_tab[0][sf];
+            int32_t v2 = is_tab[1][sf];
             for (int j = 0; j < len; j++) {
               tmp0 = tab0[j];
               tab0[j] = MULL(tmp0, v1);
@@ -1685,10 +1684,10 @@ private:
         }
         //}}}
 
-      non_zero_found = non_zero_found_short[0] | non_zero_found_short[1] | non_zero_found_short[2];
+      int non_zero_found = non_zero_found_short[0] | non_zero_found_short[1] | non_zero_found_short[2];
 
       for (int i = g1->long_end - 1; i >= 0; i--) {
-        len = band_size_long[mSampleRateIndex][i];
+        int len = band_size_long[mSampleRateIndex][i];
         tab0 -= len;
         tab1 -= len;
 
@@ -1706,8 +1705,9 @@ private:
           sf = g1->scale_factors[k];
           if (sf >= sf_max)
             goto found2;
-          v1 = is_tab[0][sf];
-          v2 = is_tab[1][sf];
+
+          int32_t v1 = is_tab[0][sf];
+          int32_t v2 = is_tab[1][sf];
           for (int j = 0; j < len; j++) {
             tmp0 = tab0[j];
             tab0[j] = MULL(tmp0, v1);
@@ -1716,7 +1716,7 @@ private:
           //}}}
           }
         else {
-        found2:
+      found2:
           if (mModeExt & MODE_EXT_MS_STEREO) {
             //{{{  lower part of the spectrum : do ms stereo if enabled
             for (int j = 0; j < len; j++) {
@@ -1761,7 +1761,7 @@ private:
       if (j == 0)
         continue;
 
-      /* select vlc table */
+      // select vlc table
       int k = g->table_select[i];
       int l = mp3_huff_data[k][0];
       int linbits = mp3_huff_data[k][1];
@@ -1772,9 +1772,8 @@ private:
         continue;
         }
 
-      /* read huffcode and compute each couple */
+      // read huffcode and compute each couple
       for (; j > 0; j--) {
-        int exponent, x, y, v;
         int pos = get_bits_count (&mBitstream);
 
         if (pos >= end_pos){
@@ -1782,7 +1781,7 @@ private:
           if (pos >= end_pos)
             break;
           }
-        y = get_vlc2 (&mBitstream, vlc->table, 7, 3);
+        int y = get_vlc2 (&mBitstream, vlc->table, 7, 3);
 
         if(!y) {
           g->sb_hybrid[s_index  ] =
@@ -1791,8 +1790,9 @@ private:
           continue;
           }
 
-        exponent = exponents[s_index];
+        int exponent = exponents[s_index];
 
+        int x, v;
         if (y & 16) {
           x = y >> 5;
           y = y & 0x0f;
@@ -1800,49 +1800,50 @@ private:
             v = expval_table[ exponent ][ x ];
           else {
             x += get_bitsz (&mBitstream, linbits);
-            v = l3unscale(x, exponent);
+            v = layer3unscale (x, exponent);
             }
           if (get_bits1 (&mBitstream))
             v = -v;
           g->sb_hybrid[s_index] = v;
           if (y < 15)
-            v = expval_table[ exponent ][ y ];
+            v = expval_table[exponent ][ y ];
           else {
             y += get_bitsz (&mBitstream, linbits);
-            v = l3unscale(y, exponent);
+            v = layer3unscale (y, exponent);
             }
           if (get_bits1 (&mBitstream))
             v = -v;
           g->sb_hybrid[s_index+1] = v;
           }
+
         else {
           x = y >> 5;
           y = y & 0x0f;
           x += y;
           if (x < 15)
-            v = expval_table[ exponent ][ x ];
+            v = expval_table[exponent][x];
           else {
             x += get_bitsz (&mBitstream, linbits);
-            v = l3unscale (x, exponent);
+            v = layer3unscale (x, exponent);
             }
           if (get_bits1 (&mBitstream))
             v = -v;
           g->sb_hybrid[s_index+!!y] = v;
           g->sb_hybrid[s_index+ !y] = 0;
           }
-        s_index+=2;
+        s_index += 2;
         }
       }
     //}}}
     //{{{  high frequencies
     vlc = &huff_quad_vlc[g->count1table_select];
     last_pos = 0;
+
     while (s_index <= 572) {
-      int pos, code;
-      pos = get_bits_count (&mBitstream);
+      int pos = get_bits_count (&mBitstream);
       if (pos >= end_pos) {
         if (pos > end_pos2 && last_pos){
-          /* some encoders generate an incorrect size for this part. We must go back into the data */
+          // some encoders generate an incorrect size for this part. We must go back into the data
           s_index -= 4;
           skip_bits_long (&mBitstream, last_pos - pos);
           break;
@@ -1853,7 +1854,7 @@ private:
         }
       last_pos= pos;
 
-      code = get_vlc2 (&mBitstream, vlc->table, vlc->bits, 1);
+      int code = get_vlc2 (&mBitstream, vlc->table, vlc->bits, 1);
       g->sb_hybrid[s_index+0]=
       g->sb_hybrid[s_index+1]=
       g->sb_hybrid[s_index+2]=
@@ -2002,21 +2003,19 @@ private:
   //{{{
   void compute_imdct (granule_t* g, int32_t* sb_samples, int32_t* mdct_buf) {
 
-    int32_t *ptr, *win, *win1, *buf, *out_ptr, *ptr1;
-    int32_t out2[12];
-    int mdct_long_end, v, sblimit;
-
     // find last non zero block
-    ptr = g->sb_hybrid + 576;
-    ptr1 = g->sb_hybrid + 2 * 18;
+    int v;
+    int32_t* ptr = g->sb_hybrid + 576;
+    int32_t* ptr1 = g->sb_hybrid + 2 * 18;
     while (ptr >= ptr1) {
       ptr -= 6;
       v = ptr[0] | ptr[1] | ptr[2] | ptr[3] | ptr[4] | ptr[5];
       if (v != 0)
         break;
       }
-    sblimit = ((ptr - g->sb_hybrid) / 18) + 1;
+    int sblimit = ((ptr - g->sb_hybrid) / 18) + 1;
 
+    int mdct_long_end;
     if (g->block_type == 2) {
       // XXX: check for 8000 Hz
       if (g->switch_point)
@@ -2027,18 +2026,19 @@ private:
     else
       mdct_long_end = sblimit;
 
-    buf = mdct_buf;
+    int32_t* buf = mdct_buf;
     ptr = g->sb_hybrid;
     for (int j = 0; j < mdct_long_end; j++) {
       // apply window & overlap with previous buffer
-      out_ptr = sb_samples + j;
+      int32_t* out_ptr = sb_samples + j;
       // select window
+      int32_t* win1;
       if (g->switch_point && j < 2)
         win1 = mdct_win[0];
       else
         win1 = mdct_win[g->block_type];
       // select frequency inversion
-      win = win1 + ((4 * 36) & -(j & 1));
+      int32_t* win = win1 + ((4 * 36) & -(j & 1));
       imdct36(out_ptr, buf, ptr, win);
       out_ptr += 18*SBLIMIT;
       ptr += 18;
@@ -2047,19 +2047,22 @@ private:
 
     for (int j = mdct_long_end; j < sblimit; j++) {
       // select frequency inversion
-      win = mdct_win[2] + ((4 * 36) & -(j & 1));
-      out_ptr = sb_samples + j;
+      int32_t* win = mdct_win[2] + ((4 * 36) & -(j & 1));
+      int32_t* out_ptr = sb_samples + j;
 
       for (int i = 0; i < 6; i++){
         *out_ptr = buf[i];
         out_ptr += SBLIMIT;
         }
+
+      int32_t out2[12];
       imdct12 (out2, ptr + 0);
       for (int i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*1];
         buf[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += SBLIMIT;
         }
+
       imdct12 (out2, ptr + 1);
       for (int i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*2];
@@ -2073,6 +2076,7 @@ private:
         buf[i + 6*1] = MULH(out2[i + 6], win[i + 6]);
         buf[i + 6*2] = 0;
         }
+
       ptr += 18;
       buf += 18;
       }
@@ -2080,7 +2084,7 @@ private:
     // zero bands
     for (int j = sblimit; j < SBLIMIT; j++) {
       // overlap
-      out_ptr = sb_samples + j;
+      int32_t* out_ptr = sb_samples + j;
       for (int i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
@@ -2274,10 +2278,8 @@ private:
 
     int offset = *synth_buf_offset;
     int16_t* synth_buf = synth_buf_ptr + offset;
-
-    int v;
     for (int j = 0; j < 32; j++) {
-      v = tmp[j];
+      int v = tmp[j];
       // NOTE: can cause a loss in precision if very high amplitude sound
       if (v > 32767)
         v = 32767;
@@ -2333,10 +2335,6 @@ private:
   int decodeLayer3() {
 
     int nb_granules, main_data_begin, private_bits;
-    int blocksplit_flag, i, j, k, n, bits_pos;
-    granule_t* g;
-    const uint8_t *ptr;
-
     if (mLsf) {
       main_data_begin = get_bits (&mBitstream, 8);
       private_bits = get_bits (&mBitstream, mNumChannels);
@@ -2355,10 +2353,10 @@ private:
         }
       }
 
-    for (int gr = 0; gr < nb_granules; gr++) {
+    for (int gr = 0; gr < nb_granules; gr++)
       for (int ch = 0; ch < mNumChannels; ch++) {
         //{{{  per channel
-        g = &mGranules[ch][gr];
+        granule_t* g = &mGranules[ch][gr];
         g->part2_3_length = get_bits (&mBitstream, 12);
         g->big_values = get_bits (&mBitstream, 9);
         g->global_gain = get_bits (&mBitstream, 8);
@@ -2370,7 +2368,8 @@ private:
           g->scalefac_compress = get_bits (&mBitstream, 9);
         else
           g->scalefac_compress = get_bits (&mBitstream, 4);
-        blocksplit_flag = get_bits (&mBitstream, 1);
+
+        int blocksplit_flag = get_bits (&mBitstream, 1);
         if (blocksplit_flag) {
           g->block_type = get_bits (&mBitstream, 2);
           if (g->block_type == 0)
@@ -2384,14 +2383,13 @@ private:
           //{{{  compute huffman coded region sizes
           if (g->block_type == 2)
             g->region_size[0] = (36 / 2);
-          else {
-            if (mSampleRateIndex <= 2)
-              g->region_size[0] = (36 / 2);
-            else if (mSampleRateIndex != 8)
-              g->region_size[0] = (54 / 2);
-            else
-              g->region_size[0] = (108 / 2);
-            }
+          else if (mSampleRateIndex <= 2)
+            g->region_size[0] = (36 / 2);
+          else if (mSampleRateIndex != 8)
+            g->region_size[0] = (54 / 2);
+          else
+            g->region_size[0] = (108 / 2);
+
           g->region_size[1] = (576 / 2);
           //}}}
           }
@@ -2400,27 +2398,32 @@ private:
           int region_address1, region_address2, l;
           g->block_type = 0;
           g->switch_point = 0;
-          for (i = 0; i < 3; i++)
+          for (int i = 0; i < 3; i++)
             g->table_select[i] = get_bits (&mBitstream, 5);
           //{{{  compute huffman coded region sizes
           region_address1 = get_bits (&mBitstream, 4);
           region_address2 = get_bits (&mBitstream, 3);
+
           g->region_size[0] = band_index_long[mSampleRateIndex][region_address1 + 1] >> 1;
+
           l = region_address1 + region_address2 + 2;
           // should not overflow
           if (l > 22)
             l = 22;
+
           g->region_size[1] = band_index_long[mSampleRateIndex][l] >> 1;
           //}}}
           }
 
         //{{{  convert region offsets to region sizes and truncate size to big_values
         g->region_size[2] = (576 / 2);
-        j = 0;
-        for (i = 0; i < 3; i++) {
-          k = g->region_size[i];
+
+        int j = 0;
+        for (int i = 0; i < 3; i++) {
+          int k = g->region_size[i];
           if (g->big_values < k)
             k = g->big_values;
+
           g->region_size[i] = k - j;
           j = k;
           }
@@ -2443,6 +2446,7 @@ private:
             g->short_start = 0;
             }
           }
+
         else {
           g->short_start = 13;
           g->long_end = 22;
@@ -2455,11 +2459,10 @@ private:
         g->count1table_select = get_bits (&mBitstream, 1);
         }
         //}}}
-      }
 
-    ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
+    const uint8_t* ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
 
-    // now we get bits from the main_data_begin offset
+    // get bits from the main_data_begin offset
     if (main_data_begin > mLastBufSize)
       mLastBufSize = main_data_begin;
 
@@ -2470,21 +2473,21 @@ private:
     for (int gr = 0; gr < nb_granules; gr++) {
       for (int ch = 0; ch < mNumChannels; ch++) {
         //{{{  per channel
-        g = &mGranules[ch][gr];
+        granule_t* g = &mGranules[ch][gr];
 
-        bits_pos = get_bits_count (&mBitstream);
+        int bits_pos = get_bits_count (&mBitstream);
         if (!mLsf) {
           uint8_t *sc;
           int slen, slen1, slen2;
 
-          /* MPEG1 scale factors */
+          // MPEG1 scale factors
           slen1 = slen_table[0][g->scalefac_compress];
           slen2 = slen_table[1][g->scalefac_compress];
           if (g->block_type == 2) {
-            n = g->switch_point ? 17 : 18;
-            j = 0;
+            int n = g->switch_point ? 17 : 18;
+            int j = 0;
             if (slen1){
-              for (i = 0; i < n; i++)
+              for (int i = 0; i < n; i++)
                 g->scale_factors[j++] = get_bits (&mBitstream, slen1);
               }
             else {
@@ -2493,25 +2496,25 @@ private:
               //for(i=0;i<n;i++)  g->scale_factors[j++] = 0;
               }
             if (slen2){
-              for (i = 0; i < 18; i++)
+              for (int i = 0; i < 18; i++)
                 g->scale_factors[j++] = get_bits (&mBitstream, slen2);
-              for (i = 0; i < 3; i++)
+              for (int i = 0; i < 3; i++)
                 g->scale_factors[j++] = 0;
               }
             else {
-              for (i = 0; i < 21; i++)
+              for (int i = 0; i < 21; i++)
                 g->scale_factors[j++] = 0;
               }
             }
           else {
             sc = mGranules[ch][0].scale_factors;
-            j = 0;
-            for (k = 0; k < 4; k++) {
-              n = (k == 0 ? 6 : 5);
+            int j = 0;
+            for (int k = 0; k < 4; k++) {
+              int n = (k == 0 ? 6 : 5);
               if ((g->scfsi & (0x8 >> k)) == 0) {
                 slen = (k < 2) ? slen1 : slen2;
                 if (slen) {
-                  for (i = 0; i < n; i++)
+                  for (int i = 0; i < n; i++)
                     g->scale_factors[j++] = get_bits (&mBitstream, slen);
                   }
                 else {
@@ -2522,7 +2525,7 @@ private:
                 }
               else {
                 /* simply copy from last granule */
-                for(i=0;i<n;i++) {
+                for(int i = 0; i < n; i++) {
                   g->scale_factors[j] = sc[j];
                   j++;
                   }
@@ -2577,12 +2580,12 @@ private:
               }
             }
 
-          j = 0;
-          for (k = 0; k < 4; k++) {
-            n = lsf_nsf_table[tindex2][tindex][k];
+          int j = 0;
+          for (int k = 0; k < 4; k++) {
+            int n = lsf_nsf_table[tindex2][tindex][k];
             sl = slen[k];
             if (sl) {
-              for (i = 0; i < n; i++)
+              for (int i = 0; i < n; i++)
                 g->scale_factors[j++] = get_bits (&mBitstream, sl);
               }
             else{
@@ -2592,7 +2595,7 @@ private:
               }
             }
           /* XXX: should compute exact size */
-          memset((void*) &g->scale_factors[j], 0, 40 - j);
+          memset ((void*)&g->scale_factors[j], 0, 40 - j);
           //for(;j<40;j++) g->scale_factors[j] = 0;
           }
 
@@ -2606,7 +2609,7 @@ private:
       if (mNumChannels == 2)
         computeStereo (&mGranules[0][gr], &mGranules[1][gr]);
       for (int ch = 0; ch < mNumChannels; ch++) {
-        g = &mGranules[ch][gr];
+        granule_t* g = &mGranules[ch][gr];
         reorderBlock (g);
         computeAntialias (g);
         compute_imdct (g, &mSbSamples[ch][18 * gr][0], mMdctBuf[ch]);
@@ -2623,7 +2626,7 @@ private:
     if (mErrorProtection)
       get_bits (&mBitstream, 16);
 
-    int nb_frames = decodeLayer3();
+    int numFrames = decodeLayer3();
 
     mLastBufSize = 0;
     if (mInBitstream.buffer){
@@ -2639,7 +2642,7 @@ private:
     align_get_bits (&mBitstream);
     int i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
 
-    if (i < 0 || i > 512 || nb_frames < 0) {
+    if (i < 0 || i > 512 || numFrames < 0) {
       i = buf_size - 4;
       if (512 < i)
         i = 512;
@@ -2648,12 +2651,11 @@ private:
     memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + buf_size - 4 - i, i);
     mLastBufSize += i;
 
-    // apply the synthesis filter
+    // apply synthesis filter
     for (int ch = 0; ch < mNumChannels; ch++) {
       int16_t* samples_ptr = samples + ch;
-      for (int i = 0; i < nb_frames; i++) {
-        synthFilter (mSynthBuffer[ch], &(mSynthBufOffset[ch]), window, &mDitherState,
-                     samples_ptr, mNumChannels, mSbSamples[ch][i]);
+      for (int i = 0; i < numFrames; i++) {
+        synthFilter (mSynthBuffer[ch], &(mSynthBufOffset[ch]), window, &mDitherState, samples_ptr, mNumChannels, mSbSamples[ch][i]);
         samples_ptr += 32 * mNumChannels;
         }
       }

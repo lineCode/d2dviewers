@@ -119,7 +119,7 @@ private:
       return;
     auto mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
     // check for ID3 tag
     auto ptr = fileBuffer;
@@ -142,6 +142,7 @@ private:
           for (uint32_t i = 0; i < frameSize; i++)
             printf ("%c", *(ptr+10+i));
           }
+
         printf ("\n");
         ptr += frameSize + 10;
         };
@@ -197,7 +198,7 @@ private:
       return;
     auto mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
     av_register_all();
     AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
