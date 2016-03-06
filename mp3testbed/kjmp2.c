@@ -1,39 +1,5 @@
-/******************************************************************************
-** kjmp2 -- a minimal MPEG-1/2 Audio Layer II decoder library                **
-** version 1.1                                                               **
-*******************************************************************************
-** Copyright (C) 2006-2013 Martin J. Fiedler <martin.fiedler@gmx.net>        **
-**                                                                           **
-** This software is provided 'as-is', without any express or implied         **
-** warranty. In no event will the authors be held liable for any damages     **
-** arising from the use of this software.                                    **
-**                                                                           **
-** Permission is granted to anyone to use this software for any purpose,     **
-** including commercial applications, and to alter it and redistribute it    **
-** freely, subject to the following restrictions:                            **
-**   1. The origin of this software must not be misrepresented; you must not **
-**      claim that you wrote the original software. If you use this software **
-**      in a product, an acknowledgment in the product documentation would   **
-**      be appreciated but is not required.                                  **
-**   2. Altered source versions must be plainly marked as such, and must not **
-**      be misrepresented as being the original software.                    **
-**   3. This notice may not be removed or altered from any source            **
-**      distribution.                                                        **
-******************************************************************************/
-
 #include <math.h>
-
 #include "kjmp2.h"
-
-#ifdef _MSC_VER
-    #define FASTCALL __fastcall
-#else
-    #define FASTCALL
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-// TABLES AND CONSTANTS                                                       //
-////////////////////////////////////////////////////////////////////////////////
 
 // mode constants
 #define STEREO       0
@@ -41,21 +7,34 @@
 #define DUAL_CHANNEL 2
 #define MONO         3
 
+#define KJMP2_MAX_FRAME_SIZE    1440  // the maximum size of a frame
+#define KJMP2_SAMPLES_PER_FRAME 1152  // the number of samples per frame
+
+typedef struct _kjmp2_context {
+  int id;
+  int V[2][1024];
+  int Voffs;
+  } kjmp2_context_t;
+
+/*{{{*/
 // sample rate table
 static const unsigned short sample_rates[8] = {
     44100, 48000, 32000, 0,  // MPEG-1
     22050, 24000, 16000, 0   // MPEG-2
 };
-
+/*}}}*/
+/*{{{*/
 // bitrate table
 static const short bitrates[28] = {
     32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384,  // MPEG-1
      8, 16, 24, 32, 40, 48,  56,  64,  80,  96, 112, 128, 144, 160   // MPEG-2
 };
-
+/*}}}*/
+/*{{{*/
 // scale factor base values (24-bit fixed-point)
 static const int scf_base[3] = { 0x02000000, 0x01965FEA, 0x01428A30 };
-
+/*}}}*/
+/*{{{*/
 // synthesis window
 static const int D[512] = {
      0x00000, 0x00000, 0x00000, 0x00000, 0x00000, 0x00000, 0x00000,-0x00001,
@@ -123,10 +102,8 @@ static const int D[512] = {
      0x00005, 0x00005, 0x00004, 0x00004, 0x00003, 0x00003, 0x00002, 0x00002,
      0x00002, 0x00002, 0x00001, 0x00001, 0x00001, 0x00001, 0x00001, 0x00001
 };
-
-
-///////////// Table 3-B.2: Possible quantization per subband ///////////////////
-
+/*}}}*/
+/*{{{*/
 // quantizer lookup, step 1: bitrate classes
 static const char quant_lut_step1[2][16] = {
     // 32, 48, 56, 64, 80, 96,112,128,160,192,224,256,320,384 <- bitrate
@@ -134,19 +111,22 @@ static const char quant_lut_step1[2][16] = {
     // 16, 24, 28, 32, 40, 48, 56, 64, 80, 96,112,128,160,192 <- BR / chan
     {   0,  0,  0,  0,  0,  0,  1,  1,  1,  2,  2,  2,  2,  2 }   // stereo
 };
-
+/*}}}*/
+/*{{{  static const char quant_lut_step2[3][4]*/
 // quantizer lookup, step 2: bitrate class, sample rate -> B2 table idx, sblimit
 #define QUANT_TAB_A (27 | 64)   // Table 3-B.2a: high-rate, sblimit = 27
 #define QUANT_TAB_B (30 | 64)   // Table 3-B.2b: high-rate, sblimit = 30
 #define QUANT_TAB_C   8         // Table 3-B.2c:  low-rate, sblimit =  8
 #define QUANT_TAB_D  12         // Table 3-B.2d:  low-rate, sblimit = 12
+
 static const char quant_lut_step2[3][4] = {
     //   44.1 kHz,      48 kHz,      32 kHz
     { QUANT_TAB_C, QUANT_TAB_C, QUANT_TAB_D },  // 32 - 48 kbit/sec/ch
     { QUANT_TAB_A, QUANT_TAB_A, QUANT_TAB_A },  // 56 - 80 kbit/sec/ch
     { QUANT_TAB_B, QUANT_TAB_A, QUANT_TAB_B },  // 96+     kbit/sec/ch
 };
-
+/*}}}*/
+/*{{{*/
 // quantizer lookup, step 3: B2 table, subband -> nbal, row index
 // (upper 4 bits: nbal, lower 4 bits: row index)
 static const char quant_lut_step3[3][32] = {
@@ -167,7 +147,8 @@ static const char quant_lut_step3[3][32] = {
                      0x24,0x24,0x24,0x24,0x24,0x24,0x24,0x24,0x24  //       - 29
     }
 };
-
+/*}}}*/
+/*{{{*/
 // quantizer lookup, step 4: table row, allocation[] value -> quant table index
 static const char quant_lut_step4[6][16] = {
     { 0, 1, 2, 17 },
@@ -177,7 +158,8 @@ static const char quant_lut_step4[6][16] = {
     { 0, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17 },
     { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }
 };
-
+/*}}}*/
+/*{{{*/
 // quantizer specification structure
 struct quantizer_spec {
     unsigned short nlevels;
@@ -185,6 +167,8 @@ struct quantizer_spec {
     unsigned char cw_bits;
 };
 
+/*}}}*/
+/*{{{*/
 // quantizer table
 static const struct quantizer_spec quantizer_table[17] = {
     {     3, 1,  5 },  //  1
@@ -205,11 +189,7 @@ static const struct quantizer_spec quantizer_table[17] = {
     { 32767, 0, 15 },  // 16
     { 65535, 0, 16 }   // 17
 };
-
-
-////////////////////////////////////////////////////////////////////////////////
-// STATIC VARIABLES AND FUNCTIONS                                             //
-////////////////////////////////////////////////////////////////////////////////
+/*}}}*/
 
 #define KJMP2_MAGIC 0x32706D
 
@@ -220,6 +200,7 @@ static const unsigned char *frame_pos;
 
 #define show_bits(bit_count) (bit_window >> (24 - (bit_count)))
 
+/*{{{*/
 static int FASTCALL get_bits(int bit_count) {
     int result = show_bits(bit_count);
     bit_window = (bit_window << bit_count) & 0xFFFFFF;
@@ -230,106 +211,106 @@ static int FASTCALL get_bits(int bit_count) {
     }
     return result;
 }
-
-
-////////////////////////////////////////////////////////////////////////////////
-// INITIALIZATION                                                             //
-////////////////////////////////////////////////////////////////////////////////
+/*}}}*/
 
 static int N[64][32];  // N[i][j] as 8-bit fixed-point
 
-void kjmp2_init(kjmp2_context_t *mp2) {
-    int i, j;
-    // check if global initialization is required
-    if (!initialized) {
-        int *nptr = &N[0][0];
-        // compute N[i][j]
-        for (i = 0;  i < 64;  ++i)
-            for (j = 0;  j < 32;  ++j)
-                *nptr++ = (int) (256.0 * cos(((16 + i) * ((j << 1) + 1)) * 0.0490873852123405));
-        initialized = 1;
+/*{{{*/
+void kjmp2_init (kjmp2_context_t *mp2) {
+
+  // check if global initialization is required
+  if (!initialized) {
+    int *nptr = &N[0][0];
+    // compute N[i][j]
+    for (int i = 0;  i < 64;  ++i)
+      for (int j = 0;  j < 32;  ++j)
+        *nptr++ = (int) (256.0 * cos(((16 + i) * ((j << 1) + 1)) * 0.0490873852123405));
+    initialized = 1;
     }
 
-    // perform local initialization: clean the context and put the magic in it
-    for (i = 0;  i < 2;  ++i)
-        for (j = 1023;  j >= 0;  --j)
-            mp2->V[i][j] = 0;
-    mp2->Voffs = 0;
-    mp2->id = KJMP2_MAGIC;
-}
+  // perform local initialization: clean the context and put the magic in it
+  for (int i = 0;  i < 2;  ++i)
+    for (int j = 1023;  j >= 0;  --j)
+       mp2->V[i][j] = 0;
+  mp2->Voffs = 0;
+  mp2->id = KJMP2_MAGIC;
+  }
+/*}}}*/
+/*{{{*/
+int kjmp2_get_sample_rate (const unsigned char *frame) {
+// kjmp2_get_sample_rate: Returns the sample rate of a MP2 stream.
+// frame: Points to at least the first three bytes of a frame from the
+//        stream.
+// return value: The sample rate of the stream in Hz, or zero if the stream
+//               isn't valid.
 
-int kjmp2_get_sample_rate(const unsigned char *frame) {
-    if (!frame)
-        return 0;
-    if (( frame[0]         != 0xFF)   // no valid syncword?
-    ||  ((frame[1] & 0xF6) != 0xF4)   // no MPEG-1/2 Audio Layer II?
-    ||  ((frame[2] - 0x10) >= 0xE0))  // invalid bitrate?
-        return 0;
-    return sample_rates[(((frame[1] & 0x08) >> 1) ^ 4)  // MPEG-1/2 switch
+  if (!frame)
+     return 0;
+  if ((frame[0] != 0xFF)   // no valid syncword?
+      || ((frame[1] & 0xF6) != 0xF4)   // no MPEG-1/2 Audio Layer II?
+      || ((frame[2] - 0x10) >= 0xE0))  // invalid bitrate?
+    return 0;
+
+  return sample_rates[(((frame[1] & 0x08) >> 1) ^ 4)  // MPEG-1/2 switch
                       + ((frame[2] >> 2) & 3)];         // actual rate
 }
+/*}}}*/
+/*{{{*/
+static const struct quantizer_spec* FASTCALL read_allocation (int sb, int b2_table) {
 
+  int table_idx = quant_lut_step3[b2_table][sb];
+  table_idx = quant_lut_step4[table_idx & 15][get_bits(table_idx >> 4)];
+  return table_idx ? (&quantizer_table[table_idx - 1]) : 0;
+  }
+/*}}}*/
+/*{{{*/
+static void FASTCALL read_samples (const struct quantizer_spec *q, int scalefactor, int *sample) {
 
-////////////////////////////////////////////////////////////////////////////////
-// DECODE HELPER FUNCTIONS                                                    //
-////////////////////////////////////////////////////////////////////////////////
-
-static const struct quantizer_spec* FASTCALL read_allocation(int sb, int b2_table) {
-    int table_idx = quant_lut_step3[b2_table][sb];
-    table_idx = quant_lut_step4[table_idx & 15][get_bits(table_idx >> 4)];
-    return table_idx ? (&quantizer_table[table_idx - 1]) : 0;
-}
-
-
-static void FASTCALL read_samples(const struct quantizer_spec *q, int scalefactor, int *sample) {
-    int idx, adj, scale;
-    register int val;
-    if (!q) {
-        // no bits allocated for this subband
-        sample[0] = sample[1] = sample[2] = 0;
-        return;
+  int idx, adj, scale;
+  register int val;
+  if (!q) {
+    // no bits allocated for this subband
+    sample[0] = sample[1] = sample[2] = 0;
+    return;
     }
 
-    // resolve scalefactor
-    if (scalefactor == 63) {
-        scalefactor = 0;
-    } else {
-        adj = scalefactor / 3;
-        scalefactor = (scf_base[scalefactor % 3] + ((1 << adj) >> 1)) >> adj;
+  // resolve scalefactor
+  if (scalefactor == 63)
+    scalefactor = 0;
+  else {
+    adj = scalefactor / 3;
+    scalefactor = (scf_base[scalefactor % 3] + ((1 << adj) >> 1)) >> adj;
     }
 
-    // decode samples
-    adj = q->nlevels;
-    if (q->grouping) {
-        // decode grouped samples
-        val = get_bits(q->cw_bits);
-        sample[0] = val % adj;
-        val /= adj;
-        sample[1] = val % adj;
-        sample[2] = val / adj;
-    } else {
-        // decode direct samples
-        for(idx = 0;  idx < 3;  ++idx)
-            sample[idx] = get_bits(q->cw_bits);
+  // decode samples
+  adj = q->nlevels;
+  if (q->grouping) {
+    // decode grouped samples
+    val = get_bits(q->cw_bits);
+    sample[0] = val % adj;
+    val /= adj;
+    sample[1] = val % adj;
+    sample[2] = val / adj;
+    }
+   else {
+    // decode direct samples
+    for(idx = 0;  idx < 3;  ++idx)
+        sample[idx] = get_bits(q->cw_bits);
     }
 
-    // postmultiply samples
-    scale = 65536 / (adj + 1);
-    adj = ((adj + 1) >> 1) - 1;
-    for (idx = 0;  idx < 3;  ++idx) {
-        // step 1: renormalization to [-1..1]
-        val = (adj - sample[idx]) * scale;
-        // step 2: apply scalefactor
-        sample[idx] = ( val * (scalefactor >> 12)                  // upper part
-                    + ((val * (scalefactor & 4095) + 2048) >> 12)) // lower part
-                    >> 12;  // scale adjust
+  // postmultiply samples
+  scale = 65536 / (adj + 1);
+  adj = ((adj + 1) >> 1) - 1;
+  for (idx = 0;  idx < 3;  ++idx) {
+    // step 1: renormalization to [-1..1]
+    val = (adj - sample[idx]) * scale;
+    // step 2: apply scalefactor
+    sample[idx] = ( val * (scalefactor >> 12)                  // upper part
+                + ((val * (scalefactor & 4095) + 2048) >> 12)) // lower part
+                >> 12;  // scale adjust
     }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// FRAME DECODE FUNCTION                                                      //
-////////////////////////////////////////////////////////////////////////////////
+  }
+/*}}}*/
 
 static const struct quantizer_spec *allocation[2][32];
 static int scfsi[2][32];
@@ -337,189 +318,207 @@ static int scalefactor[2][32][3];
 static int sample[2][32][3];
 static int U[512];
 
-unsigned long kjmp2_decode_frame(
-    kjmp2_context_t *mp2,
-    const unsigned char *frame,
-    signed short *pcm
-) {
-    unsigned bit_rate_index_minus1;
-    unsigned sampling_frequency;
-    unsigned padding_bit;
-    unsigned mode;
-    unsigned long frame_size;
-    int bound, sblimit;
-    int sb, ch, gr, part, idx, nch, i, j, sum;
-    int table_idx;
+/*{{{*/
+unsigned long kjmp2_decode_frame(kjmp2_context_t *mp2, const unsigned char *frame, signed short *pcm ) {
+// kjmp2_decode_frame: Decode one frame of audio.
+// mp2: A pointer to a context record that has been initialized with
+//      kjmp2_init before.
+// frame: A pointer to the frame to decode. It *must* be a complete frame,
+//        because no error checking is done!
+// pcm: A pointer to the output PCM data. kjmp2_decode_frame() will always
+//      return 1152 (=KJMP2_SAMPLES_PER_FRAME) interleaved stereo samples
+//      in a native-endian 16-bit signed format. Even for mono streams,
+//      stereo output will be produced.
+// return value: The number of bytes in the current frame. In a valid stream,
+//               frame + kjmp2_decode_frame(..., frame, ...) will point to
+//               the next frame, if frames are consecutive in memory.
+// Note: pcm may be NULL. In this case, kjmp2_decode_frame() will return the
+//       size of the frame without actually decoding it.
 
-    // general sanity check
-    if (!initialized || !mp2 || (mp2->id != KJMP2_MAGIC) || !frame)
-        return 0;
+  int bound, sblimit;
+  int sb, ch, gr, part, idx, nch, i, j, sum;
+  int table_idx;
 
-    // check for valid header: syncword OK, MPEG-Audio Layer 2
-    if ((frame[0] != 0xFF) || ((frame[1] & 0xF6) != 0xF4))
-        return 0;
+  // general sanity check
+  if (!initialized || !mp2 || (mp2->id != KJMP2_MAGIC) || !frame)
+    return 0;
 
-    // set up the bitstream reader
-    bit_window = frame[2] << 16;
-    bits_in_window = 8;
-    frame_pos = &frame[3];
+  // check for valid header: syncword OK, MPEG-Audio Layer 2
+  if ((frame[0] != 0xFF) || ((frame[1] & 0xF6) != 0xF4))
+    return 0;
 
-    // read the rest of the header
-    bit_rate_index_minus1 = get_bits(4) - 1;
-    if (bit_rate_index_minus1 > 13)
-        return 0;  // invalid bit rate or 'free format'
-    sampling_frequency = get_bits(2);
-    if (sampling_frequency == 3)
-        return 0;
-    if ((frame[1] & 0x08) == 0) {  // MPEG-2
-        sampling_frequency += 4;
-        bit_rate_index_minus1 += 14;
-    }
-    padding_bit = get_bits(1);
-    get_bits(1);  // discard private_bit
-    mode = get_bits(2);
+  // set up the bitstream reader
+  bit_window = frame[2] << 16;
+  bits_in_window = 8;
+  frame_pos = &frame[3];
 
-    // parse the mode_extension, set up the stereo bound
-    if (mode == JOINT_STEREO) {
-        bound = (get_bits(2) + 1) << 2;
-    } else {
-        get_bits(2);
-        bound = (mode == MONO) ? 0 : 32;
+  // read the rest of the header
+  unsigned bit_rate_index_minus1 = get_bits(4) - 1;
+  if (bit_rate_index_minus1 > 13)
+    return 0;  // invalid bit rate or 'free format'
+
+  unsigned sampling_frequency = get_bits(2);
+  if (sampling_frequency == 3)
+    return 0;
+  if ((frame[1] & 0x08) == 0) {  // MPEG-2
+    sampling_frequency += 4;
+    bit_rate_index_minus1 += 14;
     }
 
-    // discard the last 4 bits of the header and the CRC value, if present
-    get_bits(4);
-    if ((frame[1] & 1) == 0)
-        get_bits(16);
+  unsigned padding_bit = get_bits(1);
+  get_bits(1);  // discard private_bit
+  unsigned mode = get_bits(2);
 
-    // compute the frame size
-    frame_size = (144000 * bitrates[bit_rate_index_minus1]
-               / sample_rates[sampling_frequency]) + padding_bit;
-    if (!pcm)
-        return frame_size;  // no decoding
-
-    // prepare the quantizer table lookups
-    if (sampling_frequency & 4) {
-        // MPEG-2 (LSR)
-        table_idx = 2;
-        sblimit = 30;
-    } else {
-        // MPEG-1
-        table_idx = (mode == MONO) ? 0 : 1;
-        table_idx = quant_lut_step1[table_idx][bit_rate_index_minus1];
-        table_idx = quant_lut_step2[table_idx][sampling_frequency];
-        sblimit = table_idx & 63;
-        table_idx >>= 6;
+  // parse the mode_extension, set up the stereo bound
+  if (mode == JOINT_STEREO)
+    bound = (get_bits(2) + 1) << 2;
+  else {
+    get_bits (2);
+    bound = (mode == MONO) ? 0 : 32;
     }
-    if (bound > sblimit)
-        bound = sblimit;
 
-    // read the allocation information
-    for (sb = 0;  sb < bound;  ++sb)
+  // discard the last 4 bits of the header and the CRC value, if present
+  get_bits (4);
+  if ((frame[1] & 1) == 0)
+    get_bits (16);
+
+  // compute the frame size
+  unsigned long frame_size = (144000 * bitrates[bit_rate_index_minus1] / sample_rates[sampling_frequency]) + padding_bit;
+  if (!pcm)
+    return frame_size;  // no decoding
+
+  // prepare the quantizer table lookups
+  if (sampling_frequency & 4) {
+    /*{{{  MPEG-2 (LSR)*/
+    table_idx = 2;
+    sblimit = 30;
+    }
+    /*}}}*/
+  else {
+    /*{{{  MPEG-1*/
+    table_idx = (mode == MONO) ? 0 : 1;
+    table_idx = quant_lut_step1[table_idx][bit_rate_index_minus1];
+    table_idx = quant_lut_step2[table_idx][sampling_frequency];
+    sblimit = table_idx & 63;
+    table_idx >>= 6;
+    }
+    /*}}}*/
+  if (bound > sblimit)
+    bound = sblimit;
+
+  /*{{{  read the allocation information*/
+  for (sb = 0;  sb < bound;  ++sb)
+    for (ch = 0;  ch < 2;  ++ch)
+      allocation[ch][sb] = read_allocation(sb, table_idx);
+
+  for (sb = bound;  sb < sblimit;  ++sb)
+    allocation[0][sb] = allocation[1][sb] = read_allocation(sb, table_idx);
+  /*}}}*/
+  /*{{{  read scale factor selector information*/
+  nch = (mode == MONO) ? 1 : 2;
+
+  for (sb = 0;  sb < sblimit;  ++sb) {
+    for (ch = 0;  ch < nch;  ++ch)
+      if (allocation[ch][sb])
+        scfsi[ch][sb] = get_bits(2);
+      if (mode == MONO)
+        scfsi[1][sb] = scfsi[0][sb];
+    }
+  /*}}}*/
+  /*{{{  read scale factors*/
+  for (sb = 0;  sb < sblimit;  ++sb) {
+    for (ch = 0;  ch < nch;  ++ch)
+      if (allocation[ch][sb]) {
+        switch (scfsi[ch][sb]) {
+          case 0: scalefactor[ch][sb][0] = get_bits(6);
+                  scalefactor[ch][sb][1] = get_bits(6);
+                  scalefactor[ch][sb][2] = get_bits(6);
+                  break;
+          case 1: scalefactor[ch][sb][0] =
+                  scalefactor[ch][sb][1] = get_bits(6);
+                  scalefactor[ch][sb][2] = get_bits(6);
+                  break;
+          case 2: scalefactor[ch][sb][0] =
+                  scalefactor[ch][sb][1] =
+                  scalefactor[ch][sb][2] = get_bits(6);
+                  break;
+          case 3: scalefactor[ch][sb][0] = get_bits(6);
+                  scalefactor[ch][sb][1] =
+                  scalefactor[ch][sb][2] = get_bits(6);
+                  break;
+          }
+        }
+
+     if (mode == MONO)
+       for (part = 0;  part < 3;  ++part)
+         scalefactor[1][sb][part] = scalefactor[0][sb][part];
+    }
+  /*}}}*/
+  /*{{{  coefficient input and reconstruction*/
+  for (part = 0;  part < 3;  ++part)
+    for (gr = 0;  gr < 4;  ++gr) {
+      // read the samples
+      for (sb = 0;  sb < bound;  ++sb)
         for (ch = 0;  ch < 2;  ++ch)
-            allocation[ch][sb] = read_allocation(sb, table_idx);
-    for (sb = bound;  sb < sblimit;  ++sb)
-        allocation[0][sb] = allocation[1][sb] = read_allocation(sb, table_idx);
+          read_samples(allocation[ch][sb], scalefactor[ch][sb][part], &sample[ch][sb][0]);
+      for (sb = bound;  sb < sblimit;  ++sb) {
+        read_samples(allocation[0][sb], scalefactor[0][sb][part], &sample[0][sb][0]);
+        for (idx = 0;  idx < 3;  ++idx)
+          sample[1][sb][idx] = sample[0][sb][idx];
+        }
 
-    // read scale factor selector information
-    nch = (mode == MONO) ? 1 : 2;
-    for (sb = 0;  sb < sblimit;  ++sb) {
-        for (ch = 0;  ch < nch;  ++ch)
-            if (allocation[ch][sb])
-                scfsi[ch][sb] = get_bits(2);
-        if (mode == MONO)
-            scfsi[1][sb] = scfsi[0][sb];
-    }
+  for (ch = 0;  ch < 2;  ++ch)
+   for (sb = sblimit;  sb < 32;  ++sb)
+     for (idx = 0;  idx < 3;  ++idx)
+       sample[ch][sb][idx] = 0;
+  /*}}}*/
+  /*{{{  synthesis loop*/
+  for (idx = 0;  idx < 3;  ++idx) {
+    // shifting step
+     mp2->Voffs = table_idx = (mp2->Voffs - 64) & 1023;
 
-    // read scale factors
-    for (sb = 0;  sb < sblimit;  ++sb) {
-        for (ch = 0;  ch < nch;  ++ch)
-            if (allocation[ch][sb]) {
-                switch (scfsi[ch][sb]) {
-                    case 0: scalefactor[ch][sb][0] = get_bits(6);
-                            scalefactor[ch][sb][1] = get_bits(6);
-                            scalefactor[ch][sb][2] = get_bits(6);
-                            break;
-                    case 1: scalefactor[ch][sb][0] =
-                            scalefactor[ch][sb][1] = get_bits(6);
-                            scalefactor[ch][sb][2] = get_bits(6);
-                            break;
-                    case 2: scalefactor[ch][sb][0] =
-                            scalefactor[ch][sb][1] =
-                            scalefactor[ch][sb][2] = get_bits(6);
-                            break;
-                    case 3: scalefactor[ch][sb][0] = get_bits(6);
-                            scalefactor[ch][sb][1] =
-                            scalefactor[ch][sb][2] = get_bits(6);
-                            break;
-                }
-            }
-        if (mode == MONO)
-            for (part = 0;  part < 3;  ++part)
-                scalefactor[1][sb][part] = scalefactor[0][sb][part];
-    }
+    for (ch = 0;  ch < 2;  ++ch) {
+      // matrixing
+      for (i = 0;  i < 64;  ++i) {
+        sum = 0;
+        for (j = 0;  j < 32;  ++j)
+          sum += N[i][j] * sample[ch][j][idx];  // 8b*15b=23b
 
-    // coefficient input and reconstruction
-    for (part = 0;  part < 3;  ++part)
-        for (gr = 0;  gr < 4;  ++gr) {
+        // intermediate value is 28 bit (23 + 5), clamp to 14b
+        mp2->V[ch][table_idx + i] = (sum + 8192) >> 14;
+        }
 
-            // read the samples
-            for (sb = 0;  sb < bound;  ++sb)
-                for (ch = 0;  ch < 2;  ++ch)
-                    read_samples(allocation[ch][sb], scalefactor[ch][sb][part], &sample[ch][sb][0]);
-            for (sb = bound;  sb < sblimit;  ++sb) {
-                read_samples(allocation[0][sb], scalefactor[0][sb][part], &sample[0][sb][0]);
-                for (idx = 0;  idx < 3;  ++idx)
-                    sample[1][sb][idx] = sample[0][sb][idx];
-            }
-            for (ch = 0;  ch < 2;  ++ch)
-               for (sb = sblimit;  sb < 32;  ++sb)
-                    for (idx = 0;  idx < 3;  ++idx)
-                        sample[ch][sb][idx] = 0;
+      // construction of U
+      for (i = 0;  i < 8;  ++i)
+        for (j = 0;  j < 32;  ++j) {
+          U[(i << 6) + j]      = mp2->V[ch][(table_idx + (i << 7) + j     ) & 1023];
+          U[(i << 6) + j + 32] = mp2->V[ch][(table_idx + (i << 7) + j + 96) & 1023];
+          }
 
-            // synthesis loop
-            for (idx = 0;  idx < 3;  ++idx) {
-                // shifting step
-                mp2->Voffs = table_idx = (mp2->Voffs - 64) & 1023;
+        // apply window
+        for (i = 0;  i < 512;  ++i)
+          U[i] = (U[i] * D[i] + 32) >> 6;
 
-                for (ch = 0;  ch < 2;  ++ch) {
-                    // matrixing
-                    for (i = 0;  i < 64;  ++i) {
-                        sum = 0;
-                        for (j = 0;  j < 32;  ++j)
-                            sum += N[i][j] * sample[ch][j][idx];  // 8b*15b=23b
-                        // intermediate value is 28 bit (23 + 5), clamp to 14b
-                        mp2->V[ch][table_idx + i] = (sum + 8192) >> 14;
-                    }
+        // output samples
+        for (j = 0;  j < 32;  ++j) {
+          sum = 0;
+          for (i = 0;  i < 16;  ++i)
+            sum -= U[(i << 5) + j];
+          sum = (sum + 8) >> 4;
+          if (sum < -32768)
+            sum = -32768;
+          if (sum > 32767)
+            sum = 32767;
+          pcm[(idx << 6) | (j << 1) | ch] = (signed short) sum;
+          }
+        } // end of synthesis channel loop
+      } // end of synthesis sub-block loop
 
-                    // construction of U
-                    for (i = 0;  i < 8;  ++i)
-                        for (j = 0;  j < 32;  ++j) {
-                            U[(i << 6) + j]      = mp2->V[ch][(table_idx + (i << 7) + j     ) & 1023];
-                            U[(i << 6) + j + 32] = mp2->V[ch][(table_idx + (i << 7) + j + 96) & 1023];
-                        }
+    // adjust PCM output pointer: decoded 3 * 32 = 96 stereo samples
+    pcm += 192;
+    } // decoding of the granule finished
+  /*}}}*/
 
-                    // apply window
-                    for (i = 0;  i < 512;  ++i)
-                        U[i] = (U[i] * D[i] + 32) >> 6;
-
-                    // output samples
-                    for (j = 0;  j < 32;  ++j) {
-                        sum = 0;
-                        for (i = 0;  i < 16;  ++i)
-                            sum -= U[(i << 5) + j];
-                        sum = (sum + 8) >> 4;
-                        if (sum < -32768) sum = -32768;
-                        if (sum > 32767) sum = 32767;
-                        pcm[(idx << 6) | (j << 1) | ch] = (signed short) sum;
-                    }
-                } // end of synthesis channel loop
-            } // end of synthesis sub-block loop
-
-            // adjust PCM output pointer: decoded 3 * 32 = 96 stereo samples
-            pcm += 192;
-
-        } // decoding of the granule finished
-
-    return frame_size;
-}
+  return frame_size;
+  }
+/*}}}*/

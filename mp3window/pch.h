@@ -7,16 +7,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <fcntl.h>
 #include <string.h>
 #include <tchar.h>
 #include <io.h>
 
-#include <map>
-#include <vector>
 #include <thread>
-#include <mutex>
 
 // direct2d
 #include <d3d11.h>
@@ -27,15 +25,6 @@
 #include <d2d1helper.h>
 #include <dwrite.h>
 #include <Wincodec.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-  #include <libavcodec/avcodec.h>
-  #include <libavformat/avformat.h>
-#ifdef __cplusplus
-}
-#endif
 
 using namespace Microsoft::WRL;
 using namespace D2D1;

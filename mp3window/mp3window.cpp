@@ -7,11 +7,8 @@
 
 #include "../common/cAudFrame.h"
 #include "../common/winAudio.h"
-#include "../common/cMp3decoder.h"
 
-#pragma comment(lib,"avutil.lib")
-#pragma comment(lib,"avcodec.lib")
-#pragma comment(lib,"avformat.lib")
+#include "../common/cMp3decoder.h"
 //}}}
 
 #define maxAudFrames 500000
@@ -123,27 +120,37 @@ private:
 
     // check for ID3 tag
     auto ptr = fileBuffer;
-    uint32_t tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
+    auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
     if (tag == 0x49443303)  {
       //{{{  got ID3 tag
-      uint32_t tagSize = (*(ptr+6)<<20) | (*(ptr+7)<<13) | (*(ptr+8)<<7) | *(ptr+9);
+      auto tagSize = (*(ptr+6)<<21) | (*(ptr+7)<<14) | (*(ptr+8)<<7) | (*(ptr+9));
       printf ("%c%c%c ver:%d %02x flags:%02x tagSize:%d\n", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5), tagSize);
       ptr += 10;
 
       while (ptr < fileBuffer + tagSize) {
-        uint32_t frameSize = (*(ptr+4)<<20) | (*(ptr+5)<<13) | (*(ptr+6)<<7) | *(ptr+7);
+        //auto frameSize = (*(ptr+4)<<21) | (*(ptr+5)<<14) | (*(ptr+6)<<7) | (*(ptr+7));
+        auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | (*(ptr+3));
+        auto frameSize = (*(ptr+4)<<24) | (*(ptr+5)<<16) | (*(ptr+6)<<8) | (*(ptr+7));
         if (!frameSize)
           break;
-        uint8_t frameFlags1 = *(ptr+8);
-        uint8_t frameFlags2 = *(ptr+9);
-        printf ("%c%c%c%c frameSize:%04d flags1:%02x flags2:%02x - ",
-                *ptr, *(ptr+1), *(ptr+2), *(ptr+3), frameSize, frameFlags1, frameFlags2);
-        if (frameSize < 60) {
-          for (uint32_t i = 0; i < frameSize; i++)
+        auto frameFlags1 = *(ptr+8);
+        auto frameFlags2 = *(ptr+9);
+        printf ("%c%c%c%c - frameSize:%04d %02x %02x %02x %02x - %02x %02x\n",
+                *ptr, *(ptr+1), *(ptr+2), *(ptr+3), frameSize,
+                *(ptr+4), *(ptr+5), *(ptr+6), *(ptr+7), frameFlags1, frameFlags2);
+        if (tag != 0x41504943) {
+          for (auto i = 0; i < frameSize; i++) {
+            if ((i % 25) == 0)
+              printf ("%03d - ", i);
+            printf ("%02x ", *(ptr+10+i));
+            if ((i % 25) == 24)
+              printf ("\n");
+            }
+          printf ("\n");
+          for (auto i = 0; i < frameSize; i++)
             printf ("%c", *(ptr+10+i));
+          printf ("\n");
           }
-
-        printf ("\n");
         ptr += frameSize + 10;
         };
       }
@@ -159,9 +166,9 @@ private:
     cMp3Decoder mMp3Decoder;
     ptr = fileBuffer;
     auto bufferBytes = mFileBytes;
-    while (true) {
+    while (bufferBytes > 0) {
       int16_t samples[1152*2];
-      int bytesUsed = mMp3Decoder.decode (ptr, bufferBytes, samples);
+      int bytesUsed = mMp3Decoder.decodeFrame(ptr, bufferBytes, samples);
       if (bytesUsed) {
         ptr += bytesUsed;
         bufferBytes -= bytesUsed;
@@ -183,72 +190,6 @@ private:
         mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
         mLoadAudFrame++;
         changed();
-        }
-      }
-
-    UnmapViewOfFile (fileBuffer);
-    CloseHandle (fileHandle);
-    }
-  //}}}
-  //{{{
-  void loaderffmpeg (wchar_t* wFilename) {
-
-    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (fileHandle == INVALID_HANDLE_VALUE)
-      return;
-    auto mFileBytes = GetFileSize (fileHandle, NULL);
-    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
-
-    av_register_all();
-    AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
-    AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
-    AVCodecContext*audContext = avcodec_alloc_context3 (audCodec);
-    avcodec_open2 (audContext, audCodec, NULL);
-
-    AVPacket avPacket;
-    av_init_packet (&avPacket);
-    avPacket.data = fileBuffer;
-    avPacket.size = 0;
-
-    auto time = startTimer();
-    auto pesPtr = fileBuffer;
-    auto pesLen = mFileBytes;
-    while (pesLen) {
-      auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-      pesPtr += lenUsed;
-      pesLen -= lenUsed;
-
-      if (avPacket.data) {
-        auto got = 0;
-        auto avFrame = av_frame_alloc();
-        auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
-        if (bytesUsed >= 0) {
-          avPacket.data += bytesUsed;
-          avPacket.size -= bytesUsed;
-
-          if (got) {
-            mSampleRate = avFrame->sample_rate;
-            mAudFrames[mLoadAudFrame] = new cAudFrame();
-            mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, avFrame->sample_rate, avFrame->nb_samples);
-            auto samplePtr = (short*)mAudFrames[mLoadAudFrame]->mSamples;
-            auto valueL = 0.0;
-            auto valueR = 0.0;
-            auto leftPtr = (short*)avFrame->data[0];
-            auto rightPtr = (short*)avFrame->data[1];
-            for (auto i = 0; i < avFrame->nb_samples; i++) {
-              *samplePtr = *leftPtr++;
-              valueL += pow (*samplePtr++, 2);
-              *samplePtr = *rightPtr++;
-              valueR += pow (*samplePtr++, 2);
-              }
-            mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
-            mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
-            mLoadAudFrame++;
-            changed();
-            }
-          av_frame_free (&avFrame);
-          }
         }
       }
 
@@ -291,7 +232,6 @@ private:
   };
 
 static cAppWindow appWindow;
-
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 

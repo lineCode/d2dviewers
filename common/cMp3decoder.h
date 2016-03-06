@@ -1,22 +1,19 @@
-// cMp3decoder.h
+// cMp3decoder.h - hacked minimp3
 #pragma once
 //{{{  includes
 #include <stdio.h>
 #include <stdint.h>
-
 #include <math.h>
 //}}}
-//{{{  const
+//{{{  defines
 #define SBLIMIT 32
 
-#define MP3_MONO 3
+#define FRAC_BITS   15
+#define WFRAC_BITS  14
 
-#define FRAC_BITS  15
-#define WFRAC_BITS 14
-
-#define OUT_MAX    (32767)
-#define OUT_MIN    (-32768)
-#define OUT_SHIFT  (WFRAC_BITS + FRAC_BITS - 15)
+#define OUT_MAX     (32767)
+#define OUT_MIN     (-32768)
+#define OUT_SHIFT   (WFRAC_BITS + FRAC_BITS - 15)
 
 #define MODE_EXT_MS_STEREO 2
 #define MODE_EXT_I_STEREO  1
@@ -30,46 +27,116 @@
 #define MULL(a,b)   (((int64_t)(a) * (int64_t)(b)) >> FRAC_BITS)
 #define MULH(a,b)   (((int64_t)(a) * (int64_t)(b)) >> 32)
 #define MULS(ra,rb) ((ra) * (rb))
+
+#define TABLE_4_3_SIZE (8191 + 16)*4
+
+//{{{
+#define SUM8(sum, op, w, p) {\
+  sum op MULS((w)[0 * 64], p[0 * 64]);\
+  sum op MULS((w)[1 * 64], p[1 * 64]);\
+  sum op MULS((w)[2 * 64], p[2 * 64]);\
+  sum op MULS((w)[3 * 64], p[3 * 64]);\
+  sum op MULS((w)[4 * 64], p[4 * 64]);\
+  sum op MULS((w)[5 * 64], p[5 * 64]);\
+  sum op MULS((w)[6 * 64], p[6 * 64]);\
+  sum op MULS((w)[7 * 64], p[7 * 64]);\
+  }
+//}}}
+//{{{
+#define SUM8P2(sum1, op1, sum2, op2, w1, w2, p) {\
+  int tmp;\
+  tmp = p[0 * 64];\
+  sum1 op1 MULS((w1)[0 * 64], tmp);\
+  sum2 op2 MULS((w2)[0 * 64], tmp);\
+  tmp = p[1 * 64];\
+  sum1 op1 MULS((w1)[1 * 64], tmp);\
+  sum2 op2 MULS((w2)[1 * 64], tmp);\
+  tmp = p[2 * 64];\
+  sum1 op1 MULS((w1)[2 * 64], tmp);\
+  sum2 op2 MULS((w2)[2 * 64], tmp);\
+  tmp = p[3 * 64];\
+  sum1 op1 MULS((w1)[3 * 64], tmp);\
+  sum2 op2 MULS((w2)[3 * 64], tmp);\
+  tmp = p[4 * 64];\
+  sum1 op1 MULS((w1)[4 * 64], tmp);\
+  sum2 op2 MULS((w2)[4 * 64], tmp);\
+  tmp = p[5 * 64];\
+  sum1 op1 MULS((w1)[5 * 64], tmp);\
+  sum2 op2 MULS((w2)[5 * 64], tmp);\
+  tmp = p[6 * 64];\
+  sum1 op1 MULS((w1)[6 * 64], tmp);\
+  sum2 op2 MULS((w2)[6 * 64], tmp);\
+  tmp = p[7 * 64];\
+  sum1 op1 MULS((w1)[7 * 64], tmp);\
+  sum2 op2 MULS((w2)[7 * 64], tmp);\
+  }
+//}}}
+
+//{{{  cos defines
+#define COS0_0  FIXHR(0.50060299823519630134/2)
+#define COS0_1  FIXHR(0.50547095989754365998/2)
+#define COS0_2  FIXHR(0.51544730992262454697/2)
+#define COS0_3  FIXHR(0.53104259108978417447/2)
+#define COS0_4  FIXHR(0.55310389603444452782/2)
+#define COS0_5  FIXHR(0.58293496820613387367/2)
+#define COS0_6  FIXHR(0.62250412303566481615/2)
+#define COS0_7  FIXHR(0.67480834145500574602/2)
+#define COS0_8  FIXHR(0.74453627100229844977/2)
+#define COS0_9  FIXHR(0.83934964541552703873/2)
+#define COS0_10 FIXHR(0.97256823786196069369/2)
+#define COS0_11 FIXHR(1.16943993343288495515/4)
+#define COS0_12 FIXHR(1.48416461631416627724/4)
+#define COS0_13 FIXHR(2.05778100995341155085/8)
+#define COS0_14 FIXHR(3.40760841846871878570/8)
+#define COS0_15 FIXHR(10.19000812354805681150/32)
+
+#define COS1_0 FIXHR(0.50241928618815570551/2)
+#define COS1_1 FIXHR(0.52249861493968888062/2)
+#define COS1_2 FIXHR(0.56694403481635770368/2)
+#define COS1_3 FIXHR(0.64682178335999012954/2)
+#define COS1_4 FIXHR(0.78815462345125022473/2)
+#define COS1_5 FIXHR(1.06067768599034747134/4)
+#define COS1_6 FIXHR(1.72244709823833392782/4)
+#define COS1_7 FIXHR(5.10114861868916385802/16)
+
+#define COS2_0 FIXHR(0.50979557910415916894/2)
+#define COS2_1 FIXHR(0.60134488693504528054/2)
+#define COS2_2 FIXHR(0.89997622313641570463/2)
+#define COS2_3 FIXHR(2.56291544774150617881/8)
+
+#define COS3_0 FIXHR(0.54119610014619698439/2)
+#define COS3_1 FIXHR(1.30656296487637652785/4)
+
+#define COS4_0 FIXHR(0.70710678118654752439/2)
 //}}}
 
 //{{{
-typedef struct _bitstream {
-  const uint8_t* buffer;
-  const uint8_t* buffer_end;
-  int index;
-  int size_in_bits;
-  } bitstream_t;
+#define BF(a, b, c, s){\
+  tmp0 = tab[a] + tab[b];\
+  tmp1 = tab[a] - tab[b];\
+  tab[a] = tmp0;\
+  tab[b] = MULH(tmp1<<(s), c);\
+  }
 //}}}
 //{{{
-typedef struct _vlc {
-  int bits;
-  int16_t (*table)[2]; ///< code, bits
-  int table_size, table_allocated;
-  } vlc_t;
+#define BF1(a, b, c, d) {\
+  BF(a, b, COS4_0, 1);\
+  BF(c, d,-COS4_0, 1);\
+  tab[c] += tab[d];\
+  }
 //}}}
 //{{{
-typedef struct _granule {
-  uint8_t scfsi;
-  int part2_3_length;
-  int big_values;
-  int global_gain;
-  int scalefac_compress;
+#define BF2(a, b, c, d) {\
+  BF(a, b, COS4_0, 1);\
+  BF(c, d,-COS4_0, 1);\
+  tab[c] += tab[d];\
+  tab[a] += tab[c];\
+  tab[c] += tab[b];\
+  tab[b] += tab[d];\
+  }
+//}}}
 
-  uint8_t block_type;
-  uint8_t switch_point;
-  int table_select[3];
-  int subblock_gain[3];
-
-  uint8_t scalefac_scale;
-  uint8_t count1table_select;
-
-  int region_size[3];
-  int preflag;
-
-  int short_start, long_end;
-  uint8_t scale_factors[40];
-  int32_t sb_hybrid[SBLIMIT * 18];
-  } granule_t;
+#define ADD(a, b) tab[a] += tab[b]
 //}}}
 //{{{
 typedef struct _huff_table {
@@ -77,6 +144,13 @@ typedef struct _huff_table {
   const uint8_t* bits;
   const uint16_t* codes;
   } huff_table_t;
+//}}}
+//{{{
+typedef struct _vlc {
+  int bits;
+  int16_t (*table)[2]; ///< code, bits
+  int table_size, table_allocated;
+  } vlc_t;
 //}}}
 //{{{  const tables
 //{{{
@@ -779,121 +853,11 @@ static const int icos36h[9] = {
 };
 //}}}
 //}}}
-//{{{  dct defines
-//{{{
-#define SUM8(sum, op, w, p) {\
-  sum op MULS((w)[0 * 64], p[0 * 64]);\
-  sum op MULS((w)[1 * 64], p[1 * 64]);\
-  sum op MULS((w)[2 * 64], p[2 * 64]);\
-  sum op MULS((w)[3 * 64], p[3 * 64]);\
-  sum op MULS((w)[4 * 64], p[4 * 64]);\
-  sum op MULS((w)[5 * 64], p[5 * 64]);\
-  sum op MULS((w)[6 * 64], p[6 * 64]);\
-  sum op MULS((w)[7 * 64], p[7 * 64]);\
-  }
-//}}}
-//{{{
-#define SUM8P2(sum1, op1, sum2, op2, w1, w2, p) {\
-  int tmp;\
-  tmp = p[0 * 64];\
-  sum1 op1 MULS((w1)[0 * 64], tmp);\
-  sum2 op2 MULS((w2)[0 * 64], tmp);\
-  tmp = p[1 * 64];\
-  sum1 op1 MULS((w1)[1 * 64], tmp);\
-  sum2 op2 MULS((w2)[1 * 64], tmp);\
-  tmp = p[2 * 64];\
-  sum1 op1 MULS((w1)[2 * 64], tmp);\
-  sum2 op2 MULS((w2)[2 * 64], tmp);\
-  tmp = p[3 * 64];\
-  sum1 op1 MULS((w1)[3 * 64], tmp);\
-  sum2 op2 MULS((w2)[3 * 64], tmp);\
-  tmp = p[4 * 64];\
-  sum1 op1 MULS((w1)[4 * 64], tmp);\
-  sum2 op2 MULS((w2)[4 * 64], tmp);\
-  tmp = p[5 * 64];\
-  sum1 op1 MULS((w1)[5 * 64], tmp);\
-  sum2 op2 MULS((w2)[5 * 64], tmp);\
-  tmp = p[6 * 64];\
-  sum1 op1 MULS((w1)[6 * 64], tmp);\
-  sum2 op2 MULS((w2)[6 * 64], tmp);\
-  tmp = p[7 * 64];\
-  sum1 op1 MULS((w1)[7 * 64], tmp);\
-  sum2 op2 MULS((w2)[7 * 64], tmp);\
-  }
-//}}}
-
-//{{{  cos defines
-#define COS0_0  FIXHR(0.50060299823519630134/2)
-#define COS0_1  FIXHR(0.50547095989754365998/2)
-#define COS0_2  FIXHR(0.51544730992262454697/2)
-#define COS0_3  FIXHR(0.53104259108978417447/2)
-#define COS0_4  FIXHR(0.55310389603444452782/2)
-#define COS0_5  FIXHR(0.58293496820613387367/2)
-#define COS0_6  FIXHR(0.62250412303566481615/2)
-#define COS0_7  FIXHR(0.67480834145500574602/2)
-#define COS0_8  FIXHR(0.74453627100229844977/2)
-#define COS0_9  FIXHR(0.83934964541552703873/2)
-#define COS0_10 FIXHR(0.97256823786196069369/2)
-#define COS0_11 FIXHR(1.16943993343288495515/4)
-#define COS0_12 FIXHR(1.48416461631416627724/4)
-#define COS0_13 FIXHR(2.05778100995341155085/8)
-#define COS0_14 FIXHR(3.40760841846871878570/8)
-#define COS0_15 FIXHR(10.19000812354805681150/32)
-
-#define COS1_0 FIXHR(0.50241928618815570551/2)
-#define COS1_1 FIXHR(0.52249861493968888062/2)
-#define COS1_2 FIXHR(0.56694403481635770368/2)
-#define COS1_3 FIXHR(0.64682178335999012954/2)
-#define COS1_4 FIXHR(0.78815462345125022473/2)
-#define COS1_5 FIXHR(1.06067768599034747134/4)
-#define COS1_6 FIXHR(1.72244709823833392782/4)
-#define COS1_7 FIXHR(5.10114861868916385802/16)
-
-#define COS2_0 FIXHR(0.50979557910415916894/2)
-#define COS2_1 FIXHR(0.60134488693504528054/2)
-#define COS2_2 FIXHR(0.89997622313641570463/2)
-#define COS2_3 FIXHR(2.56291544774150617881/8)
-
-#define COS3_0 FIXHR(0.54119610014619698439/2)
-#define COS3_1 FIXHR(1.30656296487637652785/4)
-
-#define COS4_0 FIXHR(0.70710678118654752439/2)
-//}}}
-
-//{{{
-#define BF(a, b, c, s){\
-  tmp0 = tab[a] + tab[b];\
-  tmp1 = tab[a] - tab[b];\
-  tab[a] = tmp0;\
-  tab[b] = MULH(tmp1<<(s), c);\
-  }
-//}}}
-//{{{
-#define BF1(a, b, c, d) {\
-  BF(a, b, COS4_0, 1);\
-  BF(c, d,-COS4_0, 1);\
-  tab[c] += tab[d];\
-  }
-//}}}
-//{{{
-#define BF2(a, b, c, d) {\
-  BF(a, b, COS4_0, 1);\
-  BF(c, d,-COS4_0, 1);\
-  tab[c] += tab[d];\
-  tab[a] += tab[c];\
-  tab[c] += tab[b];\
-  tab[b] += tab[d];\
-  }
-//}}}
-
-#define ADD(a, b) tab[a] += tab[b]
-//}}}
-//{{{  vars
+//{{{  static vars
 static vlc_t huff_vlc[16];
 static vlc_t huff_quad_vlc[2];
-static uint16_t band_index_long[9][23];
 
-#define TABLE_4_3_SIZE (8191 + 16)*4
+static uint16_t band_index_long[9][23];
 
 static int8_t* table_4_3_exp;
 static uint32_t* table_4_3_value;
@@ -922,8 +886,8 @@ public:
     memset (mMdctBuf, 0, sizeof (mMdctBuf));
 
     //{{{  synth init
-    for (int i = 0; i < 257; i++) {
-      int v = mp3_enwindow[i];
+    for (auto i = 0; i < 257; i++) {
+      auto v = mp3_enwindow[i];
 
     #if WFRAC_BITS < 16
       v = (v + (1 << (16 - WFRAC_BITS - 1))) >> (16 - WFRAC_BITS);
@@ -938,20 +902,20 @@ public:
       }
     //}}}
     //{{{  huffman decode tables
-    for (int i = 1; i < 16; i++) {
-      uint8_t  tmp_bits[512];
+    for (auto i = 1; i < 16; i++) {
+      uint8_t tmp_bits[512];
       memset (tmp_bits , 0, sizeof (tmp_bits));
 
       uint16_t tmp_codes[512];
       memset (tmp_codes, 0, sizeof (tmp_codes));
 
-      const huff_table_t* h = &mp3_huff_tables[i];
-      int xsize = h->xsize;
-      unsigned int n = xsize * xsize;
+      auto h = &mp3_huff_tables[i];
+      auto xsize = h->xsize;
+      auto n = xsize * xsize;
 
       int j = 0;
-      for (int x = 0; x < xsize; x++) {
-        for (int y = 0; y < xsize; y++){
+      for (auto x = 0; x < xsize; x++) {
+        for (auto y = 0; y < xsize; y++){
           tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j];
           tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
           }
@@ -960,12 +924,12 @@ public:
       init_vlc (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2);
       }
 
-    for (int i = 0; i < 2; i++)
+    for (auto i = 0; i < 2; i++)
       init_vlc (&huff_quad_vlc[i], i == 0 ? 7 : 4, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
 
-    for (int i = 0; i < 9; i++) {
-      int k = 0;
-      for (int j = 0; j < 22; j++) {
+    for (auto i = 0; i < 9; i++) {
+      auto k = 0;
+      for (auto j = 0; j < 22; j++) {
         band_index_long[i][j] = k;
         k += band_size_long[i][j];
         }
@@ -975,25 +939,25 @@ public:
     //{{{  compute n ^ (4/3) and store it in mantissa/exp format
     table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
     table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
-    for (int i = 1; i < TABLE_4_3_SIZE; i++) {
+    for (auto i = 1; i < TABLE_4_3_SIZE; i++) {
       int e;
-      double f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
-      double fm = frexp (f, &e);
-      int m = (uint32_t)(fm * (1LL << 31) + 0.5);
+      auto f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
+      auto fm = frexp (f, &e);
+      auto m = (uint32_t)(fm * (1LL << 31) + 0.5);
       e += FRAC_BITS - 31 + 5 - 100;
       table_4_3_value[i] = m;
       table_4_3_exp[i] = -e;
       }
 
-    for (int i = 0; i < 512*16; i++){
-      int exponent = (i >> 4);
-      double f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
+    for (auto i = 0; i < 512*16; i++){
+      auto exponent = (i >> 4);
+      auto f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
       expval_table[exponent][i & 15] = (uint32_t)f;
       if ((i & 15) == 1)
         exp_table[exponent]= (uint32_t)f;
       }
 
-    for (int i = 0; i < 7; i++) {
+    for (auto i = 0; i < 7; i++) {
       int v;
       if (i != 6) {
         float f = (float)tan ((double)i * M_PI / 12.0);
@@ -1005,23 +969,23 @@ public:
       is_table[1][6 - i] = v;
       }
 
-    for (int i = 7; i < 16; i++)
+    for (auto i = 7; i < 16; i++)
       is_table[0][i] = is_table[1][i] = 0;
 
-    for (int i = 0; i < 16; i++) {
-      for (int j = 0; j < 2; j++) {
-        int e = -(j + 1) * ((i + 1) >> 1);
-        double f = pow(2.0, e / 4.0);
-        int k = i & 1;
+    for (auto i = 0; i < 16; i++) {
+      for (auto j = 0; j < 2; j++) {
+        auto e = -(j + 1) * ((i + 1) >> 1);
+        auto f = pow(2.0, e / 4.0);
+        auto k = i & 1;
         is_table_lsf[j][k ^ 1][i] = FIXR(f);
         is_table_lsf[j][k][i] = FIXR(1.0);
         }
       }
 
-    for (int i = 0; i < 8; i++) {
-      float ci = ci_table[i];
-      float cs = (float)(1.0 / sqrt(1.0 + ci * ci));
-      float ca = cs * ci;
+    for (auto i = 0; i < 8; i++) {
+      auto ci = ci_table[i];
+      auto cs = (float)(1.0 / sqrt(1.0 + ci * ci));
+      auto ca = cs * ci;
       csa_table[i][0] = FIXHR(cs/4);
       csa_table[i][1] = FIXHR(ca/4);
       csa_table[i][2] = FIXHR(ca/4) + FIXHR(cs/4);
@@ -1033,8 +997,8 @@ public:
       }
     //}}}
     //{{{  compute mdct windows
-    for (int i = 0; i < 36; i++) {
-      for (int j = 0; j < 4; j++){
+    for (auto i = 0; i < 36; i++) {
+      for (auto j = 0; j < 4; j++){
         if (j == 2 && i % 3 != 1)
           continue;
 
@@ -1063,8 +1027,8 @@ public:
         }
       }
 
-    for (int j = 0; j < 4; j++) {
-      for (int i = 0; i < 36; i += 2) {
+    for (auto j = 0; j < 4; j++) {
+      for (auto i = 0; i < 36; i += 2) {
         mdct_win[j + 4][i] = mdct_win[j][i];
         mdct_win[j + 4][i + 1] = -mdct_win[j][i + 1];
         }
@@ -1077,16 +1041,16 @@ public:
   int getSampleRate() { return mSampleRate; }
   int getBitRate() { return mBitRate; }
   //{{{
-  int decode (uint8_t* buffer, int bufferBytes, int16_t* samples) {
+  int decodeFrame (uint8_t* buffer, int bufferBytes, int16_t* samples) {
 
     int extraBytes = 0;
     while (bufferBytes >= 4) {
-      uint32_t header = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
+      auto header = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
       if (checkHeader (header)) {
         auto frame_size = decodeHeader (header);
         if (frame_size < bufferBytes)
           bufferBytes = frame_size;
-        decodeMain (samples, buffer, bufferBytes);
+        decodeFrameAligned (buffer, bufferBytes, samples);
         if (bufferBytes < 0)
           return 0;
         else
@@ -1103,6 +1067,39 @@ public:
   //}}}
 
 private:
+  //{{{
+  typedef struct _granule {
+    uint8_t scfsi;
+    int part2_3_length;
+    int big_values;
+    int global_gain;
+    int scalefac_compress;
+
+    uint8_t block_type;
+    uint8_t switch_point;
+    int table_select[3];
+    int subblock_gain[3];
+
+    uint8_t scalefac_scale;
+    uint8_t count1table_select;
+
+    int region_size[3];
+    int preflag;
+
+    int short_start, long_end;
+    uint8_t scale_factors[40];
+    int32_t sb_hybrid[SBLIMIT * 18];
+    } granule_t;
+  //}}}
+  //{{{
+  typedef struct _bitstream {
+    const uint8_t* buffer;
+    const uint8_t* buffer_end;
+    int index;
+    int size_in_bits;
+    } bitstream_t;
+  //}}}
+
   //{{{  bit reader
   #define MIN_CACHE_BITS 25
   #define NEG_SSR32(a,s) ((( int32_t)(a))>>(32-(s)))
@@ -1223,7 +1220,7 @@ private:
   //{{{
   void init_get_bits (bitstream_t *s, const uint8_t *buffer, int bit_size) {
 
-    int buffer_size = (bit_size + 7) >> 3;
+    auto buffer_size = (bit_size + 7) >> 3;
     if (buffer_size < 0 || bit_size < 0) {
       buffer_size = bit_size = 0;
       buffer = NULL;
@@ -1260,8 +1257,8 @@ private:
   //{{{
   unsigned int get_bits1 (bitstream_t *s){
 
-    int index= s->index;
-    uint8_t result= s->buffer[ index>>3 ];
+    auto index = s->index;
+    auto result= s->buffer[ index>>3 ];
     result<<= (index&0x07);
     result>>= 8 - 1;
     index++;
@@ -1272,7 +1269,7 @@ private:
   //}}}
   //{{{
   void align_get_bits (bitstream_t *s) {
-    int n = (-get_bits_count(s)) & 7;
+    auto n = (-get_bits_count(s)) & 7;
     if (n)
       skip_bits(s, n);
     }
@@ -1281,7 +1278,7 @@ private:
   //{{{
   int alloc_table (vlc_t* vlc, int size) {
 
-    int index = vlc->table_size;
+    auto index = vlc->table_size;
     vlc->table_size += size;
 
     if (vlc->table_size > vlc->table_allocated) {
@@ -1308,12 +1305,12 @@ private:
       return -1;
     table = &vlc->table[table_index];
 
-    for (int i = 0; i < table_size; i++) {
+    for (auto i = 0; i < table_size; i++) {
       table[i][1] = 0; //bits
       table[i][0] = -1; //codes
       }
 
-    for (int i = 0; i < nb_codes; i++) {
+    for (auto i = 0; i < nb_codes; i++) {
       GET_DATA(n, bits, i, bits_wrap, bits_size);
       GET_DATA(code, codes, i, codes_wrap, codes_size);
       if (n <= 0)
@@ -1344,7 +1341,7 @@ private:
         }
       }
 
-    for (int i = 0; i < table_size; i++) {
+    for (auto i = 0; i < table_size; i++) {
       n = table[i][1]; //bits
       if (n < 0) {
         n = -n;
@@ -1432,11 +1429,11 @@ private:
     mErrorProtection = ((header >> 16) & 1) ^ 1;
     mSampleRate = mSampleRate;
 
-    int bitrate_index = (header >> 12) & 0xf;
-    int padding = (header >> 9) & 1;
+    auto bitrate_index = (header >> 12) & 0xf;
+    auto padding = (header >> 9) & 1;
     auto mode = (header >> 6) & 3;
     mModeExt = (header >> 4) & 3;
-    mNumChannels = (mode == MP3_MONO) ? 1 : 2;
+    mNumChannels = (mode == 3) ? 1 : 2; // mono flags
 
     if (bitrate_index != 0) {
       auto frame_size = mp3_bitrate_tab[mLsf][bitrate_index];
@@ -1451,7 +1448,7 @@ private:
   //{{{
   int roundSample (int& sum) {
 
-    int sum1 = sum >> OUT_SHIFT;
+    auto sum1 = sum >> OUT_SHIFT;
     sum &= (1 << OUT_SHIFT) - 1;
 
     if (sum1 < OUT_MIN)
@@ -1500,12 +1497,12 @@ private:
   //{{{
   int layer3unscale (int value, int exponent) {
 
-    int e = table_4_3_exp[4 * value + (exponent & 3)];
+    auto e = table_4_3_exp[4 * value + (exponent & 3)];
     e -= (exponent >> 2);
     if (e > 31)
       return 0;
 
-    unsigned int m = table_4_3_value[4 * value + (exponent & 3)];
+    auto m = table_4_3_value[4 * value + (exponent & 3)];
     m = (m + (1 << (e-1))) >> e;
     return m;
     }
@@ -1513,16 +1510,16 @@ private:
   //{{{
   void exponentsFromScaleFactors (granule_t* g, int16_t* exponents) {
 
-    int16_t* exp_ptr = exponents;
-    int gain = g->global_gain - 210;
-    int shift = g->scalefac_scale + 1;
+    auto exp_ptr = exponents;
+    auto gain = g->global_gain - 210;
+    auto shift = g->scalefac_scale + 1;
 
-    const uint8_t* bstab = band_size_long[mSampleRateIndex];
-    const uint8_t* pretab = mp3_pretab[g->preflag];
-    for (int i = 0; i < g->long_end; i++) {
-      int v0 = gain - ((g->scale_factors[i] + pretab[i]) << shift) + 400;
-      int len = bstab[i];
-      for (int j = len; j > 0; j--)
+    auto bstab = band_size_long[mSampleRateIndex];
+    auto pretab = mp3_pretab[g->preflag];
+    for (auto i = 0; i < g->long_end; i++) {
+      auto v0 = gain - ((g->scale_factors[i] + pretab[i]) << shift) + 400;
+      auto len = bstab[i];
+      for (auto j = len; j > 0; j--)
         *exp_ptr++ = v0;
       }
 
@@ -1532,12 +1529,12 @@ private:
       gains[0] = gain - (g->subblock_gain[0] << 3);
       gains[1] = gain - (g->subblock_gain[1] << 3);
       gains[2] = gain - (g->subblock_gain[2] << 3);
-      int k = g->long_end;
-      for (int i = g->short_start; i < 13; i++) {
+      auto k = g->long_end;
+      for (auto i = g->short_start; i < 13; i++) {
         int len = bstab[i];
-        for (int l = 0; l < 3; l++) {
-          int v0 = gains[l] - (g->scale_factors[k++] << shift) + 400;
-          for (int j = len; j > 0; j--)
+        for (auto l = 0; l < 3; l++) {
+          auto v0 = gains[l] - (g->scale_factors[k++] << shift) + 400;
+          for (auto j = len; j > 0; j--)
            *exp_ptr++ = v0;
           }
         }
@@ -1561,11 +1558,11 @@ private:
       ptr = g->sb_hybrid;
 
     int32_t tmp[576];
-    for (int i = g->short_start; i < 13; i++) {
+    for (auto i = g->short_start; i < 13; i++) {
       int len = band_size_short[mSampleRateIndex][i];
-      int32_t* ptr1 = ptr;
-      int32_t* dst = tmp;
-      for (int j = len; j > 0; j--) {
+      auto ptr1 = ptr;
+      auto dst = tmp;
+      for (auto j = len; j > 0; j--) {
         *dst++ = ptr[0*len];
         *dst++ = ptr[1*len];
         *dst++ = ptr[2*len];
@@ -1592,10 +1589,10 @@ private:
     else
       n = SBLIMIT - 1;
 
-    int32_t* ptr = g->sb_hybrid + 18;
-    for (int i = n; i > 0; i--) {
+    auto ptr = g->sb_hybrid + 18;
+    for (auto i = n; i > 0; i--) {
       int tmp0, tmp1, tmp2;
-      int32_t* csa = &csa_table[0][0];
+      auto csa = &csa_table[0][0];
 
       #define INT_AA(j) \
             tmp0 = ptr[-1-j];\
@@ -1748,7 +1745,7 @@ private:
   //{{{
   int huffmanDecode (granule_t* g, int16_t* exponents, int end_pos2) {
 
-    int end_pos = mBitstream.size_in_bits;
+    auto end_pos = mBitstream.size_in_bits;
     if (end_pos2 < end_pos)
       end_pos = end_pos2;
 
@@ -1756,15 +1753,15 @@ private:
     int last_pos;
     //{{{  low frequencies (called big values)
     int s_index = 0;
-    for (int i = 0; i < 3; i++) {
-      int j = g->region_size[i];
+    for (auto i = 0; i < 3; i++) {
+      auto j = g->region_size[i];
       if (j == 0)
         continue;
 
       // select vlc table
-      int k = g->table_select[i];
-      int l = mp3_huff_data[k][0];
-      int linbits = mp3_huff_data[k][1];
+      auto k = g->table_select[i];
+      auto l = mp3_huff_data[k][0];
+      auto linbits = mp3_huff_data[k][1];
       vlc = &huff_vlc[l];
       if (!l) {
         memset (&g->sb_hybrid[s_index], 0, sizeof(*g->sb_hybrid)*2*j);
@@ -1774,23 +1771,23 @@ private:
 
       // read huffcode and compute each couple
       for (; j > 0; j--) {
-        int pos = get_bits_count (&mBitstream);
+        auto pos = get_bits_count (&mBitstream);
 
         if (pos >= end_pos){
           switchBuffer (pos, end_pos, end_pos2);
           if (pos >= end_pos)
             break;
           }
-        int y = get_vlc2 (&mBitstream, vlc->table, 7, 3);
+        auto y = get_vlc2 (&mBitstream, vlc->table, 7, 3);
 
-        if(!y) {
+        if (!y) {
           g->sb_hybrid[s_index  ] =
           g->sb_hybrid[s_index+1] = 0;
           s_index += 2;
           continue;
           }
 
-        int exponent = exponents[s_index];
+        auto exponent = exponents[s_index];
 
         int x, v;
         if (y & 16) {
@@ -1840,7 +1837,7 @@ private:
     last_pos = 0;
 
     while (s_index <= 572) {
-      int pos = get_bits_count (&mBitstream);
+      auto pos = get_bits_count (&mBitstream);
       if (pos >= end_pos) {
         if (pos > end_pos2 && last_pos){
           // some encoders generate an incorrect size for this part. We must go back into the data
@@ -1861,7 +1858,7 @@ private:
       g->sb_hybrid[s_index+3]= 0;
       while (code){
         int v;
-        int pos = s_index + idxtab[code];
+        auto pos = s_index + idxtab[code];
         code ^= 8 >> idxtab[code];
         v = exp_table[exponents[pos] ];
         if (get_bits1 (&mBitstream))
@@ -1875,12 +1872,12 @@ private:
     memset (&g->sb_hybrid[s_index], 0, sizeof(*g->sb_hybrid) * (576 - s_index));
 
     // skip extension bits
-    int bits_left = end_pos2 - get_bits_count (&mBitstream);
+    auto bits_left = end_pos2 - get_bits_count (&mBitstream);
     if (bits_left < 0)
       return -1;
     skip_bits_long (&mBitstream, bits_left);
 
-    int i = get_bits_count (&mBitstream);
+    auto i = get_bits_count (&mBitstream);
     switchBuffer (i, end_pos, end_pos2);
 
     return 0;
@@ -1890,12 +1887,12 @@ private:
   //{{{
   void imdct12 (int* out, int* in) {
 
-    int in0 = in[0*3];
-    int in1 = in[1*3] + in[0*3];
-    int in2 = in[2*3] + in[1*3];
-    int in3 = in[3*3] + in[2*3];
-    int in4 = in[4*3] + in[3*3];
-    int in5 = in[5*3] + in[4*3];
+    auto in0 = in[0*3];
+    auto in1 = in[1*3] + in[0*3];
+    auto in2 = in[2*3] + in[1*3];
+    auto in3 = in[3*3] + in[2*3];
+    auto in4 = in[4*3] + in[3*3];
+    auto in5 = in[5*3] + in[4*3];
     in5 += in3;
     in3 += in1;
 
@@ -1924,19 +1921,18 @@ private:
   //{{{
   void imdct36 (int* out, int* buf, int* in, int* win) {
 
-    int t0, t1, t2, t3, s0, s1, s2, s3;
-    int tmp[18], *tmp1, *in1;
-
-    for (int i = 17; i >= 1; i--)
+    for (auto i = 17; i >= 1; i--)
       in[i] += in[i-1];
-    for (int i = 17; i >= 3; i -= 2)
+    for (auto i = 17; i >= 3; i -= 2)
       in[i] += in[i-2];
 
-    for (int j = 0; j < 2; j++) {
-      tmp1 = tmp + j;
-      in1 = in + j;
-      t2 = in1[2*4] + in1[2*8] - in1[2*2];
+    int tmp[18];
+    int t0, t1, t2, t3, s0, s1, s2, s3;
+    for (auto j = 0; j < 2; j++) {
+      auto tmp1 = tmp + j;
+      auto in1 = in + j;
 
+      t2 = in1[2*4] + in1[2*8] - in1[2*2];
       t3 = in1[2*0] + (in1[2*6]>>1);
       t1 = in1[2*0] - in1[2*6];
       tmp1[ 6] = t1 - (t2>>1);
@@ -1949,12 +1945,11 @@ private:
       tmp1[10] = t3 - t0 - t2;
       tmp1[ 2] = t3 + t0 + t1;
       tmp1[14] = t3 + t2 - t1;
-
       tmp1[ 4] = MULH(2*(in1[2*5] + in1[2*7] - in1[2*1]), -C3);
+
       t2 = MULH(2*(in1[2*1] + in1[2*5]),    C1);
       t3 = MULH(   in1[2*5] - in1[2*7] , -2*C7);
       t0 = MULH(2*in1[2*3], C3);
-
       t1 = MULH(2*(in1[2*1] + in1[2*7]),   -C5);
 
       tmp1[ 0] = t2 + t3 + t0;
@@ -1962,20 +1957,19 @@ private:
       tmp1[ 8] = t3 - t1 - t0;
       }
 
-    int i = 0;
-    for (int j = 0; j < 4; j++) {
+    auto i = 0;
+    for (auto j = 0; j < 4; j++) {
       t0 = tmp[i];
       t1 = tmp[i + 2];
       s0 = t1 + t0;
       s2 = t1 - t0;
-
       t2 = tmp[i + 1];
       t3 = tmp[i + 3];
       s1 = MULH(2*(t3 + t2), icos36h[j]);
       s3 = MULL(t3 - t2, icos36[8 - j]);
-
       t0 = s0 + s1;
       t1 = s0 - s1;
+
       out[(9 + j)*SBLIMIT] =  MULH(t1, win[9 + j]) + buf[9 + j];
       out[(8 - j)*SBLIMIT] =  MULH(t1, win[8 - j]) + buf[8 - j];
       buf[9 + j] = MULH(t0, win[18 + 9 + j]);
@@ -1983,6 +1977,7 @@ private:
 
       t0 = s2 + s3;
       t1 = s2 - s3;
+
       out[(9 + 8 - j)*SBLIMIT] =  MULH(t1, win[9 + 8 - j]) + buf[9 + 8 - j];
       out[(        j)*SBLIMIT] =  MULH(t1, win[        j]) + buf[        j];
       buf[9 + 8 - j] = MULH(t0, win[18 + 9 + 8 - j]);
@@ -2005,15 +2000,15 @@ private:
 
     // find last non zero block
     int v;
-    int32_t* ptr = g->sb_hybrid + 576;
-    int32_t* ptr1 = g->sb_hybrid + 2 * 18;
+    auto ptr = g->sb_hybrid + 576;
+    auto ptr1 = g->sb_hybrid + 2 * 18;
     while (ptr >= ptr1) {
       ptr -= 6;
       v = ptr[0] | ptr[1] | ptr[2] | ptr[3] | ptr[4] | ptr[5];
       if (v != 0)
         break;
       }
-    int sblimit = ((ptr - g->sb_hybrid) / 18) + 1;
+    auto sblimit = ((ptr - g->sb_hybrid) / 18) + 1;
 
     int mdct_long_end;
     if (g->block_type == 2) {
@@ -2026,52 +2021,50 @@ private:
     else
       mdct_long_end = sblimit;
 
-    int32_t* buf = mdct_buf;
+    auto buf = mdct_buf;
     ptr = g->sb_hybrid;
-    for (int j = 0; j < mdct_long_end; j++) {
+    for (auto j = 0; j < mdct_long_end; j++) {
       // apply window & overlap with previous buffer
-      int32_t* out_ptr = sb_samples + j;
+      auto out_ptr = sb_samples + j;
+
       // select window
-      int32_t* win1;
-      if (g->switch_point && j < 2)
-        win1 = mdct_win[0];
-      else
-        win1 = mdct_win[g->block_type];
+      auto win1 = (g->switch_point && j < 2) ? mdct_win[0] : mdct_win[g->block_type];
+
       // select frequency inversion
-      int32_t* win = win1 + ((4 * 36) & -(j & 1));
-      imdct36(out_ptr, buf, ptr, win);
-      out_ptr += 18*SBLIMIT;
+      auto win = win1 + ((4 * 36) & -(j & 1));
+      imdct36 (out_ptr, buf, ptr, win);
+      out_ptr += 18 * SBLIMIT;
       ptr += 18;
       buf += 18;
       }
 
-    for (int j = mdct_long_end; j < sblimit; j++) {
+    for (auto j = mdct_long_end; j < sblimit; j++) {
       // select frequency inversion
-      int32_t* win = mdct_win[2] + ((4 * 36) & -(j & 1));
-      int32_t* out_ptr = sb_samples + j;
+      auto win = mdct_win[2] + ((4 * 36) & -(j & 1));
+      auto out_ptr = sb_samples + j;
 
-      for (int i = 0; i < 6; i++){
+      for (auto i = 0; i < 6; i++){
         *out_ptr = buf[i];
         out_ptr += SBLIMIT;
         }
 
       int32_t out2[12];
       imdct12 (out2, ptr + 0);
-      for (int i = 0; i < 6;i++) {
+      for (auto i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*1];
         buf[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += SBLIMIT;
         }
 
       imdct12 (out2, ptr + 1);
-      for (int i = 0; i < 6;i++) {
+      for (auto i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*2];
         buf[i + 6*0] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += SBLIMIT;
         }
 
       imdct12 (out2, ptr + 2);
-      for (int i = 0; i < 6; i++) {
+      for (auto i = 0; i < 6; i++) {
         buf[i + 6*0] = MULH(out2[i], win[i]) + buf[i + 6*0];
         buf[i + 6*1] = MULH(out2[i + 6], win[i + 6]);
         buf[i + 6*2] = 0;
@@ -2082,9 +2075,9 @@ private:
       }
 
     // zero bands
-    for (int j = sblimit; j < SBLIMIT; j++) {
+    for (auto j = sblimit; j < SBLIMIT; j++) {
       // overlap
-      int32_t* out_ptr = sb_samples + j;
+      auto out_ptr = sb_samples + j;
       for (int i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
@@ -2269,67 +2262,6 @@ private:
     out[31] = tab[31];
     }
   //}}}
-  //{{{
-  void synthFilter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t* window, int* dither_state, int16_t* samples,
-                    int incr, int32_t sb_samples[SBLIMIT]) {
-
-    int32_t tmp[32];
-    dct32 (tmp, sb_samples);
-
-    int offset = *synth_buf_offset;
-    int16_t* synth_buf = synth_buf_ptr + offset;
-    for (int j = 0; j < 32; j++) {
-      int v = tmp[j];
-      // NOTE: can cause a loss in precision if very high amplitude sound
-      if (v > 32767)
-        v = 32767;
-      else if (v < -32768)
-        v = -32768;
-      synth_buf[j] = v;
-      }
-
-    // copy to avoid wrap
-    memcpy (synth_buf + 512, synth_buf, 32 * sizeof(int16_t));
-
-    int16_t* samples2 = samples + 31 * incr;
-    const int16_t* w = window;
-    const int16_t* w2 = window + 31;
-
-    int sum = *dither_state;
-    const int16_t* p = synth_buf + 16;
-    SUM8(sum, +=, w, p);
-    p = synth_buf + 48;
-    SUM8(sum, -=, w + 32, p);
-    *samples = roundSample (sum);
-    samples += incr;
-    w++;
-
-    // we calculate two samples at the same time to avoid one memory access per two sample
-    for (int j = 1; j < 16; j++) {
-      int sum2 = 0;
-      p = synth_buf + 16 + j;
-      SUM8P2(sum, +=, sum2, -=, w, w2, p);
-      p = synth_buf + 48 - j;
-      SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
-
-      *samples = roundSample (sum);
-      samples += incr;
-      sum += sum2;
-      *samples2 = roundSample (sum);
-      samples2 -= incr;
-      w++;
-      w2--;
-      }
-
-    p = synth_buf + 32;
-    SUM8(sum, -=, w + 32, p);
-    *samples = roundSample (sum);
-    *dither_state = sum;
-
-    offset = (offset - 32) & 511;
-    *synth_buf_offset = offset;
-    }
-  //}}}
 
   //{{{
   int decodeLayer3() {
@@ -2353,8 +2285,8 @@ private:
         }
       }
 
-    for (int gr = 0; gr < nb_granules; gr++)
-      for (int ch = 0; ch < mNumChannels; ch++) {
+    for (auto gr = 0; gr < nb_granules; gr++)
+      for (auto ch = 0; ch < mNumChannels; ch++) {
         //{{{  per channel
         granule_t* g = &mGranules[ch][gr];
         g->part2_3_length = get_bits (&mBitstream, 12);
@@ -2419,8 +2351,8 @@ private:
         g->region_size[2] = (576 / 2);
 
         int j = 0;
-        for (int i = 0; i < 3; i++) {
-          int k = g->region_size[i];
+        for (auto i = 0; i < 3; i++) {
+          auto k = g->region_size[i];
           if (g->big_values < k)
             k = g->big_values;
 
@@ -2460,7 +2392,7 @@ private:
         }
         //}}}
 
-    const uint8_t* ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
+    auto ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
 
     // get bits from the main_data_begin offset
     if (main_data_begin > mLastBufSize)
@@ -2470,8 +2402,8 @@ private:
     mInBitstream = mBitstream;
     init_get_bits (&mBitstream, mLastBuf + mLastBufSize - main_data_begin, main_data_begin*8);
 
-    for (int gr = 0; gr < nb_granules; gr++) {
-      for (int ch = 0; ch < mNumChannels; ch++) {
+    for (auto gr = 0; gr < nb_granules; gr++) {
+      for (auto ch = 0; ch < mNumChannels; ch++) {
         //{{{  per channel
         granule_t* g = &mGranules[ch][gr];
 
@@ -2608,7 +2540,7 @@ private:
         //}}}
       if (mNumChannels == 2)
         computeStereo (&mGranules[0][gr], &mGranules[1][gr]);
-      for (int ch = 0; ch < mNumChannels; ch++) {
+      for (auto ch = 0; ch < mNumChannels; ch++) {
         granule_t* g = &mGranules[ch][gr];
         reorderBlock (g);
         computeAntialias (g);
@@ -2620,18 +2552,83 @@ private:
     }
   //}}}
   //{{{
-  void decodeMain (int16_t* samples, const uint8_t* buf, int buf_size) {
+  void synthFilter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t* window, int* dither_state,
+                    int16_t* samples, int incr, int32_t sbSamples[SBLIMIT]) {
+
+    int32_t tmp[32];
+    dct32 (tmp, sbSamples);
+
+    auto offset = *synth_buf_offset;
+    auto synth_buf = synth_buf_ptr + offset;
+    for (auto j = 0; j < 32; j++) {
+      auto v = tmp[j];
+      // NOTE: can cause a loss in precision if very high amplitude sound
+      if (v > 32767)
+        v = 32767;
+      else if (v < -32768)
+        v = -32768;
+      synth_buf[j] = v;
+      }
+
+    // copy to avoid wrap
+    memcpy (synth_buf + 512, synth_buf, 32 * sizeof(int16_t));
+
+    auto samples2 = samples + 31 * incr;
+    auto w = window;
+    auto w2 = window + 31;
+
+    auto sum = *dither_state;
+    auto p = synth_buf + 16;
+    SUM8(sum, +=, w, p);
+    p = synth_buf + 48;
+    SUM8(sum, -=, w + 32, p);
+    *samples = roundSample (sum);
+    samples += incr;
+    w++;
+
+    // we calculate two samples at the same time to avoid one memory access per two sample
+    for (auto j = 1; j < 16; j++) {
+      auto sum2 = 0;
+      p = synth_buf + 16 + j;
+      SUM8P2(sum, +=, sum2, -=, w, w2, p);
+      p = synth_buf + 48 - j;
+      SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
+
+      *samples = roundSample (sum);
+      samples += incr;
+
+      sum += sum2;
+
+      *samples2 = roundSample (sum);
+      samples2 -= incr;
+
+      w++;
+      w2--;
+      }
+
+    p = synth_buf + 32;
+    SUM8(sum, -=, w + 32, p);
+    *samples = roundSample (sum);
+    *dither_state = sum;
+
+    offset = (offset - 32) & 511;
+    *synth_buf_offset = offset;
+    }
+  //}}}
+
+  //{{{
+  void decodeFrameAligned (const uint8_t* buf, int buf_size, int16_t* samples) {
 
     init_get_bits (&mBitstream, buf + 4, (buf_size - 4)*8);
     if (mErrorProtection)
       get_bits (&mBitstream, 16);
 
-    int numFrames = decodeLayer3();
+    auto numFrames = decodeLayer3();
 
     mLastBufSize = 0;
     if (mInBitstream.buffer){
       align_get_bits (&mBitstream);
-      int i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
+      auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
       if (i >= 0 && i <= 512){
         memmove (mLastBuf, mBitstream.buffer + (get_bits_count (&mBitstream) >> 3), i);
         mLastBufSize = i;
@@ -2640,8 +2637,7 @@ private:
       }
 
     align_get_bits (&mBitstream);
-    int i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
-
+    auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
     if (i < 0 || i > 512 || numFrames < 0) {
       i = buf_size - 4;
       if (512 < i)
@@ -2651,12 +2647,12 @@ private:
     memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + buf_size - 4 - i, i);
     mLastBufSize += i;
 
-    // apply synthesis filter
-    for (int ch = 0; ch < mNumChannels; ch++) {
-      int16_t* samples_ptr = samples + ch;
-      for (int i = 0; i < numFrames; i++) {
-        synthFilter (mSynthBuffer[ch], &(mSynthBufOffset[ch]), window, &mDitherState, samples_ptr, mNumChannels, mSbSamples[ch][i]);
-        samples_ptr += 32 * mNumChannels;
+    // apply synthFilter
+    for (auto ch = 0; ch < mNumChannels; ch++) {
+      auto samplesPtr = samples + ch;
+      for (auto i = 0; i < numFrames; i++) {
+        synthFilter (mSynthBuffer[ch], &mSynthBufferOffset[ch], window, &mDitherState, samplesPtr, mNumChannels, mSbSamples[ch][i]);
+        samplesPtr += 32 * mNumChannels;
         }
       }
     }
@@ -2679,7 +2675,7 @@ private:
   int mDitherState = 0;
   int mErrorProtection = 0;
 
-  int mSynthBufOffset [2] = {0,0};
+  int mSynthBufferOffset [2] = {0,0};
   int16_t mSynthBuffer [2][512 * 2];
   int32_t mSbSamples [2][36][SBLIMIT];
   int32_t mMdctBuf [2][SBLIMIT * 18];

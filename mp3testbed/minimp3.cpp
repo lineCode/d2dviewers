@@ -62,7 +62,7 @@ int main (int argc, char* argv[]) {
   cMp3Decoder mMp3Decoder;
   while (true) {
     int16_t samples[1152*2];
-    int bytesUsed = mMp3Decoder.decode (buffer, bufferBytes, samples);
+    int bytesUsed = mMp3Decoder.decodeFrame (buffer, bufferBytes, samples);
     //printf ("%d\n", byte_count);
     if (bytesUsed) {
       buffer += bytesUsed;
