@@ -7,6 +7,7 @@
 
 #include "../common/cAudFrame.h"
 #include "../common/winAudio.h"
+#include "../common/cMp3decoder.h"
 
 #pragma comment(lib,"avutil.lib")
 #pragma comment(lib,"avcodec.lib")
@@ -112,6 +113,84 @@ protected:
 private:
   //{{{
   void loader (wchar_t* wFilename) {
+
+    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (fileHandle == INVALID_HANDLE_VALUE)
+      return;
+    auto mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    // check for ID3 tag
+    auto ptr = fileBuffer;
+    uint32_t tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
+    if (tag == 0x49443303)  {
+      //{{{  got ID3 tag
+      uint32_t tagSize = (*(ptr+6)<<20) | (*(ptr+7)<<13) | (*(ptr+8)<<7) | *(ptr+9);
+      printf ("%c%c%c ver:%d %02x flags:%02x tagSize:%d\n", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5), tagSize);
+      ptr += 10;
+
+      while (ptr < fileBuffer + tagSize) {
+        uint32_t frameSize = (*(ptr+4)<<20) | (*(ptr+5)<<13) | (*(ptr+6)<<7) | *(ptr+7);
+        if (!frameSize)
+          break;
+        uint8_t frameFlags1 = *(ptr+8);
+        uint8_t frameFlags2 = *(ptr+9);
+        printf ("%c%c%c%c frameSize:%04d flags1:%02x flags2:%02x - ",
+                *ptr, *(ptr+1), *(ptr+2), *(ptr+3), frameSize, frameFlags1, frameFlags2);
+        if (frameSize < 60) {
+          for (uint32_t i = 0; i < frameSize; i++)
+            printf ("%c", *(ptr+10+i));
+          }
+        printf ("\n");
+        ptr += frameSize + 10;
+        };
+      }
+      //}}}
+    else {
+      //{{{  print header
+      for (auto i = 0; i < 32; i++)
+        printf ("%02x ", *(ptr+i));
+      printf ("\n");
+      }
+      //}}}
+
+    cMp3Decoder mMp3Decoder;
+    ptr = fileBuffer;
+    auto bufferBytes = mFileBytes;
+    while (true) {
+      int16_t samples[1152*2];
+      int bytesUsed = mMp3Decoder.decode (ptr, bufferBytes, samples);
+      if (bytesUsed) {
+        ptr += bytesUsed;
+        bufferBytes -= bytesUsed;
+
+        mSampleRate = mMp3Decoder.getSampleRate();
+        mAudFrames[mLoadAudFrame] = new cAudFrame();
+        mAudFrames[mLoadAudFrame]->set (0, 2, mSampleRate, 1152);
+        auto samplePtr = mAudFrames[mLoadAudFrame]->mSamples;
+        auto valueL = 0.0;
+        auto valueR = 0.0;
+        auto lrPtr = samples;
+        for (auto i = 0; i < 1152; i++) {
+          *samplePtr = *lrPtr++;
+          valueL += pow (*samplePtr++, 2);
+          *samplePtr = *lrPtr++;
+          valueR += pow (*samplePtr++, 2);
+          }
+        mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
+        mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
+        mLoadAudFrame++;
+        changed();
+        }
+      }
+
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
+    }
+  //}}}
+  //{{{
+  void loaderffmpeg (wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE)

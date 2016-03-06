@@ -26,5 +26,8 @@
     <ClInclude Include="..\common\winAudio.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\cMp3decoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
