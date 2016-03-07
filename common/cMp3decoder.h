@@ -854,13 +854,13 @@ static const int icos36h[9] = {
 //}}}
 //}}}
 //{{{  static vars
+static int8_t* table_4_3_exp = nullptr;
+static uint32_t* table_4_3_value = nullptr;
+
 static vlc_t huff_vlc[16];
 static vlc_t huff_quad_vlc[2];
 
 static uint16_t band_index_long[9][23];
-
-static int8_t* table_4_3_exp;
-static uint32_t* table_4_3_value;
 
 static uint32_t exp_table[512];
 static uint32_t expval_table[512][16];
@@ -885,155 +885,155 @@ public:
     memset (mSbSamples, 0, sizeof (mSbSamples));
     memset (mMdctBuf, 0, sizeof (mMdctBuf));
 
-    //{{{  synth init
-    for (auto i = 0; i < 257; i++) {
-      auto v = mp3_enwindow[i];
+    if (!table_4_3_exp) {
+      //{{{  compute n ^ (4/3) and store it in mantissa/exp format
+      table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
+      table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
 
-    #if WFRAC_BITS < 16
-      v = (v + (1 << (16 - WFRAC_BITS - 1))) >> (16 - WFRAC_BITS);
-    #endif
-      window[i] = v;
+      for (auto i = 1; i < TABLE_4_3_SIZE; i++) {
+        int e;
+        auto f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
+        auto fm = frexp (f, &e);
+        auto m = (uint32_t)(fm * (1LL << 31) + 0.5);
+        e += FRAC_BITS - 31 + 5 - 100;
+        table_4_3_value[i] = m;
+        table_4_3_exp[i] = -e;
+        }
 
-      if ((i & 63) != 0)
-        v = -v;
+      for (auto i = 0; i < 512*16; i++){
+        auto exponent = (i >> 4);
+        auto f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
+        expval_table[exponent][i & 15] = (uint32_t)f;
+        if ((i & 15) == 1)
+          exp_table[exponent]= (uint32_t)f;
+        }
 
-      if (i != 0)
-        window[512 - i] = v;
-      }
-    //}}}
-    //{{{  huffman decode tables
-    for (auto i = 1; i < 16; i++) {
-      uint8_t tmp_bits[512];
-      memset (tmp_bits , 0, sizeof (tmp_bits));
-
-      uint16_t tmp_codes[512];
-      memset (tmp_codes, 0, sizeof (tmp_codes));
-
-      auto h = &mp3_huff_tables[i];
-      auto xsize = h->xsize;
-      auto n = xsize * xsize;
-
-      int j = 0;
-      for (auto x = 0; x < xsize; x++) {
-        for (auto y = 0; y < xsize; y++){
-          tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j];
-          tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
+      for (auto i = 0; i < 7; i++) {
+        int v;
+        if (i != 6) {
+          float f = (float)tan ((double)i * M_PI / 12.0);
+          v = FIXR(f / (1.0 + f));
           }
-        }
-
-      init_vlc (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2);
-      }
-
-    for (auto i = 0; i < 2; i++)
-      init_vlc (&huff_quad_vlc[i], i == 0 ? 7 : 4, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
-
-    for (auto i = 0; i < 9; i++) {
-      auto k = 0;
-      for (auto j = 0; j < 22; j++) {
-        band_index_long[i][j] = k;
-        k += band_size_long[i][j];
-        }
-      band_index_long[i][22] = k;
-      }
-    //}}}
-    //{{{  compute n ^ (4/3) and store it in mantissa/exp format
-    table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
-    table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
-    for (auto i = 1; i < TABLE_4_3_SIZE; i++) {
-      int e;
-      auto f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
-      auto fm = frexp (f, &e);
-      auto m = (uint32_t)(fm * (1LL << 31) + 0.5);
-      e += FRAC_BITS - 31 + 5 - 100;
-      table_4_3_value[i] = m;
-      table_4_3_exp[i] = -e;
-      }
-
-    for (auto i = 0; i < 512*16; i++){
-      auto exponent = (i >> 4);
-      auto f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
-      expval_table[exponent][i & 15] = (uint32_t)f;
-      if ((i & 15) == 1)
-        exp_table[exponent]= (uint32_t)f;
-      }
-
-    for (auto i = 0; i < 7; i++) {
-      int v;
-      if (i != 6) {
-        float f = (float)tan ((double)i * M_PI / 12.0);
-        v = FIXR(f / (1.0 + f));
-        }
-      else
-        v = FIXR(1.0);
-      is_table[0][i] = v;
-      is_table[1][6 - i] = v;
-      }
-
-    for (auto i = 7; i < 16; i++)
-      is_table[0][i] = is_table[1][i] = 0;
-
-    for (auto i = 0; i < 16; i++) {
-      for (auto j = 0; j < 2; j++) {
-        auto e = -(j + 1) * ((i + 1) >> 1);
-        auto f = pow(2.0, e / 4.0);
-        auto k = i & 1;
-        is_table_lsf[j][k ^ 1][i] = FIXR(f);
-        is_table_lsf[j][k][i] = FIXR(1.0);
-        }
-      }
-
-    for (auto i = 0; i < 8; i++) {
-      auto ci = ci_table[i];
-      auto cs = (float)(1.0 / sqrt(1.0 + ci * ci));
-      auto ca = cs * ci;
-      csa_table[i][0] = FIXHR(cs/4);
-      csa_table[i][1] = FIXHR(ca/4);
-      csa_table[i][2] = FIXHR(ca/4) + FIXHR(cs/4);
-      csa_table[i][3] = FIXHR(ca/4) - FIXHR(cs/4);
-      csa_table_float[i][0] = cs;
-      csa_table_float[i][1] = ca;
-      csa_table_float[i][2] = ca + cs;
-      csa_table_float[i][3] = ca - cs;
-      }
-    //}}}
-    //{{{  compute mdct windows
-    for (auto i = 0; i < 36; i++) {
-      for (auto j = 0; j < 4; j++){
-        if (j == 2 && i % 3 != 1)
-          continue;
-
-        double d = sin (M_PI * (i + 0.5) / 36.0);
-        if (j == 1) {
-            if (i >= 30)
-              d = 0;
-            else if (i >= 24)
-              d = sin (M_PI * (i - 18 + 0.5) / 12.0);
-            else if (i >= 18)
-              d = 1;
-          }
-        else if (j == 3){
-          if (i <  6)
-            d = 0;
-          else if (i < 12)
-            d = sin (M_PI * (i -  6 + 0.5) / 12.0);
-          else if (i < 18)
-            d = 1;
-          }
-        d *= 0.5 / cos (M_PI * (2 * i + 19) / 72);
-        if (j == 2)
-          mdct_win[j][i/3] = FIXHR((d / (1 << 5)));
         else
-          mdct_win[j][i  ] = FIXHR((d / (1 << 5)));
+          v = FIXR(1.0);
+        is_table[0][i] = v;
+        is_table[1][6 - i] = v;
         }
-      }
 
-    for (auto j = 0; j < 4; j++) {
-      for (auto i = 0; i < 36; i += 2) {
-        mdct_win[j + 4][i] = mdct_win[j][i];
-        mdct_win[j + 4][i + 1] = -mdct_win[j][i + 1];
+      for (auto i = 7; i < 16; i++)
+        is_table[0][i] = is_table[1][i] = 0;
+
+      for (auto i = 0; i < 16; i++)
+        for (auto j = 0; j < 2; j++) {
+          auto e = -(j + 1) * ((i + 1) >> 1);
+          auto f = pow(2.0, e / 4.0);
+          auto k = i & 1;
+          is_table_lsf[j][k ^ 1][i] = FIXR(f);
+          is_table_lsf[j][k][i] = FIXR(1.0);
+          }
+
+      for (auto i = 0; i < 8; i++) {
+        auto ci = ci_table[i];
+        auto cs = (float)(1.0 / sqrt(1.0 + ci * ci));
+        auto ca = cs * ci;
+        csa_table[i][0] = FIXHR(cs/4);
+        csa_table[i][1] = FIXHR(ca/4);
+        csa_table[i][2] = FIXHR(ca/4) + FIXHR(cs/4);
+        csa_table[i][3] = FIXHR(ca/4) - FIXHR(cs/4);
+        csa_table_float[i][0] = cs;
+        csa_table_float[i][1] = ca;
+        csa_table_float[i][2] = ca + cs;
+        csa_table_float[i][3] = ca - cs;
         }
+      //}}}
+      //{{{  synth init
+      for (auto i = 0; i < 257; i++) {
+        auto v = mp3_enwindow[i];
+
+      #if WFRAC_BITS < 16
+        v = (v + (1 << (16 - WFRAC_BITS - 1))) >> (16 - WFRAC_BITS);
+      #endif
+        window[i] = v;
+
+        if ((i & 63) != 0)
+          v = -v;
+
+        if (i != 0)
+          window[512 - i] = v;
+        }
+      //}}}
+      //{{{  huffman decode tables
+      for (auto i = 1; i < 16; i++) {
+        uint8_t tmp_bits[512];
+        memset (tmp_bits , 0, sizeof (tmp_bits));
+
+        uint16_t tmp_codes[512];
+        memset (tmp_codes, 0, sizeof (tmp_codes));
+
+        auto h = &mp3_huff_tables[i];
+        auto xsize = h->xsize;
+        auto n = xsize * xsize;
+
+        int j = 0;
+        for (auto x = 0; x < xsize; x++)
+          for (auto y = 0; y < xsize; y++){
+            tmp_bits [(x << 5) | y | ((x&&y)<<4)]= h->bits [j];
+            tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
+            }
+
+        initVlc (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2);
+        }
+
+      for (auto i = 0; i < 2; i++)
+        initVlc(&huff_quad_vlc[i], i == 0 ? 7 : 4, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
+
+      for (auto i = 0; i < 9; i++) {
+        auto k = 0;
+        for (auto j = 0; j < 22; j++) {
+          band_index_long[i][j] = k;
+          k += band_size_long[i][j];
+          }
+        band_index_long[i][22] = k;
+        }
+      //}}}
+      //{{{  compute mdct windows
+      for (auto i = 0; i < 36; i++)
+        for (auto j = 0; j < 4; j++){
+          if (j == 2 && i % 3 != 1)
+            continue;
+
+          double d = sin (M_PI * (i + 0.5) / 36.0);
+          if (j == 1) {
+              if (i >= 30)
+                d = 0;
+              else if (i >= 24)
+                d = sin (M_PI * (i - 18 + 0.5) / 12.0);
+              else if (i >= 18)
+                d = 1;
+            }
+          else if (j == 3){
+            if (i <  6)
+              d = 0;
+            else if (i < 12)
+              d = sin (M_PI * (i -  6 + 0.5) / 12.0);
+            else if (i < 18)
+              d = 1;
+            }
+          d *= 0.5 / cos (M_PI * (2 * i + 19) / 72);
+          if (j == 2)
+            mdct_win[j][i/3] = FIXHR((d / (1 << 5)));
+          else
+            mdct_win[j][i  ] = FIXHR((d / (1 << 5)));
+          }
+
+      for (auto j = 0; j < 4; j++)
+        for (auto i = 0; i < 36; i += 2) {
+          mdct_win[j + 4][i] = mdct_win[j][i];
+          mdct_win[j + 4][i + 1] = -mdct_win[j][i + 1];
+          }
+
+      //}}}
       }
-    //}}}
     }
   //}}}
 
@@ -1068,29 +1068,120 @@ public:
 
 private:
   //{{{
-  typedef struct _granule {
-    uint8_t scfsi;
-    int part2_3_length;
-    int big_values;
-    int global_gain;
-    int scalefac_compress;
-
-    uint8_t block_type;
-    uint8_t switch_point;
-    int table_select[3];
-    int subblock_gain[3];
-
-    uint8_t scalefac_scale;
-    uint8_t count1table_select;
-
-    int region_size[3];
-    int preflag;
-
-    int short_start, long_end;
-    uint8_t scale_factors[40];
-    int32_t sb_hybrid[SBLIMIT * 18];
-    } granule_t;
+  #define GET_DATA(v, table, i, wrap, size) \
+  {\
+      const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
+      switch(size) {\
+      case 1:\
+          v = *(const uint8_t *)ptr;\
+          break;\
+      case 2:\
+          v = *(const uint16_t *)ptr;\
+          break;\
+      default:\
+          v = *(const uint32_t *)ptr;\
+          break;\
+      }\
+  }
   //}}}
+  //{{{
+  int allocTable (vlc_t* vlc, int size) {
+
+    auto index = vlc->table_size;
+    vlc->table_size += size;
+
+    if (vlc->table_size > vlc->table_allocated) {
+      vlc->table_allocated += (1 << vlc->bits);
+      vlc->table = (int16_t(*)[2])
+        realloc (vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
+      if (!vlc->table)
+        return -1;
+      }
+
+    return index;
+    }
+  //}}}
+  //{{{
+  int buildTable (vlc_t* vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
+                   const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
+
+    int table_size = 1 << table_nb_bits;
+    int table_index = allocTable (vlc, table_size);
+    if (table_index < 0)
+      return -1;
+
+    int16_t (*table)[2] = &vlc->table[table_index];
+    for (auto i = 0; i < table_size; i++) {
+      table[i][1] = 0; //bits
+      table[i][0] = -1; //codes
+      }
+
+    uint32_t code;
+    for (auto i = 0; i < nb_codes; i++) {
+      int n;
+      GET_DATA(n, bits, i, bits_wrap, bits_size);
+      GET_DATA(code, codes, i, codes_wrap, codes_size);
+      if (n <= 0)
+        continue;
+      n -= n_prefix;
+      int code_prefix2 = code >> n;
+      if (n > 0 && code_prefix2 == code_prefix) {
+        if (n <= table_nb_bits) {
+          int j = (code << (table_nb_bits - n)) & (table_size - 1);
+          int nb = 1 << (table_nb_bits - n);
+          for (auto k = 0; k < nb; k++) {
+            if (table[j][1] /*bits*/ != 0)
+              return -1;
+            table[j][1] = n; //bits
+            table[j][0] = i; //code
+            j++;
+            }
+          }
+        else {
+          n -= table_nb_bits;
+          int j = (code >> n) & ((1 << table_nb_bits) - 1);
+          int n1 = -table[j][1]; //bits
+          if (n > n1)
+            n1 = n;
+          table[j][1] = -n1; //bits
+          }
+        }
+      }
+
+    for (auto i = 0; i < table_size; i++) {
+      int n = table[i][1]; //bits
+      if (n < 0) {
+        n = -n;
+        if (n > table_nb_bits) {
+          n = table_nb_bits;
+          table[i][1] = -n; //bits
+          }
+        int index = buildTable (vlc, n, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size,
+                                (code_prefix << table_nb_bits) | i, n_prefix + table_nb_bits);
+        if (index < 0)
+          return -1;
+        table = &vlc->table[table_index];
+        table[i][0] = index; //code
+        }
+      }
+
+    return table_index;
+    }
+  //}}}
+  //{{{
+  int initVlc (vlc_t* vlc, int nb_bits, int nb_codes, const void* bits, int bits_wrap, int bits_size,
+                const void *codes, int codes_wrap, int codes_size) {
+
+    vlc->bits = nb_bits;
+    if (buildTable (vlc, nb_bits, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size, 0, 0) < 0) {
+      free (vlc->table);
+      return -1;
+      }
+
+    return 0;
+    }
+  //}}}
+
   //{{{
   typedef struct _bitstream {
     const uint8_t* buffer;
@@ -1099,7 +1190,6 @@ private:
     int size_in_bits;
     } bitstream_t;
   //}}}
-
   //{{{  bit reader
   #define MIN_CACHE_BITS 25
   #define NEG_SSR32(a,s) ((( int32_t)(a))>>(32-(s)))
@@ -1151,23 +1241,6 @@ private:
           ((uint32_t)name##_cache)
   //}}}
   //{{{
-  #define GET_DATA(v, table, i, wrap, size) \
-  {\
-      const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
-      switch(size) {\
-      case 1:\
-          v = *(const uint8_t *)ptr;\
-          break;\
-      case 2:\
-          v = *(const uint16_t *)ptr;\
-          break;\
-      default:\
-          v = *(const uint32_t *)ptr;\
-          break;\
-      }\
-  }
-  //}}}
-  //{{{
   #define GET_VLC(code, name, gb, table, bits, max_depth)\
   {\
       int n, index, nb_bits;\
@@ -1215,7 +1288,6 @@ private:
     s->index += n;
     }
   //}}}
-  #define skip_bits skip_bits_long
 
   //{{{
   void init_get_bits (bitstream_t *s, const uint8_t *buffer, int bit_size) {
@@ -1269,113 +1341,15 @@ private:
   //}}}
   //{{{
   void align_get_bits (bitstream_t *s) {
+
     auto n = (-get_bits_count(s)) & 7;
     if (n)
-      skip_bits(s, n);
+      skip_bits_long (s, n);
     }
   //}}}
 
   //{{{
-  int alloc_table (vlc_t* vlc, int size) {
-
-    auto index = vlc->table_size;
-    vlc->table_size += size;
-
-    if (vlc->table_size > vlc->table_allocated) {
-      vlc->table_allocated += (1 << vlc->bits);
-      vlc->table = (int16_t(*)[2]) realloc(vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
-      if (!vlc->table)
-        return -1;
-      }
-
-    return index;
-    }
-  //}}}
-  //{{{
-  int build_table (vlc_t *vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
-                   const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
-
-    int j, k, n, table_size, table_index, nb, n1, index, code_prefix2;
-    uint32_t code;
-    int16_t (*table)[2];
-
-    table_size = 1 << table_nb_bits;
-    table_index = alloc_table(vlc, table_size);
-    if (table_index < 0)
-      return -1;
-    table = &vlc->table[table_index];
-
-    for (auto i = 0; i < table_size; i++) {
-      table[i][1] = 0; //bits
-      table[i][0] = -1; //codes
-      }
-
-    for (auto i = 0; i < nb_codes; i++) {
-      GET_DATA(n, bits, i, bits_wrap, bits_size);
-      GET_DATA(code, codes, i, codes_wrap, codes_size);
-      if (n <= 0)
-          continue;
-      n -= n_prefix;
-      code_prefix2 = code >> n;
-      if (n > 0 && code_prefix2 == code_prefix) {
-        if (n <= table_nb_bits) {
-          j = (code << (table_nb_bits - n)) & (table_size - 1);
-          nb = 1 << (table_nb_bits - n);
-          for(k=0;k<nb;k++) {
-            if (table[j][1] /*bits*/ != 0) {
-              return -1;
-              }
-            table[j][1] = n; //bits
-            table[j][0] = i; //code
-            j++;
-            }
-          }
-        else {
-          n -= table_nb_bits;
-          j = (code >> n) & ((1 << table_nb_bits) - 1);
-          n1 = -table[j][1]; //bits
-          if (n > n1)
-            n1 = n;
-          table[j][1] = -n1; //bits
-          }
-        }
-      }
-
-    for (auto i = 0; i < table_size; i++) {
-      n = table[i][1]; //bits
-      if (n < 0) {
-        n = -n;
-        if (n > table_nb_bits) {
-          n = table_nb_bits;
-          table[i][1] = -n; //bits
-          }
-        index = build_table (vlc, n, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size,
-                             (code_prefix << table_nb_bits) | i, n_prefix + table_nb_bits);
-        if (index < 0)
-          return -1;
-        table = &vlc->table[table_index];
-        table[i][0] = index; //code
-        }
-      }
-
-    return table_index;
-    }
-  //}}}
-  //{{{
-  int init_vlc (vlc_t *vlc, int nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
-                       const void *codes, int codes_wrap, int codes_size) {
-
-    vlc->bits = nb_bits;
-    if (build_table (vlc, nb_bits, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size, 0, 0) < 0) {
-      free (vlc->table);
-      return -1;
-      }
-
-    return 0;
-    }
-  //}}}
-  //{{{
-  int get_vlc2 (bitstream_t *s, int16_t(*table)[2], int bits, int max_depth) {
+  int get_vlc2 (bitstream_t* s, int16_t(*table)[2], int bits, int max_depth) {
 
     int code;
 
@@ -1388,6 +1362,7 @@ private:
     }
   //}}}
   //}}}
+
   //{{{
   bool checkHeader (uint32_t header) {
 
@@ -1507,6 +1482,31 @@ private:
     return m;
     }
   //}}}
+
+  //{{{
+  typedef struct _granule {
+    uint8_t scfsi;
+    int part2_3_length;
+    int big_values;
+    int global_gain;
+    int scalefac_compress;
+
+    uint8_t block_type;
+    uint8_t switch_point;
+    int table_select[3];
+    int subblock_gain[3];
+
+    uint8_t scalefac_scale;
+    uint8_t count1table_select;
+
+    int region_size[3];
+    int preflag;
+
+    int short_start, long_end;
+    uint8_t scale_factors[40];
+    int32_t sb_hybrid[SBLIMIT * 18];
+    } granule_t;
+  //}}}
   //{{{
   void exponentsFromScaleFactors (granule_t* g, int16_t* exponents) {
 
@@ -1559,7 +1559,7 @@ private:
 
     int32_t tmp[576];
     for (auto i = g->short_start; i < 13; i++) {
-      int len = band_size_short[mSampleRateIndex][i];
+      auto len = band_size_short[mSampleRateIndex][i];
       auto ptr1 = ptr;
       auto dst = tmp;
       for (auto j = len; j > 0; j--) {
@@ -1574,7 +1574,6 @@ private:
       }
     }
   //}}}
-
   //{{{
   void computeAntialias (granule_t* g) {
 
@@ -1635,8 +1634,8 @@ private:
       non_zero_found_short[0] = 0;
       non_zero_found_short[1] = 0;
       non_zero_found_short[2] = 0;
-      int k = (13 - g1->short_start) * 3 + g1->long_end - 3;
-      for (int i = 12;i >= g1->short_start;i--) {
+      auto k = (13 - g1->short_start) * 3 + g1->long_end - 3;
+      for (auto i = 12;i >= g1->short_start;i--) {
         //{{{  for last band, use previous scale factor
         if (i != 11)
           k -= 3;
@@ -1681,16 +1680,16 @@ private:
         }
         //}}}
 
-      int non_zero_found = non_zero_found_short[0] | non_zero_found_short[1] | non_zero_found_short[2];
+      auto non_zero_found = non_zero_found_short[0] | non_zero_found_short[1] | non_zero_found_short[2];
 
-      for (int i = g1->long_end - 1; i >= 0; i--) {
+      for (auto i = g1->long_end - 1; i >= 0; i--) {
         int len = band_size_long[mSampleRateIndex][i];
         tab0 -= len;
         tab1 -= len;
 
         //  test if non zero band. if so, stop doing i-stereo */
         if (!non_zero_found) {
-          for (int j = 0; j < len; j++) {
+          for (auto j = 0; j < len; j++) {
             if (tab1[j] != 0) {
               non_zero_found = 1;
               goto found2;
@@ -1716,7 +1715,7 @@ private:
       found2:
           if (mModeExt & MODE_EXT_MS_STEREO) {
             //{{{  lower part of the spectrum : do ms stereo if enabled
-            for (int j = 0; j < len; j++) {
+            for (auto j = 0; j < len; j++) {
               tmp0 = tab0[j];
               tmp1 = tab1[j];
               tab0[j] = MULL(tmp0 + tmp1, FIXR (0.70710678118654752440));
@@ -1732,7 +1731,7 @@ private:
       //{{{  ms stereo ONLY the 1/sqrt(2) normalization factor is included in the global gain
       int32_t* tab0 = g0->sb_hybrid;
       int32_t* tab1 = g1->sb_hybrid;
-      for (int i = 0; i < 576; i++) {
+      for (auto i = 0; i < 576; i++) {
         tmp0 = tab0[i];
         tmp1 = tab1[i];
         tab0[i] = tmp0 + tmp1;
@@ -1996,15 +1995,14 @@ private:
     }
   //}}}
   //{{{
-  void compute_imdct (granule_t* g, int32_t* sb_samples, int32_t* mdct_buf) {
+  void computeImdct (granule_t* g, int32_t* sb_samples, int32_t* mdct_buf) {
 
     // find last non zero block
-    int v;
     auto ptr = g->sb_hybrid + 576;
     auto ptr1 = g->sb_hybrid + 2 * 18;
     while (ptr >= ptr1) {
       ptr -= 6;
-      v = ptr[0] | ptr[1] | ptr[2] | ptr[3] | ptr[4] | ptr[5];
+      int v = ptr[0] | ptr[1] | ptr[2] | ptr[3] | ptr[4] | ptr[5];
       if (v != 0)
         break;
       }
@@ -2019,7 +2017,7 @@ private:
         mdct_long_end = 0;
       }
     else
-      mdct_long_end = sblimit;
+      mdct_long_end = (int)sblimit;
 
     auto buf = mdct_buf;
     ptr = g->sb_hybrid;
@@ -2078,7 +2076,7 @@ private:
     for (auto j = sblimit; j < SBLIMIT; j++) {
       // overlap
       auto out_ptr = sb_samples + j;
-      for (int i = 0; i < 18;i++) {
+      for (auto i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
         out_ptr += SBLIMIT;
@@ -2483,30 +2481,30 @@ private:
             /* intensity stereo case */
             sf >>= 1;
             if (sf < 180) {
-              lsfsfExpand(slen, sf, 6, 6, 0);
+              lsfsfExpand (slen, sf, 6, 6, 0);
               tindex2 = 3;
               }
             else if (sf < 244) {
-              lsfsfExpand(slen, sf - 180, 4, 4, 0);
+              lsfsfExpand (slen, sf - 180, 4, 4, 0);
               tindex2 = 4;
               }
             else {
-              lsfsfExpand(slen, sf - 244, 3, 0, 0);
+              lsfsfExpand (slen, sf - 244, 3, 0, 0);
               tindex2 = 5;
               }
             }
           else {
             /* normal case */
             if (sf < 400) {
-              lsfsfExpand(slen, sf, 5, 4, 4);
+              lsfsfExpand (slen, sf, 5, 4, 4);
               tindex2 = 0;
               }
             else if (sf < 500) {
-              lsfsfExpand(slen, sf - 400, 5, 4, 0);
+              lsfsfExpand (slen, sf - 400, 5, 4, 0);
               tindex2 = 1;
               }
             else {
-              lsfsfExpand(slen, sf - 500, 3, 0, 0);
+              lsfsfExpand (slen, sf - 500, 3, 0, 0);
               tindex2 = 2;
               g->preflag = 1;
               }
@@ -2544,7 +2542,7 @@ private:
         granule_t* g = &mGranules[ch][gr];
         reorderBlock (g);
         computeAntialias (g);
-        compute_imdct (g, &mSbSamples[ch][18 * gr][0], mMdctBuf[ch]);
+        computeImdct (g, &mSbSamples[ch][18 * gr][0], mMdctBuf[ch]);
         }
       }
 
@@ -2591,14 +2589,13 @@ private:
       auto sum2 = 0;
       p = synth_buf + 16 + j;
       SUM8P2(sum, +=, sum2, -=, w, w2, p);
+
       p = synth_buf + 48 - j;
       SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
-
       *samples = roundSample (sum);
       samples += incr;
 
       sum += sum2;
-
       *samples2 = roundSample (sum);
       samples2 -= incr;
 

@@ -78,9 +78,8 @@ protected:
   //{{{
   void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 
-    //if (!mouseMoved)
-      //playFrame += x - (getClientF().width/2.0f);
-    changed();
+    if (!mouseMoved)
+      mPlaying = !mPlaying;
     }
   //}}}
   //{{{
@@ -91,7 +90,6 @@ protected:
     int rows = 8;
 
     int frame = mPlayAudFrame;
-    auto rWave = RectF (0,0,1,0);
     for (int i = 0; i < rows; i++) {
       for (float f = 0.0f; f < getClientF().width; f++) {
         auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
@@ -116,8 +114,6 @@ private:
   void loader (wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (fileHandle == INVALID_HANDLE_VALUE)
-      return;
     auto mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
@@ -129,7 +125,7 @@ private:
     auto bufferBytes = mFileBytes;
     while (bufferBytes > 0) {
       int16_t samples[1152*2];
-      int bytesUsed = mMp3Decoder.decodeFrame(ptr, bufferBytes, samples);
+      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
       if (bytesUsed) {
         ptr += bytesUsed;
         bufferBytes -= bytesUsed;
@@ -159,12 +155,9 @@ private:
     }
   //}}}
   //{{{
-  void loaderffmpeg (wchar_t* wFilename,char* filename) {
+  void loaderffmpeg (wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (fileHandle == INVALID_HANDLE_VALUE)
-      return;
-
     int mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
@@ -232,6 +225,7 @@ private:
 
     auto ptr = buffer;
     auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
+
     if (tag == 0x49443303)  {
      // got ID3 tag
       auto tagSize = (*(ptr+6)<<21) | (*(ptr+7)<<14) | (*(ptr+8)<<7) | *(ptr+9);
@@ -259,7 +253,7 @@ private:
         };
       }
     else {
-     // print start of file
+      // print start of file
       for (auto i = 0; i < 32; i++)
         printf ("%02x ", *(ptr+i));
       printf ("\n");
@@ -272,7 +266,7 @@ private:
     CoInitialize (NULL);  // for winAudio
 
     while (mLoadAudFrame < 8)
-      Sleep(10);
+      Sleep (10);
     winAudioOpen (mSampleRate, 16, 2);
 
     mPlayAudFrame = 0;
@@ -294,6 +288,7 @@ private:
 
   bool mPlaying = true;
   int mSampleRate = 0;
+
   int mPlayAudFrame = 0;
   int mLoadAudFrame = 0;
   int mAudFramesPerSec = 50;
