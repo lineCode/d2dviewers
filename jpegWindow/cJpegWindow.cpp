@@ -155,11 +155,11 @@ static const int kBytesPerFormat[] = { 0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8 };
 static const wchar_t* kWeekDay[] = { L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat"};
 //}}}
 //{{{  typedef
-class cAppWindow;
-typedef void (cAppWindow::*cAppWindowFunc)();
+class cJpegWindow;
+typedef void (cJpegWindow::*cJpegWindowFunc)();
 
 class cImage;
-typedef void (cAppWindow::*cAppWindowImageFunc)(cImage* image);
+typedef void (cJpegWindow::*cJpegWindowImageFunc)(cImage* image);
 //}}}
 
 //{{{
@@ -1144,7 +1144,7 @@ public:
 
   //{{{
   void scanFileSysytem (wstring& parentName, wchar_t* directoryName,
-                        int& numImages, int& numDirectories, cAppWindow* appWindow, cAppWindowFunc func) {
+                        int& numImages, int& numDirectories, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
     mDirectoryName = directoryName;
@@ -1160,7 +1160,7 @@ public:
             (findFileData.cFileName[0] != L'.'))  {
           cDirectory* directory = new cDirectory();
           directory->scanFileSysytem (mFullDirectoryName, findFileData.cFileName,
-                                      numImages, numDirectories, appWindow, func);
+                                      numImages, numDirectories, jpegWindow, func);
           mDirectories.push_back (directory);
           }
         else if (PathMatchSpec (findFileData.cFileName, L"*.jpg"))
@@ -1173,17 +1173,17 @@ public:
     numDirectories += (int)mDirectories.size();
 
     //printf ("%d %d %ls %ls\n", (int)mImages.size(), (int)mDirectories.size(), mName, mFullName);
-    (appWindow->*func)();
+    (jpegWindow->*func)();
     }
   //}}}
   //{{{
-  void traverseImages (cAppWindow* appWindow, cAppWindowImageFunc imageFunc) {
+  void traverseImages (cJpegWindow* jpegWindow, cJpegWindowImageFunc imageFunc) {
 
     for (auto directory : mDirectories)
-      directory->traverseImages (appWindow, imageFunc);
+      directory->traverseImages (jpegWindow, imageFunc);
 
     for (auto image : mImages)
-      (appWindow->*imageFunc)(image);
+      (jpegWindow->*imageFunc)(image);
     }
   //}}}
 
@@ -1196,10 +1196,10 @@ private:
   };
 //}}}
 
-class cAppWindow : public cD2dWindow, public cDirectory {
+class cJpegWindow : public cD2dWindow, public cDirectory {
 public:
   //{{{
-  cAppWindow() : mThumbSize(SizeU(160,120)), mCurView(&mThumbView),
+  cJpegWindow() : mThumbSize(SizeU(160,120)), mCurView(&mThumbView),
                  mNumNestedDirectories(0), mNumNestedImages(0),
                  mNumThumbsLoaded(0), mFileSystemScanned(false),
                  mProxImage(NULL), mPickImage(nullptr), mFullImage(nullptr) {}
@@ -1322,7 +1322,7 @@ protected:
     if (!mFullImage) {
       // thumbs
       dc->SetTransform (mThumbView.getMatrix());
-      traverseImages (this, &cAppWindow::drawThumb);
+      traverseImages (this, &cJpegWindow::drawThumb);
 
       if (mPickImage) {
         //{{{  highlight pickImage and draw infoPanel
@@ -1534,7 +1534,7 @@ private:
     auto time1 = getTimer();
     scanFileSysytem (wstring(), rootDirectory,
                                 mNumNestedImages, mNumNestedDirectories,
-                                this, &cAppWindow::layoutThumbs);
+                                this, &cJpegWindow::layoutThumbs);
     mFileSystemScanned = true;
     auto time2 = getTimer();
 
@@ -1606,7 +1606,7 @@ int wmain (int argc, wchar_t* argv[]) {
 
   startTimer();
 
-  cAppWindow appWindow;
-  appWindow.run (1860, 1000, L"jpegView", argv[1] ? argv[1] : L"C:\\Users\\colin\\Pictures", 2);
+  cJpegWindow jpegWindow;
+  jpegWindow.run (1860, 1000, L"jpegView", argv[1] ? argv[1] : L"C:\\Users\\colin\\Pictures", 2);
   }
 //}}}

@@ -2587,11 +2587,10 @@ private:
     *synth_buf_offset = offset;
     }
   //}}}
-
   //{{{
   void decodeFrameAligned (const uint8_t* buf, int buf_size, int16_t* samples) {
 
-    init_get_bits (&mBitstream, buf + 4, (buf_size - 4)*8);
+    init_get_bits (&mBitstream, buf + 4, (buf_size - 4) * 8);
     if (mErrorProtection)
       get_bits (&mBitstream, 16);
 
@@ -2620,10 +2619,11 @@ private:
     mLastBufSize += i;
 
     // apply synthFilter
-    for (auto ch = 0; ch < mNumChannels; ch++) {
-      auto samplesPtr = samples + ch;
-      for (auto i = 0; i < numFrames; i++) {
-        synthFilter (mSynthBuffer[ch], &mSynthBufferOffset[ch], window, &mDitherState, samplesPtr, mNumChannels, mSbSamples[ch][i]);
+    for (auto channel = 0; channel < mNumChannels; channel++) {
+      auto samplesPtr = samples + channel;
+      for (auto frame = 0; frame < numFrames; frame++) {
+        synthFilter (mSynthBuffer[channel], &mSynthBufferOffset[channel], window, &mDitherState,
+                     samplesPtr, mNumChannels, mSbSamples[channel][frame]);
         samplesPtr += 32 * mNumChannels;
         }
       }

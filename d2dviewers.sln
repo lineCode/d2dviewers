@@ -13,7 +13,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "h264window", "h264window\h2
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mp3window", "mp3window\mp3window.vcxproj", "{CEA7C040-DE49-4415-8226-14C64D206C47}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpegView", "jpegView\jpegView.vcxproj", "{FF16C815-ADD6-4411-9CAD-032B0A4ED243}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpegWindow", "jpegWindow\jpegWindow.vcxproj", "{FF16C815-ADD6-4411-9CAD-032B0A4ED243}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

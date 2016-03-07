@@ -17,15 +17,15 @@
 
 #define maxAudFrames 500000
 
-class cAppWindow : public cD2dWindow {
+class cMp3window : public cD2dWindow {
 public:
   //{{{
-  cAppWindow() {
+  cMp3window() {
     mSilence = (int16_t*)malloc (2048*4);
     memset (mSilence, 0, 2048*4);
     }
   //}}}
-  ~cAppWindow() {}
+  ~cMp3window() {}
   //{{{
   void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
 
@@ -274,10 +274,10 @@ private:
       if (mPlaying) {
         winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
         mPlayAudFrame++;
+        changed();
         }
       else
         winAudioPlay (mSilence, 4096, 1.0f);
-      changed();
       }
 
     CoUninitialize();
@@ -295,12 +295,12 @@ private:
   cAudFrame* mAudFrames[maxAudFrames];
   };
 
-static cAppWindow appWindow;
+static cMp3window mp3Window;
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
   printf ("mp3wWindow/n");
 
-  appWindow.run (L"appWindow", 1280, 720, argv[1]);
+  mp3Window.run (L"appWindow", 1280, 720, argv[1]);
   }
 //}}}
