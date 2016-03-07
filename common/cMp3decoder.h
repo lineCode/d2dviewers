@@ -981,11 +981,14 @@ public:
             tmp_codes[(x << 5) | y | ((x&&y)<<4)]= h->codes[j++];
             }
 
-        initVlc (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2);
+        huff_vlc[i].bits = 7;
+        buildVlcTable (&huff_vlc[i], 7, 512, tmp_bits, 1, 1, tmp_codes, 2, 2, 0, 0);
         }
 
-      for (auto i = 0; i < 2; i++)
-        initVlc(&huff_quad_vlc[i], i == 0 ? 7 : 4, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1);
+      for (auto i = 0; i < 2; i++) {
+        huff_quad_vlc[i].bits = i ? 4 : 7;
+        buildVlcTable (&huff_quad_vlc[i],  i ? 4 : 7, 16, mp3_quad_bits[i], 1, 1, mp3_quad_codes[i], 1, 1, 0, 0);
+        }
 
       for (auto i = 0; i < 9; i++) {
         auto k = 0;
@@ -1068,47 +1071,32 @@ public:
 
 private:
   //{{{
-  #define GET_DATA(v, table, i, wrap, size) \
-  {\
-      const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
-      switch(size) {\
+  #define GET_DATA(v, table, i, wrap, size) {\
+    const uint8_t *ptr = (const uint8_t *)table + i * wrap;\
+    switch(size) {\
       case 1:\
-          v = *(const uint8_t *)ptr;\
-          break;\
+        v = *(const uint8_t *)ptr;\
+        break;\
       case 2:\
-          v = *(const uint16_t *)ptr;\
-          break;\
+        v = *(const uint16_t *)ptr;\
+        break;\
       default:\
-          v = *(const uint32_t *)ptr;\
-          break;\
+        v = *(const uint32_t *)ptr;\
+        break;\
       }\
-  }
-  //}}}
-  //{{{
-  int allocTable (vlc_t* vlc, int size) {
-
-    auto index = vlc->table_size;
-    vlc->table_size += size;
-
-    if (vlc->table_size > vlc->table_allocated) {
-      vlc->table_allocated += (1 << vlc->bits);
-      vlc->table = (int16_t(*)[2])
-        realloc (vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
-      if (!vlc->table)
-        return -1;
-      }
-
-    return index;
     }
   //}}}
   //{{{
-  int buildTable (vlc_t* vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
-                   const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
+  int buildVlcTable (vlc_t* vlc, int table_nb_bits, int nb_codes, const void *bits, int bits_wrap, int bits_size,
+                  const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
 
-    int table_size = 1 << table_nb_bits;
-    int table_index = allocTable (vlc, table_size);
-    if (table_index < 0)
-      return -1;
+    auto table_size = 1 << table_nb_bits;
+    auto table_index = vlc->table_size;
+    vlc->table_size += table_size;
+    if (vlc->table_size > vlc->table_allocated) {
+      vlc->table_allocated += (1 << vlc->bits);
+      vlc->table = (int16_t(*)[2])realloc (vlc->table, sizeof(int16_t) * 2 * vlc->table_allocated);
+      }
 
     int16_t (*table)[2] = &vlc->table[table_index];
     for (auto i = 0; i < table_size; i++) {
@@ -1156,8 +1144,8 @@ private:
           n = table_nb_bits;
           table[i][1] = -n; //bits
           }
-        int index = buildTable (vlc, n, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size,
-                                (code_prefix << table_nb_bits) | i, n_prefix + table_nb_bits);
+        int index = buildVlcTable (vlc, n, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size,
+                                   (code_prefix << table_nb_bits) | i, n_prefix + table_nb_bits);
         if (index < 0)
           return -1;
         table = &vlc->table[table_index];
@@ -1166,19 +1154,6 @@ private:
       }
 
     return table_index;
-    }
-  //}}}
-  //{{{
-  int initVlc (vlc_t* vlc, int nb_bits, int nb_codes, const void* bits, int bits_wrap, int bits_size,
-                const void *codes, int codes_wrap, int codes_size) {
-
-    vlc->bits = nb_bits;
-    if (buildTable (vlc, nb_bits, nb_codes, bits, bits_wrap, bits_size, codes, codes_wrap, codes_size, 0, 0) < 0) {
-      free (vlc->table);
-      return -1;
-      }
-
-    return 0;
     }
   //}}}
 
