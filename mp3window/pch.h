@@ -26,5 +26,14 @@
 #include <dwrite.h>
 #include <Wincodec.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+  #include <libavcodec/avcodec.h>
+  #include <libavformat/avformat.h>
+#ifdef __cplusplus
+}
+#endif
+
 using namespace Microsoft::WRL;
 using namespace D2D1;
