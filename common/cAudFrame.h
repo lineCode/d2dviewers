@@ -38,7 +38,7 @@ public:
       }
 
     if (!mSamples) {
-      mNumSampleBytes = mChannels * mNumSamples* 2;
+      mNumSampleBytes = mChannels * mNumSamples * 2;
       mSamples = (int16_t*)malloc (mNumSampleBytes);
       }
   #endif

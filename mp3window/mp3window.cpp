@@ -47,19 +47,19 @@ protected:
       case 0x00 : break;
       case 0x1B : return true;
 
-      case 0x20 : mPlaying = !mPlaying; break;
+      case 0x20 : togglePlaying(); break;
 
-      case 0x21 : mPlayAudFrame -= 5 * mAudFramesPerSec; changed(); break;
-      case 0x22 : mPlayAudFrame += 5 * mAudFramesPerSec; changed(); break;
+      case 0x21 : incPlaySecs (-5); changed(); break;
+      case 0x22: incPlaySecs(5); changed(); break;
 
-      case 0x23 : mPlayAudFrame = mLoadAudFrame - 1; changed(); break;
-      case 0x24 : mPlayAudFrame = 0; break;
+      case 0x23 : setPlaySecs (mMaxSecs); changed(); break;
+      case 0x24 : setPlaySecs (0); changed(); break;
 
-      case 0x25 : mPlayAudFrame -= 1 * mAudFramesPerSec; changed(); break;
-      case 0x27 : mPlayAudFrame += 1 * mAudFramesPerSec; changed(); break;
+      case 0x25 : incPlaySecs (-1); changed(); break;
+      case 0x27 : incPlaySecs (1); changed(); break;
 
-      case 0x26 : mPlaying = false; mPlayAudFrame -=2; changed(); break;
-      case 0x28 : mPlaying = false; mPlayAudFrame +=2; changed(); break;
+      case 0x26 : setPlaying (false); incPlaySecs (-mSecsPerFrame); changed(); break;
+      case 0x28 : setPlaying (false); incPlaySecs (mSecsPerFrame); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -70,7 +70,7 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    mPlayAudFrame -= xInc;
+    mPlaySecs -= xInc * mSecsPerFrame;
 
     changed();
     }
@@ -79,7 +79,7 @@ protected:
   void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 
     if (!mouseMoved)
-      mPlaying = !mPlaying;
+      togglePlaying();
     }
   //}}}
   //{{{
@@ -87,9 +87,9 @@ protected:
 
     dc->Clear (ColorF(ColorF::Black));
 
-    int rows = 8;
+    int rows = 6;
 
-    int frame = mPlayAudFrame;
+    int frame = int(mPlaySecs / mSecsPerFrame);
     for (int i = 0; i < rows; i++) {
       for (float f = 0.0f; f < getClientF().width; f++) {
         auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
@@ -103,7 +103,8 @@ protected:
       }
 
     wchar_t wStr[200];
-    swprintf (wStr, 200, L"helloColin %d %d", mLoadAudFrame, mPlayAudFrame);
+    swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
+              mPlaySecs, mLoadAudFrame* mSecsPerFrame, mBitRate/1000, mSampleRate, mChannels, mMode);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
     }
@@ -127,22 +128,40 @@ private:
       int16_t samples[1152*2];
       int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
       if (bytesUsed) {
+        mSampleRate = mMp3Decoder.getSampleRate();
+        mBitRate = mMp3Decoder.getBitRate();
+        mChannels = mMp3Decoder.getNumChannels();
+        mMode = mMp3Decoder.getMode();
+        mSecsPerFrame = 1152.0 / mSampleRate;
+        mMaxSecs = mLoadAudFrame * mSecsPerFrame;
+
         ptr += bytesUsed;
         bufferBytes -= bytesUsed;
 
-        mSampleRate = mMp3Decoder.getSampleRate();
         mAudFrames[mLoadAudFrame] = new cAudFrame();
         mAudFrames[mLoadAudFrame]->set (0, 2, mSampleRate, 1152);
         auto samplePtr = mAudFrames[mLoadAudFrame]->mSamples;
+
         auto valueL = 0.0;
         auto valueR = 0.0;
         auto lrPtr = samples;
-        for (auto i = 0; i < 1152; i++) {
-          *samplePtr = *lrPtr++;
-          valueL += pow (*samplePtr++, 2);
-          *samplePtr = *lrPtr++;
-          valueR += pow (*samplePtr++, 2);
-          }
+
+        if (mChannels == 1)
+          // fake stereo
+          for (auto i = 0; i < 1152; i++) {
+            *samplePtr = *lrPtr;
+            valueL += pow (*samplePtr++, 2);
+            *samplePtr = *lrPtr++;
+            valueR += pow (*samplePtr++, 2);
+            }
+        else
+          for (auto i = 0; i < 1152; i++) {
+            *samplePtr = *lrPtr++;
+            valueL += pow (*samplePtr++, 2);
+            *samplePtr = *lrPtr++;
+            valueR += pow (*samplePtr++, 2);
+            }
+
         mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
         mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
         mLoadAudFrame++;
@@ -269,11 +288,13 @@ private:
       Sleep (10);
     winAudioOpen (mSampleRate, 16, 2);
 
-    mPlayAudFrame = 0;
+    mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
-        winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
-        mPlayAudFrame++;
+        int audFrame = int (mPlaySecs / mSecsPerFrame);
+        winAudioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
+        if (mPlaySecs < mMaxSecs)
+          mPlaySecs += mSecsPerFrame;
         changed();
         }
       else
@@ -283,15 +304,72 @@ private:
     CoUninitialize();
     }
   //}}}
+  //{{{  iPlayer
+  //{{{
+  int getAudSampleRate() {
+     return mSampleRate;
+     }
+  //}}}
+  //{{{
+  double getSecsPerAudFrame() {
+    return mSecsPerFrame;
+    }
+  //}}}
+  //{{{
+  double getSecsPerVidFrame() {
+    return 0;
+    }
+  //}}}
+  //{{{
+  bool getPlaying() {
+    return mPlaying;
+    }
+  //}}}
+  //{{{
+  double getPlaySecs() {
+    return mPlaySecs;
+    }
+  //}}}
+  //{{{
+  void setPlaySecs (double secs) {
+    if (secs < 0)
+      mPlaySecs = 0;
+    else if (secs > mMaxSecs)
+      mPlaySecs = mMaxSecs;
+    else
+      mPlaySecs = secs;
+    }
+  //}}}
+  //{{{
+  void incPlaySecs (double inc) {
+    setPlaySecs (mPlaySecs + inc);
+    }
+  //}}}
+  //{{{
+  void setPlaying (bool playing) {
+    mPlaying = playing;
+    }
+  //}}}
+  //{{{
+  void togglePlaying() {
+    setPlaying (!mPlaying);
+    }
+  //}}}
+  //}}}
 
-  int16_t* mSilence;
+  int mSampleRate = 0;
+  int mBitRate = 0;
+  int mChannels = 0;
+  int mMode = 0;
 
   bool mPlaying = true;
-  int mSampleRate = 0;
+  int16_t* mSilence;
 
-  int mPlayAudFrame = 0;
+  double mPlaySecs = 0;
+  double mMaxSecs = 0;
+  double mSecsPerFrame = 1.0;
+
   int mLoadAudFrame = 0;
-  int mAudFramesPerSec = 50;
   cAudFrame* mAudFrames[maxAudFrames];
   };
 
@@ -301,6 +379,6 @@ int wmain (int argc, wchar_t* argv[]) {
 
   printf ("mp3wWindow/n");
 
-  mp3Window.run (L"appWindow", 1280, 720, argv[1]);
+  mp3Window.run (L"mp3window", 1280, 720, argv[1]);
   }
 //}}}

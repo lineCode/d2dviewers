@@ -1,4 +1,4 @@
-// cMp3decoder.h - hacked minimp3 - audio book mode broken
+// cMp3decoder.h - hacked minimp3 - audio book mode broken mono ?
 #pragma once
 //{{{  includes
 #include <stdio.h>
@@ -1043,6 +1043,7 @@ public:
   int getNumChannels() { return mNumChannels; }
   int getSampleRate() { return mSampleRate; }
   int getBitRate() { return mBitRate; }
+  int getMode() { return mModeExt; }
   //{{{
   int decodeFrame (uint8_t* buffer, int bufferBytes, int16_t* samples) {
 
