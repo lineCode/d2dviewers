@@ -28,8 +28,6 @@
 #define MULH(a,b)   (((int64_t)(a) * (int64_t)(b)) >> 32)
 #define MULS(ra,rb) ((ra) * (rb))
 
-#define TABLE_4_3_SIZE (8191 + 16)*4
-
 //{{{
 #define SUM8(sum, op, w, p) {\
   sum op MULS((w)[0 * 64], p[0 * 64]);\
@@ -887,10 +885,9 @@ public:
 
     if (!table_4_3_exp) {
       //{{{  compute n ^ (4/3) and store it in mantissa/exp format
-      table_4_3_exp = (int8_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_exp[0]));
-      table_4_3_value = (uint32_t*)malloc (TABLE_4_3_SIZE * sizeof(table_4_3_value[0]));
-
-      for (auto i = 1; i < TABLE_4_3_SIZE; i++) {
+      table_4_3_exp = (int8_t*)malloc ((8191 + 16)*4 * sizeof(table_4_3_exp[0]));
+      table_4_3_value = (uint32_t*)malloc ((8191 + 16)*4 * sizeof(table_4_3_value[0]));
+      for (auto i = 1; i < (8191 + 16) * 4; i++) {
         int e;
         auto f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
         auto fm = frexp (f, &e);
@@ -2636,7 +2633,7 @@ private:
   bitstream_t mInBitstream;
 
   int mLastBufSize = 0;
-  uint8_t mLastBuf [2*512 + 24];
+  uint8_t mLastBuf[2*512 + 24];
 
   int mBitRate = 0;
   int mNumChannels = 0;
@@ -2648,10 +2645,10 @@ private:
   int mDitherState = 0;
   int mErrorProtection = 0;
 
-  int mSynthBufferOffset [2] = {0,0};
-  int16_t mSynthBuffer [2][512 * 2];
-  int32_t mSbSamples [2][36][SBLIMIT];
-  int32_t mMdctBuf [2][SBLIMIT * 18];
+  int mSynthBufferOffset[2] = {0,0};
+  int16_t mSynthBuffer[2][512 * 2];
+  int32_t mSbSamples[2][36][SBLIMIT];
+  int32_t mMdctBuf[2][SBLIMIT * 18];
 
   int16_t mExponents[576];
   granule_t mGranules[2][2];
