@@ -103,8 +103,7 @@ protected:
       }
 
     wchar_t wStr[200];
-    swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
-              mPlaySecs, mLoadAudFrame* mSecsPerFrame, mBitRate/1000, mSampleRate, mChannels, mMode);
+    swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x", mPlaySecs, mMaxSecs, mBitRate/1000, mSampleRate, mChannels, mMode);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
     }
@@ -124,6 +123,7 @@ private:
     cMp3Decoder mMp3Decoder;
     auto ptr = fileBuffer;
     auto bufferBytes = mFileBytes;
+    int mLoadAudFrame = 0;
     while (bufferBytes > 0) {
       int16_t samples[1152*2];
       int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
@@ -176,6 +176,7 @@ private:
   //{{{
   void loaderffmpeg (wchar_t* wFilename) {
 
+    int mLoadAudFrame = 0;
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     int mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
@@ -284,7 +285,7 @@ private:
 
     CoInitialize (NULL);  // for winAudio
 
-    while (mLoadAudFrame < 8)
+    while (mMaxSecs < 8)
       Sleep (10);
     winAudioOpen (mSampleRate, 16, 2);
 
@@ -369,7 +370,6 @@ private:
   double mMaxSecs = 0;
   double mSecsPerFrame = 1.0;
 
-  int mLoadAudFrame = 0;
   cAudFrame* mAudFrames[maxAudFrames];
   };
 

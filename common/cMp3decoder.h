@@ -1507,7 +1507,7 @@ private:
       gains[2] = gain - (g->subblock_gain[2] << 3);
       auto k = g->long_end;
       for (auto i = g->short_start; i < 13; i++) {
-        int len = bstab[i];
+        auto len = bstab[i];
         for (auto l = 0; l < 3; l++) {
           auto v0 = gains[l] - (g->scale_factors[k++] << shift) + 400;
           for (auto j = len; j > 0; j--)
