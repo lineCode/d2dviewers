@@ -61,13 +61,13 @@ public:
   void audOpen (int sampleFreq, int bitsPerSample, int channels) {
 
     // create the XAudio2 engine.
-    HRESULT hr = XAudio2Create (&xAudio2);
+    HRESULT hr = XAudio2Create (&mxAudio2);
     if (hr != S_OK) {
       printf ("XAudio2Create failed\n");
       return;
       }
 
-    hr = xAudio2->CreateMasteringVoice (&xAudio2MasteringVoice, 2, 48000);
+    hr = mxAudio2->CreateMasteringVoice (&mxAudio2MasteringVoice, 2, 48000);
     if (hr != S_OK) {
       printf ("CreateMasteringVoice failed\n");
       return;
@@ -82,15 +82,14 @@ public:
     waveformatex.nBlockAlign     = waveformatex.nChannels * waveformatex.wBitsPerSample/8;
     waveformatex.nAvgBytesPerSec = waveformatex.nSamplesPerSec * waveformatex.nChannels * waveformatex.wBitsPerSample/8;
 
-    hr = xAudio2->CreateSourceVoice (&xAudio2SourceVoice, &waveformatex,
-                                     0, XAUDIO2_DEFAULT_FREQ_RATIO,
-                                     &audio2VoiceCallback, nullptr, nullptr);
+    hr = mxAudio2->CreateSourceVoice (&mxAudio2SourceVoice, &waveformatex,
+                                      0, XAUDIO2_DEFAULT_FREQ_RATIO, &mAudio2VoiceCallback, nullptr, nullptr);
     if (hr != S_OK) {
       printf ("CreateSourceVoice failed\n");
       return;
       }
 
-    xAudio2SourceVoice->Start();
+    mxAudio2SourceVoice->Start();
     }
   //}}}
   //{{{
@@ -101,11 +100,11 @@ public:
 
     // copy data, it can be reused before we play it
     // - can reverse if needed
-    buffers[bufferIndex] = (uint8_t*)realloc (buffers[bufferIndex], len);
+    mBuffers[mBufferIndex] = (uint8_t*)realloc (mBuffers[mBufferIndex], len);
     if (mVolume == 1.0f)
-      memcpy (buffers[bufferIndex], src, len);
+      memcpy (mBuffers[mBufferIndex], src, len);
     else {
-      auto dst = (int16_t*)buffers[bufferIndex];
+      auto dst = (int16_t*)mBuffers[mBufferIndex];
       for (auto i = 0; i < len/ 2; i++)
         *dst++ = (int16_t)(*src++ * mVolume);
       }
@@ -114,25 +113,25 @@ public:
     XAUDIO2_BUFFER xAudio2_buffer;
     memset ((void*)&xAudio2_buffer, 0, sizeof (XAUDIO2_BUFFER));
     xAudio2_buffer.AudioBytes = len;
-    xAudio2_buffer.pAudioData = buffers[bufferIndex];
-    HRESULT hr = xAudio2SourceVoice->SubmitSourceBuffer (&xAudio2_buffer);
+    xAudio2_buffer.pAudioData = mBuffers[mBufferIndex];
+    HRESULT hr = mxAudio2SourceVoice->SubmitSourceBuffer (&xAudio2_buffer);
     if (hr != S_OK) {
       printf ("XAudio2 - SubmitSourceBufferCreate failed\n");
       return;
       }
 
-    //printf ("winAudioPlay %3.1f\n", pitch);
+    // printf ("winAudioPlay %3.1f\n", pitch);
     if ((pitch > 0.005f) && (pitch < 4.0f))
-      xAudio2SourceVoice->SetFrequencyRatio (pitch, XAUDIO2_COMMIT_NOW);
+      mxAudio2SourceVoice->SetFrequencyRatio (pitch, XAUDIO2_COMMIT_NOW);
 
     // cycle round buffers
-    bufferIndex = (bufferIndex+1) % NUM_BUFFERS;
+    mBufferIndex = (mBufferIndex+1) % NUM_BUFFERS;
 
     // wait for buffer free if none left
     XAUDIO2_VOICE_STATE xAudio_voice_state;
-    xAudio2SourceVoice->GetState (&xAudio_voice_state);
+    mxAudio2SourceVoice->GetState (&xAudio_voice_state);
     if (xAudio_voice_state.BuffersQueued >= NUM_BUFFERS)
-      WaitForSingleObject (audio2VoiceCallback.hBufferEndEvent, INFINITE);
+      WaitForSingleObject (mAudio2VoiceCallback.hBufferEndEvent, INFINITE);
     }
   //}}}
   //{{{
@@ -144,8 +143,8 @@ public:
   //{{{
   void audClose() {
 
-    HRESULT hr = xAudio2SourceVoice->Stop();
-    hr = xAudio2->Release();
+    HRESULT hr = mxAudio2SourceVoice->Stop();
+    hr = mxAudio2->Release();
     }
   //}}}
 
@@ -153,12 +152,12 @@ private:
   float mVolume = 1.0f;
   int16_t* mSilence;
 
-  IXAudio2* xAudio2;
-  IXAudio2MasteringVoice* xAudio2MasteringVoice;
-  IXAudio2SourceVoice* xAudio2SourceVoice;
+  IXAudio2* mxAudio2;
+  IXAudio2MasteringVoice* mxAudio2MasteringVoice;
+  IXAudio2SourceVoice* mxAudio2SourceVoice;
 
-  int bufferIndex = 0;
-  BYTE* buffers [NUM_BUFFERS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+  int mBufferIndex = 0;
+  BYTE* mBuffers [NUM_BUFFERS] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
-  cAudio2VoiceCallback audio2VoiceCallback;
+  cAudio2VoiceCallback mAudio2VoiceCallback;
   };
