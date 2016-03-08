@@ -51,10 +51,8 @@ public:
   //{{{
   ~cHlsChunk() {
 
-    if (mAudPower)
-      free (mAudPower);
-    if (mAudSamples)
-      vPortFree (mAudSamples);
+    free (mAudPower);
+    vPortFree (mAudSamples);
 
   #ifdef WIN32
     if (svcDecoder) {

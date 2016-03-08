@@ -45,8 +45,7 @@ public:
     mSampleRate = 0;
 
     mNumSampleBytes = 0;
-    if (mSamples)
-      free (mSamples);
+    free (mSamples);
     mSamples = nullptr;
     }
   //}}}
