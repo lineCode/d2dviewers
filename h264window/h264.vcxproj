@@ -20,12 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="..\ldecod\annexb.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
@@ -356,7 +350,6 @@
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cMpeg2decoder.h" />
     <ClInclude Include="..\common\cYuvFrame.h" />
-    <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="..\ldecod\inc\annexb.h" />
     <ClInclude Include="..\ldecod\inc\biaridecod.h" />
     <ClInclude Include="..\ldecod\inc\blk_prediction.h" />

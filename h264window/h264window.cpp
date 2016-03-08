@@ -3,7 +3,6 @@
 #include "pch.h"
 
 #include "../common/cAudFrame.h"
-#include "../common/winAudio.h"
 
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
@@ -380,25 +379,6 @@ private:
 
     UnmapViewOfFile (fileBuffer);
     CloseHandle (fileHandle);
-    }
-  //}}}
-  //{{{
-  void audioPlayer() {
-
-    CoInitialize (NULL);  // for winAudio
-
-    while (mLoadAudFrame < 8)
-      Sleep(10);
-    winAudioOpen (mSampleRate, 16, 2);
-
-    mPlayAudFrame = 0;
-    while (true) {
-      winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f, 1.0f);
-      mPlayAudFrame++;
-      changed();
-      }
-
-    CoUninitialize();
     }
   //}}}
 

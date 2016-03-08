@@ -163,7 +163,6 @@
       <Filter>h264lib</Filter>
     </ClCompile>
     <ClCompile Include="h264window.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
@@ -338,9 +337,6 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cMpeg2decoder.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\winAudio.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

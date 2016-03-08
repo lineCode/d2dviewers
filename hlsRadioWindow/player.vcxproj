@@ -242,12 +242,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="cHlsRadioWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -398,9 +392,9 @@
     <ClInclude Include="..\common\cHttp.h" />
     <ClInclude Include="..\common\cParsedUrl.h" />
     <ClInclude Include="..\common\cRadioChan.h" />
+    <ClInclude Include="..\common\cVolume.h" />
     <ClInclude Include="..\common\cYuvFrame.h" />
     <ClInclude Include="..\common\iPlayer.h" />
-    <ClInclude Include="..\common\winAudio.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

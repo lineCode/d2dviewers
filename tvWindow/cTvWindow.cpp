@@ -12,7 +12,7 @@
 #include "../common/cMpeg2decoder.h"
 
 #include "../common/cAudFrame.h"
-#include "../common/winAudio.h"
+#include "../common/cAudio.h"
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
@@ -443,7 +443,7 @@ private:
   };
 //}}}
 
-class cTvWindow : public cD2dWindow {
+class cTvWindow : public cD2dWindow, public cAudio {
 public:
   //{{{
   cTvWindow() {
@@ -523,6 +523,18 @@ bool onKey (int key) {
   }
 //}}}
 //{{{
+void onMouseWheel (int delta) {
+
+  auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+  if (delta > 0)
+    ratio = 1.0f/ratio;
+
+  setVolume (getVolume() * ratio);
+
+  changed();
+  }
+//}}}
+//{{{
 void onMouseProx (bool inClient, int x, int y) {
 
   auto showChannel = mShowChannel;
@@ -598,6 +610,10 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
   dc->FillRectangle (rMid, getGreyBrush());
+
+  // yellow vol bar
+  auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
+  dc->FillRectangle (rVol, getYellowBrush());
 
   // draw title
   wchar_t wStr[200];
@@ -831,7 +847,7 @@ private:
 
     CoInitialize (NULL);  // for winAudio
 
-    winAudioOpen (48000, 16, 2);
+    audioOpen (48000, 16, 2);
 
     mPlayAudFrame = 0;
     while (true) {
@@ -841,12 +857,12 @@ private:
       // could mChannelSelector samples
 
       if (mPlaying && samples) {
-        winAudioPlay (samples, numSampleBytes, 1.0f, 1.0f);
+        audioPlay (samples, numSampleBytes, 1.0f);
         mPlayAudFrame++;
         changed();
         }
       else
-        winAudioPlay (mSilence, 4096, 1.0f, 1.0f);
+        audioPlay (mSilence, 4096, 1.0f);
       }
 
     CoUninitialize();

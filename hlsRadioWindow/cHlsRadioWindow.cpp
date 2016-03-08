@@ -8,7 +8,6 @@
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
-#include "../common/winAudio.h"
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
@@ -21,11 +20,11 @@
 #include "codec_api.h"
 #pragma comment(lib,"welsdec.lib")
 
-#include "../common/cVolume.h"
+#include "../common/cAudio.h"
 #include "../common/cHlsRadio.h"
 //}}}
 
-class cHlsRadioWindow : public cD2dWindow, public cVolume {
+class cHlsRadioWindow : public cD2dWindow, public cAudio {
 public:
   //{{{
   cHlsRadioWindow() {
@@ -264,13 +263,13 @@ private:
   void player() {
 
     CoInitialize (NULL);
-    winAudioOpen (mPlayer->getAudSampleRate(), 16, 2);
+    audioOpen (mPlayer->getAudSampleRate(), 16, 2);
 
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
       auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
-      winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1.0f, getVolume());
+      audioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1.0f);
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
       if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {
@@ -285,7 +284,7 @@ private:
         }
       }
 
-    winAudioClose();
+    audioClose();
     CoUninitialize();
     }
   //}}}

@@ -6,8 +6,7 @@
 #include "../common/cD2dWindow.h"
 
 #include "../common/cAudFrame.h"
-#include "../common/winAudio.h"
-#include "../common/cVolume.h"
+#include "../common/cAudio.h"
 
 #include "../common/cMp3decoder.h"
 
@@ -18,7 +17,7 @@
 
 #define maxAudFrames 500000
 
-class cMp3window : public cD2dWindow, public cVolume {
+class cMp3window : public cD2dWindow, public cAudio {
 public:
   //{{{
   cMp3window() {
@@ -305,20 +304,20 @@ private:
     while (mMaxSecs < 1)
       Sleep (10);
 
-    winAudioOpen (mSampleRate, 16, 2);
+    audioOpen (mSampleRate, 16, 2);
 
     mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
         int audFrame = int (mPlaySecs / mSecsPerFrame);
-        winAudioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f, getVolume());
+        audioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
         if (mPlaySecs < mMaxSecs) {
           mPlaySecs += mSecsPerFrame;
           changed();
           }
         }
       else
-        winAudioPlay (mSilence, 4096, 1.0f, 1.0f);
+        audioPlay (mSilence, 4096, 1.0f);
       }
 
     CoUninitialize();

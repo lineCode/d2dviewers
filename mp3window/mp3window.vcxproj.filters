@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="mp3window.cpp" />
     <ClCompile Include="pch.cpp" />
   </ItemGroup>
@@ -10,10 +9,10 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\winAudio.h">
+    <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="pch.h">
+    <ClInclude Include="..\common\cVolume.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

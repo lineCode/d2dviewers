@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="..\common\Xaudio2.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cTvWindow.cpp" />
   </ItemGroup>
@@ -19,9 +18,6 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\winAudio.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\cAudFrame.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -35,6 +31,9 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cMpeg2decoder.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\cVolume.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
