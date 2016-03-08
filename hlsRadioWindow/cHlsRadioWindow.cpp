@@ -23,8 +23,6 @@
 
 #include "../common/cVolume.h"
 #include "../common/cHlsRadio.h"
-
-#include "../common/yuvrgb_sse2.h"
 //}}}
 
 class cHlsRadioWindow : public cD2dWindow, public cVolume {

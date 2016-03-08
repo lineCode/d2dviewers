@@ -238,6 +238,7 @@ public:
     }
   //}}}
 
+  // vars
   cDecodeContext* mDecodeContexts[maxVidDecodes];
   int mSelectedVidPid = 0;
 

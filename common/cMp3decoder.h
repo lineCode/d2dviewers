@@ -1,4 +1,4 @@
-// cMp3decoder.h - hacked minimp3 - audio book mode broken mono ?
+// cMp3decoder.h - hacked minimp3 - audio book mp3s broken -  mono ?
 #pragma once
 //{{{  includes
 #include <stdio.h>

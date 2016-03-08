@@ -34,7 +34,6 @@ public:
     std::thread ([=]() { loader (wFilename); }).detach();
     std::thread ([=]() { player(); }).detach();
 
-    // loop in windows message pump till quit
     messagePump();
     };
   //}}}
@@ -124,7 +123,7 @@ private:
     auto ptr = fileBuffer;
     auto bufferBytes = mFileBytes;
     int mLoadAudFrame = 0;
-    while (bufferBytes > 0) {
+    while ((bufferBytes > 0) && (mLoadAudFrame < maxAudFrames)) {
       int16_t samples[1152*2];
       int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
       if (bytesUsed) {
@@ -176,7 +175,6 @@ private:
   //{{{
   void loaderffmpeg (wchar_t* wFilename) {
 
-    int mLoadAudFrame = 0;
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     int mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
@@ -197,6 +195,7 @@ private:
 
     int pesLen = mFileBytes;
     uint8_t* pesPtr = fileBuffer;
+    int mLoadAudFrame = 0;
     while (pesLen) {
       auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
       pesPtr += lenUsed;
@@ -366,8 +365,8 @@ private:
   bool mPlaying = true;
   int16_t* mSilence;
 
-  double mPlaySecs = 0;
   double mMaxSecs = 0;
+  double mPlaySecs = 0;
   double mSecsPerFrame = 1.0;
 
   cAudFrame* mAudFrames[maxAudFrames];
@@ -376,8 +375,6 @@ private:
 static cMp3window mp3Window;
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
-
-  printf ("mp3wWindow/n");
 
   mp3Window.run (L"mp3window", 1280, 720, argv[1]);
   }
