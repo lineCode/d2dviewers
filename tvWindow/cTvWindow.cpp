@@ -841,12 +841,12 @@ private:
       // could mChannelSelector samples
 
       if (mPlaying && samples) {
-        winAudioPlay (samples, numSampleBytes, 1.0f);
+        winAudioPlay (samples, numSampleBytes, 1.0f, 1.0f);
         mPlayAudFrame++;
         changed();
         }
       else
-        winAudioPlay (mSilence, 4096, 1.0f);
+        winAudioPlay (mSilence, 4096, 1.0f, 1.0f);
       }
 
     CoUninitialize();

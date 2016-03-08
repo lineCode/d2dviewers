@@ -7,6 +7,7 @@
 
 #include "../common/cAudFrame.h"
 #include "../common/winAudio.h"
+#include "../common/cVolume.h"
 
 #include "../common/cMp3decoder.h"
 
@@ -17,7 +18,7 @@
 
 #define maxAudFrames 500000
 
-class cMp3window : public cD2dWindow {
+class cMp3window : public cD2dWindow, public cVolume {
 public:
   //{{{
   cMp3window() {
@@ -67,10 +68,24 @@ protected:
     }
   //}}}
   //{{{
+  void onMouseWheel (int delta) {
+
+    auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+    if (delta > 0)
+      ratio = 1.0f/ratio;
+
+    setVolume (getVolume() * ratio);
+
+    changed();
+    }
+  //}}}
+  //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    mPlaySecs -= xInc * mSecsPerFrame;
-
+    if (x > int(getClientF().width-20))
+      setVolume (y / (getClientF().height * 0.8f));
+    else
+      incPlaySecs (-xInc * getSecsPerAudFrame());
     changed();
     }
   //}}}
@@ -86,8 +101,11 @@ protected:
 
     dc->Clear (ColorF(ColorF::Black));
 
-    int rows = 6;
+    // yellow vol bar
+    auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
+    dc->FillRectangle (rVol, getYellowBrush());
 
+    int rows = 6;
     int frame = int(mPlaySecs / mSecsPerFrame);
     for (int i = 0; i < rows; i++) {
       for (float f = 0.0f; f < getClientF().width; f++) {
@@ -284,21 +302,23 @@ private:
 
     CoInitialize (NULL);  // for winAudio
 
-    while (mMaxSecs < 8)
+    while (mMaxSecs < 1)
       Sleep (10);
+
     winAudioOpen (mSampleRate, 16, 2);
 
     mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
         int audFrame = int (mPlaySecs / mSecsPerFrame);
-        winAudioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
-        if (mPlaySecs < mMaxSecs)
+        winAudioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f, getVolume());
+        if (mPlaySecs < mMaxSecs) {
           mPlaySecs += mSecsPerFrame;
-        changed();
+          changed();
+          }
         }
       else
-        winAudioPlay (mSilence, 4096, 1.0f);
+        winAudioPlay (mSilence, 4096, 1.0f, 1.0f);
       }
 
     CoUninitialize();

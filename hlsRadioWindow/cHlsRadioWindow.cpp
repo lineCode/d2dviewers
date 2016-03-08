@@ -112,10 +112,8 @@ protected:
 
     auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
     if (delta > 0)
-      ratio = 1.0f/ratio;
-
-    setVolume ((int)(getVolume() * ratio));
-
+      ratio = 1.0f / ratio;
+    setVolume (getVolume() * ratio);
     changed();
     }
   //}}}
@@ -154,7 +152,7 @@ protected:
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     if (x > int(getClientF().width-20))
-      setVolume (int(y * 100 / getClientF().height));
+      setVolume (y / (getClientF().height * 0.8f));
     else
       mPlayer->incPlaySecs (-xInc * mPlayer->getSecsPerAudFrame());
     }
@@ -179,7 +177,7 @@ protected:
     dc->FillRectangle (rMid, getGreyBrush());
 
     // yellow vol bar
-    auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * getClientF().height/100);
+    auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
     dc->FillRectangle (rVol, getYellowBrush());
 
     // waveform
@@ -272,11 +270,7 @@ private:
     while (true) {
       int seqNum;
       auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
-      if (audSamples && (getVolume() != 80))
-        for (auto i = 0; i < 4096; i++)
-          audSamples[i] = (audSamples[i] * getVolume()) / 80;
-
-      winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1);
+      winAudioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1.0f, getVolume());
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
       if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {

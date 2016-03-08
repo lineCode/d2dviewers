@@ -393,7 +393,7 @@ private:
 
     mPlayAudFrame = 0;
     while (true) {
-      winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f);
+      winAudioPlay (mAudFrames[mPlayAudFrame]->mSamples, mAudFrames[mPlayAudFrame]->mNumSampleBytes, 1.0f, 1.0f);
       mPlayAudFrame++;
       changed();
       }

@@ -3,6 +3,7 @@
 #include "winAudio.h"
 
 #include <stdio.h>
+#include <stdint.h>
 #include <xaudio2.h>
 
 #pragma comment(lib,"Xaudio2.lib")
@@ -72,12 +73,19 @@ void winAudioOpen (int sampleFreq, int bitsPerSample, int channels) {
   }
 //}}}
 //{{{
-void winAudioPlay (const void* data, int len, float pitch) {
+void winAudioPlay (const void* data, int len, float pitch, float volume) {
 
   // copy data, it can be reused before we play it
   // - can reverse if needed
   buffers[bufferIndex] = (BYTE*)realloc (buffers[bufferIndex], len);
-  memcpy (buffers[bufferIndex], data, len);
+  if (volume == 1.0f) 
+    memcpy (buffers[bufferIndex], data, len);
+  else {
+    auto src = (int16_t*)data;
+    auto dst = (int16_t*)buffers[bufferIndex];
+    for (auto i = 0; i < len/ 2; i++)
+      *dst++ = (int16_t)(*src++ * volume);
+    }
 
   // queue buffer
   XAUDIO2_BUFFER xAudio2_buffer;

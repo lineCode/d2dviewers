@@ -1,27 +1,24 @@
-// cPlayer.h
+// cVolume.h
 #pragma once
 
 class cVolume {
 public:
-  cVolume() : mVolume(80) {}
+  cVolume() {}
   virtual ~cVolume() {}
 
-  //{{{
-  int getVolume() {
+  float getVolume() {
     return mVolume;
     }
-  //}}}
-  //{{{
-  void setVolume (int volume) {
+
+  void setVolume (float volume) {
     if (volume < 0)
       mVolume = 0;
-    else if (volume > 100)
-      mVolume = 100;
+    else if (volume > 100.0f)
+      mVolume = 100.0f;
     else
       mVolume = volume;
     }
-  //}}}
 
 private:
-  int mVolume;
+  float mVolume = 1.0f;
   };
