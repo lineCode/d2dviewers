@@ -40,8 +40,6 @@ public:
   void run (wchar_t* title, int width, int height, int channel) {
 
     mChangeToChannel = channel-1;
-    mSilence = (int16_t*)pvPortMalloc (4096);
-    memset (mSilence, 0, 4096);
 
     mPlayer = new cHlsRadio();
 
@@ -263,13 +261,13 @@ private:
   void player() {
 
     CoInitialize (NULL);
-    audioOpen (mPlayer->getAudSampleRate(), 16, 2);
+    audOpen (mPlayer->getAudSampleRate(), 16, 2);
 
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
       auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
-      audioPlay ((mPlayer->getPlaying() && audSamples) ? audSamples : mSilence, 4096, 1.0f);
+      (mPlayer->getPlaying() && audSamples) ? audPlay (audSamples, 4096, 1.0f) : audSilence();
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
       if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {
@@ -284,7 +282,7 @@ private:
         }
       }
 
-    audioClose();
+    audClose();
     CoUninitialize();
     }
   //}}}
@@ -313,7 +311,6 @@ private:
 
   bool mShowChannel = false;
   HANDLE mSemaphore;
-  int16_t* mSilence = nullptr;
 
   int64_t mBitmapPts = 0;
   cYuvFrame* mVidFrame = nullptr;

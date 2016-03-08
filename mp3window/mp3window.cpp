@@ -19,12 +19,7 @@
 
 class cMp3window : public cD2dWindow, public cAudio {
 public:
-  //{{{
-  cMp3window() {
-    mSilence = (int16_t*)malloc (2048*4);
-    memset (mSilence, 0, 2048*4);
-    }
-  //}}}
+  cMp3window() {}
   ~cMp3window() {}
   //{{{
   void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
@@ -304,20 +299,20 @@ private:
     while (mMaxSecs < 1)
       Sleep (10);
 
-    audioOpen (mSampleRate, 16, 2);
+    audOpen (mSampleRate, 16, 2);
 
     mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
         int audFrame = int (mPlaySecs / mSecsPerFrame);
-        audioPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
+        audPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
         if (mPlaySecs < mMaxSecs) {
           mPlaySecs += mSecsPerFrame;
           changed();
           }
         }
       else
-        audioPlay (mSilence, 4096, 1.0f);
+        audSilence();
       }
 
     CoUninitialize();
@@ -382,7 +377,6 @@ private:
   int mMode = 0;
 
   bool mPlaying = true;
-  int16_t* mSilence;
 
   double mMaxSecs = 0;
   double mPlaySecs = 0;

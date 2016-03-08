@@ -447,9 +447,6 @@ class cTvWindow : public cD2dWindow, public cAudio {
 public:
   //{{{
   cTvWindow() {
-    mSilence = (int16_t*)malloc (2048*4);
-    memset (mSilence, 0, 2048*4);
-
     for (auto i = 0; i < 10; i++) {
       mBitmaps[i] = nullptr;
       mBitmapPts[i] = 0;
@@ -847,7 +844,7 @@ private:
 
     CoInitialize (NULL);  // for winAudio
 
-    audioOpen (48000, 16, 2);
+    audOpen (48000, 16, 2);
 
     mPlayAudFrame = 0;
     while (true) {
@@ -857,12 +854,12 @@ private:
       // could mChannelSelector samples
 
       if (mPlaying && samples) {
-        audioPlay (samples, numSampleBytes, 1.0f);
+        audPlay (samples, numSampleBytes, 1.0f);
         mPlayAudFrame++;
         changed();
         }
       else
-        audioPlay (mSilence, 4096, 1.0f);
+        audSilence();
       }
 
     CoUninitialize();
@@ -872,7 +869,6 @@ private:
   //{{{  vars
   cDecodeTransportStream mTs;
 
-  int16_t* mSilence;
   int mChannelSelector = 0;
 
   int64_t mAudPts = 0;

@@ -29,8 +29,17 @@ public:
 
 class cAudio {
 public:
-  cAudio() {}
-  virtual ~cAudio() {}
+  //{{{
+  cAudio() {
+    mSilence = (int16_t*)malloc (2048*4);
+    memset (mSilence, 0, 2048*4);
+    }
+  //}}}
+  //{{{
+  virtual ~cAudio() {
+    free (mSilence);
+    }
+  //}}}
 
   //{{{
   float getVolume() {
@@ -49,7 +58,7 @@ public:
   //}}}
 
   //{{{
-  void audioOpen (int sampleFreq, int bitsPerSample, int channels) {
+  void audOpen (int sampleFreq, int bitsPerSample, int channels) {
 
     // create the XAudio2 engine.
     HRESULT hr = XAudio2Create (&xAudio2);
@@ -85,15 +94,17 @@ public:
     }
   //}}}
   //{{{
-  void audioPlay (const void* data, int len, float pitch) {
+  void audPlay (int16_t* src, int len, float pitch) {
+
+    if (!src)
+      src = mSilence;
 
     // copy data, it can be reused before we play it
     // - can reverse if needed
-    buffers[bufferIndex] = (BYTE*)realloc (buffers[bufferIndex], len);
+    buffers[bufferIndex] = (uint8_t*)realloc (buffers[bufferIndex], len);
     if (mVolume == 1.0f)
-      memcpy (buffers[bufferIndex], data, len);
+      memcpy (buffers[bufferIndex], src, len);
     else {
-      auto src = (int16_t*)data;
       auto dst = (int16_t*)buffers[bufferIndex];
       for (auto i = 0; i < len/ 2; i++)
         *dst++ = (int16_t)(*src++ * mVolume);
@@ -125,7 +136,13 @@ public:
     }
   //}}}
   //{{{
-  void audioClose() {
+  void audSilence() {
+
+    audPlay (mSilence, 4096, 1.0f);
+    }
+  //}}}
+  //{{{
+  void audClose() {
 
     HRESULT hr = xAudio2SourceVoice->Stop();
     hr = xAudio2->Release();
@@ -134,6 +151,7 @@ public:
 
 private:
   float mVolume = 1.0f;
+  int16_t* mSilence;
 
   IXAudio2* xAudio2;
   IXAudio2MasteringVoice* xAudio2MasteringVoice;
