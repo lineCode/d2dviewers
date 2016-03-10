@@ -20,26 +20,71 @@ typedef void (cJpegWindow::*cJpegWindowImageFunc)(cJpegImage* image);
 //}}}
 
 //{{{
-class cJpegDirectory {
+class cJpegFiles {
 public:
-  cJpegDirectory() {}
+  cJpegFiles() {}
+
+  //{{{
+  void scanFiles (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
+                  int& numItems, int& numDirectories, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
+  // directoryName is findFileData.cFileName wchar_t*
+
+    mDirectoryName = directoryName;
+    mFullDirectoryName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
+    auto searchStr (mFullDirectoryName +  L"\\*");
+
+    WIN32_FIND_DATA findFileData;
+    auto file = FindFirstFileEx (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                 FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
+            (findFileData.cFileName[0] != L'.'))  {
+          auto directory = new cJpegFiles();
+          directory->scanFiles (mFullDirectoryName, findFileData.cFileName, pathMatchName, numItems, numDirectories,
+                                jpegWindow, func);
+          mDirectories.push_back (directory);
+          }
+        else if (PathMatchSpec (findFileData.cFileName, pathMatchName))
+          mItems.push_back (new cJpegImage (mFullDirectoryName, findFileData.cFileName));
+        } while (FindNextFile (file, &findFileData));
+      FindClose (file);
+      }
+
+    numItems += (int)mItems.size();
+    numDirectories += (int)mDirectories.size();
+
+    //printf ("%d %d %ls %ls\n", (int)mImages.size(), (int)mDirectories.size(), mName, mFullName);
+    (jpegWindow->*func)();
+    }
+  //}}}
+
   //{{{
   cJpegImage* pick (D2D1_POINT_2F& point) {
 
     for (auto directory : mDirectories) {
-      auto pickedImage = directory->pick (point);
-      if (pickedImage)
-        return pickedImage;
+      auto pickedItem = directory->pick (point);
+      if (pickedItem)
+        return pickedItem;
       }
 
-    for (auto image : mImages)
-      if (image->pick (point))
-        return image;
+    for (auto item : mItems)
+      if (item->pick (point))
+        return item;
 
     return NULL;
     }
   //}}}
+  //{{{
+  void traverseItems (cJpegWindow* jpegWindow, cJpegWindowImageFunc imageFunc) {
 
+    for (auto directory : mDirectories)
+      directory->traverseItems (jpegWindow, imageFunc);
+
+    for (auto item : mItems)
+      (jpegWindow->*imageFunc)(item);
+    }
+  //}}}
   //{{{
   int bestThumb (D2D1_POINT_2F& point, cJpegImage** bestImage, float& bestMetric) {
   // get bestThumbImage for thumbLoader, nearest unloaded to point
@@ -48,7 +93,7 @@ public:
     for (auto directory : mDirectories)
       numLoaded += directory->bestThumb (point, bestImage, bestMetric);
 
-    for (auto image : mImages)
+    for (auto image : mItems)
       if (image->getNoThumb()) {
         auto xdiff = image->getLayout().left - point.x;
         auto ydiff = image->getLayout().top - point.y;
@@ -73,10 +118,10 @@ public:
     for (auto directory : mDirectories)
       directory->simpleLayoutThumbs (rect, thumbSize, column, columns, rows);
 
-    for (auto image : mImages) {
+    for (auto item : mItems) {
       rect.right = rect.left + thumbSize.width;
       rect.bottom = rect.top + thumbSize.height;
-      image->setLayout (rect);
+      item->setLayout (rect);
 
       rect.left = rect.right;
       if ((column++ % columns) == (columns-1)) {
@@ -88,61 +133,16 @@ public:
     }
   //}}}
 
-  //{{{
-  void scanFileSysytem (wstring& parentName, wchar_t* directoryName,
-                        int& numImages, int& numDirectories, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
-  // directoryName is findFileData.cFileName wchar_t*
-
-    mDirectoryName = directoryName;
-    mFullDirectoryName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
-    auto searchStr (mFullDirectoryName +  L"\\*");
-
-    WIN32_FIND_DATA findFileData;
-    auto file = FindFirstFileEx (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                 FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-    if (file != INVALID_HANDLE_VALUE) {
-      do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-            (findFileData.cFileName[0] != L'.'))  {
-          auto directory = new cJpegDirectory();
-          directory->scanFileSysytem (mFullDirectoryName, findFileData.cFileName,
-                                      numImages, numDirectories, jpegWindow, func);
-          mDirectories.push_back (directory);
-          }
-        else if (PathMatchSpec (findFileData.cFileName, L"*.jpg"))
-          mImages.push_back (new cJpegImage (mFullDirectoryName, findFileData.cFileName));
-        } while (FindNextFile (file, &findFileData));
-      FindClose (file);
-      }
-
-    numImages += (int)mImages.size();
-    numDirectories += (int)mDirectories.size();
-
-    //printf ("%d %d %ls %ls\n", (int)mImages.size(), (int)mDirectories.size(), mName, mFullName);
-    (jpegWindow->*func)();
-    }
-  //}}}
-  //{{{
-  void traverseImages (cJpegWindow* jpegWindow, cJpegWindowImageFunc imageFunc) {
-
-    for (auto directory : mDirectories)
-      directory->traverseImages (jpegWindow, imageFunc);
-
-    for (auto image : mImages)
-      (jpegWindow->*imageFunc)(image);
-    }
-  //}}}
-
 private:
   wstring mDirectoryName;
   wstring mFullDirectoryName;
 
-  concurrency::concurrent_vector<cJpegImage*> mImages;
-  concurrency::concurrent_vector<cJpegDirectory*> mDirectories;
+  concurrency::concurrent_vector<cJpegImage*> mItems;
+  concurrency::concurrent_vector<cJpegFiles*> mDirectories;
   };
 //}}}
 
-class cJpegWindow : public cD2dWindow, public cJpegDirectory {
+class cJpegWindow : public cD2dWindow, public cJpegFiles {
 public:
   cJpegWindow() : mCurView(&mThumbView) {}
   //{{{
@@ -263,7 +263,7 @@ protected:
     if (!mFullImage) {
       // thumbs
       dc->SetTransform (mThumbView.getMatrix());
-      traverseImages (this, &cJpegWindow::drawThumb);
+      traverseItems (this, &cJpegWindow::drawThumb);
 
       if (mPickImage) {
         //{{{  highlight pickImage and draw infoPanel
@@ -473,9 +473,7 @@ private:
   // rootdirectory wchar_t* rather than wstring
 
     auto time1 = getTimer();
-    scanFileSysytem (wstring(), rootDirectory,
-                     mNumNestedImages, mNumNestedDirectories,
-                     this, &cJpegWindow::layoutThumbs);
+    scanFiles (wstring(), rootDirectory, L"*.jpg", mNumNestedImages, mNumNestedDirectories, this, &cJpegWindow::layoutThumbs);
     mFileSystemScanned = true;
     auto time2 = getTimer();
 
