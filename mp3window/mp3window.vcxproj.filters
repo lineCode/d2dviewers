@@ -2,8 +2,8 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="mp3window.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="cMp3Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h">

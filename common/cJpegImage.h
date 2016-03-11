@@ -163,10 +163,10 @@ static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_U
 class cJpegImage {
 public:
   cJpegImage() {}
-  cJpegImage (wstring& parentName, wchar_t* fileName) : mFileName(fileName), mFullFileName(parentName + L"\\" + fileName) {}
+  cJpegImage (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename(parentName + L"\\" + filename) {}
   //{{{  gets
-  wstring& getFileName() { return mFileName; }
-  wstring& getFullFileName() { return mFullFileName; }
+  wstring& getFileName() { return mFilename; }
+  wstring& getFullFileName() { return mFullFilename; }
 
   bool getNoThumb() { return mNoThumb; }
   ID2D1Bitmap* getThumbBitmap() { return mD2D1BitmapThumb; }
@@ -218,7 +218,7 @@ public:
 
   void setLayout (D2D1_RECT_F& layout) { mLayout = layout; }
   //{{{
-  bool pick (D2D1_POINT_2F& point) {
+  bool pickItem (D2D1_POINT_2F& point) {
 
     return (point.x > mLayout.left) && (point.x < mLayout.right) &&
            (point.y > mLayout.top) && (point.y < mLayout.bottom);
@@ -228,12 +228,12 @@ public:
   //{{{
   bool loadInfo() {
 
-    auto time = startTimer();
+    auto time = getTimer();
 
-    auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto fileHandle = CreateFile (mFullFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
       //{{{  error
-      wcout << L"loadThumbBitmap1 buffer error - " << mFullFileName<< endl;
+      wcout << L"loadThumbBitmap1 buffer error - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -260,12 +260,12 @@ public:
 
     mNoThumb = false;
 
-    auto time = startTimer();
+    auto time = getTimer();
 
-    auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto fileHandle = CreateFile (mFullFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
       //{{{  error
-      wcout << L"loadThumbBitmap1 buffer error - " << mFullFileName<< endl;
+      wcout << L"loadThumbBitmap1 buffer error - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -273,7 +273,7 @@ public:
     mFileBytes = GetFileSize (fileHandle, NULL);
     if (mFileBytes == 0) {
       //{{{  no bytes, return false
-      wcout << L"loadThumbBitmap no fileBytes - " << mFullFileName << endl;
+      wcout << L"loadThumbBitmap no fileBytes - " << mFullFilename << endl;
       CloseHandle (fileHandle);
       return false;
       }
@@ -290,7 +290,7 @@ public:
 
     if ((thumbBuffer[0] != 0xFF) || (thumbBuffer[1] != 0xD8)) {
       //{{{  no SOI marker, return
-      wcout << L"loadThumbBitmap no SOI marker - " << mFullFileName << endl;
+      wcout << L"loadThumbBitmap no SOI marker - " << mFullFilename << endl;
       UnmapViewOfFile (buffer);
       CloseHandle (fileHandle);
       return false;
@@ -350,12 +350,12 @@ public:
     if (mD2D1BitmapFull)
       return false;
 
-    auto time = startTimer();
+    auto time = getTimer();
     mFullLoadScale = scale;
 
     if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
       //{{{  no SOI marker, return false
-      wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
+      wcout << L"loadFullBitmap no SOI marker - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -406,10 +406,10 @@ public:
       return false;
 
     mFullLoadScale = scale;
-    auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto fileHandle = CreateFile (mFullFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
       //{{{  error
-      wcout << L"loadFullBitmap buffer error - " << mFullFileName << endl;
+      wcout << L"loadFullBitmap buffer error - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -811,7 +811,7 @@ private:
 
     if (bufferBytes < 4) {
       //{{{  return false if not enough bytes for first marker
-      wcout << L"parseHeader not enough bytes - " << mFullFileName << endl;
+      wcout << L"parseHeader not enough bytes - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -819,7 +819,7 @@ private:
     auto soiPtr = ptr;
     if (getExifWord (ptr, false) != 0xFFD8) {
       //{{{  return false if no SOI marker
-      wcout << L"parseHeader no soi marker - " << mFullFileName << endl;
+      wcout << L"parseHeader no soi marker - " << mFullFilename << endl;
       return false;
       }
       //}}}
@@ -857,7 +857,7 @@ private:
       //   check exifId, ignore trailing two nulls
       if (getExifOffset (exifIdPtr, false) != 0x45786966) {
         //{{{  return false if not EXIF
-        wcout << L"parseHeader EXIF00 ident error - " << mFullFileName << endl;
+        wcout << L"parseHeader EXIF00 ident error - " << mFullFilename << endl;
         return false;
         }
         //}}}
@@ -869,7 +869,7 @@ private:
 
       if (getExifWord (exifIdPtr, intelEndian) != 0x002a) {
         //{{{  return false if no 0x002a word
-        wcout << L"parseHeader EXIF 2a error - " << mFullFileName << endl;
+        wcout << L"parseHeader EXIF 2a error - " << mFullFilename << endl;
         return false;
         }
         //}}}
@@ -878,7 +878,7 @@ private:
       auto firstOffset = getExifOffset (exifIdPtr, intelEndian);
       if (firstOffset != 8) {
         //{{{  return false if unusual firstOffset,
-        wcout << L"parseHeader firstOffset warning - " << mFullFileName << L" " << firstOffset << endl;
+        wcout << L"parseHeader firstOffset warning - " << mFullFilename << L" " << firstOffset << endl;
         return false;
         }
         //}}}
@@ -896,8 +896,8 @@ private:
   //}}}
 
   // vars
-  wstring mFileName;
-  wstring mFullFileName;
+  wstring mFilename;
+  wstring mFullFilename;
 
   D2D1_RECT_F mLayout = {0,0,0,0};
 

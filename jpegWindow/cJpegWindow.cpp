@@ -58,16 +58,16 @@ public:
   //}}}
 
   //{{{
-  cJpegImage* pick (D2D1_POINT_2F& point) {
+  cJpegImage* pickItem (D2D1_POINT_2F& point) {
 
     for (auto directory : mDirectories) {
-      auto pickedItem = directory->pick (point);
+      auto pickedItem = directory->pickItem (point);
       if (pickedItem)
         return pickedItem;
       }
 
     for (auto item : mItems)
-      if (item->pick (point))
+      if (item->pickItem (point))
         return item;
 
     return NULL;
@@ -207,7 +207,7 @@ protected:
 
     if (!mFullImage) {
       // displaying thumbs
-      mProxImage = inClient ? pick (mThumbView.dstToSrc (x, y)) : nullptr;
+      mProxImage = inClient ? pickItem (mThumbView.dstToSrc (x, y)) : nullptr;
       if (mPickImage != mProxImage) {
         mPickImage = mProxImage;
         if (mProxImage)
@@ -406,7 +406,7 @@ protected:
         //{{{  debug text
         wstringstream stringstream;
         stringstream << mNumThumbsLoaded << L":" << mNumNestedImages
-                     << L" sub:" << mNumNestedDirectories
+                     << L" sub:" << mNumNestedDirs
                      << L" scale:" << mCurView->getScale()
                      << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
         dc->DrawText (
@@ -501,22 +501,22 @@ private:
     }
   //}}}
   //{{{
-  void scanFilesFunc (wchar_t* rootDirectory) {
+  void scanFilesFunc (wchar_t* rootDir) {
   // rootdirectory wchar_t* rather than wstring
 
     auto time1 = getTimer();
-    scanFiles (wstring(), rootDirectory, L"*.jpg", mNumNestedImages, mNumNestedDirectories, this, &cJpegWindow::layoutThumbs);
+    scanFiles (wstring(), rootDir, L"*.jpg", mNumNestedImages, mNumNestedDirs, this, &cJpegWindow::layoutThumbs);
     mFileSystemScanned = true;
     auto time2 = getTimer();
 
     wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
-          << L" directories:" << mNumNestedDirectories
+          << L" directories:" << mNumNestedDirs
           << L" took:" << time2-time1
           << endl;
     }
   //}}}
   //{{{  vars
-  int mNumNestedDirectories = 0;
+  int mNumNestedDirs = 0;
   int mNumNestedImages = 0;
 
   cJpegImage* mProxImage = nullptr;

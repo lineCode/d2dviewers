@@ -5,29 +5,173 @@
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
 
-#include "../common/cAudFrame.h"
-#include "../common/cAudio.h"
-
-#include "../common/cMp3decoder.h"
 #include "../common/cJpegImage.h"
 
+#include "../common/cAudFrame.h"
+#include "../common/cAudio.h"
+#include "../common/cMp3decoder.h"
 #pragma comment(lib,"avutil.lib")
 #pragma comment(lib,"avcodec.lib")
 #pragma comment(lib,"avformat.lib")
 //}}}
+//{{{  typedef
+class cMp3Window;
+typedef void (cMp3Window::*cMp3WindowFunc)();
+
+class cMp3Item;
+typedef void (cMp3Window::*cMp3WindowItemFunc)(cMp3Item* item);
+//}}}
 
 #define maxAudFrames 500000
 
-class cMp3window : public cD2dWindow, public cAudio {
+//{{{
+class cMp3Item {
 public:
-  cMp3window() {}
-  ~cMp3window() {}
+  cMp3Item (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename (parentName + L"\\" + filename) {}
+
+  //{{{
+  wstring getFilename() {
+    return mFilename;
+    }
+  //}}}
+  //{{{
+  wstring getFullFilename() {
+    return mFullFilename;
+    }
+  //}}}
+  //{{{
+  D2D1_RECT_F& getLayout() {
+    return mLayout;
+    }
+  //}}}
+
+  //{{{
+  void setLayout (D2D1_RECT_F& layout) {
+    mLayout = layout;
+    }
+  //}}}
+  //{{{
+  bool pickItem (D2D1_POINT_2F& point) {
+
+    return (point.x > mLayout.left) && (point.x < mLayout.right) &&
+           (point.y > mLayout.top) && (point.y < mLayout.bottom);
+    }
+  //}}}
+
+private:
+  wstring mFilename;
+  wstring mFullFilename;
+
+  int mSampleRate = 0;
+  int mBitRate = 0;
+  int mChannels = 0;
+  int mMode = 0;
+
+  D2D1_RECT_F mLayout = {0,0,0,0};
+  };
+//}}}
+//{{{
+class cMp3Files {
+public:
+  cMp3Files() {}
+  virtual ~cMp3Files() {}
+  //{{{
+  void scanFiles (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName, int& numItems, int& numDirs) {
+  // directoryName is findFileData.cFileName wchar_t*
+
+    mDirName = directoryName;
+    mFullDirName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
+    auto searchStr (mFullDirName +  L"\\*");
+
+    WIN32_FIND_DATA findFileData;
+    auto file = FindFirstFileEx (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                 FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
+          auto directory = new cMp3Files();
+          directory->scanFiles (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs);
+          mDirectories.push_back (directory);
+          }
+        else if (PathMatchSpec (findFileData.cFileName, pathMatchName))
+          mItems.push_back (new cMp3Item (mFullDirName, findFileData.cFileName));
+        } while (FindNextFile (file, &findFileData));
+      FindClose (file);
+      }
+
+    numDirs += (int)mDirectories.size();
+    numItems += (int)mItems.size();
+    }
+  //}}}
+
+  //{{{
+  cMp3Item* pickItem (D2D1_POINT_2F& point) {
+
+    for (auto directory : mDirectories) {
+      auto pickedItem = directory->pickItem (point);
+      if (pickedItem)
+        return pickedItem;
+      }
+
+    for (auto item : mItems)
+      if (item->pickItem (point))
+        return item;
+
+    return NULL;
+    }
+  //}}}
+  //{{{
+  void traverseItems (cMp3Window* mp3Window, cMp3WindowItemFunc mp3Func) {
+
+    for (auto directory : mDirectories)
+      directory->traverseItems (mp3Window, mp3Func);
+
+    for (auto item : mItems)
+      (mp3Window->*mp3Func)(item);
+    }
+  //}}}
+  //{{{
+  void simpleLayout (D2D1_RECT_F& rect, int& row) {
+
+    for (auto directory : mDirectories)
+      directory->simpleLayout (rect, row);
+
+    for (auto item : mItems) {
+      item->setLayout (rect);
+      rect.top += 20.0f;
+      rect.bottom += 20.0f;
+      row++;
+      }
+    }
+  //}}}
+
+private:
+  // private vars
+  wstring mDirName;
+  wstring mFullDirName;
+
+  // public vars
+  concurrency::concurrent_vector<cMp3Item*> mItems;
+  concurrency::concurrent_vector<cMp3Files*> mDirectories;
+  };
+//}}}
+
+class cMp3Window : public cD2dWindow, public cAudio, public cMp3Files {
+public:
+  cMp3Window() {}
+  ~cMp3Window() {}
   //{{{
   void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
 
     initialise (title, width, height);
 
-    std::thread ([=]() { loader (wFilename); }).detach();
+    mIsDirectory = (GetFileAttributes (wFilename) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+
+    if (mIsDirectory)
+      thread ([=]() { scanFilesFunc (wFilename); }).detach();
+    else
+      std::thread ([=]() { loader (wFilename); }).detach();
+
     std::thread ([=]() { player(); }).detach();
 
     messagePump();
@@ -75,6 +219,14 @@ protected:
     }
   //}}}
   //{{{
+  void onMouseDown (bool right, int x, int y) {
+
+    auto item = pickItem (Point2F ((float)x, (float)y));
+    if (item)
+      loader (item->getFullFilename().c_str());
+    }
+  //}}}
+  //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     if (x > int(getClientF().width-20))
@@ -95,7 +247,6 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     dc->Clear (ColorF(ColorF::Black));
-
     if (mBitmap)
       dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
@@ -117,16 +268,26 @@ protected:
         }
       }
 
-    wchar_t wStr[200];
-    swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x", mPlaySecs, mMaxSecs, mBitRate/1000, mSampleRate, mChannels, mMode);
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+    if (mIsDirectory) {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"files:%d dirs:%d", mNumNestedImages, mNumNestedDirs);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+      }
+    else {
+      wchar_t wStr[200];
+      swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x", mPlaySecs, mMaxSecs, mBitRate/1000, mSampleRate, mChannels, mMode);
+      dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                    RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+      }
+
+    traverseItems (this, &cMp3Window::drawItem);
     }
   //}}}
 
 private:
   //{{{
-  void loader (wchar_t* wFilename) {
+  void loader (const wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     auto mFileBytes = GetFileSize (fileHandle, NULL);
@@ -189,7 +350,7 @@ private:
     }
   //}}}
   //{{{
-  void loaderffmpeg (wchar_t* wFilename) {
+  void loaderffmpeg (const wchar_t* wFilename) {
 
     auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     int mFileBytes = GetFileSize (fileHandle, NULL);
@@ -379,6 +540,35 @@ private:
     }
   //}}}
   //}}}
+  //{{{
+  void drawItem (cMp3Item* item) {
+
+    wchar_t wStr[200];
+    swprintf (wStr, 200, L"%s", item->getFilename().c_str());
+    getDeviceContext()->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), item->getLayout(), getWhiteBrush());
+    }
+  //}}}
+  //{{{
+  void scanFilesFunc (wchar_t* rootDir) {
+  // rootdirectory wchar_t* rather than wstring
+
+    auto time1 = getTimer();
+    scanFiles (wstring(), rootDir, L"*.mp3", mNumNestedImages, mNumNestedDirs);
+
+    int rows = 0;
+    simpleLayout (RectF (0, 20.0f, getClientF().width, 40.0f), rows);
+
+    auto time2 = getTimer();
+
+    wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
+          << L" directories:" << mNumNestedDirs
+          << L" took:" << time2-time1
+          << endl;
+    }
+  //}}}
+
+  //{{{  private vars
+  bool mIsDirectory = false;
 
   int mSampleRate = 0;
   int mBitRate = 0;
@@ -391,14 +581,20 @@ private:
   double mPlaySecs = 0;
   double mSecsPerFrame = 1.0;
 
-  ID2D1Bitmap* mBitmap= nullptr;
+  int mNumNestedImages = 0;
+  int mNumNestedDirs = 0;
+  float mLayoutY = 0;
+
+  ID2D1Bitmap* mBitmap = nullptr;
   cAudFrame* mAudFrames[maxAudFrames];
+  //}}}
   };
 
-static cMp3window mp3Window;
+static cMp3Window mp3Window;
 //{{{
 int wmain (int argc, wchar_t* argv[]) {
 
+  startTimer();
   mp3Window.run (L"mp3window", 1280, 720, argv[1]);
   }
 //}}}
