@@ -26,33 +26,31 @@ public:
 
   //{{{
   void scanFiles (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
-                  int& numItems, int& numDirectories, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
+                  int& numItems, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
-    mDirectoryName = directoryName;
-    mFullDirectoryName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
-    auto searchStr (mFullDirectoryName +  L"\\*");
+    mDirName = directoryName;
+    mFullDirName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
+    auto searchStr (mFullDirName +  L"\\*");
 
     WIN32_FIND_DATA findFileData;
     auto file = FindFirstFileEx (searchStr.c_str(), FindExInfoBasic, &findFileData,
                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
     if (file != INVALID_HANDLE_VALUE) {
       do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) &&
-            (findFileData.cFileName[0] != L'.'))  {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
           auto directory = new cJpegFiles();
-          directory->scanFiles (mFullDirectoryName, findFileData.cFileName, pathMatchName, numItems, numDirectories,
-                                jpegWindow, func);
+          directory->scanFiles (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs, jpegWindow, func);
           mDirectories.push_back (directory);
           }
         else if (PathMatchSpec (findFileData.cFileName, pathMatchName))
-          mItems.push_back (new cJpegImage (mFullDirectoryName, findFileData.cFileName));
+          mItems.push_back (new cJpegImage (mFullDirName, findFileData.cFileName));
         } while (FindNextFile (file, &findFileData));
       FindClose (file);
       }
 
     numItems += (int)mItems.size();
-    numDirectories += (int)mDirectories.size();
+    numDirs += (int)mDirectories.size();
 
     //printf ("%d %d %ls %ls\n", (int)mImages.size(), (int)mDirectories.size(), mName, mFullName);
     (jpegWindow->*func)();
@@ -134,8 +132,8 @@ public:
   //}}}
 
 private:
-  wstring mDirectoryName;
-  wstring mFullDirectoryName;
+  wstring mDirName;
+  wstring mFullDirName;
 
   concurrency::concurrent_vector<cJpegImage*> mItems;
   concurrency::concurrent_vector<cJpegFiles*> mDirectories;
@@ -153,7 +151,7 @@ public:
     getDeviceContext()->CreateSolidColorBrush (ColorF (0x101010, 0.8f), &mPanelBrush);
 
     // start threads
-    thread ([=]() { scanDirectoryFunc (rootDirectory); } ).detach();
+    thread ([=]() { scanFilesFunc (rootDirectory); } ).detach();
     for (auto i = 0; i < numLoaderThreads; i++)
       thread ([=]() { thumbLoaderFunc (i); } ).detach();
 
@@ -469,21 +467,6 @@ private:
     }
   //}}}
   //{{{
-  void scanDirectoryFunc (wchar_t* rootDirectory) {
-  // rootdirectory wchar_t* rather than wstring
-
-    auto time1 = getTimer();
-    scanFiles (wstring(), rootDirectory, L"*.jpg", mNumNestedImages, mNumNestedDirectories, this, &cJpegWindow::layoutThumbs);
-    mFileSystemScanned = true;
-    auto time2 = getTimer();
-
-    wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
-          << L" directories:" << mNumNestedDirectories
-          << L" took:" << time2-time1
-          << endl;
-    }
-  //}}}
-  //{{{
   void thumbLoaderFunc (int index) {
 
     auto slept = 0;
@@ -514,6 +497,21 @@ private:
           << L" images:" << mNumNestedImages
           << L" wasted:" << wasted
           << L" slept:" << slept
+          << endl;
+    }
+  //}}}
+  //{{{
+  void scanFilesFunc (wchar_t* rootDirectory) {
+  // rootdirectory wchar_t* rather than wstring
+
+    auto time1 = getTimer();
+    scanFiles (wstring(), rootDirectory, L"*.jpg", mNumNestedImages, mNumNestedDirectories, this, &cJpegWindow::layoutThumbs);
+    mFileSystemScanned = true;
+    auto time2 = getTimer();
+
+    wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
+          << L" directories:" << mNumNestedDirectories
+          << L" took:" << time2-time1
           << endl;
     }
   //}}}

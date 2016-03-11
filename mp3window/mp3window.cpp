@@ -9,6 +9,7 @@
 #include "../common/cAudio.h"
 
 #include "../common/cMp3decoder.h"
+#include "../common/cJpegImage.h"
 
 #pragma comment(lib,"avutil.lib")
 #pragma comment(lib,"avcodec.lib")
@@ -94,6 +95,9 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     dc->Clear (ColorF(ColorF::Black));
+
+    if (mBitmap)
+      dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
     // yellow vol bar
     auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
@@ -280,6 +284,11 @@ private:
           printf ("%02x ", *(ptr+10+i));
         printf ("\n");
 
+        if (tag == 0x41504943) {
+          auto jpegImage = new cJpegImage();
+          if (jpegImage->loadBuffer (getDeviceContext(), 1, ptr + 10 + 14, frameSize - 14))
+            mBitmap = jpegImage->getFullBitmap();
+          }
         ptr += frameSize + 10;
         };
       }
@@ -382,6 +391,7 @@ private:
   double mPlaySecs = 0;
   double mSecsPerFrame = 1.0;
 
+  ID2D1Bitmap* mBitmap= nullptr;
   cAudFrame* mAudFrames[maxAudFrames];
   };
 

@@ -1,6 +1,13 @@
-// cJpegVImage.h
+// cJpegImage.h
 #pragma once
 //{{{  includes
+#include <string>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <locale>
+#include <codecvt>
+
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 
@@ -149,10 +156,13 @@ using namespace std;
 static const int kBytesPerFormat[] = { 0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8 };
 
 static const wchar_t* kWeekDay[] = { L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat"};
+
+static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
 //}}}
 
 class cJpegImage {
 public:
+  cJpegImage() {}
   cJpegImage (wstring& parentName, wchar_t* fileName) : mFileName(fileName), mFullFileName(parentName + L"\\" + fileName) {}
   //{{{  gets
   wstring& getFileName() { return mFileName; }
@@ -232,12 +242,12 @@ public:
     GetFileTime (fileHandle, &mCreationTime, &mLastAccessTime, &mLastWriteTime);
 
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    auto buffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    bool hasThumb = parseJpegHeader (fileBuffer, mFileBytes, false);
+    bool hasThumb = parseJpegHeader (buffer, mFileBytes, false);
 
     // close the file mapping object
-    UnmapViewOfFile (fileBuffer);
+    UnmapViewOfFile (buffer);
     CloseHandle (fileHandle);
 
     mInfoLoadTime = float(getTimer() - time);
@@ -272,16 +282,16 @@ public:
     GetFileTime (fileHandle, &mCreationTime, &mLastAccessTime, &mLastWriteTime);
 
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    auto buffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    auto hasThumb = parseJpegHeader (fileBuffer, mFileBytes, true);
-    auto thumbBuffer = hasThumb ? fileBuffer+mThumbOffset : fileBuffer;
+    auto hasThumb = parseJpegHeader (buffer, mFileBytes, true);
+    auto thumbBuffer = hasThumb ? buffer+mThumbOffset : buffer;
     auto thumbBytes = hasThumb ? mThumbBytes : mFileBytes;
 
     if ((thumbBuffer[0] != 0xFF) || (thumbBuffer[1] != 0xD8)) {
       //{{{  no SOI marker, return
       wcout << L"loadThumbBitmap no SOI marker - " << mFullFileName << endl;
-      UnmapViewOfFile (fileBuffer);
+      UnmapViewOfFile (buffer);
       CloseHandle (fileHandle);
       return false;
       }
@@ -320,18 +330,11 @@ public:
     jpeg_destroy_decompress (&cinfo);
 
     // close the file mapping object
-    UnmapViewOfFile (fileBuffer);
+    UnmapViewOfFile (buffer);
     CloseHandle (fileHandle);
 
     auto time1 = getTimer();
-
-    D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
-    d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
-    d2d1_bitmapProperties.dpiX = 96.0f;
-    d2d1_bitmapProperties.dpiY = 96.0f;
-    dc->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight),
-                                 thumbArray, pitch, &d2d1_bitmapProperties, &mD2D1BitmapThumb);
+    dc->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight), thumbArray, pitch, kBitmapProperties, &mD2D1BitmapThumb);
     free (thumbArray);
 
     auto time2 = getTimer();
@@ -355,11 +358,11 @@ public:
       return false;
       }
       //}}}
-    size_t loadSize = GetFileSize (fileHandle, NULL);
+    size_t bufferSize = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    auto buffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    if ((fileBuffer[0] != 0xFF) || (fileBuffer[1] != 0xD8)) {
+    if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
       //{{{  no SOI marker, return
       wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
       return false;
@@ -371,7 +374,7 @@ public:
     cinfo.err = jpeg_std_error (&jerr);
     jpeg_create_decompress (&cinfo);
 
-    jpeg_mem_src (&cinfo, fileBuffer, (unsigned long)loadSize);
+    jpeg_mem_src (&cinfo, buffer, (unsigned long)bufferSize);
     jpeg_read_header (&cinfo, true);
 
     cinfo.scale_denom = scale;
@@ -384,12 +387,7 @@ public:
     mFullSize.height = cinfo.output_height;
     auto pitch = cinfo.output_components * mFullSize.width;
 
-    D2D1_BITMAP_PROPERTIES d2d1_bitmapProperties;
-    d2d1_bitmapProperties.pixelFormat.format = DXGI_FORMAT_B8G8R8A8_UNORM;
-    d2d1_bitmapProperties.pixelFormat.alphaMode = D2D1_ALPHA_MODE_IGNORE;
-    d2d1_bitmapProperties.dpiX = 96.0f;
-    d2d1_bitmapProperties.dpiY = 96.0f;
-    dc->CreateBitmap (mFullSize, d2d1_bitmapProperties, &mD2D1BitmapFull);
+    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
 
     BYTE* lineArray[1];
     lineArray[0] = (BYTE*)malloc (pitch);;
@@ -406,11 +404,66 @@ public:
     jpeg_destroy_decompress (&cinfo);
 
     // close the file mapping object
-    UnmapViewOfFile (fileBuffer);
+    UnmapViewOfFile (buffer);
     CloseHandle (fileHandle);
 
     mFullLoadTime = float(getTimer() - time);
     wcout << L"loadFull " << mFullFileName << L" took:" << mFullLoadTime << endl;
+    return true;
+    }
+  //}}}
+  //{{{
+  bool loadBuffer (ID2D1DeviceContext* dc, int scale, uint8_t* buffer, size_t bufferSize) {
+
+    if (mD2D1BitmapFull)
+      return false;
+
+    auto time = startTimer();
+    mFullLoadScale = scale;
+
+    if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
+      //{{{  no SOI marker, return
+      wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
+      return false;
+      }
+      //}}}
+
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    cinfo.err = jpeg_std_error (&jerr);
+    jpeg_create_decompress (&cinfo);
+
+    jpeg_mem_src (&cinfo, buffer, (unsigned long)bufferSize);
+    jpeg_read_header (&cinfo, true);
+
+    cinfo.scale_denom = scale;
+    cinfo.out_color_space = JCS_EXT_BGRA;
+    jpeg_start_decompress (&cinfo);
+
+    mImageSize.width = cinfo.image_width;
+    mImageSize.height = cinfo.image_height;
+    mFullSize.width = cinfo.output_width;
+    mFullSize.height = cinfo.output_height;
+    auto pitch = cinfo.output_components * mFullSize.width;
+
+    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
+
+    BYTE* lineArray[1];
+    lineArray[0] = (BYTE*)malloc (pitch);;
+    D2D1_RECT_U r(RectU (0, 0, mFullSize.width, 0));
+    while (cinfo.output_scanline < mFullSize.height) {
+      r.top = cinfo.output_scanline;
+      r.bottom = r.top+1;
+      jpeg_read_scanlines (&cinfo, lineArray, 1);
+      mD2D1BitmapFull->CopyFromMemory (&r, lineArray[0], pitch);
+      }
+    free (lineArray[0]);
+
+    jpeg_finish_decompress (&cinfo);
+    jpeg_destroy_decompress (&cinfo);
+
+    mFullLoadTime = float(getTimer() - time);
+    wcout << L"loadBuffer took:" << mFullLoadTime << endl;
     return true;
     }
   //}}}
@@ -571,7 +624,7 @@ private:
   wstring getExifString (BYTE* ptr) {
   // Convert exif time to Unix time structure
 
-    wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
     return (converter.from_bytes ((char*)ptr));
     }
   //}}}

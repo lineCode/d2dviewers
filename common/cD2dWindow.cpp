@@ -14,6 +14,8 @@ using namespace D2D1;
 
 #include "cYuvFrame.h"
 
+static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+
 // static var init
 cD2dWindow* cD2dWindow::mD2dWindow = NULL;
 
@@ -68,8 +70,6 @@ void cD2dWindow::initialise (wchar_t* windowTitle, int width, int height) {
 //{{{
 ID2D1Bitmap* cD2dWindow::makeBitmap (cYuvFrame* yuvFrame, ID2D1Bitmap*& bitmap, int64_t& bitmapPts) {
 
-  static const D2D1_BITMAP_PROPERTIES props = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-
   if (yuvFrame) {
     if (yuvFrame->mPts != bitmapPts) {
       bitmapPts = yuvFrame->mPts;
@@ -81,7 +81,7 @@ ID2D1Bitmap* cD2dWindow::makeBitmap (cYuvFrame* yuvFrame, ID2D1Bitmap*& bitmap, 
           }
         }
       if (!bitmap) // create bitmap
-        mDeviceContext->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), props, &bitmap);
+        mDeviceContext->CreateBitmap (SizeU(yuvFrame->mWidth, yuvFrame->mHeight), kBitmapProperties, &bitmap);
 
       auto bgraBuf = yuvFrame->bgra();
       bitmap->CopyFromMemory (&RectU (0, 0, yuvFrame->mWidth, yuvFrame->mHeight), bgraBuf, yuvFrame->mWidth * 4);

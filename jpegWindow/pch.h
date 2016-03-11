@@ -15,9 +15,6 @@
 #include <thread>
 #include <mutex>
 
-#include <locale>    // for char to wstring
-#include <codecvt>   // for char to wstring
-
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
 
