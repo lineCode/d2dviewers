@@ -228,7 +228,7 @@ public:
   //{{{
   bool loadInfo() {
 
-    auto time = getTimer();
+    auto time = startTimer();
 
     auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -260,7 +260,7 @@ public:
 
     mNoThumb = false;
 
-    auto time = getTimer();
+    auto time = startTimer();
 
     auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -344,12 +344,67 @@ public:
     }
   //}}}
   //{{{
+  bool loadBuffer (ID2D1DeviceContext* dc, int scale, uint8_t* buffer, size_t bufferSize) {
+  // load jpegImage in buffer, line by line into created bitmap
+
+    if (mD2D1BitmapFull)
+      return false;
+
+    auto time = startTimer();
+    mFullLoadScale = scale;
+
+    if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
+      //{{{  no SOI marker, return false
+      wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
+      return false;
+      }
+      //}}}
+
+    struct jpeg_decompress_struct cinfo;
+    struct jpeg_error_mgr jerr;
+    cinfo.err = jpeg_std_error (&jerr);
+    jpeg_create_decompress (&cinfo);
+
+    jpeg_mem_src (&cinfo, buffer, (unsigned long)bufferSize);
+    jpeg_read_header (&cinfo, true);
+
+    cinfo.scale_denom = scale;
+    cinfo.out_color_space = JCS_EXT_BGRA;
+    jpeg_start_decompress (&cinfo);
+
+    mImageSize.width = cinfo.image_width;
+    mImageSize.height = cinfo.image_height;
+    mFullSize.width = cinfo.output_width;
+    mFullSize.height = cinfo.output_height;
+    auto pitch = cinfo.output_components * mFullSize.width;
+
+    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
+
+    BYTE* lineArray[1];
+    lineArray[0] = (BYTE*)malloc (pitch);;
+    D2D1_RECT_U r(RectU (0, 0, mFullSize.width, 0));
+    while (cinfo.output_scanline < mFullSize.height) {
+      r.top = cinfo.output_scanline;
+      r.bottom = r.top+1;
+      jpeg_read_scanlines (&cinfo, lineArray, 1);
+      mD2D1BitmapFull->CopyFromMemory (&r, lineArray[0], pitch);
+      }
+    free (lineArray[0]);
+
+    jpeg_finish_decompress (&cinfo);
+    jpeg_destroy_decompress (&cinfo);
+
+    mFullLoadTime = float(getTimer() - time);
+    wcout << L"load took:" << mFullLoadTime << endl;
+    return true;
+    }
+  //}}}
+  //{{{
   bool loadFullBitmap (ID2D1DeviceContext* dc, int scale) {
 
     if (mD2D1BitmapFull)
       return false;
 
-    auto time = getTimer();
     mFullLoadScale = scale;
     auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -362,109 +417,12 @@ public:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto buffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
-      //{{{  no SOI marker, return
-      wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
-      return false;
-      }
-      //}}}
-
-    struct jpeg_decompress_struct cinfo;
-    struct jpeg_error_mgr jerr;
-    cinfo.err = jpeg_std_error (&jerr);
-    jpeg_create_decompress (&cinfo);
-
-    jpeg_mem_src (&cinfo, buffer, (unsigned long)bufferSize);
-    jpeg_read_header (&cinfo, true);
-
-    cinfo.scale_denom = scale;
-    cinfo.out_color_space = JCS_EXT_BGRA;
-    jpeg_start_decompress (&cinfo);
-
-    mImageSize.width = cinfo.image_width;
-    mImageSize.height = cinfo.image_height;
-    mFullSize.width = cinfo.output_width;
-    mFullSize.height = cinfo.output_height;
-    auto pitch = cinfo.output_components * mFullSize.width;
-
-    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
-
-    BYTE* lineArray[1];
-    lineArray[0] = (BYTE*)malloc (pitch);;
-    D2D1_RECT_U r(RectU (0, 0, mFullSize.width, 0));
-    while (cinfo.output_scanline < mFullSize.height) {
-      r.top = cinfo.output_scanline;
-      r.bottom = r.top+1;
-      jpeg_read_scanlines (&cinfo, lineArray, 1);
-      mD2D1BitmapFull->CopyFromMemory (&r, lineArray[0], pitch);
-      }
-    free (lineArray[0]);
-
-    jpeg_finish_decompress (&cinfo);
-    jpeg_destroy_decompress (&cinfo);
+    bool ret = loadBuffer (dc, scale, buffer, bufferSize);
 
     // close the file mapping object
     UnmapViewOfFile (buffer);
     CloseHandle (fileHandle);
-
-    mFullLoadTime = float(getTimer() - time);
-    wcout << L"loadFull " << mFullFileName << L" took:" << mFullLoadTime << endl;
-    return true;
-    }
-  //}}}
-  //{{{
-  bool loadBuffer (ID2D1DeviceContext* dc, int scale, uint8_t* buffer, size_t bufferSize) {
-
-    if (mD2D1BitmapFull)
-      return false;
-
-    auto time = startTimer();
-    mFullLoadScale = scale;
-
-    if ((buffer[0] != 0xFF) || (buffer[1] != 0xD8)) {
-      //{{{  no SOI marker, return
-      wcout << L"loadFullBitmap no SOI marker - " << mFullFileName << endl;
-      return false;
-      }
-      //}}}
-
-    struct jpeg_decompress_struct cinfo;
-    struct jpeg_error_mgr jerr;
-    cinfo.err = jpeg_std_error (&jerr);
-    jpeg_create_decompress (&cinfo);
-
-    jpeg_mem_src (&cinfo, buffer, (unsigned long)bufferSize);
-    jpeg_read_header (&cinfo, true);
-
-    cinfo.scale_denom = scale;
-    cinfo.out_color_space = JCS_EXT_BGRA;
-    jpeg_start_decompress (&cinfo);
-
-    mImageSize.width = cinfo.image_width;
-    mImageSize.height = cinfo.image_height;
-    mFullSize.width = cinfo.output_width;
-    mFullSize.height = cinfo.output_height;
-    auto pitch = cinfo.output_components * mFullSize.width;
-
-    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
-
-    BYTE* lineArray[1];
-    lineArray[0] = (BYTE*)malloc (pitch);;
-    D2D1_RECT_U r(RectU (0, 0, mFullSize.width, 0));
-    while (cinfo.output_scanline < mFullSize.height) {
-      r.top = cinfo.output_scanline;
-      r.bottom = r.top+1;
-      jpeg_read_scanlines (&cinfo, lineArray, 1);
-      mD2D1BitmapFull->CopyFromMemory (&r, lineArray[0], pitch);
-      }
-    free (lineArray[0]);
-
-    jpeg_finish_decompress (&cinfo);
-    jpeg_destroy_decompress (&cinfo);
-
-    mFullLoadTime = float(getTimer() - time);
-    wcout << L"loadBuffer took:" << mFullLoadTime << endl;
-    return true;
+    return ret;
     }
   //}}}
   //{{{
