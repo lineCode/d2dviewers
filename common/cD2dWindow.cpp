@@ -427,11 +427,11 @@ void cD2dWindow::onRender() {
   while (mD2dTargetBitmap == nullptr)
     Sleep (16);
 
-  int changeCount = 1;
+  int changeCount = 0;
   while (mDeviceContext) {
-    if ((!mChangeRate && mChanged) || (changeCount >= mChangeRate)) {
+    if (mChanged || (mChangeRate && (changeCount >= mChangeRate))) {
       mChanged = false;
-      changeCount = 1;
+      changeCount = 0;
       mDeviceContext->BeginDraw();
       onDraw (mDeviceContext.Get());
       mDeviceContext->EndDraw();
