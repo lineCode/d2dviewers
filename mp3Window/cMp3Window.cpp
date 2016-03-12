@@ -107,11 +107,11 @@ public:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    id3tag (dc, fileBuffer, mFileBytes);
+    auto tagSize = id3tag (dc, fileBuffer, mFileBytes);
 
     cMp3Decoder mMp3Decoder;
-    auto ptr = fileBuffer;
-    int bufferBytes = mFileBytes;
+    auto ptr = fileBuffer + tagSize;
+    int bufferBytes = mFileBytes - tagSize;
     while (bufferBytes > 0) {
       int16_t samples[1152*2];
       int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
@@ -156,6 +156,8 @@ public:
         //printf ("if bytesused loaded %d %d\n", bufferBytes, bytesUsed);
         }
         //}}}
+      else
+        break;
       //printf ("while bufferBytes loaded %d %d\n", bufferBytes, bytesUsed);
       }
 
@@ -235,7 +237,7 @@ public:
 
 private:
   //{{{
-  void id3tag (ID2D1DeviceContext* dc, uint8_t* buffer, int bufferLen) {
+  int id3tag (ID2D1DeviceContext* dc, uint8_t* buffer, int bufferLen) {
   // check for ID3 tag
 
     auto ptr = buffer;
@@ -270,13 +272,15 @@ private:
             mBitmap = jpegImage->getFullBitmap();
           }
         ptr += frameSize + 10;
-        };
+        }
+      return tagSize + 10;
       }
     else {
       // print start of file
       for (auto i = 0; i < 32; i++)
         printf ("%02x ", *(ptr+i));
       printf ("\n");
+      return 0;
       }
     }
   //}}}
@@ -491,9 +495,8 @@ protected:
     if (mMp3Item && mMp3Item->getBitmap())
       dc->DrawBitmap (mMp3Item->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
-    // yellow vol bar
-    auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
-    dc->FillRectangle (rVol, getYellowBrush());
+    // yellow volume bar
+    dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
 
     if (mMp3Item) {
       int rows = 6;
