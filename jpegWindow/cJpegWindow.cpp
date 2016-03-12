@@ -151,7 +151,7 @@ public:
     getDeviceContext()->CreateSolidColorBrush (ColorF (0x101010, 0.8f), &mPanelBrush);
 
     // start threads
-    thread ([=]() { scanFilesFunc (rootDirectory); } ).detach();
+    thread ([=]() { fileScanner (rootDirectory); } ).detach();
     for (auto i = 0; i < numLoaderThreads; i++)
       thread ([=]() { thumbLoaderFunc (i); } ).detach();
 
@@ -501,7 +501,7 @@ private:
     }
   //}}}
   //{{{
-  void scanFilesFunc (wchar_t* rootDir) {
+  void fileScanner (wchar_t* rootDir) {
   // rootdirectory wchar_t* rather than wstring
 
     auto time1 = getTimer();

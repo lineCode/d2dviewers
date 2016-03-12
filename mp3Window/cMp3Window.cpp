@@ -7,12 +7,13 @@
 
 #include "../common/cJpegImage.h"
 
-#include "../common/cAudFrame.h"
 #include "../common/cAudio.h"
+#include "../common/cAudFrame.h"
 #include "../common/cMp3decoder.h"
-#pragma comment(lib,"avutil.lib")
-#pragma comment(lib,"avcodec.lib")
-#pragma comment(lib,"avformat.lib")
+
+#pragma comment (lib,"avutil.lib")
+#pragma comment (lib,"avcodec.lib")
+#pragma comment (lib,"avformat.lib")
 //}}}
 //{{{  typedef
 class cMp3Window;
@@ -27,6 +28,7 @@ typedef void (cMp3Window::*cMp3WindowItemFunc)(cMp3Item* item);
 //{{{
 class cMp3Item {
 public:
+  cMp3Item (wchar_t* filename) : mFilename(filename), mFullFilename (filename) {}
   cMp3Item (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename (parentName + L"\\" + filename) {}
 
   //{{{
@@ -44,6 +46,47 @@ public:
     return mLayout;
     }
   //}}}
+  //{{{
+  int getSampleRate() {
+    return mSampleRate;
+    }
+  //}}}
+  //{{{
+  int getChannels() {
+    return mChannels;
+    }
+  //}}}
+  //{{{
+  int getBitRate() {
+    return mBitRate;
+    }
+  //}}}
+  //{{{
+  int getMode() {
+    return mMode;
+    }
+  //}}}
+
+  //{{{
+  double getMaxSecs() {
+    return mMaxSecs;
+    }
+  //}}}
+  //{{{
+  double getSecsPerFrame() {
+    return mSecsPerFrame;
+    }
+  //}}}
+  //{{{
+  cAudFrame* getFrame (int frame) {
+    return mAudFrames[frame];
+    }
+  //}}}
+  //{{{
+  ID2D1Bitmap* getBitmap() {
+    return mBitmap;
+    }
+  //}}}
 
   //{{{
   void setLayout (D2D1_RECT_F& layout) {
@@ -58,7 +101,118 @@ public:
     }
   //}}}
 
+  //{{{
+  void load (ID2D1DeviceContext* dc) {
+
+    auto fileHandle = CreateFile (mFullFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+    id3tag (dc, fileBuffer, mFileBytes);
+
+    cMp3Decoder mMp3Decoder;
+    auto ptr = fileBuffer;
+    auto bufferBytes = mFileBytes;
+    int mLoadAudFrame = 0;
+    while ((bufferBytes > 0) && (mLoadAudFrame < maxAudFrames)) {
+      int16_t samples[1152*2];
+      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
+      if (bytesUsed) {
+        mSampleRate = mMp3Decoder.getSampleRate();
+        mBitRate = mMp3Decoder.getBitRate();
+        mChannels = mMp3Decoder.getNumChannels();
+        mMode = mMp3Decoder.getMode();
+        mSecsPerFrame = 1152.0 / mSampleRate;
+        mMaxSecs = mLoadAudFrame * mSecsPerFrame;
+
+        ptr += bytesUsed;
+        bufferBytes -= bytesUsed;
+
+        mAudFrames[mLoadAudFrame] = new cAudFrame();
+        mAudFrames[mLoadAudFrame]->set (0, 2, mSampleRate, 1152);
+        auto samplePtr = mAudFrames[mLoadAudFrame]->mSamples;
+
+        auto valueL = 0.0;
+        auto valueR = 0.0;
+        auto lrPtr = samples;
+
+        if (mChannels == 1)
+          // fake stereo
+          for (auto i = 0; i < 1152; i++) {
+            *samplePtr = *lrPtr;
+            valueL += pow (*samplePtr++, 2);
+            *samplePtr = *lrPtr++;
+            valueR += pow (*samplePtr++, 2);
+            }
+        else
+          for (auto i = 0; i < 1152; i++) {
+            *samplePtr = *lrPtr++;
+            valueL += pow (*samplePtr++, 2);
+            *samplePtr = *lrPtr++;
+            valueR += pow (*samplePtr++, 2);
+            }
+
+        mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
+        mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
+        mLoadAudFrame++;
+        //changed();
+        }
+      }
+
+    UnmapViewOfFile (fileBuffer);
+    CloseHandle (fileHandle);
+    }
+  //}}}
+
 private:
+  //{{{
+  void id3tag (ID2D1DeviceContext* dc, uint8_t* buffer, int bufferLen) {
+  // check for ID3 tag
+
+    auto ptr = buffer;
+    auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
+
+    if (tag == 0x49443303)  {
+     // got ID3 tag
+      auto tagSize = (*(ptr+6)<<21) | (*(ptr+7)<<14) | (*(ptr+8)<<7) | *(ptr+9);
+      printf ("%c%c%c ver:%d %02x flags:%02x tagSize:%d\n", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5), tagSize);
+      ptr += 10;
+
+      while (ptr < buffer + tagSize) {
+        auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
+        auto frameSize = (*(ptr+4)<<24) | (*(ptr+5)<<16) | (*(ptr+6)<<8) | (*(ptr+7));
+        if (!frameSize)
+          break;
+        auto frameFlags1 = *(ptr+8);
+        auto frameFlags2 = *(ptr+9);
+
+        printf ("%c%c%c%c - %02x %02x - frameSize:%d - ", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), frameFlags1, frameFlags2, frameSize);
+        for (auto i = 0; i < (tag == 0x41504943 ? 11 : frameSize); i++)
+          printf ("%c", *(ptr+10+i));
+        printf ("\n");
+
+        for (auto i = 0; i < (frameSize < 32 ? frameSize : 32); i++)
+          printf ("%02x ", *(ptr+10+i));
+        printf ("\n");
+
+        if (tag == 0x41504943) {
+          auto jpegImage = new cJpegImage();
+          if (jpegImage->loadBuffer (dc, 1, ptr + 10 + 14, frameSize - 14))
+            mBitmap = jpegImage->getFullBitmap();
+          }
+        ptr += frameSize + 10;
+        };
+      }
+    else {
+      // print start of file
+      for (auto i = 0; i < 32; i++)
+        printf ("%02x ", *(ptr+i));
+      printf ("\n");
+      }
+    }
+  //}}}
+
   wstring mFilename;
   wstring mFullFilename;
 
@@ -68,6 +222,11 @@ private:
   int mMode = 0;
 
   D2D1_RECT_F mLayout = {0,0,0,0};
+
+  double mMaxSecs = 0;
+  double mSecsPerFrame = 1.0;
+  ID2D1Bitmap* mBitmap = nullptr;
+  cAudFrame* mAudFrames[maxAudFrames];
   };
 //}}}
 //{{{
@@ -149,8 +308,6 @@ private:
   // private vars
   wstring mDirName;
   wstring mFullDirName;
-
-  // public vars
   concurrency::concurrent_vector<cMp3Item*> mItems;
   concurrency::concurrent_vector<cMp3Files*> mDirectories;
   };
@@ -168,11 +325,12 @@ public:
     mIsDirectory = (GetFileAttributes (wFilename) & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
     if (mIsDirectory)
-      thread ([=]() { scanFilesFunc (wFilename); }).detach();
-    else
-      std::thread ([=]() { loader (wFilename); }).detach();
-
-    std::thread ([=]() { player(); }).detach();
+      thread ([=]() { fileScanner (wFilename); }).detach();
+    else {
+      mMp3Item = new cMp3Item (wFilename);
+      thread ([=]() { mMp3Item->load (getDeviceContext()); }).detach();
+      }
+    thread ([=]() { player(); }).detach();
 
     messagePump();
     };
@@ -191,14 +349,14 @@ protected:
       case 0x21 : incPlaySecs (-5); changed(); break;
       case 0x22: incPlaySecs(5); changed(); break;
 
-      case 0x23 : setPlaySecs (mMaxSecs); changed(); break;
+      case 0x23 : setPlaySecs (mMp3Item->getMaxSecs()); changed(); break;
       case 0x24 : setPlaySecs (0); changed(); break;
 
       case 0x25 : incPlaySecs (-1); changed(); break;
       case 0x27 : incPlaySecs (1); changed(); break;
 
-      case 0x26 : setPlaying (false); incPlaySecs (-mSecsPerFrame); changed(); break;
-      case 0x28 : setPlaying (false); incPlaySecs (mSecsPerFrame); break;
+      case 0x26 : setPlaying (false); incPlaySecs (-mMp3Item->getSecsPerFrame()); changed(); break;
+      case 0x28 : setPlaying (false); incPlaySecs (mMp3Item->getSecsPerFrame()); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -222,8 +380,14 @@ protected:
   void onMouseDown (bool right, int x, int y) {
 
     auto item = pickItem (Point2F ((float)x, (float)y));
-    if (item)
-      loader (item->getFullFilename().c_str());
+    if (item) {
+      if (mMp3Item)
+        delete mMp3Item;
+      mMp3Item = item;
+      item->load (getDeviceContext());
+      }
+    else
+      mDownConsumed = false;
     }
   //}}}
   //{{{
@@ -239,32 +403,37 @@ protected:
   //{{{
   void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
 
-    if (!mouseMoved)
+    if (!mouseMoved && !mDownConsumed)
       togglePlaying();
+
+    mDownConsumed = true;
     }
   //}}}
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
     dc->Clear (ColorF(ColorF::Black));
-    if (mBitmap)
-      dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
+
+    if (mMp3Item && mMp3Item->getBitmap())
+      dc->DrawBitmap (mMp3Item->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
     // yellow vol bar
     auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
     dc->FillRectangle (rVol, getYellowBrush());
 
-    int rows = 6;
-    int frame = int(mPlaySecs / mSecsPerFrame);
-    for (int i = 0; i < rows; i++) {
-      for (float f = 0.0f; f < getClientF().width; f++) {
-        auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
-        if (mAudFrames[frame]) {
-          rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mAudFrames[frame]->mPower[0];
-          rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mAudFrames[frame]->mPower[1];
-          dc->FillRectangle (rWave, getBlueBrush());
+    if (mMp3Item) {
+      int rows = 6;
+      int frame = int(mPlaySecs / mMp3Item->getSecsPerFrame());
+      for (int i = 0; i < rows; i++) {
+        for (float f = 0.0f; f < getClientF().width; f++) {
+          auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
+          if (mMp3Item->getFrame (frame)) {
+            rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mMp3Item->getFrame(frame)->mPower[0];
+            rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mMp3Item->getFrame(frame)->mPower[1];
+            dc->FillRectangle (rWave, getBlueBrush());
+            }
+          frame++;
           }
-        frame++;
         }
       }
 
@@ -274,9 +443,11 @@ protected:
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
       }
-    else {
+    else if (mMp3Item) {
       wchar_t wStr[200];
-      swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x", mPlaySecs, mMaxSecs, mBitRate/1000, mSampleRate, mChannels, mMode);
+      swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
+                mPlaySecs, mMp3Item->getMaxSecs(), mMp3Item->getBitRate()/1000, mMp3Item->getSampleRate(),
+                mMp3Item->getChannels(), mMp3Item->getMode());
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
       }
@@ -287,197 +458,89 @@ protected:
 
 private:
   //{{{
-  void loader (const wchar_t* wFilename) {
+  //void loaderffmpeg (const wchar_t* wFilename) {
 
-    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    auto mFileBytes = GetFileSize (fileHandle, NULL);
-    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    //auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    //int mFileBytes = GetFileSize (fileHandle, NULL);
+    //auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+    //auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    id3tag (fileBuffer, mFileBytes);
+    //av_register_all();
+    //AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
+    //AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
+    //AVCodecContext*audContext = avcodec_alloc_context3 (audCodec);
+    //avcodec_open2 (audContext, audCodec, NULL);
 
-    cMp3Decoder mMp3Decoder;
-    auto ptr = fileBuffer;
-    auto bufferBytes = mFileBytes;
-    int mLoadAudFrame = 0;
-    while ((bufferBytes > 0) && (mLoadAudFrame < maxAudFrames)) {
-      int16_t samples[1152*2];
-      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
-      if (bytesUsed) {
-        mSampleRate = mMp3Decoder.getSampleRate();
-        mBitRate = mMp3Decoder.getBitRate();
-        mChannels = mMp3Decoder.getNumChannels();
-        mMode = mMp3Decoder.getMode();
-        mSecsPerFrame = 1152.0 / mSampleRate;
-        mMaxSecs = mLoadAudFrame * mSecsPerFrame;
+    //AVPacket avPacket;
+    //av_init_packet (&avPacket);
+    //avPacket.data = fileBuffer;
+    //avPacket.size = 0;
 
-        ptr += bytesUsed;
-        bufferBytes -= bytesUsed;
+    //auto time = startTimer();
 
-        mAudFrames[mLoadAudFrame] = new cAudFrame();
-        mAudFrames[mLoadAudFrame]->set (0, 2, mSampleRate, 1152);
-        auto samplePtr = mAudFrames[mLoadAudFrame]->mSamples;
+    //int pesLen = mFileBytes;
+    //uint8_t* pesPtr = fileBuffer;
+    //int mLoadAudFrame = 0;
+    //while (pesLen) {
+      //auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
+      //pesPtr += lenUsed;
+      //pesLen -= lenUsed;
 
-        auto valueL = 0.0;
-        auto valueR = 0.0;
-        auto lrPtr = samples;
+      //if (avPacket.data) {
+        //auto got = 0;
+        //auto avFrame = av_frame_alloc();
+        //auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
+        //if (bytesUsed >= 0) {
+          //avPacket.data += bytesUsed;
+          //avPacket.size -= bytesUsed;
+          //if (got) {
+            //{{{  got frame
+            //mSampleRate = avFrame->sample_rate;
+            //mAudFrames[mLoadAudFrame] = new cAudFrame();
+            //mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, 48000, avFrame->nb_samples);
+            //auto samplePtr = (short*)mAudFrames[mLoadAudFrame]->mSamples;
+            //double valueL = 0;
+            //double valueR = 0;
+            //short* leftPtr = (short*)avFrame->data[0];
+            //short* rightPtr = (short*)avFrame->data[1];
+            //for (int i = 0; i < avFrame->nb_samples; i++) {
+              //*samplePtr = *leftPtr++;
+              //valueL += pow (*samplePtr++, 2);
+              //*samplePtr = *rightPtr++;
+              //valueR += pow (*samplePtr++, 2);
+              //}
+            //mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
+            //mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
+            //mLoadAudFrame++;
+            //changed();
+            //}
+            //}}}
+          //av_frame_free (&avFrame);
+          //}
+        //}
+      //}
 
-        if (mChannels == 1)
-          // fake stereo
-          for (auto i = 0; i < 1152; i++) {
-            *samplePtr = *lrPtr;
-            valueL += pow (*samplePtr++, 2);
-            *samplePtr = *lrPtr++;
-            valueR += pow (*samplePtr++, 2);
-            }
-        else
-          for (auto i = 0; i < 1152; i++) {
-            *samplePtr = *lrPtr++;
-            valueL += pow (*samplePtr++, 2);
-            *samplePtr = *lrPtr++;
-            valueR += pow (*samplePtr++, 2);
-            }
-
-        mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
-        mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
-        mLoadAudFrame++;
-        changed();
-        }
-      }
-
-    UnmapViewOfFile (fileBuffer);
-    CloseHandle (fileHandle);
-    }
-  //}}}
-  //{{{
-  void loaderffmpeg (const wchar_t* wFilename) {
-
-    auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    int mFileBytes = GetFileSize (fileHandle, NULL);
-    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
-
-    av_register_all();
-    AVCodecParserContext* audParser = av_parser_init (AV_CODEC_ID_MP3);
-    AVCodec* audCodec = avcodec_find_decoder (AV_CODEC_ID_MP3);
-    AVCodecContext*audContext = avcodec_alloc_context3 (audCodec);
-    avcodec_open2 (audContext, audCodec, NULL);
-
-    AVPacket avPacket;
-    av_init_packet (&avPacket);
-    avPacket.data = fileBuffer;
-    avPacket.size = 0;
-
-    auto time = startTimer();
-
-    int pesLen = mFileBytes;
-    uint8_t* pesPtr = fileBuffer;
-    int mLoadAudFrame = 0;
-    while (pesLen) {
-      auto lenUsed = av_parser_parse2 (audParser, audContext, &avPacket.data, &avPacket.size, pesPtr, pesLen, 0, 0, AV_NOPTS_VALUE);
-      pesPtr += lenUsed;
-      pesLen -= lenUsed;
-
-      if (avPacket.data) {
-        auto got = 0;
-        auto avFrame = av_frame_alloc();
-        auto bytesUsed = avcodec_decode_audio4 (audContext, avFrame, &got, &avPacket);
-        if (bytesUsed >= 0) {
-          avPacket.data += bytesUsed;
-          avPacket.size -= bytesUsed;
-
-          if (got) {
-            mSampleRate = avFrame->sample_rate;
-            mAudFrames[mLoadAudFrame] = new cAudFrame();
-            mAudFrames[mLoadAudFrame]->set (0, avFrame->channels, 48000, avFrame->nb_samples);
-            auto samplePtr = (short*)mAudFrames[mLoadAudFrame]->mSamples;
-            double valueL = 0;
-            double valueR = 0;
-            short* leftPtr = (short*)avFrame->data[0];
-            short* rightPtr = (short*)avFrame->data[1];
-            for (int i = 0; i < avFrame->nb_samples; i++) {
-              *samplePtr = *leftPtr++;
-              valueL += pow (*samplePtr++, 2);
-              *samplePtr = *rightPtr++;
-              valueR += pow (*samplePtr++, 2);
-              }
-            mAudFrames[mLoadAudFrame]->mPower[0] = (float)sqrt (valueL) / (avFrame->nb_samples * 2.0f);
-            mAudFrames[mLoadAudFrame]->mPower[1] = (float)sqrt (valueR) / (avFrame->nb_samples * 2.0f);
-            mLoadAudFrame++;
-            changed();
-            }
-          av_frame_free (&avFrame);
-          }
-        }
-      }
-
-    UnmapViewOfFile (fileBuffer);
-    CloseHandle (fileHandle);
-    }
-  //}}}
-  //{{{
-  void id3tag (uint8_t* buffer, int bufferLen) {
-  // check for ID3 tag
-
-    auto ptr = buffer;
-    auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
-
-    if (tag == 0x49443303)  {
-     // got ID3 tag
-      auto tagSize = (*(ptr+6)<<21) | (*(ptr+7)<<14) | (*(ptr+8)<<7) | *(ptr+9);
-      printf ("%c%c%c ver:%d %02x flags:%02x tagSize:%d\n", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), *(ptr+4), *(ptr+5), tagSize);
-      ptr += 10;
-
-      while (ptr < buffer + tagSize) {
-        auto tag = ((*ptr)<<24) | (*(ptr+1)<<16) | (*(ptr+2)<<8) | *(ptr+3);
-        auto frameSize = (*(ptr+4)<<24) | (*(ptr+5)<<16) | (*(ptr+6)<<8) | (*(ptr+7));
-        if (!frameSize)
-          break;
-        auto frameFlags1 = *(ptr+8);
-        auto frameFlags2 = *(ptr+9);
-
-        printf ("%c%c%c%c - %02x %02x - frameSize:%d - ", *ptr, *(ptr+1), *(ptr+2), *(ptr+3), frameFlags1, frameFlags2, frameSize);
-        for (auto i = 0; i < (tag == 0x41504943 ? 11 : frameSize); i++)
-          printf ("%c", *(ptr+10+i));
-        printf ("\n");
-
-        for (auto i = 0; i < (frameSize < 32 ? frameSize : 32); i++)
-          printf ("%02x ", *(ptr+10+i));
-        printf ("\n");
-
-        if (tag == 0x41504943) {
-          auto jpegImage = new cJpegImage();
-          if (jpegImage->loadBuffer (getDeviceContext(), 1, ptr + 10 + 14, frameSize - 14))
-            mBitmap = jpegImage->getFullBitmap();
-          }
-        ptr += frameSize + 10;
-        };
-      }
-    else {
-      // print start of file
-      for (auto i = 0; i < 32; i++)
-        printf ("%02x ", *(ptr+i));
-      printf ("\n");
-      }
-    }
+    //UnmapViewOfFile (fileBuffer);
+    //CloseHandle (fileHandle);
+    //}
   //}}}
   //{{{
   void player() {
 
     CoInitialize (NULL);  // for winAudio
 
-    while (mMaxSecs < 1)
+    while (!mMp3Item || mMp3Item->getMaxSecs() < 1)
       Sleep (10);
 
-    audOpen (mSampleRate, 16, 2);
+    audOpen (mMp3Item->getSampleRate(), 16, 2);
 
     mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
-        int audFrame = int (mPlaySecs / mSecsPerFrame);
-        audPlay (mAudFrames[audFrame]->mSamples, mAudFrames[audFrame]->mNumSampleBytes, 1.0f);
-        if (mPlaySecs < mMaxSecs) {
-          mPlaySecs += mSecsPerFrame;
+        int audFrame = int (mPlaySecs / mMp3Item->getSecsPerFrame());
+        audPlay (mMp3Item->getFrame(audFrame)->mSamples, mMp3Item->getFrame(audFrame)->mNumSampleBytes, 1.0f);
+        if (mPlaySecs < mMp3Item->getMaxSecs()) {
+          mPlaySecs += mMp3Item->getSecsPerFrame();
           changed();
           }
         }
@@ -491,12 +554,12 @@ private:
   //{{{  iPlayer
   //{{{
   int getAudSampleRate() {
-     return mSampleRate;
-     }
+    return mMp3Item->getSampleRate();
+    }
   //}}}
   //{{{
   double getSecsPerAudFrame() {
-    return mSecsPerFrame;
+    return mMp3Item->getSecsPerFrame();
     }
   //}}}
   //{{{
@@ -518,8 +581,8 @@ private:
   void setPlaySecs (double secs) {
     if (secs < 0)
       mPlaySecs = 0;
-    else if (secs > mMaxSecs)
-      mPlaySecs = mMaxSecs;
+    else if (secs > mMp3Item->getMaxSecs())
+      mPlaySecs = mMp3Item->getMaxSecs();
     else
       mPlaySecs = secs;
     }
@@ -549,7 +612,7 @@ private:
     }
   //}}}
   //{{{
-  void scanFilesFunc (wchar_t* rootDir) {
+  void fileScanner (wchar_t* rootDir) {
   // rootdirectory wchar_t* rather than wstring
 
     auto time1 = getTimer();
@@ -570,23 +633,16 @@ private:
   //{{{  private vars
   bool mIsDirectory = false;
 
-  int mSampleRate = 0;
-  int mBitRate = 0;
-  int mChannels = 0;
-  int mMode = 0;
-
   bool mPlaying = true;
-
-  double mMaxSecs = 0;
   double mPlaySecs = 0;
-  double mSecsPerFrame = 1.0;
+
+  bool mDownConsumed = false;
 
   int mNumNestedImages = 0;
   int mNumNestedDirs = 0;
   float mLayoutY = 0;
 
-  ID2D1Bitmap* mBitmap = nullptr;
-  cAudFrame* mAudFrames[maxAudFrames];
+  cMp3Item* mMp3Item = nullptr;
   //}}}
   };
 
