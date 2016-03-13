@@ -134,7 +134,6 @@ public:
 private:
   wstring mDirName;
   wstring mFullDirName;
-
   concurrency::concurrent_vector<cJpegImage*> mItems;
   concurrency::concurrent_vector<cJpegFiles*> mDirectories;
   };
@@ -437,6 +436,13 @@ protected:
 
 private:
   //{{{
+  void drawThumb (cJpegImage* image) {
+
+    if (image->getThumbBitmap())
+      getDeviceContext()->DrawBitmap (image->getThumbBitmap(), image->getLayout());
+    }
+  //}}}
+  //{{{
   void layoutThumbs() {
 
     auto windowAspect = getClientF().width / getClientF().height;
@@ -457,13 +463,6 @@ private:
     mThumbView.setSrcDstSize (SizeU(columns * mThumbSize.width, rows * mThumbSize.height), getClientF());
 
     changed();
-    }
-  //}}}
-  //{{{
-  void drawThumb (cJpegImage* image) {
-
-    if (image->getThumbBitmap())
-      getDeviceContext()->DrawBitmap (image->getThumbBitmap(), image->getLayout());
     }
   //}}}
   //{{{

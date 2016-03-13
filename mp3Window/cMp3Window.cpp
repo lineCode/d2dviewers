@@ -19,8 +19,8 @@
 //{{{
 class cMp3File {
 public:
-  cMp3File (wchar_t* filename) : mFilename(filename), mFullFilename (filename) {}
-  cMp3File (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename (parentName + L"\\" + filename) {}
+  cMp3File (wchar_t* fileName) : mFileName(fileName), mFullFileName (fileName) {}
+  cMp3File (wstring& parentName, wchar_t* fileName) : mFileName(fileName), mFullFileName (parentName + L"\\" + fileName) {}
 
   //{{{
   int isLoaded() {
@@ -28,13 +28,13 @@ public:
     }
   //}}}
   //{{{
-  wstring getFilename() {
-    return mFilename;
+  wstring getFileName() {
+    return mFileName;
     }
   //}}}
   //{{{
-  wstring getFullFilename() {
-    return mFullFilename;
+  wstring getFullFileName() {
+    return mFullFileName;
     }
   //}}}
   //{{{
@@ -101,7 +101,7 @@ public:
   void load (ID2D1DeviceContext* dc) {
 
     mLoaded = 1;
-    auto fileHandle = CreateFile (mFullFilename.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     auto mFileBytes = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
@@ -168,9 +168,9 @@ public:
     }
   //}}}
   //{{{
-  //void loaderffmpeg (const wchar_t* wFilename) {
+  //void loaderffmpeg (const wchar_t* wFileName) {
 
-    //auto fileHandle = CreateFile (wFilename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    //auto fileHandle = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     //int mFileBytes = GetFileSize (fileHandle, NULL);
     //auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     //auto fileBuffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
@@ -286,8 +286,8 @@ private:
   //}}}
 
   int mLoaded = 0;
-  wstring mFilename;
-  wstring mFullFilename;
+  wstring mFileName;
+  wstring mFullFileName;
 
   int mSampleRate = 44100;
   int mChannels = 2;
@@ -414,17 +414,17 @@ public:
   cMp3Window() {}
   ~cMp3Window() {}
   //{{{
-  void run (wchar_t* title, int width, int height, wchar_t* wFilename) {
+  void run (wchar_t* title, int width, int height, wchar_t* wFileName) {
 
     initialise (title, width, height);
 
-    mIsDirectory = (GetFileAttributes (wFilename) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    mIsDirectory = (GetFileAttributes (wFileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
     if (mIsDirectory) {
-      thread ([=]() { fileScanner (wFilename); }).detach();
+      thread ([=]() { fileScanner (wFileName); }).detach();
       thread ([=]() { filesLoader (0); } ).detach();
       }
     else {
-      mMp3File = new cMp3File (wFilename);
+      mMp3File = new cMp3File (wFileName);
       thread ([=]() { mMp3File->load (getDeviceContext()); }).detach();
       }
 
@@ -532,7 +532,6 @@ protected:
                  : swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
                              mPlaySecs, mMp3File->getMaxSecs(), mMp3File->getBitRate()/1000, getAudSampleRate(),
                              mMp3File->getChannels(), mMp3File->getMode());
-
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
 
@@ -541,12 +540,12 @@ protected:
       int frame = int(mPlaySecs / getSecsPerAudFrame());
       for (int i = 0; i < rows; i++) {
         for (float f = 0.0f; f < getClientF().width; f++) {
-          auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
-          if (mMp3File->getFrame (frame)) {
-            rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame(frame)->mPower[0];
-            rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mMp3File->getFrame(frame)->mPower[1];
-            dc->FillRectangle (rWave, getBlueBrush());
-            }
+          if (mMp3File->getFrame (frame)) 
+            dc->FillRectangle (
+              RectF (!(i & 1) ? f : (getClientF().width - f), 
+                     ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame (frame)->mPower[0], 
+                    !(i & 1) ? (f + 1.0f) : (getClientF().width - f + 1.0f),
+                    ((i + 0.5f) * (getClientF().height / rows)) + mMp3File->getFrame (frame)->mPower[1]), getBlueBrush());
           frame++;
           }
         }
@@ -561,7 +560,7 @@ private:
   void drawItem (cMp3File* item) {
 
     wchar_t wStr[200];
-    swprintf (wStr, 200, L"%s", item->getFilename().c_str());
+    swprintf (wStr, 200, L"%s", item->getFileName().c_str());
     getDeviceContext()->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), item->getLayout(),
                                   item->isLoaded() ? getWhiteBrush() : getGreyBrush());
     }
