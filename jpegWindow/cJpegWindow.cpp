@@ -25,7 +25,7 @@ public:
   cJpegFiles() {}
 
   //{{{
-  void scanFiles (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
+  void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
                   int& numItems, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
@@ -40,7 +40,7 @@ public:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
           auto directory = new cJpegFiles();
-          directory->scanFiles (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs, jpegWindow, func);
+          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs, jpegWindow, func);
           mDirectories.push_back (directory);
           }
         else if (PathMatchSpec (findFileData.cFileName, pathMatchName))
@@ -153,7 +153,7 @@ public:
     // start threads
     thread ([=]() { fileScanner (rootDirectory); } ).detach();
     for (auto i = 0; i < numLoaderThreads; i++)
-      thread ([=]() { thumbLoaderFunc (i); } ).detach();
+      thread ([=]() { thumbLoader (i); } ).detach();
 
     messagePump();
     };
@@ -467,7 +467,22 @@ private:
     }
   //}}}
   //{{{
-  void thumbLoaderFunc (int index) {
+  void fileScanner (wchar_t* rootDir) {
+  // rootdirectory wchar_t* rather than wstring
+
+    auto time1 = getTimer();
+    scan (wstring(), rootDir, L"*.jpg", mNumNestedImages, mNumNestedDirs, this, &cJpegWindow::layoutThumbs);
+    mFileSystemScanned = true;
+    auto time2 = getTimer();
+
+    wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
+          << L" directories:" << mNumNestedDirs
+          << L" took:" << time2-time1
+          << endl;
+    }
+  //}}}
+  //{{{
+  void thumbLoader (int index) {
 
     auto slept = 0;
 
@@ -497,21 +512,6 @@ private:
           << L" images:" << mNumNestedImages
           << L" wasted:" << wasted
           << L" slept:" << slept
-          << endl;
-    }
-  //}}}
-  //{{{
-  void fileScanner (wchar_t* rootDir) {
-  // rootdirectory wchar_t* rather than wstring
-
-    auto time1 = getTimer();
-    scanFiles (wstring(), rootDir, L"*.jpg", mNumNestedImages, mNumNestedDirs, this, &cJpegWindow::layoutThumbs);
-    mFileSystemScanned = true;
-    auto time2 = getTimer();
-
-    wcout << L"scanDirectoryFunc exit images:" << mNumNestedImages
-          << L" directories:" << mNumNestedDirs
-          << L" took:" << time2-time1
           << endl;
     }
   //}}}
