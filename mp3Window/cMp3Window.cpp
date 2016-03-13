@@ -15,19 +15,12 @@
 #pragma comment (lib,"avcodec.lib")
 #pragma comment (lib,"avformat.lib")
 //}}}
-//{{{  typedef
-class cMp3Window;
-typedef void (cMp3Window::*cMp3WindowFunc)();
-
-class cMp3Item;
-typedef void (cMp3Window::*cMp3WindowItemFunc)(cMp3Item* item);
-//}}}
 
 //{{{
-class cMp3Item {
+class cMp3File {
 public:
-  cMp3Item (wchar_t* filename) : mFilename(filename), mFullFilename (filename) {}
-  cMp3Item (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename (parentName + L"\\" + filename) {}
+  cMp3File (wchar_t* filename) : mFilename(filename), mFullFilename (filename) {}
+  cMp3File (wstring& parentName, wchar_t* filename) : mFilename(filename), mFullFilename (parentName + L"\\" + filename) {}
 
   //{{{
   int isLoaded() {
@@ -307,6 +300,12 @@ private:
   concurrency::concurrent_vector<cAudFrame*> mFrames;
   };
 //}}}
+
+//{{{  typedef
+class cMp3Window;
+typedef void (cMp3Window::*cMp3WindowFunc)();
+typedef void (cMp3Window::*cMp3WindowItemFunc)(cMp3File* item);
+//}}}
 //{{{
 class cMp3Files {
 public:
@@ -333,7 +332,7 @@ public:
          (mp3Window->*func)();
           }
         else if (PathMatchSpec (findFileData.cFileName, pathMatchName)) {
-          mItems.push_back (new cMp3Item (mFullDirName, findFileData.cFileName));
+          mItems.push_back (new cMp3File (mFullDirName, findFileData.cFileName));
           (mp3Window->*func)();
           }
         } while (FindNextFile (file, &findFileData));
@@ -346,7 +345,7 @@ public:
   //}}}
 
   //{{{
-  cMp3Item* pickItem (D2D1_POINT_2F& point) {
+  cMp3File* pickItem (D2D1_POINT_2F& point) {
 
     for (auto directory : mDirectories) {
       auto pickedItem = directory->pickItem (point);
@@ -385,7 +384,7 @@ public:
     }
   //}}}
   //{{{
-  cMp3Item* nextLoadItem() {
+  cMp3File* nextLoadItem() {
 
     for (auto directory : mDirectories) {
       auto item = directory->nextLoadItem();
@@ -405,7 +404,7 @@ private:
   // private vars
   wstring mDirName;
   wstring mFullDirName;
-  concurrency::concurrent_vector<cMp3Item*> mItems;
+  concurrency::concurrent_vector<cMp3File*> mItems;
   concurrency::concurrent_vector<cMp3Files*> mDirectories;
   };
 //}}}
@@ -425,8 +424,8 @@ public:
       thread ([=]() { filesLoader (0); } ).detach();
       }
     else {
-      mMp3Item = new cMp3Item (wFilename);
-      thread ([=]() { mMp3Item->load (getDeviceContext()); }).detach();
+      mMp3File = new cMp3File (wFilename);
+      thread ([=]() { mMp3File->load (getDeviceContext()); }).detach();
       }
 
     thread ([=]() { player(); }).detach();
@@ -448,14 +447,14 @@ protected:
       case 0x21 : incPlaySecs (-5); changed(); break;
       case 0x22: incPlaySecs(5); changed(); break;
 
-      case 0x23 : setPlaySecs (mMp3Item->getMaxSecs()); changed(); break;
+      case 0x23 : setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
       case 0x24 : setPlaySecs (0); changed(); break;
 
       case 0x25 : incPlaySecs (-1); changed(); break;
       case 0x27 : incPlaySecs (1); changed(); break;
 
-      case 0x26 : setPlaying (false); incPlaySecs (-mMp3Item->getSecsPerFrame()); changed(); break;
-      case 0x28 : setPlaying (false); incPlaySecs (mMp3Item->getSecsPerFrame()); break;
+      case 0x26 : setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
+      case 0x28 : setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -487,7 +486,7 @@ protected:
       auto item = pickItem (Point2F ((float)x, (float)y));
       if (item) {
         if (item->isLoaded() > 0)  {
-          mMp3Item = item;
+          mMp3File = item;
           mPlaySecs = 0;
           }
         mDownConsumed = true;
@@ -523,27 +522,11 @@ protected:
 
     dc->Clear (ColorF(ColorF::Black));
 
-    if (mMp3Item && mMp3Item->getBitmap())
-      dc->DrawBitmap (mMp3Item->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
+    if (mMp3File && mMp3File->getBitmap())
+      dc->DrawBitmap (mMp3File->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
     // yellow volume bar
     dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
-
-    if (mMp3Item) {
-      int rows = 6;
-      int frame = int(mPlaySecs / mMp3Item->getSecsPerFrame());
-      for (int i = 0; i < rows; i++) {
-        for (float f = 0.0f; f < getClientF().width; f++) {
-          auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
-          if (mMp3Item->getFrame (frame)) {
-            rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mMp3Item->getFrame(frame)->mPower[0];
-            rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mMp3Item->getFrame(frame)->mPower[1];
-            dc->FillRectangle (rWave, getBlueBrush());
-            }
-          frame++;
-          }
-        }
-      }
 
     if (mIsDirectory) {
       wchar_t wStr[200];
@@ -551,11 +534,26 @@ protected:
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
       }
-    else if (mMp3Item) {
+
+    else if (mMp3File) {
+      int rows = 6;
+      int frame = int(mPlaySecs / getSecsPerAudFrame());
+      for (int i = 0; i < rows; i++) {
+        for (float f = 0.0f; f < getClientF().width; f++) {
+          auto rWave = RectF (!(i & 1) ? f : (getClientF().width-f), 0, !(i & 1) ? (f+1.0f) : (getClientF().width-f+1.0f), 0);
+          if (mMp3File->getFrame (frame)) {
+            rWave.top    = ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame(frame)->mPower[0];
+            rWave.bottom = ((i + 0.5f) * (getClientF().height / rows)) + mMp3File->getFrame(frame)->mPower[1];
+            dc->FillRectangle (rWave, getBlueBrush());
+            }
+          frame++;
+          }
+        }
+
       wchar_t wStr[200];
       swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
-                mPlaySecs, mMp3Item->getMaxSecs(), mMp3Item->getBitRate()/1000, mMp3Item->getSampleRate(),
-                mMp3Item->getChannels(), mMp3Item->getMode());
+                mPlaySecs, mMp3File->getMaxSecs(), mMp3File->getBitRate()/1000, getAudSampleRate(),
+                mMp3File->getChannels(), mMp3File->getMode());
       dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                     RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
       }
@@ -570,18 +568,18 @@ private:
 
     CoInitialize (NULL);  // for winAudio
 
-    while (!mMp3Item || mMp3Item->getMaxSecs() < 1)
+    while (!mMp3File || mMp3File->getMaxSecs() < 1)
       Sleep (10);
 
-    audOpen (mMp3Item->getSampleRate(), 16, 2);
+    audOpen (getAudSampleRate(), 16, 2);
 
     mPlaySecs = 0;
     while (true) {
       if (mPlaying) {
-        int audFrame = int (mPlaySecs / mMp3Item->getSecsPerFrame());
-        audPlay (mMp3Item->getFrame(audFrame)->mSamples, mMp3Item->getFrame(audFrame)->mNumSampleBytes, 1.0f);
-        if (mPlaySecs < mMp3Item->getMaxSecs()) {
-          mPlaySecs += mMp3Item->getSecsPerFrame();
+        int audFrame = int (mPlaySecs / getSecsPerAudFrame());
+        audPlay (mMp3File->getFrame(audFrame)->mSamples, mMp3File->getFrame(audFrame)->mNumSampleBytes, 1.0f);
+        if (mPlaySecs < mMp3File->getMaxSecs()) {
+          mPlaySecs += getSecsPerAudFrame();
           changed();
           }
         }
@@ -595,12 +593,12 @@ private:
   //{{{  iPlayer
   //{{{
   int getAudSampleRate() {
-    return mMp3Item->getSampleRate();
+    return mMp3File->getSampleRate();
     }
   //}}}
   //{{{
   double getSecsPerAudFrame() {
-    return mMp3Item->getSecsPerFrame();
+    return mMp3File->getSecsPerFrame();
     }
   //}}}
   //{{{
@@ -608,6 +606,7 @@ private:
     return 0;
     }
   //}}}
+
   //{{{
   bool getPlaying() {
     return mPlaying;
@@ -622,8 +621,8 @@ private:
   void setPlaySecs (double secs) {
     if (secs < 0)
       mPlaySecs = 0;
-    else if (secs > mMp3Item->getMaxSecs())
-      mPlaySecs = mMp3Item->getMaxSecs();
+    else if (secs > mMp3File->getMaxSecs())
+      mPlaySecs = mMp3File->getMaxSecs();
     else
       mPlaySecs = secs;
     }
@@ -633,6 +632,7 @@ private:
     setPlaySecs (mPlaySecs + inc);
     }
   //}}}
+
   //{{{
   void setPlaying (bool playing) {
     mPlaying = playing;
@@ -645,7 +645,7 @@ private:
   //}}}
   //}}}
   //{{{
-  void drawItem (cMp3Item* item) {
+  void drawItem (cMp3File* item) {
 
     wchar_t wStr[200];
     swprintf (wStr, 200, L"%s", item->getFilename().c_str());
@@ -678,9 +678,9 @@ private:
       Sleep (slept++);
 
     while (slept < 20) {
-      cMp3Item* mp3Item = nextLoadItem();
-      if (mp3Item)
-        mp3Item->load (getDeviceContext());
+      cMp3File* mp3File = nextLoadItem();
+      if (mp3File)
+        mp3File->load (getDeviceContext());
       else
         Sleep (++slept);
       }
@@ -700,7 +700,7 @@ private:
 
   int mNumNestedDirs = 0;
   int mNumNestedItems = 0;
-  cMp3Item* mMp3Item = nullptr;
+  cMp3File* mMp3File = nullptr;
   //}}}
   };
 
