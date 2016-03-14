@@ -461,7 +461,7 @@
     <LinkIncremental>true</LinkIncremental>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
-    <LibraryPath>C:\Users\colin\Desktop\d2dviewers\lib64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib64;$(LibraryPath)</LibraryPath>
     <IncludePath>..\openh264\inc;..\agg\include\ctrl;..\agg\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -475,7 +475,7 @@
     <LinkIncremental>false</LinkIncremental>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(Platform)\$(Configuration)\</IntDir>
-    <LibraryPath>C:\Users\colin\Desktop\d2dviewers\lib64;$(LibraryPath)</LibraryPath>
+    <LibraryPath>..\lib64;$(LibraryPath)</LibraryPath>
     <IncludePath>..\openh264\inc;..\agg\include\ctrl;..\agg\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
