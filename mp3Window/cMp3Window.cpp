@@ -540,10 +540,10 @@ protected:
       int frame = int(mPlaySecs / getSecsPerAudFrame());
       for (int i = 0; i < rows; i++) {
         for (float f = 0.0f; f < getClientF().width; f++) {
-          if (mMp3File->getFrame (frame)) 
+          if (mMp3File->getFrame (frame))
             dc->FillRectangle (
-              RectF (!(i & 1) ? f : (getClientF().width - f), 
-                     ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame (frame)->mPower[0], 
+              RectF (!(i & 1) ? f : (getClientF().width - f),
+                     ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame (frame)->mPower[0],
                     !(i & 1) ? (f + 1.0f) : (getClientF().width - f + 1.0f),
                     ((i + 0.5f) * (getClientF().height / rows)) + mMp3File->getFrame (frame)->mPower[1]), getBlueBrush());
           frame++;
@@ -565,7 +565,8 @@ private:
                                   item->isLoaded() ? getWhiteBrush() : getGreyBrush());
     }
   //}}}
-  //{{{  iPlayer
+
+  // iPlayer
   //{{{
   int getAudSampleRate() {
     return mMp3File->getSampleRate();
@@ -581,7 +582,6 @@ private:
     return 0;
     }
   //}}}
-
   //{{{
   bool getPlaying() {
     return mPlaying;
@@ -607,7 +607,6 @@ private:
     setPlaySecs (mPlaySecs + inc);
     }
   //}}}
-
   //{{{
   void setPlaying (bool playing) {
     mPlaying = playing;
@@ -618,7 +617,7 @@ private:
     setPlaying (!mPlaying);
     }
   //}}}
-  //}}}
+
   //{{{
   void fileScanner (wchar_t* rootDir) {
 
