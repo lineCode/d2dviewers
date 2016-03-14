@@ -3,8 +3,6 @@
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="sensorView.cpp" />
-    <ClCompile Include="..\common\jpegHeader.cpp" />
-    <ClCompile Include="..\common\timer.cpp" />
     <ClCompile Include="..\common\usbUtils.cpp" />
     <ClCompile Include="..\common\cD2dWindow.cpp" />
   </ItemGroup>

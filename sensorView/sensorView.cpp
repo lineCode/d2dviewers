@@ -4,8 +4,11 @@
 
 #include "../common/cD2DWindow.h"
 #include "../common/timer.h"
-#include "../inc/jpeglib/jpeglib.h"
+#include "../common/jpegheader.h"
+#include "../common/usbUtils.h"
+#include "../inc/CyAPI/CyAPI.h"
 
+#include "../inc/jpeglib/jpeglib.h"
 #pragma comment(lib,"turbojpeg-static")
 
 using namespace D2D1;

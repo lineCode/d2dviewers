@@ -21,9 +21,5 @@
 #include <dwrite.h>
 #include <Wincodec.h>
 
-#include "../common/jpegHeader.h"
-#include "../common/usbUtils.h"
-#include "../inc/CyAPI/CyAPI.h"
-
 using namespace Microsoft::WRL;
 using namespace D2D1;
