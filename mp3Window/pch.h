@@ -16,11 +16,6 @@
 
 #include <thread>
 
-#include "Shlwapi.h" // for shell path functions
-#pragma comment(lib,"shlwapi.lib")
-
-#include "concurrent_vector.h"
-
 // direct2d
 #include <d3d11.h>
 #include <d3d11_1.h>
