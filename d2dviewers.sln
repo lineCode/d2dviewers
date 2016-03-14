@@ -11,7 +11,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "jpegWindow", "jpegWindow\jp
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mp3Window", "mp3Window\mp3Window.vcxproj", "{CEA7C040-DE49-4415-8226-14C64D206C47}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sensorView", "sensorView\sensorView.vcxproj", "{EDB8BC4B-DBD3-4312-BED0-FD1D4EEE236E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sensorWindow", "sensorWindow\sensorWindow.vcxproj", "{EDB8BC4B-DBD3-4312-BED0-FD1D4EEE236E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

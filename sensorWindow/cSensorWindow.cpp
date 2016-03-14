@@ -1,4 +1,4 @@
-// sensorViewer.cpp
+// cSensorWindow.cpp
 //{{{  includes
 #include "pch.h"
 
@@ -10,8 +10,6 @@
 
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
-
-using namespace D2D1;
 //}}}
 
 class cSensorWindow : public cD2dWindow {
