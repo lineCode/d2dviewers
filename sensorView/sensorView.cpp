@@ -10,7 +10,7 @@
 
 #include "../common/jpegheader.h"
 #include "../inc/jpeglib/jpeglib.h"
-#pragma comment(lib,"turbojpeg-static")
+#pragma comment (lib,"turbojpeg-static")
 
 using namespace D2D1;
 //}}}
@@ -19,7 +19,7 @@ using namespace D2D1;
 class cSensorWindow : public cD2dWindow {
 public:
   cSensorWindow() {}
-  ~cSensorWindow() {}
+  virtual ~cSensorWindow() {}
   //{{{
   void run() {
 
@@ -53,7 +53,7 @@ public:
 
 protected:
   //{{{
-  bool cAppWindow::onKey (int key) {
+  bool onKey (int key) {
 
     switch (key) {
       case 0x00 : return false;
@@ -123,7 +123,7 @@ protected:
     }
   //}}}
   //{{{
-  void cAppWindow::onMouseWheel (int delta) {
+  void onMouseWheel (int delta) {
 
     double ratio = controlKeyDown ? 1.5 : shiftKeyDown ? 1.25 : 2.0;
     if (delta > 0)
@@ -133,7 +133,7 @@ protected:
     }
   //}}}
   //{{{
-  void cAppWindow::onMouseProx (bool inClient, int x, int y) {
+  void onMouseProx (bool inClient, int x, int y) {
 
     ULONG mask;
     if (getMask (x, y, mask))
@@ -141,11 +141,11 @@ protected:
     }
   //}}}
   //{{{
-  void cAppWindow::onMouseDown (bool right, int x, int y) {
+  void onMouseDown (bool right, int x, int y) {
     }
   //}}}
   //{{{
-  void cAppWindow::onMouseMove (bool right, int x, int y, int xInc, int yInc) {
+  void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     if (controlKeyDown)
       setFocus (focus + xInc);
@@ -162,7 +162,7 @@ protected:
     }
   //}}}
   //{{{
-  void cAppWindow::onMouseUp (bool right, bool mouseMoved, int x, int y) {
+  void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
     if (!right)
       if (!mouseMoved)
@@ -170,7 +170,7 @@ protected:
     }
   //}}}
   //{{{
-  void cAppWindow::onDraw (ID2D1DeviceContext* dc) {
+  void onDraw (ID2D1DeviceContext* dc) {
 
     drawBackground (dc, framePtr);
     drawSamplesFramesTitle (dc);
@@ -193,7 +193,7 @@ protected:
 
 private:
   //{{{
-  void cAppWindow::drawBackground (ID2D1DeviceContext* dc, BYTE* framePtr) {
+  void drawBackground (ID2D1DeviceContext* dc, BYTE* framePtr) {
 
     if (framePtr && (framePtr != lastFramePtr)) {
       grabbedFrameBytes = frameBytes;
@@ -208,7 +208,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
+  void drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
 
     std::wstringstream stringStream;
     stringStream << L"samples" << midSample / samplesPerSecond
@@ -225,7 +225,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawSensor (ID2D1DeviceContext* dc, int sensorid) {
+  void drawSensor (ID2D1DeviceContext* dc, int sensorid) {
 
     if (sensorid == 0x1519) {
       std::wstringstream stringStream;
@@ -236,7 +236,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
+  void drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
     auto rl = RectF(0.0f, rowPixels, getClientF().width, getClientF().height);
     for (auto dq = 0; dq < rows; dq++) {
@@ -249,7 +249,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
+  void drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
 
     auto r = RectF (leftPixels, rowPixels, 0, 0);
     auto lastSampleIndex = 0;
@@ -305,7 +305,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawGraticule (ID2D1DeviceContext* dc, int rows) {
+  void drawGraticule (ID2D1DeviceContext* dc, int rows) {
 
     dc->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
                              RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
@@ -336,7 +336,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawMidLine (ID2D1DeviceContext* dc, int rows) {
+  void drawMidLine (ID2D1DeviceContext* dc, int rows) {
 
     dc->FillRectangle (
       RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
@@ -344,7 +344,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawHistogram (ID2D1DeviceContext* dc) {
+  void drawHistogram (ID2D1DeviceContext* dc) {
 
     auto r = RectF (10.0f, 0, 0, getClientF().height - 10.0f);
 
@@ -361,7 +361,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::drawVector (ID2D1DeviceContext* dc) {
+  void drawVector (ID2D1DeviceContext* dc) {
 
     dc->FillRectangle (
       RectF (getClientF().width - 128.0f, getClientF().height - 256.0f,
@@ -389,7 +389,7 @@ private:
   //}}}
 
   //{{{
-  void cAppWindow::setSamplesPerPixel (double newSamplesPerPixel) {
+  void setSamplesPerPixel (double newSamplesPerPixel) {
   // set display window scale, samplesPerPixel
 
     if (newSamplesPerPixel < minSamplesPerPixel)
@@ -419,7 +419,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::setMidSample (double newMidSample) {
+  void setMidSample (double newMidSample) {
   // set sample of pixel in middle of display window
 
     if (newMidSample < 0.0)
@@ -433,7 +433,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::incSamplesLoaded (int packetLen) {
+  void incSamplesLoaded (int packetLen) {
 
     bool tailing = (midSample == samplesLoaded);
     samplesLoaded += packetLen;
@@ -442,7 +442,7 @@ private:
     }
   //}}}
   //{{{
-  BYTE* cAppWindow::nextPacket (BYTE* samplePtr, int packetLen) {
+  BYTE* nextPacket (BYTE* samplePtr, int packetLen) {
   // return nextPacket start address, wraparound if no room for another packetLen packet
 
     if (samplePtr + packetLen + packetLen <= maxSamplePtr)
@@ -453,7 +453,7 @@ private:
   //}}}
 
   //{{{
-  uint8_t cAppWindow::limit (double v) {
+  uint8_t limit (double v) {
 
     if (v <= 0.0)
       return 0;
@@ -465,7 +465,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::makeVidFrame (BYTE* frame, int frameBytes) {
+  void makeVidFrame (BYTE* frame, int frameBytes) {
 
     // create vidFrame wicBitmap 24bit BGR
     int pitch = width;
@@ -635,7 +635,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::setFrameSize (int x, int y, bool bayer, bool jpeg) {
+  void setFrameSize (int x, int y, bool bayer, bool jpeg) {
 
     width = x;
     height = y;
@@ -650,7 +650,7 @@ private:
   //}}}
 
   //{{{
-  void cAppWindow::preview() {
+  void preview() {
 
     std::wcout << L"preview" << std::endl;
 
@@ -671,7 +671,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::pll (int m, int n, int p) {
+  void pll (int m, int n, int p) {
 
     pllm = m;
     plln = n;
@@ -693,7 +693,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::capture() {
+  void capture() {
 
     std::wcout << L"capture" << std::endl;
 
@@ -713,7 +713,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::bayer() {
+  void bayer() {
 
     if (sensorid == 0x1519) {
       std::wcout << L"bayer" << std::endl;
@@ -731,7 +731,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::moreSamples() {
+  void moreSamples() {
 
     std::wcout << L"moreSamples" << std::endl;
 
@@ -741,7 +741,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::setFocus (int value) {
+  void setFocus (int value) {
 
     // printf ("focus %d\r", value);
 
@@ -757,7 +757,7 @@ private:
   //}}}
 
   //{{{
-  bool cAppWindow::getMask (int x, int y, ULONG& mask) {
+  bool getMask (int x, int y, ULONG& mask) {
 
     float row = rowPixels;
 
@@ -774,7 +774,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::measure (ULONG mask, int sample) {
+  void measure (ULONG mask, int sample) {
 
     std::wstringstream stringStream;
 
@@ -807,7 +807,7 @@ private:
     }
   //}}}
   //{{{
-  void cAppWindow::count (ULONG mask, int firstSample, int lastSample) {
+  void count (ULONG mask, int firstSample, int lastSample) {
 
     int count = 0;
     int sample = firstSample;
@@ -829,7 +829,7 @@ private:
   //}}}
 
   //{{{
-  void cAppWindow::loader() {
+  void loader() {
 
     auto samplePtr = samples;
     auto packetLen = getBulkEndPoint()->MaxPktSize - 16;
@@ -978,6 +978,7 @@ private:
   //{{{  jpeg
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
+
   BYTE jpegHeader[1000];
   int jpegHeaderBytes = 0;
   //}}}
