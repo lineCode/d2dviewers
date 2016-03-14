@@ -5,16 +5,14 @@
 #include "../common/timer.h"
 #include "../common/cD2DWindow.h"
 
-#include "../inc/CyAPI/CyAPI.h"
 #include "../common/usbUtils.h"
-
 #include "../common/jpegheader.h"
+
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 
 using namespace D2D1;
 //}}}
-#define QUEUESIZE 64
 
 class cSensorWindow : public cD2dWindow {
 public:
@@ -26,7 +24,7 @@ public:
     initialise (L"sensorWindow", int(xWindow), int(yWindow));
 
     // samples
-    samples = (BYTE*)malloc (maxSamples);
+    samples = (uint8_t*)malloc (maxSamples);
     maxSamplePtr = samples + maxSamples;
     setSamplesPerPixel (maxSamplesPerPixel);
 
@@ -193,7 +191,7 @@ protected:
 
 private:
   //{{{
-  void drawBackground (ID2D1DeviceContext* dc, BYTE* framePtr) {
+  void drawBackground (ID2D1DeviceContext* dc, uint8_t* framePtr) {
 
     if (framePtr && (framePtr != lastFramePtr)) {
       grabbedFrameBytes = frameBytes;
@@ -387,6 +385,77 @@ private:
       }
     }
   //}}}
+  //{{{
+  bool getMask (int x, int y, ULONG& mask) {
+
+    float row = rowPixels;
+
+    mask = 0x00000001;
+    while ((mask != 0x10000) && (row < getClientF().height)) {
+     float  nextRow = row + ((mask & 0x80808080) ? groupRowPixels : rowPixels);
+      if ((y > row) && (y < nextRow))
+        return true;
+
+      row = nextRow;
+      mask <<= 1;
+      }
+    return false;
+    }
+  //}}}
+  //{{{
+  void measure (ULONG mask, int sample) {
+
+    std::wstringstream stringStream;
+
+    if ((sample > 0) && (sample < samplesLoaded)) {
+      int back = sample;
+      while ((back > 0) && !((samples[back] ^ samples[back - 1]) & mask) && ((sample - back) < 100000000))
+        back--;
+
+      int forward = sample;
+      while ((forward < (samplesLoaded - 1)) &&
+             !((samples[forward] ^ samples[forward + 1]) & mask) && ((forward - sample) < 100000000))
+        forward++;
+
+      if (((sample - back) != 100000000) && ((forward - sample) != 100000000)) {
+        double width = (forward - back) / samplesPerSecond;
+
+        if (width > 1.0)
+          stringStream << width << L"s";
+        else if (width > 0.001)
+          stringStream << width*1000.0<< L"ms";
+        else if (width > 0.000001)
+          stringStream << width*1000000.0<< L"us";
+        else
+          stringStream << width*1000000000.0<< L"ns";
+        changed();
+        }
+      }
+
+    measureStr = stringStream.str();
+    }
+  //}}}
+  //{{{
+  void count (ULONG mask, int firstSample, int lastSample) {
+
+    int count = 0;
+    int sample = firstSample;
+    if ((sample > 0) && (sample < samplesLoaded)) {
+      while ((sample < lastSample) && (sample < (samplesLoaded-2))) {
+        if ((samples[sample] ^ samples[sample + 1]) & mask)
+          count++;
+        sample++;
+        }
+
+      if (count > 0) {
+        std::wstringstream stringStream;
+        stringStream << count;
+        measureStr = stringStream.str();
+        changed();
+        }
+      }
+    }
+  //}}}
 
   //{{{
   void setSamplesPerPixel (double newSamplesPerPixel) {
@@ -442,7 +511,7 @@ private:
     }
   //}}}
   //{{{
-  BYTE* nextPacket (BYTE* samplePtr, int packetLen) {
+  uint8_t* nextPacket (uint8_t* samplePtr, int packetLen) {
   // return nextPacket start address, wraparound if no room for another packetLen packet
 
     if (samplePtr + packetLen + packetLen <= maxSamplePtr)
@@ -465,7 +534,7 @@ private:
     }
   //}}}
   //{{{
-  void makeVidFrame (BYTE* frame, int frameBytes) {
+  void makeVidFrame (uint8_t* frame, int frameBytes) {
 
     // create vidFrame wicBitmap 24bit BGR
     int pitch = width;
@@ -483,13 +552,13 @@ private:
 
     // get vidFrame wicBitmap buffer
     UINT bufferLen = 0;
-    BYTE* buffer = NULL;
+    uint8_t* buffer = NULL;
     wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
 
     if (jpeg422) {
       if ((frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
         //{{{  decode jpeg
-        BYTE* endPtr = frame + frameBytes - 4;
+        uint8_t* endPtr = frame + frameBytes - 4;
         int jpegBytes = *endPtr++;
         jpegBytes += (*endPtr++) << 8;
         jpegBytes += (*endPtr++) << 16;
@@ -757,85 +826,14 @@ private:
   //}}}
 
   //{{{
-  bool getMask (int x, int y, ULONG& mask) {
-
-    float row = rowPixels;
-
-    mask = 0x00000001;
-    while ((mask != 0x10000) && (row < getClientF().height)) {
-     float  nextRow = row + ((mask & 0x80808080) ? groupRowPixels : rowPixels);
-      if ((y > row) && (y < nextRow))
-        return true;
-
-      row = nextRow;
-      mask <<= 1;
-      }
-    return false;
-    }
-  //}}}
-  //{{{
-  void measure (ULONG mask, int sample) {
-
-    std::wstringstream stringStream;
-
-    if ((sample > 0) && (sample < samplesLoaded)) {
-      int back = sample;
-      while ((back > 0) && !((samples[back] ^ samples[back - 1]) & mask) && ((sample - back) < 100000000))
-        back--;
-
-      int forward = sample;
-      while ((forward < (samplesLoaded - 1)) &&
-             !((samples[forward] ^ samples[forward + 1]) & mask) && ((forward - sample) < 100000000))
-        forward++;
-
-      if (((sample - back) != 100000000) && ((forward - sample) != 100000000)) {
-        double width = (forward - back) / samplesPerSecond;
-
-        if (width > 1.0)
-          stringStream << width << L"s";
-        else if (width > 0.001)
-          stringStream << width*1000.0<< L"ms";
-        else if (width > 0.000001)
-          stringStream << width*1000000.0<< L"us";
-        else
-          stringStream << width*1000000000.0<< L"ns";
-        changed();
-        }
-      }
-
-    measureStr = stringStream.str();
-    }
-  //}}}
-  //{{{
-  void count (ULONG mask, int firstSample, int lastSample) {
-
-    int count = 0;
-    int sample = firstSample;
-    if ((sample > 0) && (sample < samplesLoaded)) {
-      while ((sample < lastSample) && (sample < (samplesLoaded-2))) {
-        if ((samples[sample] ^ samples[sample + 1]) & mask)
-          count++;
-        sample++;
-        }
-
-      if (count > 0) {
-        std::wstringstream stringStream;
-        stringStream << count;
-        measureStr = stringStream.str();
-        changed();
-        }
-      }
-    }
-  //}}}
-
-  //{{{
   void loader() {
 
     auto samplePtr = samples;
     auto packetLen = getBulkEndPoint()->MaxPktSize - 16;
 
-    BYTE* bufferPtr[QUEUESIZE];
-    BYTE* contexts[QUEUESIZE];
+    #define QUEUESIZE 64
+    uint8_t* bufferPtr[QUEUESIZE];
+    uint8_t* contexts[QUEUESIZE];
     OVERLAPPED overLapped[QUEUESIZE];
     for (auto xferIndex = 0; xferIndex < QUEUESIZE; xferIndex++) {
       //{{{  setup QUEUESIZE transfers
@@ -919,8 +917,8 @@ private:
 
   bool restart = false;
 
-  BYTE* samples = NULL;
-  BYTE* maxSamplePtr = NULL;
+  uint8_t* samples = NULL;
+  uint8_t* maxSamplePtr = NULL;
   int samplesLoaded = 0;
   size_t maxSamples = (16384-16) * 0x10000;
 
@@ -933,8 +931,8 @@ private:
 
   // frames
   int frames = 0;
-  BYTE* framePtr = NULL;
-  BYTE* lastFramePtr = NULL;
+  uint8_t* framePtr = NULL;
+  uint8_t* lastFramePtr = NULL;
   int frameBytes = 0;
   int grabbedFrameBytes = 0;
 
@@ -968,7 +966,7 @@ private:
   bool vector = true;
   int focus = 0;
 
-  BYTE bucket = 1;
+  uint8_t bucket = 1;
   int histogramValues [0x100];
   bool vectorValues [0x4000];
 
@@ -979,7 +977,7 @@ private:
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
 
-  BYTE jpegHeader[1000];
+  uint8_t jpegHeader[1000];
   int jpegHeaderBytes = 0;
   //}}}
   //}}}
