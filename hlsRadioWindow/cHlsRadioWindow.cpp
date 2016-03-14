@@ -152,6 +152,7 @@ protected:
       setVolume (y / (getClientF().height * 0.8f));
     else
       mPlayer->incPlaySecs (-xInc * mPlayer->getSecsPerAudFrame());
+    changed();
     }
   //}}}
   //{{{
