@@ -344,6 +344,7 @@ private:
     }
   //}}}
 
+  // thread funcs
   //{{{
   void fileScanner (wchar_t* rootDir) {
 
