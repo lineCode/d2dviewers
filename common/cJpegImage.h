@@ -218,7 +218,7 @@ public:
 
   void setLayout (D2D1_RECT_F& layout) { mLayout = layout; }
   //{{{
-  bool pickItem (D2D1_POINT_2F& point) {
+  bool pick (D2D1_POINT_2F& point) {
 
     return (point.x > mLayout.left) && (point.x < mLayout.right) &&
            (point.y > mLayout.top) && (point.y < mLayout.bottom);

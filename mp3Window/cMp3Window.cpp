@@ -24,6 +24,7 @@ class cMp3Files {
 public:
   cMp3Files() {}
   virtual ~cMp3Files() {}
+
   //{{{
   void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName, int& numFiles, int& numDirs,
              cMp3Window* mp3Window, cMp3WindowFunc func) {
@@ -73,6 +74,7 @@ public:
     return nullptr;
     }
   //}}}
+
   //{{{
   void traverseFiles (cMp3Window* mp3Window, cMp3WindowFileFunc mp3Func) {
 

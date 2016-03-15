@@ -26,7 +26,7 @@ public:
 
   //{{{
   void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
-                  int& numItems, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
+                  int& numImages, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
     mDirName = directoryName;
@@ -40,16 +40,16 @@ public:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
           auto directory = new cJpegFiles();
-          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs, jpegWindow, func);
+          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numImages, numDirs, jpegWindow, func);
           mDirectories.push_back (directory);
           }
         else if (PathMatchSpec (findFileData.cFileName, pathMatchName))
-          mItems.push_back (new cJpegImage (mFullDirName, findFileData.cFileName));
+          mImages.push_back (new cJpegImage (mFullDirName, findFileData.cFileName));
         } while (FindNextFile (file, &findFileData));
       FindClose (file);
       }
 
-    numItems += (int)mItems.size();
+    numImages += (int)mImages.size();
     numDirs += (int)mDirectories.size();
 
     //printf ("%d %d %ls %ls\n", (int)mImages.size(), (int)mDirectories.size(), mName, mFullName);
@@ -58,29 +58,29 @@ public:
   //}}}
 
   //{{{
-  cJpegImage* pickItem (D2D1_POINT_2F& point) {
+  cJpegImage* pickImage (D2D1_POINT_2F& point) {
 
     for (auto directory : mDirectories) {
-      auto pickedItem = directory->pickItem (point);
-      if (pickedItem)
-        return pickedItem;
+      auto pickedImage = directory->pickImage (point);
+      if (pickedImage)
+        return pickedImage;
       }
 
-    for (auto item : mItems)
-      if (item->pickItem (point))
-        return item;
+    for (auto image : mImages)
+      if (image->pick (point))
+        return image;
 
     return NULL;
     }
   //}}}
   //{{{
-  void traverseItems (cJpegWindow* jpegWindow, cJpegWindowImageFunc imageFunc) {
+  void traverseImages (cJpegWindow* jpegWindow, cJpegWindowImageFunc imageFunc) {
 
     for (auto directory : mDirectories)
-      directory->traverseItems (jpegWindow, imageFunc);
+      directory->traverseImages (jpegWindow, imageFunc);
 
-    for (auto item : mItems)
-      (jpegWindow->*imageFunc)(item);
+    for (auto image : mImages)
+      (jpegWindow->*imageFunc)(image);
     }
   //}}}
   //{{{
@@ -91,7 +91,7 @@ public:
     for (auto directory : mDirectories)
       numLoaded += directory->bestThumb (point, bestImage, bestMetric);
 
-    for (auto image : mItems)
+    for (auto image : mImages)
       if (image->getNoThumb()) {
         auto xdiff = image->getLayout().left - point.x;
         auto ydiff = image->getLayout().top - point.y;
@@ -116,10 +116,10 @@ public:
     for (auto directory : mDirectories)
       directory->simpleLayoutThumbs (rect, thumbSize, column, columns, rows);
 
-    for (auto item : mItems) {
+    for (auto image : mImages) {
       rect.right = rect.left + thumbSize.width;
       rect.bottom = rect.top + thumbSize.height;
-      item->setLayout (rect);
+      image->setLayout (rect);
 
       rect.left = rect.right;
       if ((column++ % columns) == (columns-1)) {
@@ -134,7 +134,7 @@ public:
 private:
   wstring mDirName;
   wstring mFullDirName;
-  concurrency::concurrent_vector<cJpegImage*> mItems;
+  concurrency::concurrent_vector<cJpegImage*> mImages;
   concurrency::concurrent_vector<cJpegFiles*> mDirectories;
   };
 //}}}
@@ -206,7 +206,7 @@ protected:
 
     if (!mFullImage) {
       // displaying thumbs
-      mProxImage = inClient ? pickItem (mThumbView.dstToSrc (x, y)) : nullptr;
+      mProxImage = inClient ? pickImage (mThumbView.dstToSrc (x, y)) : nullptr;
       if (mPickImage != mProxImage) {
         mPickImage = mProxImage;
         if (mProxImage)
@@ -260,7 +260,7 @@ protected:
     if (!mFullImage) {
       // thumbs
       dc->SetTransform (mThumbView.getMatrix());
-      traverseItems (this, &cJpegWindow::drawThumb);
+      traverseImages (this, &cJpegWindow::drawThumb);
 
       if (mPickImage) {
         //{{{  highlight pickImage and draw infoPanel
