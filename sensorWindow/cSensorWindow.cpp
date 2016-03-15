@@ -227,7 +227,7 @@ private:
       std::wstringstream stringStream;
       stringStream << L"mt9d111";
       dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
-                               RectF(getClientF().width - 2*rightPixels, 0, getClientF().width, rowPixels), getWhiteBrush());
+                    RectF(getClientF().width - 2*rightPixels, 0, getClientF().width, rowPixels), getWhiteBrush());
       }
     }
   //}}}
@@ -334,9 +334,8 @@ private:
   //{{{
   void drawMidLine (ID2D1DeviceContext* dc, int rows) {
 
-    dc->FillRectangle (
-      RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
-      getBlackBrush());
+    dc->FillRectangle (RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
+                       getBlackBrush());
     }
   //}}}
   //{{{
@@ -359,13 +358,11 @@ private:
   //{{{
   void drawVector (ID2D1DeviceContext* dc) {
 
-    dc->FillRectangle (
-      RectF (getClientF().width - 128.0f, getClientF().height - 256.0f,
-             getClientF().width - 128.0f + 1.0f, getClientF().height), getBlackBrush());
+    dc->FillRectangle (RectF (getClientF().width - 128.0f, getClientF().height - 256.0f,
+                       getClientF().width - 128.0f + 1.0f, getClientF().height), getBlackBrush());
 
-    dc->FillRectangle (
-      RectF (getClientF().width - 256.0f, getClientF().height - 128.0f,
-             getClientF().width, getClientF().height - 128.0f - 1.0f), getBlackBrush());
+    dc->FillRectangle (RectF (getClientF().width - 256.0f, getClientF().height - 128.0f,
+                       getClientF().width, getClientF().height - 128.0f - 1.0f), getBlackBrush());
 
     auto r = RectF (getClientF().width - 256.0f, getClientF().height - 256.0f, 0, 0);
 
@@ -383,6 +380,8 @@ private:
       }
     }
   //}}}
+
+  //{{{  measure
   //{{{
   bool getMask (int x, int y, ULONG& mask) {
 
@@ -454,7 +453,8 @@ private:
       }
     }
   //}}}
-
+  //}}}
+  //{{{  samples
   //{{{
   void setSamplesPerPixel (double newSamplesPerPixel) {
   // set display window scale, samplesPerPixel
@@ -482,6 +482,7 @@ private:
     else
       stringStream << int (samplesPerGraticule / 6000000000) << L"m";
     graticuleStr = stringStream.str();
+
     changed();
     }
   //}}}
@@ -508,17 +509,7 @@ private:
       setMidSample (samplesLoaded);
     }
   //}}}
-  //{{{
-  uint8_t* nextPacket (uint8_t* samplePtr, int packetLen) {
-  // return nextPacket start address, wraparound if no room for another packetLen packet
-
-    if (samplePtr + packetLen + packetLen <= maxSamplePtr)
-      return samplePtr + packetLen;
-    else
-      return samples;
-    }
   //}}}
-
   //{{{
   uint8_t limit (double v) {
 
@@ -811,7 +802,6 @@ private:
   void setFocus (int value) {
 
     // printf ("focus %d\r", value);
-
     if (value < 0)
       focus = 0;
     else if (focus > 255)
@@ -823,6 +813,16 @@ private:
     }
   //}}}
 
+  //{{{
+  uint8_t* nextPacket (uint8_t* samplePtr, int packetLen) {
+  // return nextPacket start address, wraparound if no room for another packetLen packet
+
+    if (samplePtr + packetLen + packetLen <= maxSamplePtr)
+      return samplePtr + packetLen;
+    else
+      return samples;
+    }
+  //}}}
   //{{{
   void loader() {
 
@@ -857,9 +857,7 @@ private:
     auto xferIndex = 0;
     while (true) {
       if (!getBulkEndPoint()->WaitForXfer (&overLapped[xferIndex], timeout)) {
-        std::wcout << L"- timeOut" << getBulkEndPoint()->LastError
-                   << std::endl;
-
+        std::wcout << L"- timeOut" << getBulkEndPoint()->LastError << std::endl;
         getBulkEndPoint()->Abort();
         if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
           WaitForSingleObject (overLapped[xferIndex].hEvent, 2000);
