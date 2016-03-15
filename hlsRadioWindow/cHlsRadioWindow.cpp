@@ -310,6 +310,7 @@ private:
 
   int mProxChannel = 0;
   int mChangeChannel = 0;
+
   int mHttpRxBytes = 0;
 
   bool mShowChannel = false;

@@ -17,7 +17,7 @@
 //{{{  typedef
 class cMp3Window;
 typedef void (cMp3Window::*cMp3WindowFunc)();
-typedef void (cMp3Window::*cMp3WindowItemFunc)(cMp3File* item);
+typedef void (cMp3Window::*cMp3WindowFileFunc)(cMp3File* file);
 //}}}
 //{{{
 class cMp3Files {
@@ -25,7 +25,7 @@ public:
   cMp3Files() {}
   virtual ~cMp3Files() {}
   //{{{
-  void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName, int& numItems, int& numDirs,
+  void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName, int& numFiles, int& numDirs,
              cMp3Window* mp3Window, cMp3WindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
@@ -40,12 +40,12 @@ public:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
           auto directory = new cMp3Files();
-          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numItems, numDirs, mp3Window, func);
+          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numFiles, numDirs, mp3Window, func);
           mDirectories.push_back (directory);
          (mp3Window->*func)();
           }
         else if (PathMatchSpec (findFileData.cFileName, pathMatchName)) {
-          mItems.push_back (new cMp3File (mFullDirName, findFileData.cFileName));
+          mFiles.push_back (new cMp3File (mFullDirName, findFileData.cFileName));
           (mp3Window->*func)();
           }
         } while (FindNextFile (file, &findFileData));
@@ -53,34 +53,34 @@ public:
       }
 
     numDirs += (int)mDirectories.size();
-    numItems += (int)mItems.size();
+    numFiles += (int)mFiles.size();
     }
   //}}}
 
   //{{{
-  cMp3File* pickItem (D2D1_POINT_2F& point) {
+  cMp3File* pick (D2D1_POINT_2F& point) {
 
     for (auto directory : mDirectories) {
-      auto pickedItem = directory->pickItem (point);
-      if (pickedItem)
-        return pickedItem;
+      auto pickedFile = directory->pick (point);
+      if (pickedFile)
+        return pickedFile;
       }
 
-    for (auto item : mItems)
-      if (item->pickItem (point))
-        return item;
+    for (auto file : mFiles)
+      if (file->pick (point))
+        return file;
 
     return nullptr;
     }
   //}}}
   //{{{
-  void traverseItems (cMp3Window* mp3Window, cMp3WindowItemFunc mp3Func) {
+  void traverseFiles (cMp3Window* mp3Window, cMp3WindowFileFunc mp3Func) {
 
     for (auto directory : mDirectories)
-      directory->traverseItems (mp3Window, mp3Func);
+      directory->traverseFiles (mp3Window, mp3Func);
 
-    for (auto item : mItems)
-      (mp3Window->*mp3Func)(item);
+    for (auto file : mFiles)
+      (mp3Window->*mp3Func)(file);
     }
   //}}}
   //{{{
@@ -89,25 +89,25 @@ public:
     for (auto directory : mDirectories)
       directory->simpleLayout (rect);
 
-    for (auto item : mItems) {
-      item->setLayout (rect);
+    for (auto file : mFiles) {
+      file->setLayout (rect);
       rect.top += 20.0f;
       rect.bottom += 20.0f;
       }
     }
   //}}}
   //{{{
-  cMp3File* nextLoadItem() {
+  cMp3File* nextLoadFile() {
 
     for (auto directory : mDirectories) {
-      auto item = directory->nextLoadItem();
-      if (item)
-        return item;
+      auto file = directory->nextLoadFile();
+      if (file)
+        return file;
       }
 
-    for (auto item : mItems)
-      if (!item->isLoaded())
-        return item;
+    for (auto file : mFiles)
+      if (!file->isLoaded())
+        return file;
 
     return nullptr;
     }
@@ -117,7 +117,7 @@ private:
   // private vars
   wstring mDirName;
   wstring mFullDirName;
-  concurrency::concurrent_vector<cMp3File*> mItems;
+  concurrency::concurrent_vector<cMp3File*> mFiles;
   concurrency::concurrent_vector<cMp3Files*> mDirectories;
   };
 //}}}
@@ -193,15 +193,25 @@ protected:
     }
   //}}}
   //{{{
+  void onMouseProx (bool inClient, int x, int y) {
+
+  cMp3File* proxFile = (x < 100) ? pick (Point2F ((float)x, (float)y)) : nullptr;
+  if (mProxFile != proxFile) {
+    mProxFile = proxFile;
+    changed();
+    }
+  }
+  //}}}
+  //{{{
   void onMouseDown (bool right, int x, int y) {
 
     mDownConsumed = false;
     if (x > getClientF().width - 100)
       mDownConsumed = true;
     else if (x < 100) {
-      auto item = pickItem (Point2F ((float)x, (float)y));
-      if (item && (item->isLoaded() > 0)) {
-        mMp3File = item;
+      mProxFile = pick (Point2F ((float)x, (float)y));
+      if (mProxFile && (mProxFile->isLoaded() > 0)) {
+        mMp3File = mProxFile;
         mPlaySecs = 0;
         setPlaying (true);
         mDownConsumed = true;
@@ -241,7 +251,7 @@ protected:
     dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
 
     wchar_t wStr[200];
-    mIsDirectory ? swprintf (wStr, 200, L"files:%d dirs:%d", mNumNestedItems, mNumNestedDirs)
+    mIsDirectory ? swprintf (wStr, 200, L"files:%d dirs:%d", mNumNestedFiles, mNumNestedDirs)
                  : swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
                              mPlaySecs, mMp3File->getMaxSecs(), mMp3File->getBitRate()/1000, getAudSampleRate(),
                              mMp3File->getChannels(), mMp3File->getMode());
@@ -264,18 +274,19 @@ protected:
         }
       }
 
-    traverseItems (this, &cMp3Window::drawItem);
+    traverseFiles (this, &cMp3Window::drawFileInfo);
     }
   //}}}
 
 private:
   //{{{
-  void drawItem (cMp3File* item) {
+  void drawFileInfo (cMp3File* file) {
 
     wchar_t wStr[200];
-    swprintf (wStr, 200, L"%s", item->getFileName().c_str());
-    getDeviceContext()->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), item->getLayout(),
-                                  item->isLoaded() ? getWhiteBrush() : getGreyBrush());
+    swprintf (wStr, 200, L"%s", file->getFileName().c_str());
+    getDeviceContext()->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), file->getLayout(),
+                                  !file->isLoaded() ? getGreyBrush() :
+                                   ((file == mMp3File) || (file == mProxFile) ? getWhiteBrush() : getBlueBrush()));
     }
   //}}}
 
@@ -336,11 +347,11 @@ private:
 
     auto time = getTimer();
 
-    scan (wstring(), rootDir, L"*.mp3", mNumNestedItems, mNumNestedDirs,  this, &cMp3Window::changed);
+    scan (wstring(), rootDir, L"*.mp3", mNumNestedFiles, mNumNestedDirs,  this, &cMp3Window::changed);
     simpleLayout (RectF (0, mLayoutOffset, getClientF().width, mLayoutOffset + 20.0f));
     changed();
 
-    wcout << L"scanDirectoryFunc exit Items:" << mNumNestedItems
+    wcout << L"scanDirectoryFunc - files:" << mNumNestedFiles
           << L" directories:" << mNumNestedDirs
           << L" took:" << getTimer() - time
           << endl;
@@ -355,7 +366,7 @@ private:
       Sleep (slept++);
 
     while (slept < 20) {
-      cMp3File* mp3File = nextLoadItem();
+      cMp3File* mp3File = nextLoadFile();
       if (mp3File)
         mp3File->load (getDeviceContext());
       else
@@ -403,8 +414,10 @@ private:
   double mPlaySecs = 0;
 
   int mNumNestedDirs = 0;
-  int mNumNestedItems = 0;
+  int mNumNestedFiles = 0;
+
   cMp3File* mMp3File = nullptr;
+  cMp3File* mProxFile = nullptr;
   //}}}
   };
 
