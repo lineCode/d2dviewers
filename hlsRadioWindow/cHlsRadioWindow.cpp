@@ -39,7 +39,7 @@ public:
   //{{{
   void run (wchar_t* title, int width, int height, int channel) {
 
-    mChangeToChannel = channel-1;
+    mChangeChannel = channel-1;
 
     mPlayer = new cHlsRadio();
 
@@ -95,8 +95,8 @@ protected:
       case 0x36 :
       case 0x37 :
       case 0x38 :
-      case 0x39 : mChangeToChannel = key - '0' - 1; signal(); break;
-      case 0x30 : mChangeToChannel = 10 - 1; signal(); break;
+      case 0x39 : mChangeChannel = key - '0' - 1; signal(); break;
+      case 0x30 : mChangeChannel = 10 - 1; signal(); break;
 
       default   : printf ("key %x\n", key);
       }
@@ -122,23 +122,23 @@ protected:
     if (showChannel != mShowChannel)
       changed();
 
-    if (x < 80) {
-      auto channel = (y / 20) - 1;
-      }
+    if (x < 80)
+      mProxChannel = (x < 80) ? ((y / 20) - 1) : -1;
+
     }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
 
     if (x < 80) {
-      auto channel = (y / 20) - 1;
-      if (channel < 0) {
+      mProxChannel = (y / 20) - 1;
+      if (mProxChannel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
         if (hlsRadio)
           hlsRadio->incSourceVidBitrate (true);
         }
-      else if (channel < mPlayer->getNumSource()) {
-        mChangeToChannel = channel;
+      else if (mProxChannel < mPlayer->getNumSource()) {
+        mChangeChannel = mProxChannel;
         signal();
         changed();
         }
@@ -201,10 +201,11 @@ protected:
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
     if (mShowChannel)
-      for (auto i = 0; i < mPlayer->getNumSource(); i++) {
-        swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr(i).c_str());
+      for (auto source = 0; source < mPlayer->getNumSource(); source++) {
+        swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr (source).c_str());
         dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                      RectF(0, (i+1)*20.0f, getClientF().width, (i+2)*20.0f), getWhiteBrush());
+                      RectF (0, (source + 1) * 20.0f, getClientF().width, (source + 2) * 20.0f),
+                      (source == mPlayer->getSource()) || (source == mProxChannel) ? getWhiteBrush() : getGreyBrush());
         }
 
     auto hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
@@ -243,8 +244,8 @@ private:
 
     cHttp http;
     while (true) {
-      if (mPlayer->getSource() != mChangeToChannel) {
-        mPlayer->setPlaySecs (mPlayer->changeSource (&http, mChangeToChannel) - 6.0);
+      if (mPlayer->getSource() != mChangeChannel) {
+        mPlayer->setPlaySecs (mPlayer->changeSource (&http, mChangeChannel) - 6.0);
         changed();
         }
       if (!mPlayer->load (getDeviceContext(), &http, mPlayer->getPlaySecs())) {
@@ -307,10 +308,12 @@ private:
   //{{{  vars
   iPlayer* mPlayer = nullptr;
 
-  int mChangeToChannel = 0;
+  int mProxChannel = 0;
+  int mChangeChannel = 0;
   int mHttpRxBytes = 0;
 
   bool mShowChannel = false;
+
   HANDLE mSemaphore;
 
   int64_t mBitmapPts = 0;
