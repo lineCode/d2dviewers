@@ -9,9 +9,6 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="decode.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="huffDecoder.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -33,7 +30,7 @@
     <ClInclude Include="..\common\cMpeg2decoder.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cVolume.h">
+    <ClInclude Include="..\common\cAudio.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

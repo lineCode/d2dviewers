@@ -20,17 +20,17 @@
 //}}}
 //{{{  const, struct
 //{{{  pid const
-#define PID_PAT          0x00   /* Program Association Table */
-#define PID_CAT          0x01   /* Conditional Access Table */
-#define PID_NIT          0x10   /* Network Information Table */
-#define PID_BAT          0x11   /* Bouquet Association Table */
-#define PID_SDT          0x11   /* Service Description Table */
-#define PID_EIT          0x12   /* Event Information Table */
-#define PID_RST          0x13   /* Running Status Table */
-#define PID_TDT          0x14   /* Time Date Table */
-#define PID_TOT          0x14   /* Time Offset Table */
-#define PID_STF          0x14   /* Stuffing Table */
-#define PID_SYN          0x15   /* Network sync */
+#define PID_PAT   0x00   /* Program Association Table */
+#define PID_CAT   0x01   /* Conditional Access Table */
+#define PID_NIT   0x10   /* Network Information Table */
+#define PID_BAT   0x11   /* Bouquet Association Table */
+#define PID_SDT   0x11   /* Service Description Table */
+#define PID_EIT   0x12   /* Event Information Table */
+#define PID_RST   0x13   /* Running Status Table */
+#define PID_TDT   0x14   /* Time Date Table */
+#define PID_TOT   0x14   /* Time Offset Table */
+#define PID_STF   0x14   /* Stuffing Table */
+#define PID_SYN   0x15   /* Network sync */
 //}}}
 //{{{  tid const
 #define TID_PAT          0x00   /* Program Association Section */
@@ -187,7 +187,7 @@ typedef struct {
    uint8_t                           :4;
    uint8_t program_info_length_lo    :8;
    //descrs
-} pmt_t;
+  } pmt_t;
 
 #define PMT_INFO_LEN 5
 typedef struct {
@@ -199,7 +199,7 @@ typedef struct {
    uint8_t                    :4;
    uint8_t ES_info_length_lo  :8;
    // descrs
-} pmt_info_t;
+  } pmt_info_t;
 //}}}
 //{{{  nit struct
 #define NIT_LEN 10
@@ -222,19 +222,19 @@ typedef struct {
    uint8_t                           :4;
    uint8_t network_descr_length_lo   :8;
   /* descrs */
-} nit_t;
+  } nit_t;
 
 #define SIZE_NIT_MID 2
 typedef struct {                                 // after descrs
    uint8_t transport_stream_loop_length_hi  :4;
    uint8_t                                  :4;
    uint8_t transport_stream_loop_length_lo  :8;
-} nit_mid_t;
+  } nit_mid_t;
 
 #define SIZE_NIT_END 4
 struct nit_end_struct {
-   long CRC;
-};
+  long CRC;
+  };
 
 #define NIT_TS_LEN 6
 typedef struct {
@@ -246,86 +246,86 @@ typedef struct {
    uint8_t                             :4;
    uint8_t transport_descrs_length_lo  :8;
    /* descrs  */
-} nit_ts_t;
+  } nit_ts_t;
 //}}}
 //{{{  eit struct
 #define EIT_LEN 14
 typedef struct {
-   uint8_t table_id                    :8;
+  uint8_t table_id                    :8;
 
-   uint8_t section_length_hi           :4;
-   uint8_t                             :3;
-   uint8_t section_syntax_indicator    :1;
-   uint8_t section_length_lo           :8;
+  uint8_t section_length_hi           :4;
+  uint8_t                             :3;
+  uint8_t section_syntax_indicator    :1;
+  uint8_t section_length_lo           :8;
 
-   uint8_t service_id_hi               :8;
-   uint8_t service_id_lo               :8;
-   uint8_t current_next_indicator      :1;
-   uint8_t version_number              :5;
-   uint8_t                             :2;
-   uint8_t section_number              :8;
-   uint8_t last_section_number         :8;
-   uint8_t transport_stream_id_hi      :8;
-   uint8_t transport_stream_id_lo      :8;
-   uint8_t original_network_id_hi      :8;
-   uint8_t original_network_id_lo      :8;
-   uint8_t segment_last_section_number :8;
-   uint8_t segment_last_table_id       :8;
-} eit_t;
+  uint8_t service_id_hi               :8;
+  uint8_t service_id_lo               :8;
+  uint8_t current_next_indicator      :1;
+  uint8_t version_number              :5;
+  uint8_t                             :2;
+  uint8_t section_number              :8;
+  uint8_t last_section_number         :8;
+  uint8_t transport_stream_id_hi      :8;
+  uint8_t transport_stream_id_lo      :8;
+  uint8_t original_network_id_hi      :8;
+  uint8_t original_network_id_lo      :8;
+  uint8_t segment_last_section_number :8;
+  uint8_t segment_last_table_id       :8;
+  } eit_t;
 
 #define EIT_EVENT_LEN 12
 typedef struct {
-   uint8_t event_id_hi                 :8;
-   uint8_t event_id_lo                 :8;
-   uint8_t mjd_hi                      :8;
-   uint8_t mjd_lo                      :8;
-   uint8_t start_time_h                :8;
-   uint8_t start_time_m                :8;
-   uint8_t start_time_s                :8;
-   uint8_t duration_h                  :8;
-   uint8_t duration_m                  :8;
-   uint8_t duration_s                  :8;
-   uint8_t descrs_loop_length_hi       :4;
-   uint8_t free_ca_mode                :1;
-   uint8_t running_status              :3;
-   uint8_t descrs_loop_length_lo       :8;
-} eit_event_t;
+  uint8_t event_id_hi                 :8;
+  uint8_t event_id_lo                 :8;
+  uint8_t mjd_hi                      :8;
+  uint8_t mjd_lo                      :8;
+  uint8_t start_time_h                :8;
+  uint8_t start_time_m                :8;
+  uint8_t start_time_s                :8;
+  uint8_t duration_h                  :8;
+  uint8_t duration_m                  :8;
+  uint8_t duration_s                  :8;
+  uint8_t descrs_loop_length_hi       :4;
+  uint8_t free_ca_mode                :1;
+  uint8_t running_status              :3;
+  uint8_t descrs_loop_length_lo       :8;
+  } eit_event_t;
 //}}}
 //{{{  sdt struct
 #define SDT_LEN 11
 typedef struct {
-   uint8_t table_id                    :8;
-   uint8_t section_length_hi           :4;
-   uint8_t                             :3;
-   uint8_t section_syntax_indicator    :1;
-   uint8_t section_length_lo           :8;
-   uint8_t transport_stream_id_hi      :8;
-   uint8_t transport_stream_id_lo      :8;
-   uint8_t current_next_indicator      :1;
-   uint8_t version_number              :5;
-   uint8_t                             :2;
-   uint8_t section_number              :8;
-   uint8_t last_section_number         :8;
-   uint8_t original_network_id_hi      :8;
-   uint8_t original_network_id_lo      :8;
-   uint8_t                             :8;
-} sdt_t;
+  uint8_t table_id                    :8;
+  uint8_t section_length_hi           :4;
+  uint8_t                             :3;
+  uint8_t section_syntax_indicator    :1;
+  uint8_t section_length_lo           :8;
+  uint8_t transport_stream_id_hi      :8;
+  uint8_t transport_stream_id_lo      :8;
+  uint8_t current_next_indicator      :1;
+  uint8_t version_number              :5;
+  uint8_t                             :2;
+  uint8_t section_number              :8;
+  uint8_t last_section_number         :8;
+  uint8_t original_network_id_hi      :8;
+  uint8_t original_network_id_lo      :8;
+  uint8_t                             :8;
+  } sdt_t;
 
 #define GetSDTTransportStreamId(x) (HILO(((sdt_t*)x)->transport_stream_id))
 #define GetSDTOriginalNetworkId(x) (HILO(((sdt_t*)x)->original_network_id))
 
 #define SDT_DESCR_LEN 5
 typedef struct {
-   uint8_t service_id_hi                :8;
-   uint8_t service_id_lo                :8;
-   uint8_t eit_present_following_flag   :1;
-   uint8_t eit_schedule_flag            :1;
-   uint8_t                              :6;
-   uint8_t descrs_loop_length_hi        :4;
-   uint8_t free_ca_mode                 :1;
-   uint8_t running_status               :3;
-   uint8_t descrs_loop_length_lo        :8;
-} sdt_descr_t;
+  uint8_t service_id_hi                :8;
+  uint8_t service_id_lo                :8;
+  uint8_t eit_present_following_flag   :1;
+  uint8_t eit_schedule_flag            :1;
+  uint8_t                              :6;
+  uint8_t descrs_loop_length_hi        :4;
+  uint8_t free_ca_mode                 :1;
+  uint8_t running_status               :3;
+  uint8_t descrs_loop_length_lo        :8;
+  } sdt_descr_t;
 //}}}
 //{{{  tdt struct
 #define TDT_LEN 8
@@ -440,7 +440,6 @@ typedef struct descr_extended_event_struct {
 
 #define CastExtendedEventDescr(x) ((descr_extended_event_t *)(x))
 
-
 #define ITEM_EXTENDED_EVENT_LEN 1
 
 typedef struct item_extended_event_struct {
@@ -476,7 +475,6 @@ typedef struct descr_content_struct {
   } descr_content_t;
 
 #define CastContentDescr(x) ((descr_content_t *)(x))
-
 
 typedef struct nibble_content_struct {
   uint8_t user_nibble_2           :4;
@@ -633,6 +631,7 @@ public:
 
   int mPid;
   int mSid = -1;
+  bool mIsSection;
 
   int mStreamType = 0;
   int64_t mPts = 0;
@@ -642,7 +641,6 @@ public:
   int mTotal = 0;
   int mContinuity = -1;
 
-  bool mIsSection;
   int mSectionLength = 0;
 
   // content buffer
@@ -698,11 +696,9 @@ public:
 class cService {
 public:
   //{{{
-  cService (int sid, int tsid, int onid, int type, char* name)
-    : mSid(sid), mTsid(tsid), mOnid(onid), mType(type) {
+  cService (int sid, int tsid, int onid, int type, char* name) : mSid(sid), mTsid(tsid), mOnid(onid), mType(type) {
 
     mName = name;
-
     mAudPids[0] = -1;
     mAudPids[1] = -1;
     }

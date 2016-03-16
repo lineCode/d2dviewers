@@ -30,13 +30,12 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cAudFrame.h" />
+    <ClInclude Include="..\common\cAudio.h" />
     <ClInclude Include="..\common\cBda.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cMpeg2decoder.h" />
     <ClInclude Include="..\common\cTransportStream.h" />
-    <ClInclude Include="..\common\cVolume.h" />
     <ClInclude Include="..\common\timer.h" />
-    <ClInclude Include="decode.h" />
     <ClInclude Include="huffDecoder.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
