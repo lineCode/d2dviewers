@@ -11,6 +11,7 @@
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 //}}}
+static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
 
 class cSensorWindow : public cD2dWindow {
 public:
@@ -91,9 +92,9 @@ protected:
         break;
         //}}}
 
-      case 'O': waveform = !waveform; changed();; break;
-      case 'H': histogram = !histogram; changed();; break;
-      case 'V': vector = !vector; changed();; break;
+      case 'O': waveform = !waveform; changed(); break;
+      case 'H': histogram = !histogram; changed(); break;
+      case 'V': vector = !vector; changed(); break;
 
       case 'B': setFocus (--focus); break;
       case 'N': setFocus (++focus); break;
@@ -193,12 +194,12 @@ private:
 
     if (framePtr && (framePtr != lastFramePtr)) {
       grabbedFrameBytes = frameBytes;
-      makeVidFrame (framePtr, frameBytes);
+      makeBitmap (framePtr, frameBytes);
       framePtr = lastFramePtr;
       }
 
-    if (mD2D1Bitmap)
-      dc->DrawBitmap (mD2D1Bitmap, RectF(0,0, getClientF().width, getClientF().height));
+    if (mBitmap)
+      dc->DrawBitmap (mBitmap, RectF(0,0, getClientF().width, getClientF().height));
     else
       dc->Clear (ColorF(ColorF::Black));
     }
@@ -523,31 +524,25 @@ private:
     }
   //}}}
   //{{{
-  void makeVidFrame (uint8_t* frame, int frameBytes) {
+  void setFrameSize (int x, int y, bool bayer, bool jpeg) {
 
-    // create vidFrame wicBitmap 24bit BGR
-    int pitch = width;
-    if (width % 32)
-      pitch = ((width + 31) / 32) * 32;
-    int pad = pitch - width;
+    width = x;
+    height = y;
+    jpeg422 = jpeg;
+    bayer10 = bayer;
+    }
+  //}}}
+  //{{{
+  void makeBitmap (uint8_t* frameBuffer, int frameBytes) {
 
-    if (!vidFrame)
-      getWicImagingFactory()->CreateBitmap (pitch, height, GUID_WICPixelFormat24bppBGR, WICBitmapCacheOnDemand, &vidFrame);
-
-    // lock vidFrame wicBitmap
-    WICRect wicRect = { 0, 0, pitch, height };
-    IWICBitmapLock* wicBitmapLock = NULL;
-    vidFrame->Lock (&wicRect, WICBitmapLockWrite, &wicBitmapLock);
-
-    // get vidFrame wicBitmap buffer
-    UINT bufferLen = 0;
-    uint8_t* buffer = NULL;
-    wicBitmapLock->GetDataPointer (&bufferLen, &buffer);
+    // create bitmap from frameBuffer
+    auto bufferLen = width * height * 4;
+    auto buffer = (uint8_t*)malloc (bufferLen);
 
     if (jpeg422) {
       if ((frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
         //{{{  decode jpeg
-        uint8_t* endPtr = frame + frameBytes - 4;
+        uint8_t* endPtr = frameBuffer + frameBytes - 4;
         int jpegBytes = *endPtr++;
         jpegBytes += (*endPtr++) << 8;
         jpegBytes += (*endPtr++) << 16;
@@ -560,13 +555,13 @@ private:
 
           jpeg_mem_src (&cinfo, jpegHeader, jpegHeaderBytes);
           jpeg_read_header (&cinfo, TRUE);
-          cinfo.out_color_space = JCS_EXT_BGR;
+          cinfo.out_color_space = JCS_EXT_BGRA;
 
           //wraparound problem if (frame >= maxSamplePtr)
           //  frame = samples;
-          frame[jpegBytes] = 0xff;
-          frame[jpegBytes+1] = 0xd9;
-          jpeg_mem_src (&cinfo, frame, jpegBytes+2);
+          frameBuffer[jpegBytes] = 0xff;
+          frameBuffer[jpegBytes+1] = 0xd9;
+          jpeg_mem_src (&cinfo, frameBuffer, jpegBytes+2);
           jpeg_start_decompress (&cinfo);
 
           while (cinfo.output_scanline < cinfo.output_height) {
@@ -592,34 +587,37 @@ private:
 
       auto bufferEnd = buffer + bufferLen;
       while (buffer < bufferEnd) {
-        if (frame >= maxSamplePtr)
-          frame = samples;
+        if (frameBuffer >= maxSamplePtr)
+          frameBuffer = samples;
 
         if ((y & 0x01) == 0) {
           // even lines
           *buffer++ = 0;
-          *buffer++ = *frame++;; // g1
+          *buffer++ = *frameBuffer++;; // g1
           *buffer++ = 0;
+          *buffer++ = 255;
 
           *buffer++ = 0;
           *buffer++ = 0;
-          *buffer++ = *frame++;  // r
+          *buffer++ = *frameBuffer++;  // r
+          *buffer++ = 255;
           }
 
         else {
           // odd lines
-          *buffer++ = *frame++; // b
+          *buffer++ = *frameBuffer++; // b
           *buffer++ = 0;
           *buffer++ = 0;
+          *buffer++ = 255;
+
           *buffer++ = 0;
-          *buffer++ = *frame++; // g2
+          *buffer++ = *frameBuffer++; // g2
           *buffer++ = 0;
+          *buffer++ = 255;
           }
         x += 2;
 
         if (x >= width) {
-          for (int i = 0; i < pad*3; i++)
-            *buffer++ = 0;
           y++;
           x = 0;
           }
@@ -638,13 +636,13 @@ private:
 
       auto bufferEnd = buffer + bufferLen;
       while (buffer < bufferEnd) {
-        if (frame >= maxSamplePtr)
-          frame = samples;
+        if (frameBuffer >= maxSamplePtr)
+          frameBuffer = samples;
 
-        int y1 = *frame++;
-        int u = *frame++;
-        int y2 = *frame++;
-        int v = *frame++;
+        int y1 = *frameBuffer++;
+        int u = *frameBuffer++;
+        int y2 = *frameBuffer++;
+        int v = *frameBuffer++;
 
         if (histogram) {
           histogramValues [y1 >> bucket]++;
@@ -660,10 +658,12 @@ private:
         *buffer++ = limit (y1 + (1.8556 * u));
         *buffer++ = limit (y1 - (0.1873 * u) - (0.4681 * v));
         *buffer++ = limit (y1 + (1.5748 * v));
+        *buffer++ = 255;
 
         *buffer++ = limit (y2 + (1.8556 * u));
         *buffer++ = limit (y2 - (0.1873 * u) - (0.4681 * v));
         *buffer++ = limit (y2 + (1.5748 * v));
+        *buffer++ = 255;
         }
 
       if (histogram) {
@@ -677,33 +677,18 @@ private:
       }
       //}}}
 
-    // release vidFrame wicBitmap buffer
-    wicBitmapLock->Release();
+    if (mBitmap) {
+      auto pixelSize = mBitmap->GetPixelSize();
+      if ((pixelSize.width != width) || (pixelSize.height != height)) {
+        mBitmap->Release();
+        mBitmap = nullptr;
+        }
+      }
+    if (!mBitmap)
+      getDeviceContext()->CreateBitmap (SizeU(width, height), kBitmapProperties, &mBitmap);
 
-    // convert to mD2D1Bitmap 32bit BGRA
-    IWICFormatConverter* wicFormatConverter;
-    getWicImagingFactory()->CreateFormatConverter (&wicFormatConverter);
-    wicFormatConverter->Initialize (vidFrame,
-                                    GUID_WICPixelFormat32bppPBGRA,
-                                    WICBitmapDitherTypeNone, NULL, 0.f, WICBitmapPaletteTypeCustom);
-    if (mD2D1Bitmap)
-      mD2D1Bitmap->Release();
-    if (getDeviceContext())
-      getDeviceContext()->CreateBitmapFromWicBitmap (wicFormatConverter, NULL, &mD2D1Bitmap);
-    }
-  //}}}
-  //{{{
-  void setFrameSize (int x, int y, bool bayer, bool jpeg) {
-
-    width = x;
-    height = y;
-    bayer10 = bayer;
-    jpeg422 = jpeg;
-
-    if (vidFrame)
-      vidFrame->Release();
-
-    vidFrame = NULL;
+    mBitmap->CopyFromMemory (&RectU (0, 0, width, height), buffer, width*4);
+    free (buffer);
     }
   //}}}
 
@@ -913,8 +898,8 @@ private:
 
   bool restart = false;
 
-  uint8_t* samples = NULL;
-  uint8_t* maxSamplePtr = NULL;
+  uint8_t* samples = nullptr;
+  uint8_t* maxSamplePtr = nullptr;
   int samplesLoaded = 0;
   size_t maxSamples = (16384-16) * 0x10000;
 
@@ -927,16 +912,25 @@ private:
 
   // frames
   int frames = 0;
-  uint8_t* framePtr = NULL;
-  uint8_t* lastFramePtr = NULL;
+  uint8_t* framePtr = nullptr;
+  uint8_t* lastFramePtr = nullptr;
   int frameBytes = 0;
   int grabbedFrameBytes = 0;
 
   int width = 800;
   int height = 600;
+  ID2D1Bitmap* mBitmap = nullptr;
 
-  IWICBitmap* vidFrame;
-  ID2D1Bitmap* mD2D1Bitmap = NULL;
+  bool bayer10 = false;
+  bool jpeg422 = false;
+  bool waveform = false;
+  bool histogram = true;
+  bool vector = true;
+
+  int focus = 0;
+  uint8_t bucket = 1;
+  int histogramValues [0x100];
+  bool vectorValues [0x4000];
 
   //{{{  layout
   float barPixels = 16.0f;
@@ -955,19 +949,6 @@ private:
   int pllm = 16;
   int plln = 1;
   int pllp = 1;
-  //}}}
-  //{{{  frames
-  bool waveform = true;
-  bool histogram = true;
-  bool vector = true;
-  int focus = 0;
-
-  uint8_t bucket = 1;
-  int histogramValues [0x100];
-  bool vectorValues [0x4000];
-
-  bool bayer10 = false;
-  bool jpeg422 = false;
   //}}}
   //{{{  jpeg
   struct jpeg_decompress_struct cinfo;

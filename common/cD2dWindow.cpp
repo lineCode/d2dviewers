@@ -381,10 +381,6 @@ void cD2dWindow::createDirect2d() {
   DWriteCreateFactory (DWRITE_FACTORY_TYPE_SHARED,
                        __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&DWriteFactory));
 
-  // create wicImagingFactory
-  CoCreateInstance (CLSID_WICImagingFactory, nullptr,
-                    CLSCTX_INPROC_SERVER, IID_PPV_ARGS (&wicImagingFactory));
-
   createDeviceResources();
   createSizedResources();
 

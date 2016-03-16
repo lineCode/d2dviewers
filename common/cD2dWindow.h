@@ -30,7 +30,6 @@ public:
   bool getMouseDown() { return mouseDown; }
 
   IDWriteFactory* getDwriteFactory() { return DWriteFactory; }
-  ComPtr<IWICImagingFactory> getWicImagingFactory() { return wicImagingFactory; }
 
   void changed() { mChanged = true; }
   void setChangeRate (int changeRate) { mChangeRate = changeRate; }
@@ -95,7 +94,6 @@ private:
   //{{{  deviceIndependentResources
   ComPtr<ID2D1Factory1> mD2D1Factory;
   IDWriteFactory* DWriteFactory;
-  ComPtr<IWICImagingFactory> wicImagingFactory;
   //}}}
   //{{{  deviceResources
   ComPtr<ID3D11Device1> mD3dDevice1;
