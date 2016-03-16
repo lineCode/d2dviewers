@@ -252,14 +252,6 @@ protected:
     // yellow volume bar
     dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
 
-    wchar_t wStr[200];
-    mIsDirectory ? swprintf (wStr, 200, L"files:%d dirs:%d", mNumNestedFiles, mNumNestedDirs)
-                 : swprintf (wStr, 200, L"%3.2f %3.2f %dk %d %d %x",
-                             mPlaySecs, mMp3File->getMaxSecs(), mMp3File->getBitRate()/1000, getAudSampleRate(),
-                             mMp3File->getChannels(), mMp3File->getMode());
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                  RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
-
     if (mMp3File) {
       int rows = 6;
       int frame = int(mPlaySecs / getSecsPerAudFrame());
@@ -276,7 +268,19 @@ protected:
         }
       }
 
-    traverseFiles (this, &cMp3Window::drawFileInfo);
+    if (mIsDirectory)
+      traverseFiles (this, &cMp3Window::drawFileInfo);
+    else {
+      wstringstream str;
+      str << mPlaySecs 
+          << L" " << mMp3File->getMaxSecs()
+          << L" " << mMp3File->getBitRate()/1000
+          << L" " << getAudSampleRate()
+          << L" " << mMp3File->getChannels()
+          << L" " << mMp3File->getMode();
+      dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
+                    RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
+      }
     }
   //}}}
 
