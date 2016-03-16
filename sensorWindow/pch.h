@@ -23,3 +23,4 @@
 
 using namespace Microsoft::WRL;
 using namespace D2D1;
+using namespace std;
