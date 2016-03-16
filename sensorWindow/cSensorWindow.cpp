@@ -102,7 +102,7 @@ protected:
       case 'Q': preview(); break;
       case 'W': capture(); break;
       case 'E': bayer(); break;
-      case 'J': jpeg (1600, 1200); setFrameSize (1600, 1200, false, true);  framePtr = NULL; break;
+      case 'J': setFrameSize (1600, 1200, false, true); jpeg (1600, 1200); framePtr = NULL; break;
 
       case 'A': pll (++pllm, plln, pllp); break;
       case 'Z': pll (--pllm, plln, pllp); break;
@@ -537,7 +537,8 @@ private:
 
     // create bitmap from frameBuffer
     auto bufferLen = width * height * 4;
-    auto buffer = (uint8_t*)malloc (bufferLen);
+    auto bufferAlloc = (uint8_t*)malloc (bufferLen);
+    auto buffer = bufferAlloc;
 
     if (jpeg422) {
       if ((frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
@@ -687,27 +688,64 @@ private:
     if (!mBitmap)
       getDeviceContext()->CreateBitmap (SizeU(width, height), kBitmapProperties, &mBitmap);
 
-    mBitmap->CopyFromMemory (&RectU (0, 0, width, height), buffer, width*4);
-    free (buffer);
+    mBitmap->CopyFromMemory (&RectU (0, 0, width, height), bufferAlloc, width*4);
+    free (bufferAlloc);
     }
   //}}}
 
+  //{{{
+  void capture() {
+
+    std::wcout << L"capture" << std::endl;
+
+    setFrameSize (1600, 1200, false, false);
+    if (sensorid == 0x1519) {
+      writeReg (0xF0, 1);
+      writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
+      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
+      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
+      }
+    else {
+      writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0002); // sequencer.params.mode - capture video
+      writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
+      }
+    framePtr = NULL;
+    }
+  //}}}
   //{{{
   void preview() {
 
     std::wcout << L"preview" << std::endl;
 
     if (sensorid == 0x1519) {
+      setFrameSize (800, 600, false, false);
       writeReg (0xF0, 1);
       writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
       writeReg (0xC6, 0xA120); writeReg (0xC8, 0x00); // Sequencer.params.mode - none
       writeReg (0xC6, 0xA103); writeReg (0xC8, 0x01); // Sequencer goto preview A
-      setFrameSize (800, 600, false, false);
       }
     else {
+      setFrameSize (640, 480, false, false);
       writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0000); // sequencer.params.mode - none
       writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0001); // sequencer.cmd - goto preview mode A
-      setFrameSize (640, 480, false, false);
+      }
+
+    framePtr = NULL;
+    }
+  //}}}
+  //{{{
+  void bayer() {
+
+    if (sensorid == 0x1519) {
+      std::wcout << L"bayer" << std::endl;
+      bayer10 = true;
+
+      setFrameSize (1608, 1200, true, false);
+
+      writeReg (0xF0, 1);
+      writeReg (0x09, 0x0008); // factory bypass 10 bit sensor
+      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
+      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
       }
 
     framePtr = NULL;
@@ -733,44 +771,6 @@ private:
       writeReg (0x65, 0xA000);  // Clock CNTRL - PLL ON
       writeReg (0x65, 0x2000);  // Clock CNTRL - USE PLL
       }
-    }
-  //}}}
-  //{{{
-  void capture() {
-
-    std::wcout << L"capture" << std::endl;
-
-    if (sensorid == 0x1519) {
-      writeReg (0xF0, 1);
-      writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
-      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
-      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
-      setFrameSize (1600, 1200, false, false);
-      }
-    else {
-      writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0002); // sequencer.params.mode - capture video
-      writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
-      setFrameSize (1600, 1200, false, false);
-      }
-    framePtr = NULL;
-    }
-  //}}}
-  //{{{
-  void bayer() {
-
-    if (sensorid == 0x1519) {
-      std::wcout << L"bayer" << std::endl;
-      bayer10 = true;
-
-      setFrameSize (1608, 1200, true, false);
-
-      writeReg (0xF0, 1);
-      writeReg (0x09, 0x0008); // factory bypass 10 bit sensor
-      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
-      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
-      }
-
-    framePtr = NULL;
     }
   //}}}
   //{{{
