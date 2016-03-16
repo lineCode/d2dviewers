@@ -13,7 +13,6 @@
 
 #include "concurrent_vector.h"
 //}}}
-
 //{{{  typedef
 class cMp3Window;
 typedef void (cMp3Window::*cMp3WindowFunc)();
@@ -272,7 +271,7 @@ protected:
       traverseFiles (this, &cMp3Window::drawFileInfo);
     else {
       wstringstream str;
-      str << mPlaySecs 
+      str << mPlaySecs
           << L" " << mMp3File->getMaxSecs()
           << L" " << mMp3File->getBitRate()/1000
           << L" " << getAudSampleRate()
@@ -288,9 +287,8 @@ private:
   //{{{
   void drawFileInfo (cMp3File* file) {
 
-    wchar_t wStr[200];
-    swprintf (wStr, 200, L"%s", file->getFileName().c_str());
-    getDeviceContext()->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), file->getLayout(),
+    getDeviceContext()->DrawText (file->getFileName().data(), (uint32_t)file->getFileName().size(), getTextFormat(),
+                                  file->getLayout(),
                                   !file->isLoaded() ? getGreyBrush() :
                                    ((file == mMp3File) || (file == mProxFile) ? getWhiteBrush() : getBlueBrush()));
     }

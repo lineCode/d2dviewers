@@ -122,16 +122,25 @@ protected:
     if (showChannel != mShowChannel)
       changed();
 
-    if (x < 80)
-      mProxChannel = (x < 80) ? ((y / 20) - 1) : -1;
-
+    mProxChannel = -1;
+    if (x < 80) {
+      float yoff = 20.0f;
+      for (auto source = 0; source < mPlayer->getNumSource(); source++) {
+        if (source != mPlayer->getSource()) {
+          if ((y >= yoff) && (y < yoff + 20.0f)) {
+            mProxChannel = source;
+            return;
+            }
+          yoff += 20.0f;
+          }
+        }
+      }
     }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
 
     if (x < 80) {
-      mProxChannel = (y / 20) - 1;
       if (mProxChannel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
         if (hlsRadio)
@@ -200,13 +209,18 @@ protected:
     swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str(), mHttpRxBytes/1000000.0f);
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
-    if (mShowChannel)
+    if (mShowChannel) {
+      float y = 20.0f;
       for (auto source = 0; source < mPlayer->getNumSource(); source++) {
-        swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr (source).c_str());
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
-                      RectF (0, (source + 1) * 20.0f, getClientF().width, (source + 2) * 20.0f),
-                      (source == mPlayer->getSource()) || (source == mProxChannel) ? getWhiteBrush() : getGreyBrush());
+        if (source != mPlayer->getSource()) {
+          swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr (source).c_str());
+          dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+                        RectF (0, y, getClientF().width, y + 20.0f),
+                        (source == mProxChannel) ? getWhiteBrush() : getGreyBrush());
+          y += 20.0f;
+          }
         }
+      }
 
     auto hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
     if (hlsRadio) {
