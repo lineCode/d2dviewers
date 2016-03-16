@@ -612,15 +612,15 @@ public:
   cPidInfo::cPidInfo (int pid, bool isSection) : mPid(pid),  mIsSection(isSection) {
 
     switch (pid) {
-      case PID_PAT: wcscpy (mInfo, L"Pat "); break;
-      case PID_CAT: wcscpy (mInfo, L"Cat "); break;
-      case PID_SDT: wcscpy (mInfo, L"Sdt "); break;
-      case PID_NIT: wcscpy (mInfo, L"Nit "); break;
-      case PID_EIT: wcscpy (mInfo, L"Eit "); break;
-      case PID_RST: wcscpy (mInfo, L"Rst "); break;
-      case PID_TDT: wcscpy (mInfo, L"Tdt "); break;
-      case PID_SYN: wcscpy (mInfo, L"Syn "); break;
-      default: mInfo[0] = L'\0'; break;
+      case PID_PAT: mInfo = L"Pat "; break;
+      case PID_CAT: mInfo = L"Cat "; break;
+      case PID_SDT: mInfo = L"Sdt "; break;
+      case PID_NIT: mInfo = L"Nit "; break;
+      case PID_EIT: mInfo = L"Eit "; break;
+      case PID_RST: mInfo = L"Rst "; break;
+      case PID_TDT: mInfo = L"Tdt "; break;
+      case PID_SYN: mInfo = L"Syn "; break;
+      default:;
       }
     }
   //}}}
@@ -652,7 +652,7 @@ public:
   uint8_t* mBufPtr = nullptr;
 
   // render text for speed,locking
-  wchar_t mInfo[100];
+  wstring mInfo;
   };
 //}}}
 //{{{
@@ -1040,10 +1040,11 @@ public:
                  ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
 
     if (!mPidInfoMap.empty()) {
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%ls %ls services:%d", wTimeStr, wNetworkNameStr, (int)mServiceMap.size());
+      wstring wstr(wTimeStr);
+      //+wNetworkNameStr +
+      wstr += L" services:" + to_wstring(mServiceMap.size());
       auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, textr, whiteBrush);
 
       auto top = 40.0f;
       for (auto pidInfo : mPidInfoMap) {
@@ -1054,8 +1055,11 @@ public:
         dc->FillRectangle (RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f), blueBrush);
 
         textr.top = top;
-        swprintf (wStr, 200, L"%4d %d %ls%d", pidInfo.first, pidInfo.second.mStreamType, pidInfo.second.mInfo, pidInfo.second.mTotal);
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+        wstr = to_wstring (pidInfo.first) +
+               L' ' + to_wstring (pidInfo.second.mStreamType) +
+               L' ' + pidInfo.second.mInfo +
+               L' ' + to_wstring (pidInfo.second.mTotal);
+        dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, textr, whiteBrush);
 
         top += 14.0f;
         }
@@ -1069,9 +1073,17 @@ public:
 
     auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
     for (auto service : mServiceMap) {
-      wchar_t wStr[200];
-      swprintf (wStr, 200, L"%hs - %hs", service.second.getName(), service.second.getNow()->mTitle);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, textr, whiteBrush);
+      size_t size = 0;
+      wchar_t name[100];
+      mbstowcs_s (&size, name, strlen (service.second.getName())+1, service.second.getName(), _TRUNCATE);
+
+      wchar_t title[100];
+      mbstowcs_s (&size, title, strlen (service.second.getNow()->mTitle)+1, service.second.getNow()->mTitle, _TRUNCATE);
+      wstring wtitle (title);
+
+      wstring wstr (name);
+      wstr += title;
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, textr, whiteBrush);
       textr.top += 20.0f;
       }
     }
@@ -1153,18 +1165,20 @@ private:
         size_t size = 0;
         wchar_t name[100];
         mbstowcs_s (&size, name, strlen (serviceIt->second.getName())+1, serviceIt->second.getName(), _TRUNCATE);
+        wstring wname (name);
 
         wchar_t title[100];
         mbstowcs_s (&size, title, strlen (serviceIt->second.getNow()->mTitle)+1, serviceIt->second.getNow()->mTitle, _TRUNCATE);
+        wstring wtitle (title);
 
         if (pid == serviceIt->second.getVidPid())
-          swprintf (pidInfoIt->second.mInfo, 100, L"vid %ls %ls ", name, title);
+          pidInfoIt->second.mInfo = L"vid " + wname + wtitle;
         else if (pid == serviceIt->second.getAudPid())
-          swprintf (pidInfoIt->second.mInfo, 100, L"aud %ls %ls ", name, title);
+          pidInfoIt->second.mInfo = L"aud " + wname + wtitle;
         else if (pid == serviceIt->second.getSubPid())
-          swprintf (pidInfoIt->second.mInfo, 100, L"sub %ls %ls ", name, title);
+          pidInfoIt->second.mInfo = L"sub " + wname + wtitle;
         else if (pid == serviceIt->second.getProgramPid())
-          swprintf (pidInfoIt->second.mInfo, 100, L"pgm %ls ", name);
+          pidInfoIt->second.mInfo = L"pgm " + wname;
         }
       }
     }

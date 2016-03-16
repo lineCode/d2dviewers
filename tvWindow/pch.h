@@ -9,14 +9,15 @@
 #include <stdint.h>
 #include <math.h>
 #include <fcntl.h>
-#include <string.h>
 #include <tchar.h>
 #include <io.h>
 
+#include <string>
+#include <sstream>
+#include <iomanip>
+
 #include <map>
-#include <vector>
 #include <thread>
-#include <mutex>
 
 // direct2d
 #include <d3d11.h>

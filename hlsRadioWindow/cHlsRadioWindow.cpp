@@ -205,9 +205,9 @@ protected:
       }
 
     // topLine info str
-    wchar_t wStr[200];
-    swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str(), mHttpRxBytes/1000000.0f);
-    dc->DrawText (wStr, (uint32_t)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
+    wstringstream str;
+    str << mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str() << mHttpRxBytes/1000000.0f;
+    dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
     wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
     if (mShowChannel) {

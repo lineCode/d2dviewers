@@ -188,7 +188,6 @@ public:
     float pixPerPts = u / audFrameWidthPts;
     float g = 1.0f;
 
-    wchar_t wStr[10];
     for (auto i = 0; i < maxAudFrames; i++) {
       if (mAudFrames[i].mNumSamples) {
         audFrameWidthPts = 90000.0f * mAudFrames[i].mNumSamples / 48000.0f;
@@ -206,8 +205,8 @@ public:
         }
         //}}}
       dc->FillRectangle (RectF(x, y, x+w-g, y+h), blueBrush);
-      swprintf (wStr, 10, L"%d", i);
-      dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y, x+w-g, y+h), blackBrush);
+      wstring wstr (to_wstring (i));
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), blackBrush);
       }
 
     cDecodeContext* decodeContext = mDecodeContexts[0];
@@ -219,17 +218,17 @@ public:
         float w = u * vidFrameWidthPts / audFrameWidthPts;
 
         dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellowBrush);
-        swprintf (wStr, 10, L"%d", i);
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
+        wstring wstr (to_wstring (i));
+        dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), blackBrush);
 
         dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), whiteBrush);
         switch (yuvFrame->mPictType) {
-          case 1: swprintf (wStr, 10, L"I"); break;
-          case 2: swprintf (wStr, 10, L"P"); break;
-          case 3: swprintf (wStr, 10, L"B"); break;
-          default: swprintf (wStr, 10, L"%d", yuvFrame->mPictType); break;
+          case 1: wstr = L"I"; break;
+          case 2: wstr = L"P"; break;
+          case 3: wstr = L"B"; break;
+          default: wstr = to_wstring (yuvFrame->mPictType); break;
           }
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
+        dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), blackBrush);
 
         float l = yuvFrame->mLen / 1000.0f;
         dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
@@ -472,7 +471,7 @@ public:
       thread ([=](){loader(arg);}).detach();
 
       // launch playerThread
-      auto playerThread = std::thread ([=](){player();});
+      auto playerThread = thread ([=](){player();});
       SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
       playerThread.detach();
 
@@ -613,10 +612,12 @@ void onDraw (ID2D1DeviceContext* dc) {
   dc->FillRectangle (rVol, getYellowBrush());
 
   // draw title
-  wchar_t wStr[200];
-  swprintf (wStr, 200, L"%4.1f of %4.3fm - dis:%d chan:%d",
-            (mAudPts - mTs.getBasePts()) / 90000.0f, mFileSize / 1000000.0f, mTs.getDiscontinuity(), mChannelSelector);
-  dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+  wstringstream str;
+  str << (mAudPts - mTs.getBasePts()) / 90000.0f
+      << L" " << mFileSize / 1000000.0f
+      << L" " << mTs.getDiscontinuity()
+      << L" " << mChannelSelector;
+  dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowDebug)
