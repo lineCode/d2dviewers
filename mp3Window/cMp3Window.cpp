@@ -180,8 +180,8 @@ protected:
   void onMouseWheel (int delta) {
 
     mLayoutOffset += delta/6;
-    if (mLayoutOffset > 20.0f)
-      mLayoutOffset = 20.0f;
+    if (mLayoutOffset > 0)
+      mLayoutOffset = 0;
     simpleLayout (RectF (0, mLayoutOffset, getClientF().width, mLayoutOffset + 20.0f));
 
     //auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;

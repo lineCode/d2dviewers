@@ -18,7 +18,7 @@
 #include "codec_def.h"
 #include "codec_app_def.h"
 #include "codec_api.h"
-#pragma comment(lib,"welsdec.lib")
+#pragma comment (lib,"welsdec.lib")
 
 #include "../common/cAudio.h"
 #include "../common/cHlsRadio.h"
@@ -47,10 +47,10 @@ public:
     initialise (title, width, height);
 
     // launch loaderThread
-    std::thread ([=]() { loader(); } ).detach();
+    thread ([=]() { loader(); } ).detach();
 
     // launch playerThread, higher priority
-    auto playerThread = std::thread ([=]() { player(); });
+    auto playerThread = thread ([=]() { player(); });
     SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
     playerThread.detach();
 
@@ -207,14 +207,15 @@ protected:
     // topLine info str
     wchar_t wStr[200];
     swprintf (wStr, 200, L"%hs %4.3fm", mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str(), mHttpRxBytes/1000000.0f);
-    dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
+    dc->DrawText (wStr, (uint32_t)wcslen(wStr), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
 
+    wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
     if (mShowChannel) {
       float y = 20.0f;
       for (auto source = 0; source < mPlayer->getNumSource(); source++) {
         if (source != mPlayer->getSource()) {
-          swprintf (wStr, 200, L"%hs", mPlayer->getSourceStr (source).c_str());
-          dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+          wstring wstr = converter.from_bytes (mPlayer->getSourceStr (source));
+          dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(),
                         RectF (0, y, getClientF().width, y + 20.0f),
                         (source == mProxChannel) ? getWhiteBrush() : getGreyBrush());
           y += 20.0f;
@@ -228,20 +229,20 @@ protected:
       if (mShowChannel) {
         if (false) {
           // show chunk debug
-          swprintf (wStr, 200, L"%hs", hlsRadio->getChunkInfoStr (0).c_str());
-          dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+          wstring wstr0 = converter.from_bytes (hlsRadio->getChunkInfoStr(0));
+          wstring wstr1 = converter.from_bytes (hlsRadio->getChunkInfoStr(0));
+          wstring wstr2 = converter.from_bytes (hlsRadio->getChunkInfoStr(0));
+          dc->DrawText (wstr0.data(), (uint32_t)wstr0.size(), getTextFormat(),
                         RectF(0, getClientF().height-80, getClientF().width, getClientF().height), getWhiteBrush());
-          swprintf (wStr, 200, L"%hs", hlsRadio->getChunkInfoStr (1).c_str());
-          dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+          dc->DrawText (wstr1.data(), (uint32_t)wstr1.size(), getTextFormat(),
                         RectF(0, getClientF().height-60, getClientF().width, getClientF().height), getWhiteBrush());
-          swprintf (wStr, 200, L"%hs", hlsRadio->getChunkInfoStr (2).c_str());
-          dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+          dc->DrawText (wstr2.data(), (uint32_t)wstr2.size(), getTextFormat(),
                         RectF(0, getClientF().height-40, getClientF().width, getClientF().height), getWhiteBrush());
           }
 
         // botLine radioChan info str
-        swprintf (wStr, 200, L"%hs", hlsRadio->getChannelInfoStr().c_str());
-        dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
+        wstring wstr = converter.from_bytes (hlsRadio->getChannelInfoStr());
+        dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(),
                       RectF(0, getClientF().height-20, getClientF().width, getClientF().height), getWhiteBrush());
         }
       }

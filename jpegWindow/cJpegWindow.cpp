@@ -26,7 +26,7 @@ public:
 
   //{{{
   void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName,
-                  int& numImages, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
+             int& numImages, int& numDirs, cJpegWindow* jpegWindow, cJpegWindowFunc func) {
   // directoryName is findFileData.cFileName wchar_t*
 
     mDirName = directoryName;
@@ -264,8 +264,7 @@ protected:
 
       if (mPickImage) {
         //{{{  highlight pickImage and draw infoPanel
-        dc->DrawRoundedRectangle (
-          RoundedRect (mPickImage->getLayout(), 3.0f,3.0f), getYellowBrush(), 3.0f/mThumbView.getScale());
+        dc->DrawRoundedRectangle (RoundedRect (mPickImage->getLayout(), 3.0f,3.0f), getYellowBrush(), 3.0f/mThumbView.getScale());
 
         // draw info panel
         dc->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
@@ -288,71 +287,65 @@ protected:
           //}}}
 
         //{{{  draw fullFileName text
-        dc->DrawText (
-          mPickImage->getFullFileName().c_str(), (UINT32)mPickImage->getFullFileName().size(), getTextFormat(),
-          rPanel, getWhiteBrush());
+        dc->DrawText (mPickImage->getFullFileName().data(), (uint32_t)mPickImage->getFullFileName().size(), getTextFormat(),
+                      rPanel, getWhiteBrush());
         //}}}
         if (!mPickImage->getExifTimeString().empty()) {
           //{{{  draw exifTime text
           rPanel.top += 20.0f;
 
-          dc->DrawText (
-            mPickImage->getExifTimeString().c_str(), (UINT32)mPickImage->getExifTimeString().size(), getTextFormat(),
-            rPanel, getWhiteBrush());
+          dc->DrawText (mPickImage->getExifTimeString().data(), (uint32_t)mPickImage->getExifTimeString().size(), getTextFormat(),
+                        rPanel, getWhiteBrush());
           }
           //}}}
         //{{{  draw imageSize text
         rPanel.top += 20.0f;
-        wstring str (to_wstring (mPickImage->getImageSize().width) + L"x" +
-                          to_wstring (mPickImage->getImageSize().height));
-        dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+        wstring wstr (to_wstring (mPickImage->getImageSize().width) + L"x" + to_wstring (mPickImage->getImageSize().height));
+        dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), rPanel, getWhiteBrush());
         //}}}
         //{{{  draw make text
         rPanel.top += 20.0f;
 
-        dc->DrawText (
-          mPickImage->getMake().c_str(), (UINT32)mPickImage->getMake().size(), getTextFormat(),
-          rPanel, getWhiteBrush());
+        dc->DrawText (mPickImage->getMake().data(), (uint32_t)mPickImage->getMake().size(), getTextFormat(),
+                      rPanel, getWhiteBrush());
         //}}}
         //{{{  draw model text
         rPanel.top += 20.0f;
 
-        dc->DrawText (
-          mPickImage->getModel().c_str(), (UINT32)mPickImage->getModel().size(), getTextFormat(),
-          rPanel, getWhiteBrush());
+        dc->DrawText (mPickImage->getModel().data(), (uint32_t)mPickImage->getModel().size(), getTextFormat(),
+                      rPanel, getWhiteBrush());
         //}}}
         if (false) {
           //{{{  draw orientation text
           rPanel.top += 20.0f;
 
-          wstringstream stringstream;
-          stringstream << L"orientation " << mPickImage->getOrientation();
-          dc->DrawText (stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
-                                   rPanel, getWhiteBrush());
+          wstringstream str;
+          str << L"orientation " << mPickImage->getOrientation();
+          dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
         if (mPickImage->getAperture() > 0) {
           //{{{  draw aperture text
           rPanel.top += 20.0f;
 
-          wstring str (L"aperture " + to_wstring(mPickImage->getAperture()));
-          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          wstring wstr (L"aperture " + to_wstring(mPickImage->getAperture()));
+          dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
         if (mPickImage->getFocalLength() > 0) {
           //{{{  draw focalLength text
           rPanel.top += 20.0f;
 
-          wstring str (L"focal length " + to_wstring(mPickImage->getFocalLength()));
-          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          wstring wstr (L"focal length " + to_wstring(mPickImage->getFocalLength()));
+          dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
         if (mPickImage->getExposure() > 0) {
           //{{{  draw exposure text
           rPanel.top += 20.0f;
 
-          wstring str (L"exposure " + to_wstring(mPickImage->getExposure()));
-          dc->DrawText (str.c_str(), (UINT32)str.size(), getTextFormat(), rPanel, getWhiteBrush());
+          wstring wstr (L"exposure " + to_wstring(mPickImage->getExposure()));
+          dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), rPanel, getWhiteBrush());
           }
           //}}}
 
@@ -360,58 +353,47 @@ protected:
         rPanel.top = getClientF().height-180.0f + 10.0f;
         if (true)
           //{{{  draw debugStr
-          dc->DrawText (
-            mPickImage->getDebugInfo().c_str(), (UINT32)mPickImage->getDebugInfo().size(), getTextFormat(),
-            rPanel, getYellowBrush());
+          dc->DrawText (mPickImage->getDebugInfo().data(), (uint32_t)mPickImage->getDebugInfo().size(), getTextFormat(),
+                        rPanel, getYellowBrush());
 
           rPanel.top += 20.0f;
-          dc->DrawText (
-            mPickImage->getDebugInfo1().c_str(), (UINT32)mPickImage->getDebugInfo1().size(), getTextFormat(),
-            rPanel, getYellowBrush());
+          dc->DrawText (mPickImage->getDebugInfo1().c_str(), (uint32_t)mPickImage->getDebugInfo1().size(), getTextFormat(),
+                        rPanel, getYellowBrush());
           //}}}
 
         //{{{  draw creationTime
         rPanel.top += 20.0f;
-
-        dc->DrawText (
-          mPickImage->getCreationTime().c_str(), (UINT32)mPickImage->getCreationTime().size(), getTextFormat(),
-          rPanel, getYellowBrush());
+        dc->DrawText (mPickImage->getCreationTime().data(), (uint32_t)mPickImage->getCreationTime().size(), getTextFormat(),
+                      rPanel, getYellowBrush());
         //}}}
         //{{{  draw lastAccessTime
         rPanel.top += 20.0f;
-
-        dc->DrawText (
-          mPickImage->getLastAccessTime().c_str(), (UINT32)mPickImage->getLastAccessTime().size(), getTextFormat(),
-          rPanel, getYellowBrush());
+        dc->DrawText (mPickImage->getLastAccessTime().data(), (uint32_t)mPickImage->getLastAccessTime().size(), getTextFormat(),
+                      rPanel, getYellowBrush());
         //}}}
         //{{{  draw lastWriteTime
         rPanel.top += 20.0f;
-
-        dc->DrawText (
-          mPickImage->getLastWriteTime().c_str(), (UINT32)mPickImage->getLastWriteTime().size(), getTextFormat(),
-          rPanel, getYellowBrush());
+        dc->DrawText (mPickImage->getLastWriteTime().data(), (uint32_t)mPickImage->getLastWriteTime().size(), getTextFormat(),
+                      rPanel, getYellowBrush());
         //}}}
 
         if (!mPickImage->getGPSinfo().empty()) {
           //{{{  draw GPSinfo
           rPanel.top += 20.0f;
-
-          dc->DrawText (
-            mPickImage->getGPSinfo().c_str(), (UINT32)mPickImage->getGPSinfo().size(), getTextFormat(),
-            rPanel, getYellowBrush());
+          dc->DrawText (mPickImage->getGPSinfo().data(), (uint32_t)mPickImage->getGPSinfo().size(), getTextFormat(),
+                        rPanel, getYellowBrush());
           }
           //}}}
 
         //{{{  debug text
-        wstringstream stringstream;
-        stringstream << mNumThumbsLoaded << L":" << mNumNestedImages
-                     << L" sub:" << mNumNestedDirs
-                     << L" scale:" << mCurView->getScale()
-                     << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
-        dc->DrawText (
-          stringstream.str().c_str(), (UINT32)stringstream.str().size(), getTextFormat(),
-          RectF(getClientF().width/2.0f, getClientF().height-20.0f, getClientF().width, getClientF().height),
-          getWhiteBrush());
+        wstringstream str;
+        str << mNumThumbsLoaded << L":" << mNumNestedImages
+            << L" sub:" << mNumNestedDirs
+            << L" scale:" << mCurView->getScale()
+            << L" point:" << mCurView->getPoint().x << L"," << mCurView->getPoint().y;
+        dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
+                      RectF(getClientF().width/2.0f, getClientF().height-20.0f, getClientF().width, getClientF().height),
+                      getWhiteBrush());
         //}}}
         }
         //}}}
@@ -426,10 +408,9 @@ protected:
 
       // full image text
       dc->SetTransform (Matrix3x2F::Scale (Size(1.0f,1.0f), Point2F (0,0)));
-      dc->DrawText (
-        mFullImage->getFullFileName().c_str(), (UINT32)mFullImage->getFullFileName().size(), getTextFormat(),
-        RectF(getClientF().width/2.0f, 0, getClientF().width,getClientF().height),
-        getWhiteBrush());
+      dc->DrawText (mFullImage->getFullFileName().data(), (uint32_t)mFullImage->getFullFileName().size(), getTextFormat(),
+                    RectF(getClientF().width/2.0f, 0, getClientF().width,getClientF().height),
+                    getWhiteBrush());
       }
     }
   //}}}

@@ -9,9 +9,12 @@
 #include <stdint.h>
 #include <math.h>
 #include <fcntl.h>
-#include <string.h>
 #include <tchar.h>
 #include <io.h>
+
+#include <locale>
+#include <codecvt>
+#include <string>
 
 #include <thread>
 
@@ -27,3 +30,4 @@
 
 using namespace Microsoft::WRL;
 using namespace D2D1;
+using namespace std;
