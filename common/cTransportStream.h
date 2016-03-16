@@ -2,13 +2,12 @@
 #pragma once
 //#define EIT_EXTENDED_EVENT_DEBUG
 //{{{  includes
-#include "huffDecoder.h"
-#include "dvbSubtitle.h"
-
-#include <locale>
+#include <codecvt>
+#include <string>
 #include <time.h>
 
-class cMpeg2decoder;
+#include "huffDecoder.h"
+#include "dvbSubtitle.h"
 //}}}
 //{{{  macros
 #define HILO(x) (x##_hi << 8 | x##_lo)
@@ -651,25 +650,18 @@ public:
   uint8_t* mBuffer = nullptr;
   uint8_t* mBufPtr = nullptr;
 
-  // render text for speed,locking
   wstring mInfo;
   };
 //}}}
 //{{{
 class cEpgItem {
 public:
-  //{{{
-  cEpgItem() {
-
-    mTitle[0] = 0;
-    mShortDescription[0] = 0;
-    }
-  //}}}
+  cEpgItem() {}
   //{{{
   cEpgItem (time_t startTime, int duration, char* title, char* shortDescription) : mStartTime(startTime), mDuration(duration) {
 
-    strcpy (mTitle, title);
-    strcpy (mShortDescription, shortDescription);
+    mTitle = title;
+    mShortDescription = shortDescription;
     }
   //}}}
   ~cEpgItem() {}
@@ -677,11 +669,11 @@ public:
   //{{{
   void set (time_t startTime, int duration, char* title, char* shortDescription) {
 
-    mStartTime = startTime;
     mDuration = duration;
+    mStartTime = startTime;
 
-    strcpy (mTitle, title);
-    strcpy (mShortDescription, shortDescription);
+    mTitle = title;
+    mShortDescription = shortDescription;
     }
   //}}}
   //{{{
@@ -691,15 +683,15 @@ public:
     char* time = asctime(&when);
     time[24] = 0;
 
-    printf ("%s%s %3dm <%s>\n", prefix, time, mDuration/60, mTitle);
+    printf ("%s%s %3dm <%s>\n", prefix, time, mDuration/60, mTitle.c_str());
     }
   //}}}
 
-  time_t mStartTime = 0;
   int mDuration = 0;
+  time_t mStartTime = 0;
 
-  char mTitle[100];
-  char mShortDescription[400];
+  string mTitle;
+  string mShortDescription;
   };
 //}}}
 //{{{
@@ -709,7 +701,7 @@ public:
   cService (int sid, int tsid, int onid, int type, char* name)
     : mSid(sid), mTsid(tsid), mOnid(onid), mType(type) {
 
-    strcpy (mName, name);
+    mName = name;
 
     mAudPids[0] = -1;
     mAudPids[1] = -1;
@@ -740,7 +732,7 @@ public:
   int getPcrPid() const { return mPcrPid; }
   int getProgramPid() const { return mProgramPid; }
 
-  char* getName() { return mName; }
+  string getName() { return mName; }
   cEpgItem* getNow() { return &mNow; }
 
   //  sets
@@ -775,7 +767,7 @@ public:
   void print() {
 
     printf ("- sid:%d tsid:%d onid:%d - prog:%d v:%d a:%d sub:%d pcr:%d %s <%s>\n",
-            mSid, mTsid, mOnid, mProgramPid, mVidPid, mNumAudPids, mSubPid, mPcrPid, getTypeStr(), mName);
+            mSid, mTsid, mOnid, mProgramPid, mVidPid, mNumAudPids, mSubPid, mPcrPid, getTypeStr(), mName.c_str());
 
     mNow.print ("  - ");
 
@@ -797,7 +789,7 @@ private:
   int mPcrPid = -1;
   int mProgramPid = -1;
 
-  char mName[20];
+  string mName;
 
   cEpgItem mNow;
 
@@ -1073,16 +1065,8 @@ public:
 
     auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
     for (auto service : mServiceMap) {
-      size_t size = 0;
-      wchar_t name[100];
-      mbstowcs_s (&size, name, strlen (service.second.getName())+1, service.second.getName(), _TRUNCATE);
-
-      wchar_t title[100];
-      mbstowcs_s (&size, title, strlen (service.second.getNow()->mTitle)+1, service.second.getNow()->mTitle, _TRUNCATE);
-      wstring wtitle (title);
-
-      wstring wstr (name);
-      wstr += title;
+      wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+      wstring wstr = converter.from_bytes (service.second.getName()) + converter.from_bytes (service.second.getNow()->mTitle);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, textr, whiteBrush);
       textr.top += 20.0f;
       }
@@ -1122,35 +1106,6 @@ protected:
 
 private:
   //{{{
-  void recordChange (int sid) {
-
-    auto it = mServiceMap.find (sid);
-    if (it != mServiceMap.end()) {
-      auto curTime = *localtime (&mCurTime);
-      wchar_t fileName[100];
-      std::locale loc1 ("English");
-      auto str1 = it->second.getNow()->mTitle;
-      wchar_t str2[100];
-      std::use_facet<std::ctype <wchar_t>>(loc1).widen (str1, str1 + strlen(str1), &str2[0]);
-      str2[strlen(str1)] = '\0';
-
-      // cull illegal chars
-      for (auto i = 0; i < strlen(str1); i++)
-        if ((str2[i] == ':') || (str2[i] == '?') || (str2[i] == '\'?'))
-          str2[i] = ' ';
-
-      // form filename from now name amnd time
-      swprintf (fileName, 100,  L"c:/%s %02d-%02d-%02d %02d-%02d-%04d.ts",
-                str2,
-                curTime.tm_hour, curTime.tm_min, curTime.tm_sec,
-                curTime.tm_mday, curTime.tm_mon+1, curTime.tm_year + 1900);
-
-      // save fileName root
-      printf ("recordChange %ls\n", fileName);
-      }
-    }
-  //}}}
-  //{{{
   void updatePidInfo (int pid) {
   // update pid cPidInfo UI text for speed, lock avoidance
 
@@ -1161,24 +1116,16 @@ private:
       // cService from cPidInfo.sid using mServiceMap
       auto serviceIt = mServiceMap.find (pidInfoIt->second.mSid);
       if (serviceIt != mServiceMap.end()) {
-
-        size_t size = 0;
-        wchar_t name[100];
-        mbstowcs_s (&size, name, strlen (serviceIt->second.getName())+1, serviceIt->second.getName(), _TRUNCATE);
-        wstring wname (name);
-
-        wchar_t title[100];
-        mbstowcs_s (&size, title, strlen (serviceIt->second.getNow()->mTitle)+1, serviceIt->second.getNow()->mTitle, _TRUNCATE);
-        wstring wtitle (title);
-
+        wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+        wstring wstr = converter.from_bytes (serviceIt->second.getName()) + converter.from_bytes (serviceIt->second.getNow()->mTitle);
         if (pid == serviceIt->second.getVidPid())
-          pidInfoIt->second.mInfo = L"vid " + wname + wtitle;
+          pidInfoIt->second.mInfo = L"vid " + wstr;
         else if (pid == serviceIt->second.getAudPid())
-          pidInfoIt->second.mInfo = L"aud " + wname + wtitle;
+          pidInfoIt->second.mInfo = L"aud " + wstr;
         else if (pid == serviceIt->second.getSubPid())
-          pidInfoIt->second.mInfo = L"sub " + wname + wtitle;
+          pidInfoIt->second.mInfo = L"sub " + wstr;
         else if (pid == serviceIt->second.getProgramPid())
-          pidInfoIt->second.mInfo = L"pgm " + wname;
+          pidInfoIt->second.mInfo = L"pgm " + wstr;
         }
       }
     }
