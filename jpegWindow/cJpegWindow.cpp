@@ -8,7 +8,6 @@
 #include "../common/cView2d.h"
 #include "../common/cJpegImage.h"
 
-using namespace std;
 using namespace date;
 using namespace std::chrono;
 //}}}
