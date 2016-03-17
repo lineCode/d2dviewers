@@ -149,11 +149,16 @@ protected:
           }
         }
       else if (mProxChannel < mPlayer->getNumSource()) {
-        mChangeChannel = mProxChannel;
         mDownConsumed = true;
+        mChangeChannel = mProxChannel;
         signal();
         changed();
         }
+      }
+    else if (x > int(getClientF().width-20)) {
+      mDownConsumed = true;
+      setVolume (y / (getClientF().height * 0.8f));
+      changed();
       }
     }
   //}}}
@@ -182,15 +187,15 @@ protected:
     else
       dc->Clear (ColorF(ColorF::Black));
 
-    // grey mid line
+    //{{{  grey mid line
     auto rMid = RectF ((getClientF().width/2)-1, 0, (getClientF().width/2)+1, getClientF().height);
     dc->FillRectangle (rMid, getGreyBrush());
-
-    // yellow vol bar
+    //}}}
+    //{{{  yellow volume bar
     auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
     dc->FillRectangle (rVol, getYellowBrush());
-
-    // waveform
+    //}}}
+    //{{{  blue waveform
     auto secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
     uint8_t* power = nullptr;
     auto frames = 0;
@@ -206,12 +211,15 @@ protected:
         }
       secs += mPlayer->getSecsPerAudFrame();
       }
+    //}}}
 
-    // topLine info str
+    //{{{  topLine info text
     wstringstream str;
     str << mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str() << mHttpRxBytes/1000000.0f;
     dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
+    //}}}
 
+    // source text
     wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
     if (mShowChannel) {
       float y = 20.0f;
@@ -226,6 +234,7 @@ protected:
         }
       }
 
+    // hlsRadio debug text
     auto hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
     if (hlsRadio) {
       //{{{  has hlsRadio interface, show hlsRadioInfo

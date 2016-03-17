@@ -14,10 +14,8 @@ using namespace std::chrono;
 //{{{  typedef
 class cJpegWindow;
 typedef void (cJpegWindow::*cJpegWindowFunc)();
-
 typedef void (cJpegWindow::*cJpegWindowImageFunc)(cJpegImage* image);
 //}}}
-
 //{{{
 class cJpegFiles {
 public:
@@ -214,6 +212,10 @@ protected:
     }
   //}}}
   //{{{
+  void onMouseDown (bool right, int x, int y) {
+    }
+  //}}}
+  //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     auto ratio = mControlKeyDown ? 2.0f : mShiftKeyDown ? 1.5f : 1.0f;
@@ -233,6 +235,7 @@ protected:
         mCurView = &mThumbView;
         changed();
         }
+
       else if (mPickImage) {
         // thumbs
         setChangeRate (4);
@@ -503,7 +506,7 @@ private:
   cView2d mFullView;
   cView2d mThumbView;
 
-  D2D1_SIZE_U mThumbSize = { 160, 120};
+  D2D1_SIZE_U mThumbSize = {160, 120};
   int mNumThumbsLoaded = 0;
   bool mFileSystemScanned = false;
 
