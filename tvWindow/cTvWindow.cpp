@@ -521,7 +521,7 @@ bool onKey (int key) {
 //{{{
 void onMouseWheel (int delta) {
 
-  auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+  auto ratio = mControlKeyDown ? 1.5f : mShiftKeyDown ? 1.2f : 1.1f;
   if (delta > 0)
     ratio = 1.0f/ratio;
 
@@ -565,8 +565,6 @@ void onMouseDown (bool right, int x, int y) {
       }
     mDownConsumed = true;
     }
-  else
-    mDownConsumed = false;
   }
 //}}}
 //{{{
@@ -574,8 +572,6 @@ void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 
   if (!mouseMoved && !mDownConsumed)
     mPlaying = !mPlaying;
-
-  mDownConsumed = true;
   }
 //}}}
 //{{{
@@ -880,7 +876,6 @@ private:
   int64_t mFilePtr = 0;
   int64_t mFileSize = 0;
 
-  bool mDownConsumed = false;
   bool mShowDebug = false;
   bool mShowChannel = false;
   bool mShowTransportStream = false;

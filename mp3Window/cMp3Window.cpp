@@ -206,7 +206,6 @@ protected:
   //{{{
   void onMouseDown (bool right, int x, int y) {
 
-    mDownConsumed = false;
     if (x > getClientF().width - 100)
       mDownConsumed = true;
     else if (x < 100) {
@@ -236,8 +235,6 @@ protected:
 
     if (!mouseMoved && !mDownConsumed)
       togglePlaying();
-
-    mDownConsumed = true;
     }
   //}}}
   //{{{

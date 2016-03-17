@@ -107,7 +107,7 @@ protected:
   //{{{
   void onMouseWheel (int delta) {
 
-    auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
+    auto ratio = mControlKeyDown ? 1.5f : mShiftKeyDown ? 1.2f : 1.1f;
     if (delta > 0)
       ratio = 1.0f / ratio;
     setVolume (getVolume() * ratio);
@@ -143,11 +143,14 @@ protected:
     if (x < 80) {
       if (mProxChannel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
-        if (hlsRadio)
+        if (hlsRadio) {
           hlsRadio->incSourceVidBitrate (true);
+          mDownConsumed = true;
+          }
         }
       else if (mProxChannel < mPlayer->getNumSource()) {
         mChangeChannel = mProxChannel;
+        mDownConsumed = true;
         signal();
         changed();
         }
@@ -157,18 +160,18 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    if (x > int(getClientF().width-20))
+    if (x > int(getClientF().width-20)) {
       setVolume (y / (getClientF().height * 0.8f));
-    else
+      changed();
+      }
+    else if (!mDownConsumed) {
       mPlayer->incPlaySecs (-xInc * mPlayer->getSecsPerAudFrame());
-    changed();
+      changed();
+      }
     }
   //}}}
   //{{{
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
-
-    if (!mouseMoved) {
-      }
     }
   //}}}
   //{{{
@@ -284,7 +287,7 @@ private:
     while (true) {
       int seqNum;
       auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
-      (mPlayer->getPlaying() && audSamples) ? audPlay (audSamples, 4096, 1.0f) : audSilence();
+      audPlay (!mDownConsumed && mPlayer->getPlaying() ? audSamples : nullptr, 4096, 1.0f);
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
       if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {

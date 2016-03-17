@@ -13,6 +13,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sensorWindow", "sensorWindo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hlsRadioWindow", "hlsRadioWindow\hlsRadioWindow.vcxproj", "{E532C54A-C565-43A2-BDA2-30750BCD0946}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "logicWindow", "logicWindow\logicWindow.vcxproj", "{DFEA5026-824D-4C12-B04D-E5DB174B57A8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -61,6 +63,14 @@ Global
 		{E532C54A-C565-43A2-BDA2-30750BCD0946}.Release|x64.Build.0 = Release|x64
 		{E532C54A-C565-43A2-BDA2-30750BCD0946}.Release|x86.ActiveCfg = Release|Win32
 		{E532C54A-C565-43A2-BDA2-30750BCD0946}.Release|x86.Build.0 = Release|Win32
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Debug|x64.ActiveCfg = Debug|x64
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Debug|x64.Build.0 = Debug|x64
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Debug|x86.ActiveCfg = Debug|Win32
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Debug|x86.Build.0 = Debug|Win32
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Release|x64.ActiveCfg = Release|x64
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Release|x64.Build.0 = Release|x64
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Release|x86.ActiveCfg = Release|Win32
+		{DFEA5026-824D-4C12-B04D-E5DB174B57A8}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

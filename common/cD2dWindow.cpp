@@ -109,12 +109,12 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
     //}}}
     //{{{
     case WM_KEYDOWN:
-      keyDown++;
+      mKeyDown++;
 
       if (wparam == 0x10)
-        shiftKeyDown = true;
+        mShiftKeyDown = true;
       if (wparam == 0x11)
-        controlKeyDown = true;
+        mControlKeyDown = true;
 
       if (onKey ((int)wparam))
         PostQuitMessage (0) ;
@@ -123,12 +123,12 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
     //}}}
     //{{{
     case WM_KEYUP:
-      keyDown--;
+      mKeyDown--;
 
       if (wparam == 0x10)
-        shiftKeyDown = false;
+        mShiftKeyDown = false;
       if (wparam == 0x11)
-        controlKeyDown = false;
+        mControlKeyDown = false;
 
       return 0;
     //}}}
@@ -137,20 +137,21 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
     //{{{
     case WM_RBUTTONDOWN: {
 
-      if (!mouseDown)
+      if (!mMouseDown)
         SetCapture (hWnd);
 
-      mouseDown = true;
-      mouseMoved = false;
+      mMouseDown = true;
+      mMouseMoved = false;
 
-      downMousex = LOWORD(lparam);
-      downMousey = HIWORD(lparam);
-      rightDown = (msg == WM_RBUTTONDOWN);
+      mDownMousex = LOWORD(lparam);
+      mDownMousey = HIWORD(lparam);
+      mRightDown = (msg == WM_RBUTTONDOWN);
 
-      lastMousex = downMousex;
-      lastMousey = downMousey;
+      mLastMousex = mDownMousex;
+      mLastMousey = mDownMousey;
 
-      onMouseDown (rightDown, downMousex, downMousey);
+      mDownConsumed = false;
+      onMouseDown (mRightDown, mDownMousex, mDownMousey);
 
       return 0;
       }
@@ -163,14 +164,15 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
       int x = LOWORD(lparam);
       int y = HIWORD(lparam);
 
-      lastMousex = x;
-      lastMousey = y;
-      onMouseUp (rightDown, mouseMoved, x, y);
+      mLastMousex = x;
+      mLastMousey = y;
+      onMouseUp (mRightDown, mMouseMoved, x, y);
 
-      if (mouseDown)
+      if (mMouseDown)
         ReleaseCapture();
+      mMouseDown = false;
+      mDownConsumed = false;
 
-      mouseDown = false;
       return 0;
       }
     //}}}
@@ -180,16 +182,16 @@ LRESULT cD2dWindow::wndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM 
       short x = (short)(lparam & 0xFFFF);
       short y = (short)((lparam >> 16) & 0xFFFF);
 
-      if (mouseDown) {
-        mouseMoved = true;
-        onMouseMove (rightDown, x, y, x - lastMousex, y - lastMousey);
-        lastMousex = x;
-        lastMousey = y;
+      if (mMouseDown) {
+        mMouseMoved = true;
+        onMouseMove (mRightDown, x, y, x - mLastMousex, y - mLastMousey);
+        mLastMousex = x;
+        mLastMousey = y;
         }
 
       else {
-        proxMousex = x;
-        proxMousey = y;
+        mProxMousex = x;
+        mProxMousey = y;
         onMouseProx (true, x, y);
         }
 

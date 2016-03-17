@@ -5,12 +5,7 @@ class cYuvFrame;
 
 class cD2dWindow {
 public:
-  //{{{
-  cD2dWindow() : mHWND(0), mChanged(false), mChangeRate(0), mMouseTracking(false),
-                 keyDown(0), shiftKeyDown(false), controlKeyDown(false),
-                 mouseDown(false), rightDown(false), mouseMoved(false),
-                 downMousex(0), downMousey(0), lastMousex(0), lastMousey(0), proxMousex(0), proxMousey(0) {}
-  //}}}
+  cD2dWindow() {}
   virtual ~cD2dWindow() {}
 
   void initialise (wchar_t* title, int width, int height);
@@ -27,7 +22,7 @@ public:
   ID2D1SolidColorBrush* getWhiteBrush() { return whiteBrush; }
   ID2D1SolidColorBrush* getYellowBrush() { return yellowBrush; }
 
-  bool getMouseDown() { return mouseDown; }
+  bool getMouseDown() { return mMouseDown; }
 
   IDWriteFactory* getDwriteFactory() { return DWriteFactory; }
 
@@ -55,27 +50,29 @@ protected:
   // control+shift = 1hour
   // shift   = 5min
   // control = 1min
-    return controlKeyDown ? (shiftKeyDown ? 60*60 : 60) : (shiftKeyDown ? 5*60 : 1);
+    return mControlKeyDown ? (mShiftKeyDown ? 60*60 : 60) : (mShiftKeyDown ? 5*60 : 1);
     }
   //}}}
   //{{{  protected vars
-  int keyDown;
-  bool shiftKeyDown;
-  bool controlKeyDown;
+  int mKeyDown = 0;
 
-  bool mouseDown;
-  bool rightDown;
+  bool mShiftKeyDown = false;
+  bool mControlKeyDown = false;
 
-  bool mouseMoved;
+  bool mMouseDown = false;
+  bool mRightDown = false;
 
-  int downMousex;
-  int downMousey;
+  bool mMouseMoved = false;
+  bool mDownConsumed = false;
 
-  int lastMousex;
-  int lastMousey;
+  int mDownMousex = 0;
+  int mDownMousey = 0;
 
-  int proxMousex;
-  int proxMousey;
+  int mLastMousex = 0;
+  int mLastMousey = 0;
+
+  int mProxMousex = 0;
+  int mProxMousey = 0;
   //}}}
 
 private:
@@ -87,10 +84,10 @@ private:
   void onRender();
 
   // private vars
-  HWND mHWND;
-  bool mChanged;
-  int mChangeRate;
-  bool mMouseTracking;
+  HWND mHWND = 0;
+  bool mChanged = false;
+  int mChangeRate = 0;
+  bool mMouseTracking= false;
   //{{{  deviceIndependentResources
   ComPtr<ID2D1Factory1> mD2D1Factory;
   IDWriteFactory* DWriteFactory;

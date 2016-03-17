@@ -164,9 +164,6 @@ protected:
     switch (key) {
       case 0x00 : return false;
 
-      case 0x10: shiftKeyDown = true; return false; // shift key
-      case 0x11: controlKeyDown = true; return false; // control key
-
       case 0x1B: return true; // escape abort
 
       case 0x20: break; // space bar
@@ -192,7 +189,7 @@ protected:
   //{{{
   void onMouseWheel (int delta) {
 
-    auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.25f : 1.1f;
+    auto ratio = mControlKeyDown ? 1.5f : mShiftKeyDown ? 1.25f : 1.1f;
     if (delta < 0)
       ratio = 1.0f / ratio;
 
@@ -219,7 +216,7 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    auto ratio = controlKeyDown ? 2.0f : shiftKeyDown ? 1.5f : 1.0f;
+    auto ratio = mControlKeyDown ? 2.0f : mShiftKeyDown ? 1.5f : 1.0f;
 
     if (mCurView->setPoint (mCurView->getPoint().x + xInc*ratio,  mCurView->getPoint().y + yInc*ratio))
       changed();

@@ -72,7 +72,7 @@ protected:
       case 0x26:
         //{{{  up arrow
         if (samplesPerPixel > 1.0)
-          setMidSample (midSample - (controlKeyDown ? 4.0 : shiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
+          setMidSample (midSample - (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
         else if (floor (midSample) != midSample)
           setMidSample (floor (midSample));
         else
@@ -82,7 +82,7 @@ protected:
       case 0x28:
         //{{{  down arrow
         if (samplesPerPixel > 1.0)
-          setMidSample (midSample + (controlKeyDown ? 4.0 : shiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
+          setMidSample (midSample + (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
         else if (ceil (midSample) != midSample)
           setMidSample (midSample);
         else
@@ -120,7 +120,7 @@ protected:
   //{{{
   void onMouseWheel (int delta) {
 
-    double ratio = controlKeyDown ? 1.5 : shiftKeyDown ? 1.25 : 2.0;
+    double ratio = mControlKeyDown ? 1.5 : mShiftKeyDown ? 1.25 : 2.0;
     if (delta > 0)
       ratio = 1.0/ratio;
 
@@ -142,14 +142,14 @@ protected:
   //{{{
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-    if (controlKeyDown)
+    if (mControlKeyDown)
       setFocus (mFocus + xInc);
 
     else if (right) {
       ULONG mask = 0;
-      if (getMask (downMousex, downMousey, mask))
+      if (getMask (mDownMousex, mDownMousey, mask))
         count (mask,
-               int(midSample + (downMousex - getClientF().width/2.0f) * samplesPerPixel),
+               int(midSample + (mDownMousex - getClientF().width/2.0f) * samplesPerPixel),
                int(midSample + (x - getClientF().width/2.0f) * samplesPerPixel));
       }
     else
