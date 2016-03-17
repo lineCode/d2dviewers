@@ -5,6 +5,7 @@
 
 #include "../inc/CyAPI.h"
 #include "../common/usbUtils.h"
+
 #include "../common/jpegHeader.h"
 //}}}
 #define NUM_FRAMES 99

@@ -9,7 +9,6 @@
 #include <string>
 #include <sstream>
 #include <thread>
-#include <mutex>
 
 // direct2d
 #include <d3d11.h>

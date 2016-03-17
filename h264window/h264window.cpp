@@ -35,13 +35,13 @@ public:
     initialise (title, width, height);
 
     // launch playerThread, higher priority
-    std::thread ([=]() { playerffMpeg2 (wFilename, filename); }).detach();
-    //std::thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
-    //std::thread ([=]() { playerReference264(); }).detach();
-    //std::thread ([=]() { playerOpenH264(); }).detach();
+    thread ([=]() { playerffMpeg2 (wFilename, filename); }).detach();
+    //thread ([=]() { playerMpeg2 (wFilename, filename); }).detach();
+    //thread ([=]() { playerReference264(); }).detach();
+    //thread ([=]() { playerOpenH264(); }).detach();
 
-    //std::thread ([=]() { playerffMp3 (wFilename, filename); }).detach();
-    //std::thread ([=]() { audioPlayer(); }).detach();
+    //thread ([=]() { playerffMp3 (wFilename, filename); }).detach();
+    //thread ([=]() { audioPlayer(); }).detach();
 
     // loop in windows message pump till quit
     messagePump();
@@ -400,7 +400,7 @@ int wmain (int argc, wchar_t* argv[]) {
   char filename[100];
   strcpy (filename, "C:\\Users\\colin\\Desktop\\d2dviewers\\test.264");
   if (argv[1])
-    std::wcstombs (filename, argv[1], wcslen(argv[1])+1);
+    wcstombs (filename, argv[1], wcslen(argv[1])+1);
 
   printf ("Player %d %s/n", argc, filename);
 

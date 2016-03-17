@@ -15,7 +15,6 @@
 #include <locale>
 #include <codecvt>
 #include <string>
-
 #include <thread>
 
 // direct2d
@@ -26,7 +25,6 @@
 #include <DXGI1_2.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
-#include <Wincodec.h>
 
 using namespace Microsoft::WRL;
 using namespace D2D1;

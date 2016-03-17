@@ -11,9 +11,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-
 #include <thread>
-#include <mutex>
 
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
@@ -28,7 +26,6 @@
 #include <DXGI1_2.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
-#include <Wincodec.h>
 
 using namespace Microsoft::WRL;
 using namespace D2D1;

@@ -27,7 +27,6 @@
 #include <DXGI1_2.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
-#include <Wincodec.h>
 
 #ifdef __cplusplus
 extern "C" {

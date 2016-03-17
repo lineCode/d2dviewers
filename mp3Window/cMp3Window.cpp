@@ -7,11 +7,6 @@
 
 #include "../common/cAudio.h"
 #include "../common/cMp3File.h"
-
-#include "Shlwapi.h" // for shell path functions
-#pragma comment(lib,"shlwapi.lib")
-
-#include "concurrent_vector.h"
 //}}}
 //{{{  typedef
 class cMp3Window;

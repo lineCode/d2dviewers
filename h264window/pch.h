@@ -14,9 +14,7 @@
 #include <io.h>
 
 #include <map>
-#include <vector>
 #include <thread>
-#include <mutex>
 
 // direct2d
 #include <d3d11.h>
@@ -26,7 +24,6 @@
 #include <DXGI1_2.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
-#include <Wincodec.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,3 +36,4 @@ extern "C" {
 
 using namespace Microsoft::WRL;
 using namespace D2D1;
+using namespace std;
