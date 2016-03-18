@@ -1315,7 +1315,6 @@ private:
     }
   //}}}
 
-  // dct
   //{{{
   void imdct12 (int* out, int* in) {
 
@@ -1666,7 +1665,6 @@ private:
     }
   //}}}
 
-  // granule
   //{{{
   typedef struct _granule {
     uint8_t scfsi;
@@ -1690,111 +1688,6 @@ private:
     uint8_t scale_factors[40];
     int32_t sb_hybrid[SBLIMIT * 18];
     } granule_t;
-  //}}}
-  //{{{
-  void exponentsFromScaleFactors (granule_t* granule, int16_t* exponents) {
-
-    auto exp_ptr = exponents;
-    auto gain = granule->global_gain - 210;
-    auto shift = granule->scalefac_scale + 1;
-
-    auto bstab = band_size_long[mSampleRateIndex];
-    auto pretab = mp3_pretab[granule->preflag];
-    for (auto i = 0; i < granule->long_end; i++) {
-      auto v0 = gain - ((granule->scale_factors[i] + pretab[i]) << shift) + 400;
-      auto len = bstab[i];
-      for (auto j = len; j > 0; j--)
-        *exp_ptr++ = v0;
-      }
-
-    if (granule->short_start < 13) {
-      bstab = band_size_short[mSampleRateIndex];
-      int gains[3];
-      gains[0] = gain - (granule->subblock_gain[0] << 3);
-      gains[1] = gain - (granule->subblock_gain[1] << 3);
-      gains[2] = gain - (granule->subblock_gain[2] << 3);
-      auto k = granule->long_end;
-      for (auto i = granule->short_start; i < 13; i++) {
-        auto len = bstab[i];
-        for (auto l = 0; l < 3; l++) {
-          auto v0 = gains[l] - (granule->scale_factors[k++] << shift) + 400;
-          for (auto j = len; j > 0; j--)
-           *exp_ptr++ = v0;
-          }
-        }
-      }
-    }
-  //}}}
-  //{{{
-  void reorderBlock (granule_t* granule) {
-
-    if (granule->block_type != 2)
-      return;
-
-    int32_t* ptr;
-    if (granule->switch_point) {
-      if (mSampleRateIndex != 8)
-        ptr = granule->sb_hybrid + 36;
-      else
-        ptr = granule->sb_hybrid + 48;
-      }
-    else
-      ptr = granule->sb_hybrid;
-
-    int32_t tmp[576];
-    for (auto i = granule->short_start; i < 13; i++) {
-      auto len = band_size_short[mSampleRateIndex][i];
-      auto ptr1 = ptr;
-      auto dst = tmp;
-      for (auto j = len; j > 0; j--) {
-        *dst++ = ptr[0*len];
-        *dst++ = ptr[1*len];
-        *dst++ = ptr[2*len];
-        ptr++;
-        }
-
-      ptr += 2 * len;
-      memcpy (ptr1, tmp, len * 3 * sizeof(*ptr1));
-      }
-    }
-  //}}}
-  //{{{
-  void computeAntialias (granule_t* granule) {
-
-    // we antialias only "long" bands
-    int n;
-    if (granule->block_type == 2) {
-      if (!granule->switch_point)
-        return;
-      /* XXX: check this for 8000Hz case */
-      n = 1;
-      }
-    else
-      n = SBLIMIT - 1;
-
-    auto ptr = granule->sb_hybrid + 18;
-    for (auto i = n; i > 0; i--) {
-      int tmp0, tmp1, tmp2;
-      auto csa = &csa_table[0][0];
-
-      #define INT_AA(j) \
-            tmp0 = ptr[-1-j];\
-            tmp1 = ptr[   j];\
-            tmp2= MULH(tmp0 + tmp1, csa[0+4*j]);\
-            ptr[-1-j] = 4*(tmp2 - MULH(tmp1, csa[2+4*j]));\
-            ptr[   j] = 4*(tmp2 + MULH(tmp0, csa[3+4*j]));
-
-      INT_AA(0)
-      INT_AA(1)
-      INT_AA(2)
-      INT_AA(3)
-      INT_AA(4)
-      INT_AA(5)
-      INT_AA(6)
-      INT_AA(7)
-      ptr += 18;
-      }
-    }
   //}}}
   //{{{
   void computeStereo (granule_t* granule0, granule_t* granule1) {
@@ -1926,6 +1819,40 @@ private:
     }
   //}}}
   //{{{
+  void exponentsFromScaleFactors (granule_t* granule, int16_t* exponents) {
+
+    auto exp_ptr = exponents;
+    auto gain = granule->global_gain - 210;
+    auto shift = granule->scalefac_scale + 1;
+
+    auto bstab = band_size_long[mSampleRateIndex];
+    auto pretab = mp3_pretab[granule->preflag];
+    for (auto i = 0; i < granule->long_end; i++) {
+      auto v0 = gain - ((granule->scale_factors[i] + pretab[i]) << shift) + 400;
+      auto len = bstab[i];
+      for (auto j = len; j > 0; j--)
+        *exp_ptr++ = v0;
+      }
+
+    if (granule->short_start < 13) {
+      bstab = band_size_short[mSampleRateIndex];
+      int gains[3];
+      gains[0] = gain - (granule->subblock_gain[0] << 3);
+      gains[1] = gain - (granule->subblock_gain[1] << 3);
+      gains[2] = gain - (granule->subblock_gain[2] << 3);
+      auto k = granule->long_end;
+      for (auto i = granule->short_start; i < 13; i++) {
+        auto len = bstab[i];
+        for (auto l = 0; l < 3; l++) {
+          auto v0 = gains[l] - (granule->scale_factors[k++] << shift) + 400;
+          for (auto j = len; j > 0; j--)
+           *exp_ptr++ = v0;
+          }
+        }
+      }
+    }
+  //}}}
+  //{{{
   int huffmanDecode (granule_t* granule, int16_t* exponents, int end_pos2) {
 
     auto end_pos = mBitstream.size_in_bits;
@@ -1964,8 +1891,7 @@ private:
         auto y = get_vlc2 (&mBitstream, vlc->table, 7, 3);
 
         if (!y) {
-          granule->sb_hybrid[s_index  ] =
-          granule->sb_hybrid[s_index+1] = 0;
+          granule->sb_hybrid[s_index] = granule->sb_hybrid[s_index+1] = 0;
           s_index += 2;
           continue;
           }
@@ -1977,7 +1903,7 @@ private:
           x = y >> 5;
           y = y & 0x0f;
           if (x < 15)
-            v = expval_table[ exponent ][ x ];
+            v = expval_table[exponent][x];
           else {
             x += get_bitsz (&mBitstream, linbits);
             v = layer3unscale (x, exponent);
@@ -2043,7 +1969,7 @@ private:
         int v;
         auto pos = s_index + idxtab[code];
         code ^= 8 >> idxtab[code];
-        v = exp_table[exponents[pos] ];
+        v = exp_table[exponents[pos]];
         if (get_bits1 (&mBitstream))
           v = -v;
         granule->sb_hybrid[pos] = v;
@@ -2064,6 +1990,77 @@ private:
     switchBuffer (i, end_pos, end_pos2);
 
     return 0;
+    }
+  //}}}
+  //{{{
+  void reorderBlock (granule_t* granule) {
+
+    if (granule->block_type != 2)
+      return;
+
+    int32_t* ptr;
+    if (granule->switch_point) {
+      if (mSampleRateIndex != 8)
+        ptr = granule->sb_hybrid + 36;
+      else
+        ptr = granule->sb_hybrid + 48;
+      }
+    else
+      ptr = granule->sb_hybrid;
+
+    int32_t tmp[576];
+    for (auto i = granule->short_start; i < 13; i++) {
+      auto len = band_size_short[mSampleRateIndex][i];
+      auto ptr1 = ptr;
+      auto dst = tmp;
+      for (auto j = len; j > 0; j--) {
+        *dst++ = ptr[0*len];
+        *dst++ = ptr[1*len];
+        *dst++ = ptr[2*len];
+        ptr++;
+        }
+
+      ptr += 2 * len;
+      memcpy (ptr1, tmp, len * 3 * sizeof(*ptr1));
+      }
+    }
+  //}}}
+  //{{{
+  void computeAntialias (granule_t* granule) {
+
+    // we antialias only "long" bands
+    int n;
+    if (granule->block_type == 2) {
+      if (!granule->switch_point)
+        return;
+      /* XXX: check this for 8000Hz case */
+      n = 1;
+      }
+    else
+      n = SBLIMIT - 1;
+
+    auto ptr = granule->sb_hybrid + 18;
+    for (auto i = n; i > 0; i--) {
+      int tmp0, tmp1, tmp2;
+      auto csa = &csa_table[0][0];
+
+      #define INT_AA(j) \
+            tmp0 = ptr[-1-j];\
+            tmp1 = ptr[   j];\
+            tmp2= MULH(tmp0 + tmp1, csa[0+4*j]);\
+            ptr[-1-j] = 4*(tmp2 - MULH(tmp1, csa[2+4*j]));\
+            ptr[   j] = 4*(tmp2 + MULH(tmp0, csa[3+4*j]));
+
+      INT_AA(0)
+      INT_AA(1)
+      INT_AA(2)
+      INT_AA(3)
+      INT_AA(4)
+      INT_AA(5)
+      INT_AA(6)
+      INT_AA(7)
+      ptr += 18;
+      }
     }
   //}}}
   //{{{
@@ -2195,7 +2192,6 @@ private:
             granule->table_select[i] = get_bits (&mBitstream, 5);
           for (int i = 0; i < 3; i++)
             granule->subblock_gain[i] = get_bits (&mBitstream, 3);
-
           //{{{  compute huffman coded region sizes
           if (granule->block_type == 2)
             granule->region_size[0] = (36 / 2);
@@ -2209,7 +2205,6 @@ private:
           granule->region_size[1] = (576 / 2);
           //}}}
           }
-
         else {
           granule->block_type = 0;
           granule->switch_point = 0;
@@ -2272,6 +2267,10 @@ private:
         granule->count1table_select = get_bits (&mBitstream, 1);
         }
         //}}}
+
+    printf ("%d %d - %d %d\n",
+            mGranules[0][0].global_gain, mGranules[0][1].global_gain,
+            mGranules[1][0].global_gain, mGranules[1][1].global_gain);
 
     auto ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
 
