@@ -6,8 +6,6 @@
 #include <math.h>
 //}}}
 //{{{  defines
-#define SBLIMIT 32
-
 #define FRAC_BITS   15
 #define WFRAC_BITS  14
 
@@ -1401,16 +1399,16 @@ private:
       t0 = s0 + s1;
       t1 = s0 - s1;
 
-      out[(9 + j)*SBLIMIT] =  MULH(t1, win[9 + j]) + buf[9 + j];
-      out[(8 - j)*SBLIMIT] =  MULH(t1, win[8 - j]) + buf[8 - j];
+      out[(9 + j)*32] =  MULH(t1, win[9 + j]) + buf[9 + j];
+      out[(8 - j)*32] =  MULH(t1, win[8 - j]) + buf[8 - j];
       buf[9 + j] = MULH(t0, win[18 + 9 + j]);
       buf[8 - j] = MULH(t0, win[18 + 8 - j]);
 
       t0 = s2 + s3;
       t1 = s2 - s3;
 
-      out[(9 + 8 - j)*SBLIMIT] =  MULH(t1, win[9 + 8 - j]) + buf[9 + 8 - j];
-      out[(        j)*SBLIMIT] =  MULH(t1, win[        j]) + buf[        j];
+      out[(9 + 8 - j)*32] =  MULH(t1, win[9 + 8 - j]) + buf[9 + 8 - j];
+      out[(        j)*32] =  MULH(t1, win[        j]) + buf[        j];
       buf[9 + 8 - j] = MULH(t0, win[18 + 9 + 8 - j]);
       buf[      + j] = MULH(t0, win[18         + j]);
       i += 4;
@@ -1420,8 +1418,8 @@ private:
     s1 = MULH(2*tmp[17], icos36h[4]);
     t0 = s0 + s1;
     t1 = s0 - s1;
-    out[(9 + 4)*SBLIMIT] =  MULH(t1, win[9 + 4]) + buf[9 + 4];
-    out[(8 - 4)*SBLIMIT] =  MULH(t1, win[8 - 4]) + buf[8 - 4];
+    out[(9 + 4)*32] =  MULH(t1, win[9 + 4]) + buf[9 + 4];
+    out[(8 - 4)*32] =  MULH(t1, win[8 - 4]) + buf[8 - 4];
     buf[9 + 4] = MULH(t0, win[18 + 9 + 4]);
     buf[8 - 4] = MULH(t0, win[18 + 8 - 4]);
     }
@@ -1686,7 +1684,7 @@ private:
 
     int short_start, long_end;
     uint8_t scale_factors[40];
-    int32_t sb_hybrid[SBLIMIT * 18];
+    int32_t sb_hybrid[32 * 18];
     } granule_t;
   //}}}
   //{{{
@@ -2037,7 +2035,7 @@ private:
       n = 1;
       }
     else
-      n = SBLIMIT - 1;
+      n = 32 - 1;
 
     auto ptr = granule->sb_hybrid + 18;
     for (auto i = n; i > 0; i--) {
@@ -2045,11 +2043,11 @@ private:
       auto csa = &csa_table[0][0];
 
       #define INT_AA(j) \
-            tmp0 = ptr[-1-j];\
-            tmp1 = ptr[   j];\
-            tmp2= MULH(tmp0 + tmp1, csa[0+4*j]);\
-            ptr[-1-j] = 4*(tmp2 - MULH(tmp1, csa[2+4*j]));\
-            ptr[   j] = 4*(tmp2 + MULH(tmp0, csa[3+4*j]));
+        tmp0 = ptr[-1-j];\
+        tmp1 = ptr[   j];\
+        tmp2 = MULH(tmp0 + tmp1, csa[0+4*j]);\
+        ptr[-1-j] = 4*(tmp2 - MULH(tmp1, csa[2+4*j]));\
+        ptr[   j] = 4*(tmp2 + MULH(tmp0, csa[3+4*j]));
 
       INT_AA(0)
       INT_AA(1)
@@ -2100,7 +2098,7 @@ private:
       // select frequency inversion
       auto win = win1 + ((4 * 36) & -(j & 1));
       imdct36 (out_ptr, buf, ptr, win);
-      out_ptr += 18 * SBLIMIT;
+      out_ptr += 18 * 32;
       ptr += 18;
       buf += 18;
       }
@@ -2109,10 +2107,9 @@ private:
       // select frequency inversion
       auto win = mdct_win[2] + ((4 * 36) & -(j & 1));
       auto out_ptr = sb_samples + j;
-
       for (auto i = 0; i < 6; i++){
         *out_ptr = buf[i];
-        out_ptr += SBLIMIT;
+        out_ptr += 32;
         }
 
       int32_t out2[12];
@@ -2120,14 +2117,14 @@ private:
       for (auto i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*1];
         buf[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
-        out_ptr += SBLIMIT;
+        out_ptr += 32;
         }
 
       imdct12 (out2, ptr + 1);
       for (auto i = 0; i < 6;i++) {
         *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*2];
         buf[i + 6*0] = MULH(out2[i + 6], win[i + 6]);
-        out_ptr += SBLIMIT;
+        out_ptr += 32;
         }
 
       imdct12 (out2, ptr + 2);
@@ -2142,13 +2139,13 @@ private:
       }
 
     // zero bands
-    for (auto j = sblimit; j < SBLIMIT; j++) {
+    for (auto j = sblimit; j < 32; j++) {
       // overlap
       auto out_ptr = sb_samples + j;
       for (auto i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
-        out_ptr += SBLIMIT;
+        out_ptr += 32;
         }
       buf += 18;
       }
@@ -2162,6 +2159,7 @@ private:
     int privateBits = get_bits (&mBitstream, mLsf ? mNumChannels : mNumChannels == 2 ? 3 : 5);
     int numGranules = mLsf ? 1 : 2;
 
+    granule_t mGranules[2][2];
     if (!mLsf)
       for (int channel = 0; channel < mNumChannels; channel++) {
         mGranules[channel][0].scfsi = 0; // all scale factors are transmitted
@@ -2268,9 +2266,9 @@ private:
         }
         //}}}
 
-    printf ("%d %d - %d %d\n",
-            mGranules[0][0].global_gain, mGranules[0][1].global_gain,
-            mGranules[1][0].global_gain, mGranules[1][1].global_gain);
+    //printf ("%d %d - %d %d\n",
+    //        mGranules[0][0].global_gain, mGranules[0][1].global_gain,
+    //        mGranules[1][0].global_gain, mGranules[1][1].global_gain);
 
     auto ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
 
@@ -2393,9 +2391,8 @@ private:
           }
           //}}}
 
+        int16_t mExponents[576];
         exponentsFromScaleFactors (granule, mExponents);
-
-        // read Huffman coded residue
         if (huffmanDecode (granule, mExponents, bits_pos + granule->part2_3_length) < 0)
           return -1;
         }
@@ -2415,7 +2412,7 @@ private:
   //}}}
   //{{{
   void synthFilter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t* window, int* dither_state,
-                    int16_t* samples, int incr, int32_t sbSamples[SBLIMIT]) {
+                    int16_t* samples, int incr, int32_t sbSamples[32]) {
 
     int32_t tmp[32];
     dct32 (tmp, sbSamples);
@@ -2438,7 +2435,6 @@ private:
     auto samples2 = samples + 31 * incr;
     auto w = window;
     auto w2 = window + 31;
-
     auto sum = *dither_state;
     auto p = synth_buf + 16;
     SUM8(sum, +=, w, p);
@@ -2537,12 +2533,10 @@ private:
   int mDitherState = 0;
   int mErrorProtection = 0;
 
+  int32_t mSbSamples[2][36][32];
+  int32_t mMdctBuf[2][32 * 18];
+
   int mSynthBufferOffset[2] = {0,0};
   int16_t mSynthBuffer[2][512 * 2];
-  int32_t mSbSamples[2][36][SBLIMIT];
-  int32_t mMdctBuf[2][SBLIMIT * 18];
-
-  int16_t mExponents[576];
-  granule_t mGranules[2][2];
   //}}}
   };

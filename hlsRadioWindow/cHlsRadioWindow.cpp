@@ -218,14 +218,13 @@ protected:
     //}}}
 
     //{{{  topLine info text
-    wstringstream str;
-    str << mPlayer->getInfoStr (mPlayer->getPlaySecs()).c_str() << mHttpRxBytes/1000000.0f;
-    dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
-    //}}}
-
-    // source text
     wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+    wstring wstr = converter.from_bytes (mPlayer->getInfoStr (mPlayer->getPlaySecs()));
+    wstr += L" " + to_wstring(mHttpRxBytes/1000) + L"k";
+    dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), RectF(0,0, getClientF().width, 20), getWhiteBrush());
+    //}}}
     if (mShowChannel) {
+      //{{{  show sources
       float y = 20.0f;
       for (auto source = 0; source < mPlayer->getNumSource(); source++) {
         if (source != mPlayer->getSource()) {
@@ -237,6 +236,7 @@ protected:
           }
         }
       }
+      //}}}
 
     // hlsRadio debug text
     auto hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
