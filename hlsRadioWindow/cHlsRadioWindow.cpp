@@ -140,6 +140,7 @@ protected:
   //{{{
   void onMouseDown (bool right, int x, int y) {
 
+    mScrubbing = false;
     if (x < 80) {
       if (mProxChannel < 0) {
         cHlsRadio* hlsRadio = dynamic_cast<cHlsRadio*>(mPlayer);
@@ -160,6 +161,8 @@ protected:
       setVolume (y / (getClientF().height * 0.8f));
       changed();
       }
+    else
+      mScrubbing = true;
     }
   //}}}
   //{{{
@@ -169,7 +172,7 @@ protected:
       setVolume (y / (getClientF().height * 0.8f));
       changed();
       }
-    else if (!mDownConsumed) {
+    else {
       mPlayer->incPlaySecs (-xInc * mPlayer->getSecsPerAudFrame());
       changed();
       }
@@ -177,6 +180,7 @@ protected:
   //}}}
   //{{{
   void onMouseUp (bool right, bool mouseMoved, int x, int y) {
+    mScrubbing = false;
     }
   //}}}
   //{{{
@@ -296,10 +300,10 @@ private:
     while (true) {
       int seqNum;
       auto audSamples = mPlayer->getAudSamples (mPlayer->getPlaySecs(), seqNum);
-      audPlay (!mDownConsumed && mPlayer->getPlaying() ? audSamples : nullptr, 4096, 1.0f);
+      audPlay (mPlayer->getPlaying() ? audSamples : nullptr, 4096, 1.0f);
       mVidFrame = mPlayer->getVidFrame (mPlayer->getPlaySecs(), seqNum);
 
-      if (audSamples && mPlayer->getPlaying() && !getMouseDown()) {
+      if (audSamples && mPlayer->getPlaying() && !mScrubbing) {
         mPlayer->incPlaySecs (mPlayer->getSecsPerAudFrame());
         changed();
         }
@@ -335,6 +339,7 @@ private:
   //{{{  vars
   iPlayer* mPlayer = nullptr;
 
+  bool mScrubbing = false;
   int mProxChannel = 0;
   int mChangeChannel = 0;
 

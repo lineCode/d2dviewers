@@ -683,7 +683,7 @@ static const huff_table_t mp3_huff_tables[16] = {
 //{{{
 static const uint8_t mp3_huff_data[32][2] = {
   { 0, 0 }, { 1, 0 }, { 2, 0 }, { 3, 0 }, { 0, 0 }, { 4, 0 }, { 5, 0 }, { 6, 0 }, { 7, 0 },
-  { 8, 0 }, { 9, 0 }, { 10, 0 }, { 11, 0 }, { 12, 0 }, { 0, 0 }, { 13, 0 }, 
+  { 8, 0 }, { 9, 0 }, { 10, 0 }, { 11, 0 }, { 12, 0 }, { 0, 0 }, { 13, 0 },
   { 14, 1 }, { 14, 2 }, { 14, 3 }, { 14, 4 }, { 14, 6 }, { 14, 8 }, { 14, 10 }, { 14, 13 },
   { 15, 4 }, { 15, 5 }, { 15, 6 }, { 15, 7 }, { 15, 8 }, { 15, 9 }, { 15, 11 }, { 15, 13 }, };
 //}}}
@@ -2520,7 +2520,7 @@ private:
     if (mInBitstream.buffer){
       align_get_bits (&mBitstream);
       auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
-      if (i >= 0 && i <= 512){
+      if ((i >= 0) && (i <= 512)){
         memmove (mLastBuf, mBitstream.buffer + (get_bits_count (&mBitstream) >> 3), i);
         mLastBufSize = i;
         }
@@ -2531,7 +2531,7 @@ private:
     auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
     if (i < 0 || i > 512 || numFrames < 0) {
       i = buf_size - 4;
-      if (512 < i)
+      if (i > 512)
         i = 512;
       }
 
