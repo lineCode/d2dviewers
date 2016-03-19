@@ -799,9 +799,6 @@ public:
 
     memset (&mBitstream, 0, sizeof(bitstream_t));
     memset (&mInBitstream, 0, sizeof(bitstream_t));
-    memset (mSynthBuffer, 0, sizeof (mSynthBuffer));
-    memset (mSbSamples, 0, sizeof (mSbSamples));
-    memset (mMdctBuf, 0, sizeof (mMdctBuf));
 
     if (!table_4_3_exp) {
       //{{{  compute n ^ (4/3) and store it in mantissa/exp format
@@ -962,24 +959,24 @@ public:
   int getBitRate() { return mBitRate; }
   int getMode() { return mModeExt; }
   //{{{
-  int decodeFrame (uint8_t* buffer, int bufferBytes, int16_t* samples) {
+  int decodeFrame (uint8_t* buf, int bufBytes, int32_t* subBandSamples, int16_t* samples) {
 
     int extraBytes = 0;
-    while (bufferBytes >= 4) {
-      auto header = (buffer[0] << 24) | (buffer[1] << 16) | (buffer[2] << 8) | buffer[3];
+    while (bufBytes >= 4) {
+      auto header = (buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
       if (checkHeader (header)) {
         auto frame_size = decodeHeader (header);
-        if (frame_size < bufferBytes)
-          bufferBytes = frame_size;
-        decodeFrameAligned (buffer, bufferBytes, samples);
-        if (bufferBytes < 0)
+        if (frame_size < bufBytes)
+          bufBytes = frame_size;
+        decodeFrameAligned (buf, bufBytes, subBandSamples, samples);
+        if (bufBytes < 0)
           return 0;
         else
           return frame_size + extraBytes;
         }
 
-      buffer++;
-      bufferBytes--;
+      buf++;
+      bufBytes--;
       extraBytes++;
       }
 
@@ -1075,8 +1072,8 @@ private:
     }
   //}}}
 
-  //{{{
-  typedef struct _bitstream {
+  //{{{  typedef bitstream
+  typedef struct {
     const uint8_t* buffer;
     const uint8_t* buffer_end;
     int index;
@@ -1255,7 +1252,6 @@ private:
     }
   //}}}
   //}}}
-
   //{{{
   bool checkHeader (uint32_t header) {
 
@@ -1425,7 +1421,7 @@ private:
     }
   //}}}
   //{{{
-  void dct32 (int32_t* out, int32_t* tab) {
+  void dct32 (int32_t* tab, int32_t* out) {
 
     int tmp0, tmp1;
     //{{{  pass 1
@@ -1663,8 +1659,8 @@ private:
     }
   //}}}
 
-  //{{{
-  typedef struct _granule {
+  //{{{  typedef granule_t
+  typedef struct {
     uint8_t scfsi;
     int part2_3_length;
     int big_values;
@@ -1817,12 +1813,13 @@ private:
     }
   //}}}
   //{{{
-  void exponentsFromScaleFactors (granule_t* granule, int16_t* exponents) {
+  int huffmanDecode (granule_t* granule, int end_pos2) {
 
+    int16_t exponents[576];
     auto exp_ptr = exponents;
     auto gain = granule->global_gain - 210;
     auto shift = granule->scalefac_scale + 1;
-
+    //{{{  calc exponents
     auto bstab = band_size_long[mSampleRateIndex];
     auto pretab = mp3_pretab[granule->preflag];
     for (auto i = 0; i < granule->long_end; i++) {
@@ -1848,10 +1845,7 @@ private:
           }
         }
       }
-    }
-  //}}}
-  //{{{
-  int huffmanDecode (granule_t* granule, int16_t* exponents, int end_pos2) {
+    //}}}
 
     auto end_pos = mBitstream.size_in_bits;
     if (end_pos2 < end_pos)
@@ -1859,7 +1853,7 @@ private:
 
     vlc_t* vlc;
     int last_pos;
-    //{{{  low frequencies (called big values)
+    //{{{  get low frequencies (called big values)
     int s_index = 0;
     for (auto i = 0; i < 3; i++) {
       auto j = granule->region_size[i];
@@ -1939,7 +1933,7 @@ private:
         }
       }
     //}}}
-    //{{{  high frequencies
+    //{{{  get high frequencies
     vlc = &huff_quad_vlc[granule->count1table_select];
     last_pos = 0;
 
@@ -2062,7 +2056,7 @@ private:
     }
   //}}}
   //{{{
-  void computeImdct (granule_t* granule, int32_t* sb_samples, int32_t* mdct_buf) {
+  void computeImdct (granule_t* granule, int32_t* subBandSamples, int32_t* mdct_buf) {
 
     // find last non zero block
     auto ptr = granule->sb_hybrid + 576;
@@ -2090,7 +2084,7 @@ private:
     ptr = granule->sb_hybrid;
     for (auto j = 0; j < mdct_long_end; j++) {
       // apply window & overlap with previous buffer
-      auto out_ptr = sb_samples + j;
+      auto out_ptr = subBandSamples + j;
 
       // select window
       auto win1 = (granule->switch_point && j < 2) ? mdct_win[0] : mdct_win[granule->block_type];
@@ -2106,7 +2100,7 @@ private:
     for (auto j = mdct_long_end; j < sblimit; j++) {
       // select frequency inversion
       auto win = mdct_win[2] + ((4 * 36) & -(j & 1));
-      auto out_ptr = sb_samples + j;
+      auto out_ptr = subBandSamples + j;
       for (auto i = 0; i < 6; i++){
         *out_ptr = buf[i];
         out_ptr += 32;
@@ -2141,7 +2135,7 @@ private:
     // zero bands
     for (auto j = sblimit; j < 32; j++) {
       // overlap
-      auto out_ptr = sb_samples + j;
+      auto out_ptr = subBandSamples + j;
       for (auto i = 0; i < 18;i++) {
         *out_ptr = buf[i];
         buf[i] = 0;
@@ -2153,7 +2147,7 @@ private:
   //}}}
 
   //{{{
-  int decodeLayer3() {
+  int decodeLayer3 (int32_t* subBandSamples) {
 
     int mainDataBegin = get_bits (&mBitstream, mLsf ? 8 : 9);
     int privateBits = get_bits (&mBitstream, mLsf ? mNumChannels : mNumChannels == 2 ? 3 : 5);
@@ -2265,10 +2259,8 @@ private:
         granule->count1table_select = get_bits (&mBitstream, 1);
         }
         //}}}
-
     //printf ("%d %d - %d %d\n",
-    //        mGranules[0][0].global_gain, mGranules[0][1].global_gain,
-    //        mGranules[1][0].global_gain, mGranules[1][1].global_gain);
+    //        mGranules[0][0].global_gain, mGranules[0][1].global_gain, mGranules[1][0].global_gain, mGranules[1][1].global_gain);
 
     auto ptr = mBitstream.buffer + (get_bits_count (&mBitstream) >> 3);
 
@@ -2289,6 +2281,7 @@ private:
           auto slen1 = slen_table[0][granule->scalefac_compress];
           auto slen2 = slen_table[1][granule->scalefac_compress];
           if (granule->block_type == 2) {
+            //{{{  block_type 2
             auto n = granule->switch_point ? 17 : 18;
             auto j = 0;
             if (slen1)
@@ -2309,6 +2302,7 @@ private:
               for (int i = 0; i < 21; i++)
                 granule->scale_factors[j++] = 0;
             }
+            //}}}
           else {
             auto sc = mGranules[channel][0].scale_factors;
             auto j = 0;
@@ -2391,9 +2385,7 @@ private:
           }
           //}}}
 
-        int16_t mExponents[576];
-        exponentsFromScaleFactors (granule, mExponents);
-        if (huffmanDecode (granule, mExponents, bits_pos + granule->part2_3_length) < 0)
+        if (huffmanDecode (granule, bits_pos + granule->part2_3_length) < 0)
           return -1;
         }
         //}}}
@@ -2403,7 +2395,7 @@ private:
         auto granule = &mGranules[channel][granuleIndex];
         reorderBlock (granule);
         computeAntialias (granule);
-        computeImdct (granule, &mSbSamples[channel][18 * granuleIndex][0], mMdctBuf[channel]);
+        computeImdct (granule, subBandSamples + (channel*36*32) + (18*granuleIndex*32), mMdctBuf[channel]);
         }
       }
 
@@ -2411,75 +2403,65 @@ private:
     }
   //}}}
   //{{{
-  void synthFilter (int16_t* synth_buf_ptr, int* synth_buf_offset, int16_t* window, int* dither_state,
-                    int16_t* samples, int incr, int32_t sbSamples[32]) {
+  void synthFilter (int16_t* synthBuf, int& synthBufOffset, int32_t* subBandSamples, int16_t* outSamples) {
 
     int32_t tmp[32];
-    dct32 (tmp, sbSamples);
+    dct32 (subBandSamples, tmp);
 
-    auto offset = *synth_buf_offset;
-    auto synth_buf = synth_buf_ptr + offset;
-    for (auto j = 0; j < 32; j++) {
-      auto v = tmp[j];
-      // NOTE: can cause a loss in precision if very high amplitude sound
-      if (v > 32767)
-        v = 32767;
-      else if (v < -32768)
-        v = -32768;
-      synth_buf[j] = v;
-      }
+    auto offsetSynthBuf = synthBuf + synthBufOffset;
+    for (auto j = 0; j < 32; j++) // could 16bit integer limit here
+      offsetSynthBuf[j] = tmp[j];
 
     // copy to avoid wrap
-    memcpy (synth_buf + 512, synth_buf, 32 * sizeof(int16_t));
+    memcpy (offsetSynthBuf + 512, offsetSynthBuf, 32 * sizeof(int16_t));
 
-    auto samples2 = samples + 31 * incr;
+    auto samples2 = outSamples + 31 * mNumChannels;
     auto w = window;
     auto w2 = window + 31;
-    auto sum = *dither_state;
-    auto p = synth_buf + 16;
+    auto sum = mDitherState;
+    auto p = offsetSynthBuf + 16;
     SUM8(sum, +=, w, p);
-    p = synth_buf + 48;
+    p = offsetSynthBuf + 48;
     SUM8(sum, -=, w + 32, p);
-    *samples = roundSample (sum);
-    samples += incr;
+    *outSamples = roundSample (sum);
+    outSamples += mNumChannels;
     w++;
 
-    // we calculate two samples at the same time to avoid one memory access per two sample
+    // calc two samples at a time to avoid one memory access per two samples
     for (auto j = 1; j < 16; j++) {
       auto sum2 = 0;
-      p = synth_buf + 16 + j;
+      p = offsetSynthBuf + 16 + j;
       SUM8P2(sum, +=, sum2, -=, w, w2, p);
 
-      p = synth_buf + 48 - j;
+      p = offsetSynthBuf + 48 - j;
       SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
-      *samples = roundSample (sum);
-      samples += incr;
+      *outSamples = roundSample (sum);
+      outSamples += mNumChannels;
 
       sum += sum2;
       *samples2 = roundSample (sum);
-      samples2 -= incr;
+      samples2 -= mNumChannels;
 
       w++;
       w2--;
       }
 
-    p = synth_buf + 32;
+    p = offsetSynthBuf + 32;
     SUM8(sum, -=, w + 32, p);
-    *samples = roundSample (sum);
-    *dither_state = sum;
+    *outSamples = roundSample (sum);
+    mDitherState = sum;
 
-    offset = (offset - 32) & 511;
-    *synth_buf_offset = offset;
+    synthBufOffset = (synthBufOffset - 32) & 511;
     }
   //}}}
   //{{{
-  void decodeFrameAligned (const uint8_t* buf, int buf_size, int16_t* samples) {
+  void decodeFrameAligned (const uint8_t* buf, int bufSize, int32_t* subBandSamples, int16_t* outSamples) {
 
-    init_get_bits (&mBitstream, buf + 4, (buf_size - 4) * 8);
+    init_get_bits (&mBitstream, buf + 4, (bufSize - 4) * 8);
     if (mErrorProtection)
       get_bits (&mBitstream, 16);
 
-    auto numFrames = decodeLayer3();
+    auto numFrames = decodeLayer3 (subBandSamples);
 
     // what does this do ???
     mLastBufSize = 0;
@@ -2496,23 +2478,22 @@ private:
     align_get_bits (&mBitstream);
     auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
     if (i < 0 || i > 512 || numFrames < 0) {
-      i = buf_size - 4;
+      i = bufSize - 4;
       if (i > 512)
         i = 512;
       }
-
-    memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + buf_size - 4 - i, i);
+    memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + bufSize - 4 - i, i);
     mLastBufSize += i;
 
-    // apply synthFilter
-    for (auto channel = 0; channel < mNumChannels; channel++) {
-      auto samplesPtr = samples + channel;
-      for (auto frame = 0; frame < numFrames; frame++) {
-        synthFilter (mSynthBuffer[channel], &mSynthBufferOffset[channel], window, &mDitherState,
-                     samplesPtr, mNumChannels, mSbSamples[channel][frame]);
-        samplesPtr += 32 * mNumChannels;
+    if (outSamples)
+      // apply synthFilter to generate outSamples
+      for (auto channel = 0; channel < mNumChannels; channel++) {
+        auto samplesPtr = outSamples + channel;
+        for (auto frame = 0; frame < numFrames; frame++) {
+          synthFilter (mSynthBuf[channel], mSynthBufOffset[channel], subBandSamples + (channel*36*32) + (frame*32), samplesPtr);
+          samplesPtr += 32 * mNumChannels;
+          }
         }
-      }
     }
   //}}}
 
@@ -2530,13 +2511,12 @@ private:
 
   int mModeExt = 0;
   int mLsf = 0;
-  int mDitherState = 0;
   int mErrorProtection = 0;
 
-  int32_t mSbSamples[2][36][32];
-  int32_t mMdctBuf[2][32 * 18];
+  int mDitherState = 0;
+  int mSynthBufOffset[2] = {0,0};
 
-  int mSynthBufferOffset[2] = {0,0};
-  int16_t mSynthBuffer[2][512 * 2];
+  int32_t mMdctBuf[2][32 * 18];
+  int16_t mSynthBuf[2][512 * 2];
   //}}}
   };

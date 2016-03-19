@@ -108,8 +108,9 @@ public:
     auto ptr = fileBuffer + tagSize;
     int bufferBytes = mFileBytes - tagSize;
     while (bufferBytes > 0) {
+      int32_t subBandSamples[2][36][32];
       int16_t samples[1152*2];
-      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, samples);
+      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, &subBandSamples[0][0][0], samples);
       if (bytesUsed > 0) {
         //{{{  got frame
         mSampleRate = mMp3Decoder.getSampleRate();
@@ -138,10 +139,12 @@ public:
             }
         else
           for (auto i = 0; i < 1152; i++) {
-            *samplePtr = *lrPtr++;
-            valueL += pow (*samplePtr++, 2);
-            *samplePtr = *lrPtr++;
-            valueR += pow (*samplePtr++, 2);
+            auto value = *lrPtr++;
+            *samplePtr++ = value;
+            valueL += value * value;
+            value = *lrPtr++;
+            *samplePtr++ = value;
+            valueR += value * value;
             }
 
         audFrame->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
@@ -153,7 +156,6 @@ public:
         //}}}
       else
         break;
-      //printf ("while bufferBytes loaded %d %d\n", bufferBytes, bytesUsed);
       }
 
     mLoaded = 2;
