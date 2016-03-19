@@ -108,52 +108,18 @@ public:
     auto ptr = fileBuffer + tagSize;
     int bufferBytes = mFileBytes - tagSize;
     while (bufferBytes > 0) {
-      int32_t subBandSamples[2][36][32];
-      int16_t samples[1152*2];
-      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, &subBandSamples[0][0][0], samples);
+      cAudFrame* audFrame = new cAudFrame();
+      audFrame->set (0, 2, mSampleRate, 1152);
+      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, &audFrame->mPower[0], audFrame->mSamples);
       if (bytesUsed > 0) {
-        //{{{  got frame
+        ptr += bytesUsed;
+        bufferBytes -= bytesUsed;
         mSampleRate = mMp3Decoder.getSampleRate();
         mBitRate = mMp3Decoder.getBitRate();
         mChannels = mMp3Decoder.getNumChannels();
         mMode = mMp3Decoder.getMode();
-
-        ptr += bytesUsed;
-        bufferBytes -= bytesUsed;
-
-        cAudFrame* audFrame = new cAudFrame();
-        audFrame->set (0, 2, mSampleRate, 1152);
-        auto samplePtr = audFrame->mSamples;
-
-        auto valueL = 0.0;
-        auto valueR = 0.0;
-        auto lrPtr = samples;
-
-        if (mChannels == 1)
-          // fake stereo
-          for (auto i = 0; i < 1152; i++) {
-            *samplePtr = *lrPtr;
-            valueL += pow (*samplePtr++, 2);
-            *samplePtr = *lrPtr++;
-            valueR += pow (*samplePtr++, 2);
-            }
-        else
-          for (auto i = 0; i < 1152; i++) {
-            auto value = *lrPtr++;
-            *samplePtr++ = value;
-            valueL += value * value;
-            value = *lrPtr++;
-            *samplePtr++ = value;
-            valueR += value * value;
-            }
-
-        audFrame->mPower[0] = (float)sqrt (valueL) / (1152 * 2.0f);
-        audFrame->mPower[1] = (float)sqrt (valueR) / (1152 * 2.0f);
         mFrames.push_back (audFrame);
-        //changed();
-        //printf ("if bytesused loaded %d %d\n", bufferBytes, bytesUsed);
         }
-        //}}}
       else
         break;
       }

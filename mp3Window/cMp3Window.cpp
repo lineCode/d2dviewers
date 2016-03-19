@@ -118,6 +118,9 @@ private:
   };
 //}}}
 
+ID2D1SolidColorBrush* brush = nullptr;
+
+
 class cMp3Window : public cD2dWindow, public cAudio, public cMp3Files {
 public:
   cMp3Window() {}
@@ -237,23 +240,29 @@ protected:
 
     dc->Clear (ColorF(ColorF::Black));
 
-    if (mMp3File && mMp3File->getBitmap())
-      dc->DrawBitmap (mMp3File->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
+    //if (mMp3File && mMp3File->getBitmap())
+    //  dc->DrawBitmap (mMp3File->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
     // yellow volume bar
     dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
 
+    if (!brush)
+      dc->CreateSolidColorBrush (ColorF (ColorF::CornflowerBlue), &brush);
+
     if (mMp3File) {
-      int rows = 6;
-      int frame = int(mPlaySecs / getSecsPerAudFrame());
-      for (int i = 0; i < rows; i++) {
-        for (float f = 0.0f; f < getClientF().width; f++) {
-          if (mMp3File->getFrame (frame))
-            dc->FillRectangle (
-              RectF (!(i & 1) ? f : (getClientF().width - f),
-                     ((i + 0.5f) * (getClientF().height / rows)) - mMp3File->getFrame (frame)->mPower[0],
-                    !(i & 1) ? (f + 1.0f) : (getClientF().width - f + 1.0f),
-                    ((i + 0.5f) * (getClientF().height / rows)) + mMp3File->getFrame (frame)->mPower[1]), getBlueBrush());
+      auto rows = 6;
+      auto frame = int(mPlaySecs / getSecsPerAudFrame());
+      for (auto row = 0; row < rows; row++) {
+        D2D1_RECT_F r;
+        r.left = 0;
+        for (auto x = 0; x < getClientF().width; x++) {
+          r.right = r.left + 1.0f;
+          if (mMp3File->getFrame (frame)) {
+            r.top =    ((row + 0.5f) * getClientF().height / rows) - mMp3File->getFrame (frame)->mPower[0];
+            r.bottom = ((row + 0.5f) * getClientF().height / rows) + mMp3File->getFrame (frame)->mPower[1];
+            dc->FillRectangle (r, getBlueBrush());
+            }
+          r.left += 1.0f;
           frame++;
           }
         }

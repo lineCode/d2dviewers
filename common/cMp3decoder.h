@@ -959,7 +959,7 @@ public:
   int getBitRate() { return mBitRate; }
   int getMode() { return mModeExt; }
   //{{{
-  int decodeFrame (uint8_t* buf, int bufBytes, int32_t* subBandSamples, int16_t* samples) {
+  int decodeFrame (uint8_t* buf, int bufBytes, float* power, int16_t* samples) {
 
     int extraBytes = 0;
     while (bufBytes >= 4) {
@@ -968,7 +968,7 @@ public:
         auto frame_size = decodeHeader (header);
         if (frame_size < bufBytes)
           bufBytes = frame_size;
-        decodeFrameAligned (buf, bufBytes, subBandSamples, samples);
+        decodeFrameAligned (buf, bufBytes, power, samples);
         if (bufBytes < 0)
           return 0;
         else
@@ -2395,7 +2395,7 @@ private:
         auto granule = &mGranules[channel][granuleIndex];
         reorderBlock (granule);
         computeAntialias (granule);
-        computeImdct (granule, subBandSamples + (channel*36*32) + (18*granuleIndex*32), mMdctBuf[channel]);
+        computeImdct (granule, subBandSamples + (channel*36*32) + (granuleIndex*18*32), mMdctBuf[channel]);
         }
       }
 
@@ -2455,13 +2455,14 @@ private:
     }
   //}}}
   //{{{
-  void decodeFrameAligned (const uint8_t* buf, int bufSize, int32_t* subBandSamples, int16_t* outSamples) {
+  void decodeFrameAligned (const uint8_t* buf, int bufSize, float* power, int16_t* outSamples) {
 
     init_get_bits (&mBitstream, buf + 4, (bufSize - 4) * 8);
     if (mErrorProtection)
       get_bits (&mBitstream, 16);
 
-    auto numFrames = decodeLayer3 (subBandSamples);
+    int32_t subBandSamples [2][36][32];
+    auto numFrames = decodeLayer3 (&subBandSamples[0][0][0]);
 
     // what does this do ???
     mLastBufSize = 0;
@@ -2485,15 +2486,26 @@ private:
     memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + bufSize - 4 - i, i);
     mLastBufSize += i;
 
-    if (outSamples)
+    if (power) {
+      float value = 0;
+      for (auto channel = 0; channel < 2; channel++) {
+        for (auto sample = 0; sample < 36; sample++)
+          for (auto band = 0; band < 32; band++)
+            value += subBandSamples[channel][sample][band] * subBandSamples[channel][sample][band];
+        *power++ = (float)sqrt (value / (36 * 32 * 256));
+        }
+      }
+
+    if (outSamples) {
       // apply synthFilter to generate outSamples
       for (auto channel = 0; channel < mNumChannels; channel++) {
         auto samplesPtr = outSamples + channel;
         for (auto frame = 0; frame < numFrames; frame++) {
-          synthFilter (mSynthBuf[channel], mSynthBufOffset[channel], subBandSamples + (channel*36*32) + (frame*32), samplesPtr);
+          synthFilter (mSynthBuf[channel], mSynthBufOffset[channel], &subBandSamples[0][0][0] + (channel*36*32) + (frame*32), samplesPtr);
           samplesPtr += 32 * mNumChannels;
           }
         }
+      }
     }
   //}}}
 
