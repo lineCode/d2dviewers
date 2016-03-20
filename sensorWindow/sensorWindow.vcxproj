@@ -33,10 +33,6 @@
     <ClInclude Include="..\common\jpegHeader.h" />
     <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="..\common\usbUtils.h" />
-    <ClInclude Include="inc\jconfig.h" />
-    <ClInclude Include="inc\jerror.h" />
-    <ClInclude Include="inc\jmorecfg.h" />
-    <ClInclude Include="inc\jpeglib.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -9,18 +9,6 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="inc\jconfig.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\jerror.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\jmorecfg.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="inc\jpeglib.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\timer.h">
       <Filter>header</Filter>
     </ClInclude>
