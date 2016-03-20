@@ -2478,7 +2478,7 @@ private:
 
     // what does this do ???
     mLastBufSize = 0;
-    if (mInBitstream.buffer){
+    if (mInBitstream.buffer) {
       align_get_bits (&mBitstream);
       auto i = (mBitstream.size_in_bits - get_bits_count (&mBitstream)) >> 3;
       if ((i >= 0) && (i <= 512)){

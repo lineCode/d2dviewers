@@ -522,12 +522,13 @@ private:
     if (mJpeg422) {
       if ((frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
         //{{{  decode jpeg
-        uint8_t* endPtr = frameBuffer + frameBytes - 4;
+        auto endPtr = frameBuffer + frameBytes - 4;
+
         int jpegBytes = *endPtr++;
         jpegBytes += (*endPtr++) << 8;
         jpegBytes += (*endPtr++) << 16;
-        auto status = *endPtr;
 
+        auto status = *endPtr;
         if ((status & 0x0f) == 0x01) {
           cinfo.err = jpeg_std_error (&jerr);
           jpeg_create_decompress (&cinfo);
@@ -537,8 +538,7 @@ private:
           jpeg_read_header (&cinfo, TRUE);
           cinfo.out_color_space = JCS_EXT_BGRA;
 
-          //wraparound problem if (frame >= maxSamplePtr)
-          //  frame = samples;
+          //wraparound problem if (frame >= maxSamplePtr)  frame = samples;
           frameBuffer[jpegBytes] = 0xff;
           frameBuffer[jpegBytes+1] = 0xd9;
           jpeg_mem_src (&cinfo, frameBuffer, jpegBytes+2);
@@ -745,6 +745,7 @@ private:
   //}}}
   //{{{
   void jpeg() {
+
     mWidth = 1600;
     mHeight = 1200;
     mJpeg422 = true;

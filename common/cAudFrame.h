@@ -37,25 +37,22 @@ public:
     }
   //}}}
   //{{{
-  void freeResources() {
-
-    mPts = 0;
-    mChannels = 0;
-    mNumSamples = 0;
-    mSampleRate = 0;
-
-    mNumSampleBytes = 0;
-    free (mSamples);
-    mSamples = nullptr;
-    }
-  //}}}
-  //{{{
   void invalidate() {
 
     mPts = 0;
     mChannels = 0;
     mNumSamples = 0;
     mSampleRate = 0;
+    }
+  //}}}
+  //{{{
+  void freeResources() {
+
+    invalidate();
+
+    mNumSampleBytes = 0;
+    free (mSamples);
+    mSamples = nullptr;
     }
   //}}}
 
