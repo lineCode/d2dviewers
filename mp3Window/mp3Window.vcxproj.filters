@@ -15,6 +15,12 @@
     <ClInclude Include="..\common\cVolume.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\common\cMp3decoder.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\common\cMp3File.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

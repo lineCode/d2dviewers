@@ -118,9 +118,6 @@ private:
   };
 //}}}
 
-ID2D1SolidColorBrush* brush = nullptr;
-
-
 class cMp3Window : public cD2dWindow, public cAudio, public cMp3Files {
 public:
   cMp3Window() {}
@@ -245,9 +242,6 @@ protected:
 
     // yellow volume bar
     dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
-
-    if (!brush)
-      dc->CreateSolidColorBrush (ColorF (ColorF::CornflowerBlue), &brush);
 
     if (mMp3File) {
       auto rows = 6;

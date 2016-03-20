@@ -30,6 +30,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h" />
+    <ClInclude Include="..\common\cMp3decoder.h" />
+    <ClInclude Include="..\common\cMp3File.h" />
     <ClInclude Include="..\common\cVolume.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

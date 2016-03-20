@@ -2403,6 +2403,18 @@ private:
     }
   //}}}
   //{{{
+  void calcPower (int32_t* subBandSamples, float* power) {
+
+    // calc power from subBandSamples
+    for (auto channel = 0; channel < 2; channel++) {
+      float value = 0;
+      for (auto i = 0; i < 36*32; i++)
+        value += (*subBandSamples) * (*subBandSamples++);
+      *power++ = (float)sqrt (value / (36 * 32 * 256));
+      }
+    }
+  //}}}
+  //{{{
   void synthFilter (int16_t* synthBuf, int& synthBufOffset, int32_t* subBandSamples, int16_t* outSamples) {
 
     int32_t tmp[32];
@@ -2486,15 +2498,8 @@ private:
     memcpy (mLastBuf + mLastBufSize, mBitstream.buffer + bufSize - 4 - i, i);
     mLastBufSize += i;
 
-    if (power) {
-      float value = 0;
-      for (auto channel = 0; channel < 2; channel++) {
-        for (auto sample = 0; sample < 36; sample++)
-          for (auto band = 0; band < 32; band++)
-            value += subBandSamples[channel][sample][band] * subBandSamples[channel][sample][band];
-        *power++ = (float)sqrt (value / (36 * 32 * 256));
-        }
-      }
+    if (power)
+      calcPower (&subBandSamples[0][0][0], power);
 
     if (outSamples) {
       // apply synthFilter to generate outSamples
