@@ -53,27 +53,29 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
-      case 0x00 : break;
-      case 0x1B : return true;
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
+      case 0x1B: return true;
 
-      //case 0x20 : stopped = !stopped; break;
+      //case 0x20: stopped = !stopped; break;
 
-      //case 0x21 : playFrame -= 5.0f * audFramesPerSec; changed(); break;
-      //case 0x22 : playFrame += 5.0f * audFramesPerSec; changed(); break;
+      //case 0x21: playFrame -= 5.0f * audFramesPerSec; changed(); break;
+      //case 0x22: playFrame += 5.0f * audFramesPerSec; changed(); break;
 
-      //case 0x23 : playFrame = audFramesLoaded - 1.0f; changed(); break;
-      //case 0x24 : playFrame = 0; break;
+      //case 0x23: playFrame = audFramesLoaded - 1.0f; changed(); break;
+      //case 0x24: playFrame = 0; break;
 
-      //case 0x25 : playFrame -= 1.0f * audFramesPerSec; changed(); break;
-      //case 0x27 : playFrame += 1.0f * audFramesPerSec; changed(); break;
+      //case 0x25: playFrame -= 1.0f * audFramesPerSec; changed(); break;
+      //case 0x27: playFrame += 1.0f * audFramesPerSec; changed(); break;
 
-      //case 0x26 : stopped = true; playFrame -=2; changed(); break;
-      //case 0x28 : stopped = true; playFrame +=2; changed(); break;
+      //case 0x26: stopped = true; playFrame -=2; changed(); break;
+      //case 0x28: stopped = true; playFrame +=2; changed(); break;
 
-      //case 0x2d : markFrame = playFrame - 2.0f; changed(); break;
-      //case 0x2e : playFrame = markFrame; changed(); break;
+      //case 0x2d: markFrame = playFrame - 2.0f; changed(); break;
+      //case 0x2e: playFrame = markFrame; changed(); break;
 
-      default   : printf ("key %x\n", key);
+      default: printf ("key %x\n", key);
       }
 
     return false;

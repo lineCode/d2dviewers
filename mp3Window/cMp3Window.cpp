@@ -148,24 +148,26 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
-      case 0x00 : break;
-      case 0x1B : return true;
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
+      case 0x1B: return true;
 
-      case 0x20 : togglePlaying(); break;
+      case 0x20: togglePlaying(); break;
 
-      case 0x21 : incPlaySecs (-5); changed(); break;
+      case 0x21: incPlaySecs (-5); changed(); break;
       case 0x22: incPlaySecs(5); changed(); break;
 
-      case 0x23 : setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
-      case 0x24 : setPlaySecs (0); changed(); break;
+      case 0x23: setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
+      case 0x24: setPlaySecs (0); changed(); break;
 
-      case 0x25 : incPlaySecs (-1); changed(); break;
-      case 0x27 : incPlaySecs (1); changed(); break;
+      case 0x25: incPlaySecs (-1); changed(); break;
+      case 0x27: incPlaySecs (1); changed(); break;
 
-      case 0x26 : setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
-      case 0x28 : setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
+      case 0x26: setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
+      case 0x28: setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
 
-      default   : printf ("key %x\n", key);
+      default: printf ("key %x\n", key);
       }
 
     return false;

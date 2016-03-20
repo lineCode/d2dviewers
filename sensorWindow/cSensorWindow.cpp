@@ -6,7 +6,7 @@
 #include "../common/cD2DWindow.h"
 
 #include "../common/usbUtils.h"
-#include "../common/jpegheader.h"
+#include "../common/jpegHeader.h"
 
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
@@ -25,20 +25,20 @@ public:
     initialise (L"sensorWindow", 800, 600);
 
     // samples
-    samples = (uint8_t*)malloc (maxSamples);
-    maxSamplePtr = samples + maxSamples;
-    setSamplesPerPixel (maxSamplesPerPixel);
+    mSamples = (uint8_t*)malloc (mMaxSamples);
+    mMaxSamplePtr = mSamples + mMaxSamples;
+    setSamplesPerPixel (mMaxSamplesPerPixel);
 
     initUSB();
 
-    sensorid = readReg (0x3000);
-    if (sensorid != 0x1519) {
+    mSensorId = readReg (0x3000);
+    if (mSensorId != 0x1519) {
       writeReg (0xF0, 0);
-      sensorid = readReg (0x00);
-      wcout << L"sensorid " << sensorid << endl;
+      mSensorId = readReg (0x00);
+      wcout << L"sensorid " << mSensorId << endl;
       }
 
-    if (sensorid == 0x1519)
+    if (mSensorId == 0x1519)
       pll (16, 1, 1);
 
     preview();
@@ -56,39 +56,41 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
+      case 0x10 : // shift
+      case 0x11 : // control
       case 0x00 : return false;
 
       case 0x1B: return true; // escape abort
 
       case 0x20: moreSamples(); break; // space bar
 
-      case 0x21: setSamplesPerPixel (samplesPerPixel /= 2.0); break; // page up
-      case 0x22: setSamplesPerPixel (samplesPerPixel *= 2.0); break; // page down
+      case 0x21: setSamplesPerPixel (mSamplesPerPixel /= 2.0); break; // page up
+      case 0x22: setSamplesPerPixel (mSamplesPerPixel *= 2.0); break; // page down
 
-      case 0x23: setMidSample (samplesLoaded); break; // end
+      case 0x23: setMidSample (mSamplesLoaded); break; // end
       case 0x24: setMidSample (0.0); break;                         // home
 
-      case 0x25: setMidSample (midSample - (getClientF().width/4.0) * samplesPerPixel); break; // left arrow
-      case 0x27: setMidSample (midSample + (getClientF().width/4.0) * samplesPerPixel); break; // right arrow
+      case 0x25: setMidSample (mMidSample - (getClientF().width/4.0) * mSamplesPerPixel); break; // left arrow
+      case 0x27: setMidSample (mMidSample + (getClientF().width/4.0) * mSamplesPerPixel); break; // right arrow
 
       case 0x26:
         //{{{  up arrow
-        if (samplesPerPixel > 1.0)
-          setMidSample (midSample - (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
-        else if (floor (midSample) != midSample)
-          setMidSample (floor (midSample));
+        if (mSamplesPerPixel > 1.0)
+          setMidSample (mMidSample - (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * mSamplesPerPixel);
+        else if (floor (mMidSample) != mMidSample)
+          setMidSample (floor (mMidSample));
         else
-          setMidSample (midSample - 1.0);
+          setMidSample (mMidSample - 1.0);
         break;
         //}}}
       case 0x28:
         //{{{  down arrow
-        if (samplesPerPixel > 1.0)
-          setMidSample (midSample + (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * samplesPerPixel);
-        else if (ceil (midSample) != midSample)
-          setMidSample (midSample);
+        if (mSamplesPerPixel > 1.0)
+          setMidSample (mMidSample + (mControlKeyDown ? 4.0 : mShiftKeyDown ? 2.0 : 1.0) * mSamplesPerPixel);
+        else if (ceil (mMidSample) != mMidSample)
+          setMidSample (mMidSample);
         else
-          setMidSample (midSample + 1.0);
+          setMidSample (mMidSample + 1.0);
         break;
         //}}}
 
@@ -126,7 +128,7 @@ protected:
     if (delta > 0)
       ratio = 1.0/ratio;
 
-    setSamplesPerPixel (samplesPerPixel * ratio);
+    setSamplesPerPixel (mSamplesPerPixel * ratio);
     }
   //}}}
   //{{{
@@ -134,7 +136,7 @@ protected:
 
     ULONG mask;
     if (getMask (x, y, mask))
-      measure (mask, int(midSample + (x - getClientF().width/2.0f) * samplesPerPixel));
+      measure (mask, int(mMidSample + (x - getClientF().width/2.0f) * mSamplesPerPixel));
     }
   //}}}
   //{{{
@@ -151,11 +153,11 @@ protected:
       ULONG mask = 0;
       if (getMask (mDownMousex, mDownMousey, mask))
         count (mask,
-               int(midSample + (mDownMousex - getClientF().width/2.0f) * samplesPerPixel),
-               int(midSample + (x - getClientF().width/2.0f) * samplesPerPixel));
+               int(mMidSample + (mDownMousex - getClientF().width/2.0f) * mSamplesPerPixel),
+               int(mMidSample + (x - getClientF().width/2.0f) * mSamplesPerPixel));
       }
     else
-      setMidSample (midSample - (xInc * samplesPerPixel));
+      setMidSample (mMidSample - (xInc * mSamplesPerPixel));
     }
   //}}}
   //{{{
@@ -163,15 +165,15 @@ protected:
 
     if (!right)
       if (!mouseMoved)
-        setMidSample (midSample + (x - getClientF().width/2.0) * samplesPerPixel);
+        setMidSample (mMidSample + (x - getClientF().width/2.0) * mSamplesPerPixel);
     }
   //}}}
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    drawBackground (dc, framePtr);
+    drawBackground (dc, mFramePtr);
     drawSamplesFramesTitle (dc);
-    drawSensor (dc, sensorid);
+    drawSensor (dc, mSensorId);
 
     if (mWaveform) {
       drawLeftLabels (dc, 8);
@@ -192,10 +194,10 @@ private:
   //{{{
   void drawBackground (ID2D1DeviceContext* dc, uint8_t* framePtr) {
 
-    if (framePtr && (framePtr != lastFramePtr)) {
-      grabbedFrameBytes = frameBytes;
-      makeBitmap (framePtr, frameBytes);
-      framePtr = lastFramePtr;
+    if (framePtr && (framePtr != mLastFramePtr)) {
+      mGrabbedFrameBytes = mFrameBytes;
+      makeBitmap (framePtr, mFrameBytes);
+      framePtr = mLastFramePtr;
       }
     if (mBitmap)
       dc->DrawBitmap (mBitmap, RectF(0,0, getClientF().width, getClientF().height));
@@ -207,13 +209,13 @@ private:
   void drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
 
     wstringstream str;
-    str << L" fs:" << frames / getTimer()
-        << L" bytes:" << grabbedFrameBytes
+    str << L" fs:" << mFrames / getTimer()
+        << L" bytes:" << mGrabbedFrameBytes
         << L" w:" << mWidth
         << L" h:" << mHeight
         << L" focus:" << mFocus;
     dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
-                  RectF(leftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
+                  RectF(mLeftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
     }
   //}}}
   //{{{
@@ -222,31 +224,31 @@ private:
     if (sensorid == 0x1519) {
       wstring wstr = L"Mt9d111";
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(),
-                    RectF(getClientF().width - 2*rightPixels, 0, getClientF().width, rowPixels), getWhiteBrush());
+                    RectF(getClientF().width - 2*mRightPixels, 0, getClientF().width, mRowPixels), getWhiteBrush());
       }
     }
   //}}}
   //{{{
   void drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
-    auto r = RectF(0.0f, rowPixels, getClientF().width, getClientF().height);
+    auto r = RectF(0.0f, mRowPixels, getClientF().width, getClientF().height);
     for (auto dq = 0; dq < rows; dq++) {
       wstring wstr = L"dq" + to_wstring (dq);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), r, getWhiteBrush());
-      r.top += rowPixels;
+      r.top += mRowPixels;
       }
     }
   //}}}
   //{{{
   void drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
 
-    auto r = RectF (leftPixels, rowPixels, 0, 0);
+    auto r = RectF (mLeftPixels, mRowPixels, 0, 0);
     auto lastSampleIndex = 0;
-    for (auto j = int(leftPixels - getClientF().width/2.0f); j < int(getClientF().width/2.0f); j++) {
+    for (auto j = int(mLeftPixels - getClientF().width/2.0f); j < int(getClientF().width/2.0f); j++) {
       r.right = r.left + 1.0f;
 
-      int sampleIndex = int(midSample + (j * samplesPerPixel));
-      if ((sampleIndex >= 0) && (sampleIndex < samplesLoaded)) {
+      int sampleIndex = int(mMidSample + (j * mSamplesPerPixel));
+      if ((sampleIndex >= 0) && (sampleIndex < mSamplesLoaded)) {
         ULONG transition = 0;
         //{{{  set transition bitMask for samples spanned by this pixel
         if (lastSampleIndex && (lastSampleIndex != sampleIndex)) {
@@ -254,29 +256,29 @@ private:
           if (sampleIndex - lastSampleIndex <= 32) {
             // use all samples
             for (int index = lastSampleIndex; index < sampleIndex; index++)
-              transition |= samples[index % maxSamples] ^ samples[(index+1) % maxSamples];
+              transition |= mSamples[index % mMaxSamples] ^ mSamples[(index+1) % mMaxSamples];
             }
           else {
             // look at some samples for transition
             int indexInc = (sampleIndex - lastSampleIndex) / 13;
-            for (int index = lastSampleIndex; (index + indexInc <= sampleIndex)  && (index + indexInc < samplesLoaded - 1); index += indexInc)
-              transition |= samples[index % maxSamples] ^ samples[(index+indexInc) % maxSamples];
+            for (int index = lastSampleIndex; (index + indexInc <= sampleIndex)  && (index + indexInc < mSamplesLoaded - 1); index += indexInc)
+              transition |= mSamples[index % mMaxSamples] ^ mSamples[(index+indexInc) % mMaxSamples];
             }
           }
         lastSampleIndex = sampleIndex;
         //}}}
 
-        r.top = rowPixels;
+        r.top = mRowPixels;
         ULONG mask = 1;
         while ((mask != maxMask) && (r.top < getClientF().height)) {
           //{{{  draw rows for sample at this pixel
-          auto nextTop = r.top + ((mask & 0x80808080) ? groupRowPixels : rowPixels);
+          auto nextTop = r.top + ((mask & 0x80808080) ? groupRowPixels : mRowPixels);
 
           if (transition & mask)
-            r.bottom = r.top + barPixels;
+            r.bottom = r.top + mBarPixels;
           else {
-            if (!(samples[sampleIndex % maxSamples] & mask)) // lo
-              r.top += barPixels - 1.0f;
+            if (!(mSamples[sampleIndex % mMaxSamples] & mask)) // lo
+              r.top += mBarPixels - 1.0f;
             r.bottom = r.top + 1.0f;
             }
 
@@ -296,27 +298,27 @@ private:
   //{{{
   void drawGraticule (ID2D1DeviceContext* dc, int rows) {
 
-    dc->DrawText (graticuleStr.data(), (uint32_t)graticuleStr.size(), getTextFormat(),
-                  RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
+    dc->DrawText (mGraticuleStr.data(), (uint32_t)mGraticuleStr.size(), getTextFormat(),
+                  RectF (0, 0, mLeftPixels, mRowPixels), getWhiteBrush());
 
-    auto rg = RectF (0, rowPixels, 0, (rows+1)*rowPixels);
-    auto leftSample = midSample - ((getClientF().width/2.0f - leftPixels) * samplesPerPixel);
-    auto graticule = int(leftSample + (samplesPerGraticule - 1.0)) / (int)samplesPerGraticule;
-    auto graticuleSample = graticule * samplesPerGraticule;
+    auto rg = RectF (0, mRowPixels, 0, (rows+1)*mRowPixels);
+    auto leftSample = mMidSample - ((getClientF().width/2.0f - mLeftPixels) * mSamplesPerPixel);
+    auto graticule = int(leftSample + (mSamplesPerGraticule - 1.0)) / (int)mSamplesPerGraticule;
+    auto graticuleSample = graticule * mSamplesPerGraticule;
 
     auto more = true;
     while (more) {
-      more = graticuleSample <= maxSamples;
+      more = graticuleSample <= mMaxSamples;
       if (!more)
-        graticuleSample = (double)maxSamples;
+        graticuleSample = (double)mMaxSamples;
 
-      rg.left = float((graticuleSample - midSample) / samplesPerPixel) + getClientF().width/2.0f;
+      rg.left = float((graticuleSample - mMidSample) / mSamplesPerPixel) + getClientF().width/2.0f;
       rg.right = rg.left+1;
       if (graticule > 0)
         dc->FillRectangle (rg, getGreyBrush());
 
       graticule++;
-      graticuleSample += samplesPerGraticule;
+      graticuleSample += mSamplesPerGraticule;
 
       rg.left = rg.right;
       more &= rg.left < getClientF().width;
@@ -326,7 +328,7 @@ private:
   //{{{
   void drawMidLine (ID2D1DeviceContext* dc, int rows) {
 
-    dc->FillRectangle (RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
+    dc->FillRectangle (RectF(getClientF().width/2.0f, mRowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*mRowPixels),
                        getBlackBrush());
     }
   //}}}
@@ -376,29 +378,29 @@ private:
   void setSamplesPerPixel (double newSamplesPerPixel) {
   // set display window scale, samplesPerPixel
 
-    if (newSamplesPerPixel < minSamplesPerPixel)
-      samplesPerPixel = minSamplesPerPixel;
-    else if (newSamplesPerPixel > maxSamplesPerPixel)
-      samplesPerPixel = maxSamplesPerPixel;
+    if (newSamplesPerPixel < mMinSamplesPerPixel)
+      mSamplesPerPixel = mMinSamplesPerPixel;
+    else if (newSamplesPerPixel > mMaxSamplesPerPixel)
+      mSamplesPerPixel = mMaxSamplesPerPixel;
     else
-      samplesPerPixel = newSamplesPerPixel;
+      mSamplesPerPixel = newSamplesPerPixel;
 
-    samplesPerGraticule = 10.0;
-    while (samplesPerGraticule < (100.0 * samplesPerPixel))
-      samplesPerGraticule *= 10.0;
+    mSamplesPerGraticule = 10.0;
+    while (mSamplesPerGraticule < (100.0 * mSamplesPerPixel))
+      mSamplesPerGraticule *= 10.0;
 
     wstringstream stringStream;
-    if (samplesPerGraticule <= 10.0)
-      stringStream << int (samplesPerGraticule / 0.1) << L"ns";
-    else if (samplesPerGraticule <= 10000.0)
-      stringStream << int (samplesPerGraticule / 100) << L"us";
-    else if (samplesPerGraticule <= 10000000.0)
-      stringStream << int (samplesPerGraticule / 100000) << L"ms";
-    else if (samplesPerGraticule <= 10000000000.0)
-      stringStream << int (samplesPerGraticule / 100000000) << L"s";
+    if (mSamplesPerGraticule <= 10.0)
+      stringStream << int (mSamplesPerGraticule / 0.1) << L"ns";
+    else if (mSamplesPerGraticule <= 10000.0)
+      stringStream << int (mSamplesPerGraticule / 100) << L"us";
+    else if (mSamplesPerGraticule <= 10000000.0)
+      stringStream << int (mSamplesPerGraticule / 100000) << L"ms";
+    else if (mSamplesPerGraticule <= 10000000000.0)
+      stringStream << int (mSamplesPerGraticule / 100000000) << L"s";
     else
-      stringStream << int (samplesPerGraticule / 6000000000) << L"m";
-    graticuleStr = stringStream.str();
+      stringStream << int (mSamplesPerGraticule / 6000000000) << L"m";
+    mGraticuleStr = stringStream.str();
 
     changed();
     }
@@ -408,11 +410,11 @@ private:
   // set sample of pixel in middle of display window
 
     if (newMidSample < 0.0)
-      midSample = 0.0;
-    else if (newMidSample > (double)samplesLoaded)
-      midSample = (double)samplesLoaded;
+      mMidSample = 0.0;
+    else if (newMidSample > (double)mSamplesLoaded)
+      mMidSample = (double)mSamplesLoaded;
     else
-      midSample = newMidSample;
+      mMidSample = newMidSample;
 
     changed();
     }
@@ -420,10 +422,10 @@ private:
   //{{{
   void incSamplesLoaded (int packetLen) {
 
-    bool tailing = (midSample == samplesLoaded);
-    samplesLoaded += packetLen;
+    bool tailing = (mMidSample == mSamplesLoaded);
+    mSamplesLoaded += packetLen;
     if (tailing)
-      setMidSample (samplesLoaded);
+      setMidSample (mSamplesLoaded);
     }
   //}}}
   //}}}
@@ -431,11 +433,11 @@ private:
   //{{{
   bool getMask (int x, int y, ULONG& mask) {
 
-    float row = rowPixels;
+    float row = mRowPixels;
 
     mask = 0x00000001;
     while ((mask != 0x10000) && (row < getClientF().height)) {
-     float  nextRow = row + ((mask & 0x80808080) ? groupRowPixels : rowPixels);
+     float  nextRow = row + ((mask & 0x80808080) ? groupRowPixels : mRowPixels);
       if ((y > row) && (y < nextRow))
         return true;
 
@@ -450,18 +452,18 @@ private:
 
     wstringstream stringStream;
 
-    if ((sample > 0) && (sample < samplesLoaded)) {
+    if ((sample > 0) && (sample < mSamplesLoaded)) {
       int back = sample;
-      while ((back > 0) && !((samples[back] ^ samples[back - 1]) & mask) && ((sample - back) < 100000000))
+      while ((back > 0) && !((mSamples[back] ^ mSamples[back - 1]) & mask) && ((sample - back) < 100000000))
         back--;
 
       int forward = sample;
-      while ((forward < (samplesLoaded - 1)) &&
-             !((samples[forward] ^ samples[forward + 1]) & mask) && ((forward - sample) < 100000000))
+      while ((forward < (mSamplesLoaded - 1)) &&
+             !((mSamples[forward] ^ mSamples[forward + 1]) & mask) && ((forward - sample) < 100000000))
         forward++;
 
       if (((sample - back) != 100000000) && ((forward - sample) != 100000000)) {
-        double width = (forward - back) / samplesPerSecond;
+        double width = (forward - back) / mSamplesPerSecond;
 
         if (width > 1.0)
           stringStream << width << L"s";
@@ -475,7 +477,7 @@ private:
         }
       }
 
-    measureStr = stringStream.str();
+    mMeasureStr = stringStream.str();
     }
   //}}}
   //{{{
@@ -483,9 +485,9 @@ private:
 
     int count = 0;
     int sample = firstSample;
-    if ((sample > 0) && (sample < samplesLoaded)) {
-      while ((sample < lastSample) && (sample < (samplesLoaded-2))) {
-        if ((samples[sample] ^ samples[sample + 1]) & mask)
+    if ((sample > 0) && (sample < mSamplesLoaded)) {
+      while ((sample < lastSample) && (sample < (mSamplesLoaded -2))) {
+        if ((mSamples[sample] ^ mSamples[sample + 1]) & mask)
           count++;
         sample++;
         }
@@ -493,7 +495,7 @@ private:
       if (count > 0) {
         wstringstream stringStream;
         stringStream << count;
-        measureStr = stringStream.str();
+        mMeasureStr = stringStream.str();
         changed();
         }
       }
@@ -568,8 +570,8 @@ private:
 
       auto bufferEnd = buffer + bufferLen;
       while (buffer < bufferEnd) {
-        if (frameBuffer >= maxSamplePtr)
-          frameBuffer = samples;
+        if (frameBuffer >= mMaxSamplePtr)
+          frameBuffer = mSamples;
 
         if ((y & 0x01) == 0) {
           // even lines
@@ -617,8 +619,8 @@ private:
 
       auto bufferEnd = buffer + bufferLen;
       while (buffer < bufferEnd) {
-        if (frameBuffer >= maxSamplePtr)
-          frameBuffer = samples;
+        if (frameBuffer >= mMaxSamplePtr)
+          frameBuffer = mSamples;
 
         int y1 = *frameBuffer++;
         int u = *frameBuffer++;
@@ -680,7 +682,7 @@ private:
     plln = n;
     pllp = p;
 
-    if (sensorid == 0x1519) {
+    if (mSensorId == 0x1519) {
       printf ("pll m:%d n:%d p:%d Fpfd(2-13):%d Fvco(110-240):%d Fout(6-80):%d\n",
               pllm, plln, pllp,
               24000000 / (plln+1),
@@ -705,7 +707,7 @@ private:
     mJpeg422 = false;
     mBayer10 = false;
 
-    if (sensorid == 0x1519) {
+    if (mSensorId == 0x1519) {
       writeReg (0xF0, 1);
       writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
       writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
@@ -716,7 +718,7 @@ private:
       writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
       }
 
-    framePtr = NULL;
+    mFramePtr = NULL;
     }
   //}}}
   //{{{
@@ -724,7 +726,7 @@ private:
 
     wcout << L"preview" << endl;
 
-    if (sensorid == 0x1519) {
+    if (mSensorId == 0x1519) {
       mWidth = 800;
       mHeight = 600;
       writeReg (0xF0, 1);
@@ -741,7 +743,7 @@ private:
     mJpeg422 = false;
     mBayer10 = false;
 
-    framePtr = NULL;
+    mFramePtr = NULL;
     }
   //}}}
   //{{{
@@ -835,13 +837,13 @@ private:
     //writeReg (0xc6, 0xa90b); printf ("JPEG_QSCALE_2 %d\n",readReg (0xc8));
     //writeReg (0xc6, 0xa90c); printf ("JPEG_QSCALE_3 %d\n",readReg (0xc8));
 
-    framePtr = NULL;
+    mFramePtr = NULL;
     }
   //}}}
   //{{{
   void bayer() {
 
-    if (sensorid == 0x1519) {
+    if (mSensorId == 0x1519) {
       wcout << L"bayer" << endl;
       mWidth = 1608;
       mHeight = 1200;
@@ -854,7 +856,7 @@ private:
       writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
       }
 
-    framePtr = NULL;
+    mFramePtr = NULL;
     }
   //}}}
   //{{{
@@ -876,9 +878,9 @@ private:
 
     wcout << L"moreSamples" << endl;
 
-    restart = true;
-    setMidSample (samplesLoaded);
-    setSamplesPerPixel (maxSamplesPerPixel);
+    mRestart = true;
+    setMidSample (mSamplesLoaded);
+    setSamplesPerPixel (mMaxSamplesPerPixel);
     }
   //}}}
 
@@ -886,20 +888,21 @@ private:
   uint8_t* nextPacket (uint8_t* samplePtr, int packetLen) {
   // return nextPacket start address, wraparound if no room for another packetLen packet
 
-    if (samplePtr + packetLen + packetLen <= maxSamplePtr)
+    if (samplePtr + packetLen + packetLen <= mMaxSamplePtr)
       return samplePtr + packetLen;
     else
-      return samples;
+      return mSamples;
     }
   //}}}
   //{{{
   void loader() {
+
     #define QUEUESIZE 64
     uint8_t* bufferPtr[QUEUESIZE];
     uint8_t* contexts[QUEUESIZE];
     OVERLAPPED overLapped[QUEUESIZE];
 
-    auto samplePtr = samples;
+    auto samplePtr = mSamples;
     auto packetLen = getBulkEndPoint()->MaxPktSize - 16;
     for (auto xferIndex = 0; xferIndex < QUEUESIZE; xferIndex++) {
       //{{{  setup QUEUESIZE transfers
@@ -921,10 +924,10 @@ private:
     startStreaming();
     startTimer();
 
-    auto frameLoadingPtr = samples;
+    auto frameLoadingPtr = mSamples;
     auto xferIndex = 0;
     while (true) {
-      if (!getBulkEndPoint()->WaitForXfer (&overLapped[xferIndex], timeout)) {
+      if (!getBulkEndPoint()->WaitForXfer (&overLapped[xferIndex], mTimeout)) {
         wcout << L"- timeOut" << getBulkEndPoint()->LastError << endl;
         getBulkEndPoint()->Abort();
         if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
@@ -937,10 +940,10 @@ private:
         if (rxLen < packetLen) {
           // short packet =  endOfFrame
           //printf ("\r%d %2d %5d %d %xd", frames, xferIndex, rxLen, samplesLoaded, (int)frameLoadingPtr);
-          framePtr = frameLoadingPtr;
-          frameBytes = (bufferPtr[xferIndex] + rxLen) - frameLoadingPtr;
+          mFramePtr = frameLoadingPtr;
+          mFrameBytes = (bufferPtr[xferIndex] + rxLen) - frameLoadingPtr;
           frameLoadingPtr = nextPacket (bufferPtr[xferIndex], packetLen);
-          frames++;
+          mFrames++;
           }
 
         bufferPtr[xferIndex] = samplePtr;
@@ -968,34 +971,33 @@ private:
   //}}}
 
   //{{{  private vars
-  int sensorid = 0;
+  int mSensorId = 0;
 
-  float leftPixels = 50.0f;
-  float rightPixels = 50.0f;
+  float mLeftPixels = 50.0f;
+  float mRightPixels = 50.0f;
+
+  int mTimeout = 2000;
+  bool mRestart = false;
 
   // samples
-  int timeout = 2000;
+  uint8_t* mSamples = nullptr;
+  uint8_t* mMaxSamplePtr = nullptr;
+  int mSamplesLoaded = 0;
+  size_t mMaxSamples = (16384-16) * 0x10000;
 
-  bool restart = false;
-
-  uint8_t* samples = nullptr;
-  uint8_t* maxSamplePtr = nullptr;
-  int samplesLoaded = 0;
-  size_t maxSamples = (16384-16) * 0x10000;
-
-  double midSample = 0;
-  double samplesPerSecond = 80000000;
-  double samplesPerGraticule = samplesPerSecond;  // graticule every secoond
-  double minSamplesPerPixel = 1.0/16.0;
-  double maxSamplesPerPixel = (double)maxSamples / (800 - leftPixels - rightPixels);
-  double samplesPerPixel = maxSamplesPerPixel;
+  double mMidSample = 0;
+  double mSamplesPerSecond = 80000000;
+  double mSamplesPerGraticule = mSamplesPerSecond;  // graticule every secoond
+  double mMinSamplesPerPixel = 1.0/16.0;
+  double mMaxSamplesPerPixel = (double)mMaxSamples / (800 - mLeftPixels - mRightPixels);
+  double mSamplesPerPixel = mMaxSamplesPerPixel;
 
   // frames
-  int frames = 0;
-  uint8_t* framePtr = nullptr;
-  uint8_t* lastFramePtr = nullptr;
-  int frameBytes = 0;
-  int grabbedFrameBytes = 0;
+  int mFrames = 0;
+  uint8_t* mFramePtr = nullptr;
+  uint8_t* mLastFramePtr = nullptr;
+  int mFrameBytes = 0;
+  int mGrabbedFrameBytes = 0;
 
   int mWidth = 800;
   int mHeight = 600;
@@ -1013,12 +1015,12 @@ private:
   bool mVectorValues [0x4000];
 
   //{{{  layout
-  float barPixels = 16.0f;
-  float rowPixels = 22.0f;
+  float mBarPixels = 16.0f;
+  float mRowPixels = 22.0f;
   float groupRowPixels = 28.0f;
 
-  wstring graticuleStr;
-  wstring measureStr;
+  wstring mGraticuleStr;
+  wstring mMeasureStr;
   //}}}
   //{{{  measure
   int hiCount [32];

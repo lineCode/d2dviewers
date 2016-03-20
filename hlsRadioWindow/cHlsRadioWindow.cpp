@@ -64,41 +64,43 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
-      case 0x00 : break;
-      case 0x1B : return true; // escape
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
+      case 0x1B: return true; // escape
 
-      case 0x20 : mPlayer->togglePlaying(); break;  // space
+      case 0x20: mPlayer->togglePlaying(); break;  // space
 
-      case 0x21 : mPlayer->incPlaySecs (-5*60); changed(); break; // page up
-      case 0x22 : mPlayer->incPlaySecs (+5*60); changed(); break; // page down
+      case 0x21: mPlayer->incPlaySecs (-5*60); changed(); break; // page up
+      case 0x22: mPlayer->incPlaySecs (+5*60); changed(); break; // page down
 
-      //case 0x23 : break; // end
-      //case 0x24 : break; // home
+      //case 0x23: break; // end
+      //case 0x24: break; // home
 
-      case 0x25 : mPlayer->incPlaySecs (-keyInc()); changed(); break;  // left arrow
-      case 0x27 : mPlayer->incPlaySecs (+keyInc()); changed(); break;  // right arrow
+      case 0x25: mPlayer->incPlaySecs (-keyInc()); changed(); break;  // left arrow
+      case 0x27: mPlayer->incPlaySecs (+keyInc()); changed(); break;  // right arrow
 
-      case 0x26 :  // up arrow
-      case 0x28 :  // down arrow
+      case 0x26:  // up arrow
+      case 0x28:  // down arrow
         mPlayer->setPlaying (false);
         mPlayer->incPlaySecs (((key == 0x26) ? -1.0 : 1.0) * keyInc() * mPlayer->getSecsPerVidFrame());
         changed();
         break;
-      //case 0x2d : break; // insert
-      //case 0x2e : break; // delete
+      //case 0x2d: break; // insert
+      //case 0x2e: break; // delete
 
-      case 0x31 :
-      case 0x32 :
-      case 0x33 :
-      case 0x34 :
-      case 0x35 :
-      case 0x36 :
-      case 0x37 :
-      case 0x38 :
-      case 0x39 : mChangeChannel = key - '0' - 1; signal(); break;
-      case 0x30 : mChangeChannel = 10 - 1; signal(); break;
+      case 0x31:
+      case 0x32:
+      case 0x33:
+      case 0x34:
+      case 0x35:
+      case 0x36:
+      case 0x37:
+      case 0x38:
+      case 0x39: mChangeChannel = key - '0' - 1; signal(); break;
+      case 0x30: mChangeChannel = 10 - 1; signal(); break;
 
-      default   : printf ("key %x\n", key);
+      default: printf ("key %x\n", key);
       }
 
     return false;

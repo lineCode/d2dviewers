@@ -160,7 +160,9 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
-      case 0x00 : return false;
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
 
       case 0x1B: return true; // escape abort
 
