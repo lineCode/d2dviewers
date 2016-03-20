@@ -2415,12 +2415,12 @@ private:
     }
   //}}}
   //{{{
-  void synthFilter (int16_t* synthBuf, int& synthBufOffset, int32_t* subBandSamples, int16_t* outSamples) {
+  void synthFilter (int channel, int frame, int32_t* subBandSamples, int16_t* outSamples) {
 
     int32_t tmp[32];
-    dct32 (subBandSamples, tmp);
+    dct32 (subBandSamples + (channel*36*32) + (frame*32), tmp);
 
-    auto offsetSynthBuf = synthBuf + synthBufOffset;
+    auto offsetSynthBuf = mSynthBuf[channel] + mSynthBufOffset[channel];
     for (auto j = 0; j < 32; j++) // could 16bit integer limit here
       offsetSynthBuf[j] = tmp[j];
 
@@ -2444,16 +2444,13 @@ private:
       auto sum2 = 0;
       p = offsetSynthBuf + 16 + j;
       SUM8P2(sum, +=, sum2, -=, w, w2, p);
-
       p = offsetSynthBuf + 48 - j;
       SUM8P2(sum, -=, sum2, -=, w + 32, w2 + 32, p);
       *outSamples = roundSample (sum);
       outSamples += mNumChannels;
-
       sum += sum2;
       *samples2 = roundSample (sum);
       samples2 -= mNumChannels;
-
       w++;
       w2--;
       }
@@ -2463,7 +2460,7 @@ private:
     *outSamples = roundSample (sum);
     mDitherState = sum;
 
-    synthBufOffset = (synthBufOffset - 32) & 511;
+    mSynthBufOffset[channel] = (mSynthBufOffset[channel] - 32) & 511;
     }
   //}}}
   //{{{
@@ -2504,10 +2501,10 @@ private:
     if (outSamples) {
       // apply synthFilter to generate outSamples
       for (auto channel = 0; channel < mNumChannels; channel++) {
-        auto samplesPtr = outSamples + channel;
+        auto outSamplesPtr = outSamples + channel;
         for (auto frame = 0; frame < numFrames; frame++) {
-          synthFilter (mSynthBuf[channel], mSynthBufOffset[channel], &subBandSamples[0][0][0] + (channel*36*32) + (frame*32), samplesPtr);
-          samplesPtr += 32 * mNumChannels;
+          synthFilter (channel, frame, &subBandSamples[0][0][0], outSamplesPtr);
+          outSamplesPtr += 32 * mNumChannels;
           }
         }
       }
