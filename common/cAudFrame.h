@@ -20,17 +20,17 @@ public:
     mSampleRate = sampleRate;
 
   #ifdef WIN32
-    mNumSampleBytes = mChannels * mNumSamples * 2;
+    mNumSampleBytes = channels * numSamples * 2;
     mSamples = (int16_t*)realloc (mSamples, mNumSampleBytes);
   #else
-    if ((mChannels * mNumSamples * 2 != mNumSampleBytes) && mSamples) {
+    if ((channels * numSamples * 2 != mNumSampleBytes) && mSamples) {
       free (mSamples);
       mSamples = nullptr;
       mNumSampleBytes = 0;
       }
 
     if (!mSamples) {
-      mNumSampleBytes = mChannels * mNumSamples * 2;
+      mNumSampleBytes = channels * numSamples * 2;
       mSamples = (int16_t*)malloc (mNumSampleBytes);
       }
   #endif
