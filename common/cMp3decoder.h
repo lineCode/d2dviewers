@@ -2057,7 +2057,9 @@ private:
     }
   //}}}
   //{{{
-  void computeImdct (granule_t* granule, int32_t* subBandSamples, int32_t* mdct_buf) {
+  void computeImdct (int channel, granule_t* granule, int32_t* subBandSamples) {
+
+    auto mdctBuf = (int32_t*)mMdctBuf[channel];
 
     // find last non zero block
     auto ptr = granule->sb_hybrid + 576;
@@ -2081,7 +2083,7 @@ private:
     else
       mdct_long_end = (int)sblimit;
 
-    auto buf = mdct_buf;
+    auto mdctBufPtr = mdctBuf;
     ptr = granule->sb_hybrid;
     for (auto j = 0; j < mdct_long_end; j++) {
       // apply window & overlap with previous buffer
@@ -2092,10 +2094,10 @@ private:
 
       // select frequency inversion
       auto win = win1 + ((4 * 36) & -(j & 1));
-      imdct36 (out_ptr, buf, ptr, win);
+      imdct36 (out_ptr, mdctBufPtr, ptr, win);
       out_ptr += 18 * 32;
       ptr += 18;
-      buf += 18;
+      mdctBufPtr += 18;
       }
 
     for (auto j = mdct_long_end; j < sblimit; j++) {
@@ -2103,46 +2105,46 @@ private:
       auto win = mdct_win[2] + ((4 * 36) & -(j & 1));
       auto out_ptr = subBandSamples + j;
       for (auto i = 0; i < 6; i++){
-        *out_ptr = buf[i];
+        *out_ptr = mdctBufPtr[i];
         out_ptr += 32;
         }
 
       int32_t out2[12];
       imdct12 (out2, ptr + 0);
       for (auto i = 0; i < 6;i++) {
-        *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*1];
-        buf[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
+        *out_ptr = MULH(out2[i], win[i]) + mdctBufPtr[i + 6*1];
+        mdctBufPtr[i + 6*2] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += 32;
         }
 
       imdct12 (out2, ptr + 1);
       for (auto i = 0; i < 6;i++) {
-        *out_ptr = MULH(out2[i], win[i]) + buf[i + 6*2];
-        buf[i + 6*0] = MULH(out2[i + 6], win[i + 6]);
+        *out_ptr = MULH(out2[i], win[i]) + mdctBufPtr[i + 6*2];
+        mdctBufPtr[i + 6*0] = MULH(out2[i + 6], win[i + 6]);
         out_ptr += 32;
         }
 
       imdct12 (out2, ptr + 2);
       for (auto i = 0; i < 6; i++) {
-        buf[i + 6*0] = MULH(out2[i], win[i]) + buf[i + 6*0];
-        buf[i + 6*1] = MULH(out2[i + 6], win[i + 6]);
-        buf[i + 6*2] = 0;
+        mdctBufPtr[i + 6*0] = MULH(out2[i], win[i]) + mdctBufPtr[i + 6*0];
+        mdctBufPtr[i + 6*1] = MULH(out2[i + 6], win[i + 6]);
+        mdctBufPtr[i + 6*2] = 0;
         }
 
       ptr += 18;
-      buf += 18;
+      mdctBufPtr += 18;
       }
 
     // zero bands
     for (auto j = sblimit; j < 32; j++) {
       // overlap
       auto out_ptr = subBandSamples + j;
-      for (auto i = 0; i < 18;i++) {
-        *out_ptr = buf[i];
-        buf[i] = 0;
+      for (auto i = 0; i < 18; i++) {
+        *out_ptr = mdctBufPtr[i];
+        mdctBufPtr[i] = 0;
         out_ptr += 32;
         }
-      buf += 18;
+      mdctBufPtr += 18;
       }
     }
   //}}}
@@ -2396,7 +2398,7 @@ private:
         auto granule = &mGranules[channel][granuleIndex];
         reorderBlock (granule);
         computeAntialias (granule);
-        computeImdct (granule, subBandSamples + (channel*36*32) + (granuleIndex*18*32), mMdctBuf[channel]);
+        computeImdct (channel, granule, subBandSamples + (channel*36*32) + (granuleIndex*18*32));
         }
       }
 
