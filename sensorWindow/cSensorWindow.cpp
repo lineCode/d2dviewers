@@ -56,13 +56,10 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
-      case 0x10 : // shift
-      case 0x11 : // control
-      case 0x00 : return false;
-
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
       case 0x1B: return true; // escape abort
-
-      case 0x20: moreSamples(); break; // space bar
 
       case 0x21: setSamplesPerPixel (mSamplesPerPixel /= 2.0); break; // page up
       case 0x22: setSamplesPerPixel (mSamplesPerPixel *= 2.0); break; // page down
@@ -871,16 +868,6 @@ private:
       mFocus = value;
 
     sendFocus (mFocus);
-    }
-  //}}}
-  //{{{
-  void moreSamples() {
-
-    wcout << L"moreSamples" << endl;
-
-    mRestart = true;
-    setMidSample (mSamplesLoaded);
-    setSamplesPerPixel (mMaxSamplesPerPixel);
     }
   //}}}
 
