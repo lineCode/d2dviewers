@@ -2404,8 +2404,8 @@ private:
   //}}}
   //{{{
   void calcPower (int32_t* subBandSamples, float* power) {
+  // calc power from subBandSamples
 
-    // calc power from subBandSamples
     for (auto channel = 0; channel < 2; channel++) {
       float value = 0;
       for (auto i = 0; i < 36*32; i++)
