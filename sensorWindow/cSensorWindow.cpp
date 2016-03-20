@@ -11,7 +11,9 @@
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 //}}}
+//{{{  static const
 static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+//}}}
 
 class cSensorWindow : public cD2dWindow {
 public:
@@ -179,10 +181,10 @@ protected:
       }
 
     if (!mBayer10 && !mJpeg422 && mHistogram)
-      drawHistogram (dc);
+      drawLumaHistogram (dc);
 
     if (!mBayer10 && !mJpeg422 && mVector)
-      drawVector (dc);
+      drawChromaVector (dc);
     }
   //}}}
 
@@ -195,7 +197,6 @@ private:
       makeBitmap (framePtr, frameBytes);
       framePtr = lastFramePtr;
       }
-
     if (mBitmap)
       dc->DrawBitmap (mBitmap, RectF(0,0, getClientF().width, getClientF().height));
     else
@@ -206,12 +207,8 @@ private:
   void drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
 
     wstringstream str;
-    str << L"samples" << midSample / samplesPerSecond
-        << L" " << samplesLoaded / samplesPerSecond
-        << L" " << samplesLoaded
-        << L" f:" << frames
-        << L" fs:" << frames / getTimer()
-        << L" " << grabbedFrameBytes
+    str << L" fs:" << frames / getTimer()
+        << L" bytes:" << grabbedFrameBytes
         << L" w:" << mWidth
         << L" h:" << mHeight
         << L" focus:" << mFocus;
@@ -223,7 +220,7 @@ private:
   void drawSensor (ID2D1DeviceContext* dc, int sensorid) {
 
     if (sensorid == 0x1519) {
-      wstring wstr = L"mt9d111";
+      wstring wstr = L"Mt9d111";
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(),
                     RectF(getClientF().width - 2*rightPixels, 0, getClientF().width, rowPixels), getWhiteBrush());
       }
@@ -334,7 +331,7 @@ private:
     }
   //}}}
   //{{{
-  void drawHistogram (ID2D1DeviceContext* dc) {
+  void drawLumaHistogram (ID2D1DeviceContext* dc) {
 
     auto r = RectF (10.0f, 0, 0, getClientF().height - 10.0f);
 
@@ -351,7 +348,7 @@ private:
     }
   //}}}
   //{{{
-  void drawVector (ID2D1DeviceContext* dc) {
+  void drawChromaVector (ID2D1DeviceContext* dc) {
 
     dc->FillRectangle (RectF (getClientF().width - 128.0f, getClientF().height - 256.0f,
                        getClientF().width - 128.0f + 1.0f, getClientF().height), getBlackBrush());
@@ -516,15 +513,6 @@ private:
     }
   //}}}
   //{{{
-  void setFrameSize (int x, int y, bool bayer, bool jpeg) {
-
-    mWidth = x;
-    mHeight = y;
-    mJpeg422 = jpeg;
-    mBayer10 = bayer;
-    }
-  //}}}
-  //{{{
   void makeBitmap (uint8_t* frameBuffer, int frameBytes) {
 
     // create bitmap from frameBuffer
@@ -686,11 +674,37 @@ private:
   //}}}
 
   //{{{
+  void pll (int m, int n, int p) {
+
+    pllm = m;
+    plln = n;
+    pllp = p;
+
+    if (sensorid == 0x1519) {
+      printf ("pll m:%d n:%d p:%d Fpfd(2-13):%d Fvco(110-240):%d Fout(6-80):%d\n",
+              pllm, plln, pllp,
+              24000000 / (plln+1),
+              (24000000 / (plln+1))*pllm,
+              ((24000000 / (plln+1) * pllm)/ (2*(pllp+1))) );
+
+      //  PLL (24mhz/(N+1))*M / 2*(P+1)
+      writeReg (0x66, (pllm << 8) | plln);  // PLL Control 1    M:15:8,N:7:0 - M=16, N=1 (24mhz/(n1+1))*m16 / 2*(p1+1) = 48mhz
+      writeReg (0x67, 0x0500 | pllp);  // PLL Control 2 0x05:15:8,P:7:0 - P=3
+      writeReg (0x65, 0xA000);  // Clock CNTRL - PLL ON
+      writeReg (0x65, 0x2000);  // Clock CNTRL - USE PLL
+      }
+    }
+  //}}}
+  //{{{
   void capture() {
 
     wcout << L"capture" << endl;
 
-    setFrameSize (1600, 1200, false, false);
+    mWidth = 1600;
+    mHeight = 1200;
+    mJpeg422 = false;
+    mBayer10 = false;
+
     if (sensorid == 0x1519) {
       writeReg (0xF0, 1);
       writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
@@ -701,6 +715,7 @@ private:
       writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0002); // sequencer.params.mode - capture video
       writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
       }
+
     framePtr = NULL;
     }
   //}}}
@@ -710,26 +725,31 @@ private:
     wcout << L"preview" << endl;
 
     if (sensorid == 0x1519) {
-      setFrameSize (800, 600, false, false);
+      mWidth = 800;
+      mHeight = 600;
       writeReg (0xF0, 1);
       writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
       writeReg (0xC6, 0xA120); writeReg (0xC8, 0x00); // Sequencer.params.mode - none
       writeReg (0xC6, 0xA103); writeReg (0xC8, 0x01); // Sequencer goto preview A
       }
     else {
-      setFrameSize (640, 480, false, false);
+      mWidth = 640;
+      mHeight = 480;
       writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0000); // sequencer.params.mode - none
       writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0001); // sequencer.cmd - goto preview mode A
       }
+    mJpeg422 = false;
+    mBayer10 = false;
 
     framePtr = NULL;
     }
   //}}}
   //{{{
   void jpeg() {
-    int width = 1600;
-    int height = 1200;
-    setFrameSize (width, height, false, true);
+    mWidth = 1600;
+    mHeight = 1200;
+    mJpeg422 = true;
+    mBayer10 = false;
 
     //{{{  last data byte status ifp page2 0x02
     // b:0 = 1  transfer done
@@ -790,12 +810,12 @@ private:
     writeReg (0xc6, 0x2776); writeReg (0xc8, 0x0001);
 
     // mode OUTPUT WIDTH HEIGHT B
-    writeReg (0xc6, 0x2707); writeReg (0xc8, width);
-    writeReg (0xc6, 0x2709); writeReg (0xc8, height);
+    writeReg (0xc6, 0x2707); writeReg (0xc8, mWidth);
+    writeReg (0xc6, 0x2709); writeReg (0xc8, mHeight);
 
     // mode SPOOF WIDTH HEIGHT B
-    writeReg (0xc6, 0x2779); writeReg (0xc8, width);
-    writeReg (0xc6, 0x277b); writeReg (0xc8, height);
+    writeReg (0xc6, 0x2779); writeReg (0xc8, mWidth);
+    writeReg (0xc6, 0x277b); writeReg (0xc8, mHeight);
 
     //writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
     writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
@@ -823,9 +843,10 @@ private:
 
     if (sensorid == 0x1519) {
       wcout << L"bayer" << endl;
+      mWidth = 1608;
+      mHeight = 1200;
+      mJpeg422 = false;
       mBayer10 = true;
-
-      setFrameSize (1608, 1200, true, false);
 
       writeReg (0xF0, 1);
       writeReg (0x09, 0x0008); // factory bypass 10 bit sensor
@@ -834,38 +855,6 @@ private:
       }
 
     framePtr = NULL;
-    }
-  //}}}
-  //{{{
-  void pll (int m, int n, int p) {
-
-    pllm = m;
-    plln = n;
-    pllp = p;
-
-    if (sensorid == 0x1519) {
-      printf ("pll m:%d n:%d p:%d Fpfd(2-13):%d Fvco(110-240):%d Fout(6-80):%d\n",
-              pllm, plln, pllp,
-              24000000 / (plln+1),
-              (24000000 / (plln+1))*pllm,
-              ((24000000 / (plln+1) * pllm)/ (2*(pllp+1))) );
-
-      //  PLL (24mhz/(N+1))*M / 2*(P+1)
-      writeReg (0x66, (pllm << 8) | plln);  // PLL Control 1    M:15:8,N:7:0 - M=16, N=1 (24mhz/(n1+1))*m16 / 2*(p1+1) = 48mhz
-      writeReg (0x67, 0x0500 | pllp);  // PLL Control 2 0x05:15:8,P:7:0 - P=3
-      writeReg (0x65, 0xA000);  // Clock CNTRL - PLL ON
-      writeReg (0x65, 0x2000);  // Clock CNTRL - USE PLL
-      }
-    }
-  //}}}
-  //{{{
-  void moreSamples() {
-
-    wcout << L"moreSamples" << endl;
-
-    restart = true;
-    setMidSample (samplesLoaded);
-    setSamplesPerPixel (maxSamplesPerPixel);
     }
   //}}}
   //{{{
@@ -880,6 +869,16 @@ private:
       mFocus = value;
 
     sendFocus (mFocus);
+    }
+  //}}}
+  //{{{
+  void moreSamples() {
+
+    wcout << L"moreSamples" << endl;
+
+    restart = true;
+    setMidSample (samplesLoaded);
+    setSamplesPerPixel (maxSamplesPerPixel);
     }
   //}}}
 
