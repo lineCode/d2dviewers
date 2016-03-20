@@ -960,6 +960,7 @@ public:
   int getMode() { return mModeExt; }
   //{{{
   int decodeFrame (uint8_t* buf, int bufBytes, float* power, int16_t* samples) {
+  // align bitstream to valid header and decode frame
 
     int extraBytes = 0;
     while (bufBytes >= 4) {
@@ -968,7 +969,7 @@ public:
         auto frame_size = decodeHeader (header);
         if (frame_size < bufBytes)
           bufBytes = frame_size;
-        decodeFrameAligned (buf, bufBytes, power, samples);
+        decodeFrameRaw (buf, bufBytes, power, samples);
         if (bufBytes < 0)
           return 0;
         else
@@ -2464,7 +2465,7 @@ private:
     }
   //}}}
   //{{{
-  void decodeFrameAligned (const uint8_t* buf, int bufSize, float* power, int16_t* outSamples) {
+  void decodeFrameRaw (const uint8_t* buf, int bufSize, float* power, int16_t* outSamples) {
 
     init_get_bits (&mBitstream, buf + 4, (bufSize - 4) * 8);
     if (mErrorProtection)
