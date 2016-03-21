@@ -1,4 +1,4 @@
-// mp3window.cpp
+// cMp3Window.cpp
 //{{{  includes
 #include "pch.h"
 
@@ -134,7 +134,7 @@ public:
       }
     else {
       mMp3File = new cMp3File (wFileName);
-      thread ([=]() { mMp3File->load (getDeviceContext(), getBitmapProperties()); }).detach();
+      thread ([=]() { mMp3File->load (getDeviceContext(), getBitmapProperties(), true); }).detach();
       }
 
     thread ([=]() { player(); }).detach();
@@ -209,6 +209,7 @@ protected:
       mProxFile = pick (Point2F ((float)x, (float)y));
       if (mProxFile && (mProxFile->isLoaded() > 0)) {
         mMp3File = mProxFile;
+        mMp3File->selected (getDeviceContext(), getBitmapProperties());
         mPlaySecs = 0;
         setPlaying (true);
         mDownConsumed = true;
@@ -367,10 +368,13 @@ private:
     while (slept < 10)
       Sleep (slept++);
 
+    auto loadSamples = true;
     while (slept < 20) {
       cMp3File* mp3File = nextLoadFile();
-      if (mp3File)
-        mp3File->load (getDeviceContext(), getBitmapProperties());
+      if (mp3File) {
+        mp3File->load (getDeviceContext(), getBitmapProperties(), loadSamples);
+        loadSamples = false;
+        }
       else
         Sleep (++slept);
       }
