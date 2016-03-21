@@ -11,9 +11,6 @@
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 //}}}
-//{{{  static const
-static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
-//}}}
 
 class cSensorWindow : public cD2dWindow {
 public:
@@ -101,7 +98,7 @@ protected:
       case 'Q': preview(); break;
       case 'W': capture(); break;
       case 'E': bayer(); break;
-      case 'J': jpeg(); break;
+      case 'J': jpeg (1600, 1200); break;
 
       case 'A': pll (++pllm, plln, pllp); break;
       case 'Z': pll (--pllm, plln, pllp); break;
@@ -195,7 +192,33 @@ private:
       mGrabbedFrameBytes = mFrameBytes;
       makeBitmap (framePtr, mFrameBytes);
       framePtr = mLastFramePtr;
+
+      if (mJpeg422) {
+        //writeReg (0xc6, 0xa90a); printf ("JPEG_QSCALE_1 %d\n",readReg (0xc8));
+        //int qscale1 = readReg (0xc8);
+        int qscale1 = 1;
+
+        BYTE jpegHeader [1000];
+        int jpegHeaderBytes  = setJpegHeader (jpegHeader, mWidth, mHeight, 0, qscale1);
+        BYTE* endPtr = framePtr + mFrameBytes - 4;
+        int jpegBytes = *endPtr++;
+        jpegBytes += (*endPtr++) << 8;
+        jpegBytes += (*endPtr++) << 16;
+        int status = *endPtr;
+
+        char filename[200];
+        sprintf (filename, "C:\\Users\\nnn\\Pictures\\Camera Roll\\cam%2d.jpg", mJpegFrameCount++);
+
+        if ((status & 0x0f) == 0x01) {
+          FILE* imfile = fopen (filename,"wb");
+          fwrite (jpegHeader, 1, jpegHeaderBytes, imfile);     // write JPEG header
+          fwrite (framePtr, 1, jpegBytes, imfile); // write JPEG data
+          fwrite ("\xff\xd9", 1, 2, imfile);                   // write JPEG EOI marker
+          fclose (imfile);
+          }
+        }
       }
+
     if (mBitmap)
       dc->DrawBitmap (mBitmap, RectF(0,0, getClientF().width, getClientF().height));
     else
@@ -665,7 +688,7 @@ private:
         }
       }
     if (!mBitmap)
-      getDeviceContext()->CreateBitmap (SizeU(mWidth, mHeight), kBitmapProperties, &mBitmap);
+      getDeviceContext()->CreateBitmap (SizeU(mWidth, mHeight), getBitmapProperties(), &mBitmap);
 
     mBitmap->CopyFromMemory (&RectU (0, 0, mWidth, mHeight), bufferAlloc, mWidth*4);
     free (bufferAlloc);
@@ -744,10 +767,10 @@ private:
     }
   //}}}
   //{{{
-  void jpeg() {
+  void jpeg (int width, int height) {
 
-    mWidth = 1600;
-    mHeight = 1200;
+    mWidth = width;
+    mHeight = height;
     mJpeg422 = true;
     mBayer10 = false;
 
@@ -996,6 +1019,7 @@ private:
   bool mWaveform = false;
   bool mHistogram = true;
   bool mVector = true;
+  int mJpegFrameCount = 0;
 
   int mFocus = 0;
   uint8_t mBucket = 1;

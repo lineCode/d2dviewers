@@ -21,6 +21,11 @@ public:
   ID2D1SolidColorBrush* getGreyBrush() { return greyBrush; }
   ID2D1SolidColorBrush* getWhiteBrush() { return whiteBrush; }
   ID2D1SolidColorBrush* getYellowBrush() { return yellowBrush; }
+  //{{{
+  D2D1_BITMAP_PROPERTIES getBitmapProperties() {
+    return { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
+    }
+  //}}}
 
   bool getMouseDown() { return mMouseDown; }
 

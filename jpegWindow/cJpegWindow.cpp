@@ -244,7 +244,7 @@ protected:
         mFullImage = mPickImage;
         int scale = 1 + int((mFullImage->getImageSize().width / getClientF().width));
         mFullView.setSrcDstSize (SizeU(mFullImage->getImageSize().width/scale, mFullImage->getImageSize().height/scale), getClientF());
-        mPickImage->loadFullBitmap (getDeviceContext(), scale);
+        mPickImage->loadFullBitmap (getDeviceContext(), getBitmapProperties(), scale);
         setChangeRate (0);
 
         changed();
@@ -478,7 +478,7 @@ private:
       mNumThumbsLoaded = bestThumb (mThumbView.dstToSrc(0,0), &bestThumbImage, bestMetric);
       if (bestThumbImage) {
         if (bestThumbImage->getNoThumb()) {
-          if (bestThumbImage->loadThumbBitmap (getDeviceContext(), mThumbSize))
+          if (bestThumbImage->loadThumbBitmap (getDeviceContext(), getBitmapProperties(), mThumbSize))
             changed();
           }
         else

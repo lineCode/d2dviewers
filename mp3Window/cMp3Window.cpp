@@ -134,7 +134,7 @@ public:
       }
     else {
       mMp3File = new cMp3File (wFileName);
-      thread ([=]() { mMp3File->load (getDeviceContext()); }).detach();
+      thread ([=]() { mMp3File->load (getDeviceContext(), getBitmapProperties()); }).detach();
       }
 
     thread ([=]() { player(); }).detach();
@@ -370,7 +370,7 @@ private:
     while (slept < 20) {
       cMp3File* mp3File = nextLoadFile();
       if (mp3File)
-        mp3File->load (getDeviceContext());
+        mp3File->load (getDeviceContext(), getBitmapProperties());
       else
         Sleep (++slept);
       }

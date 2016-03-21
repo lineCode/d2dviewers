@@ -94,7 +94,7 @@ public:
   //}}}
 
   //{{{
-  void load (ID2D1DeviceContext* dc) {
+  void load (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties) {
 
     mLoaded = 1;
     auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
@@ -102,7 +102,7 @@ public:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    auto tagSize = id3tag (dc, fileBuffer, mFileBytes);
+    auto tagSize = id3tag (dc, bitmapProperties, fileBuffer, mFileBytes);
 
     cMp3Decoder mMp3Decoder;
     auto ptr = fileBuffer + tagSize;
@@ -201,7 +201,7 @@ public:
 
 private:
   //{{{
-  int id3tag (ID2D1DeviceContext* dc, uint8_t* buffer, int bufferLen) {
+  int id3tag (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, uint8_t* buffer, int bufferLen) {
   // check for ID3 tag
 
     auto ptr = buffer;
@@ -232,7 +232,7 @@ private:
 
         if (tag == 0x41504943) {
           auto jpegImage = new cJpegImage();
-          if (jpegImage->loadBuffer (dc, 1, ptr + 10 + 14, frameSize - 14))
+          if (jpegImage->loadBuffer (dc, bitmapProperties, 1, ptr + 10 + 14, frameSize - 14))
             mBitmap = jpegImage->getFullBitmap();
           }
         ptr += frameSize + 10;

@@ -157,8 +157,6 @@ using namespace std;
 static const int kBytesPerFormat[] = { 0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8 };
 
 static const wchar_t* kWeekDay[] = { L"Sun", L"Mon", L"Tue", L"Wed", L"Thu", L"Fri", L"Sat"};
-
-static const D2D1_BITMAP_PROPERTIES kBitmapProperties = { DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE, 96.0f, 96.0f };
 //}}}
 
 class cJpegImage {
@@ -257,7 +255,7 @@ public:
     }
   //}}}
   //{{{
-  bool loadThumbBitmap (ID2D1DeviceContext* dc, D2D1_SIZE_U& thumbSize) {
+  bool loadThumbBitmap (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, D2D1_SIZE_U& thumbSize) {
 
     mNoThumb = false;
 
@@ -335,7 +333,7 @@ public:
     CloseHandle (fileHandle);
 
     auto time1 = getTimer();
-    dc->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight), thumbArray, pitch, kBitmapProperties, &mD2D1BitmapThumb);
+    dc->CreateBitmap (D2D1::SizeU (thumbWidth, thumbHeight), thumbArray, pitch, bitmapProperties, &mD2D1BitmapThumb);
     free (thumbArray);
 
     auto time2 = getTimer();
@@ -345,7 +343,7 @@ public:
     }
   //}}}
   //{{{
-  bool loadBuffer (ID2D1DeviceContext* dc, int scale, uint8_t* buffer, size_t bufferSize) {
+  bool loadBuffer (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, int scale, uint8_t* buffer, size_t bufferSize) {
   // load jpegImage in buffer, line by line into created bitmap
 
     if (mD2D1BitmapFull)
@@ -379,7 +377,7 @@ public:
     mFullSize.height = cinfo.output_height;
     auto pitch = cinfo.output_components * mFullSize.width;
 
-    dc->CreateBitmap (mFullSize, kBitmapProperties, &mD2D1BitmapFull);
+    dc->CreateBitmap (mFullSize, bitmapProperties, &mD2D1BitmapFull);
 
     BYTE* lineArray[1];
     lineArray[0] = (BYTE*)malloc (pitch);;
@@ -401,7 +399,7 @@ public:
     }
   //}}}
   //{{{
-  bool loadFullBitmap (ID2D1DeviceContext* dc, int scale) {
+  bool loadFullBitmap (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, int scale) {
 
     if (mD2D1BitmapFull)
       return false;
@@ -418,7 +416,7 @@ public:
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto buffer = (BYTE*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    bool ret = loadBuffer (dc, scale, buffer, bufferSize);
+    bool ret = loadBuffer (dc, bitmapProperties, scale, buffer, bufferSize);
 
     // close the file mapping object
     UnmapViewOfFile (buffer);
