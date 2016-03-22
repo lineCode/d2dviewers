@@ -32,7 +32,7 @@ public:
     if (mSensorId != 0x1519) {
       writeReg (0xF0, 0);
       mSensorId = readReg (0x00);
-      wcout << L"sensorid " << mSensorId << endl;
+      wcout << L"sensorid " << hex<< mSensorId << endl;
       }
 
     if (mSensorId == 0x1519)
@@ -226,6 +226,13 @@ private:
     }
   //}}}
   //{{{
+  void drawMidLine (ID2D1DeviceContext* dc, int rows) {
+
+    dc->FillRectangle (RectF(getClientF().width/2.0f, mRowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*mRowPixels),
+                       getBlackBrush());
+    }
+  //}}}
+  //{{{
   void drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
     auto r = RectF(0.0f, mRowPixels, getClientF().width, getClientF().height);
@@ -320,13 +327,6 @@ private:
       rGraticule.left = rGraticule.right;
       more &= rGraticule.left < getClientF().width;
       }
-    }
-  //}}}
-  //{{{
-  void drawMidLine (ID2D1DeviceContext* dc, int rows) {
-
-    dc->FillRectangle (RectF(getClientF().width/2.0f, mRowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*mRowPixels),
-                       getBlackBrush());
     }
   //}}}
   //{{{
@@ -523,12 +523,9 @@ private:
     if (!mJpeg422 && !mBayer && (frameBytes == width * height * 2)) {
       //{{{  yuv
       if (mHistogram)
-        for (auto i = 0; i < 0x100; i++)
-          mHistogramValues[i] = 0;
-
+        memset (mHistogramValues, 0, 0x100 * 4);
       if (mVector)
-        for (auto i = 0; i < 0x4000; i++)
-          mVectorValues[i] = false;
+        memset (mVectorValues, 0, 0x4000);
 
       auto bufferEnd = buffer + bufferLen;
       while (buffer < bufferEnd) {
@@ -544,7 +541,6 @@ private:
           mHistogramValues [y1 >> mBucket]++;
           mHistogramValues [y2 >> mBucket]++;
           }
-
         if (mVector)
           mVectorValues [((v << 6) & 0x3F80) | (u >> 1)] = true;
 
@@ -702,7 +698,7 @@ private:
       free (bufferAlloc);
       }
     else {
-      printf ("bytes:%d jpeg:%d bayer:%d w:%d h:%d\n", frameBytes, mJpeg422, mBayer, width, height);
+      printf ("ignore - bytes:%d jpeg:%d bayer:%d w:%d h:%d\n", frameBytes, mJpeg422, mBayer, width, height);
       if (mBitmap) {
         mBitmap->Release();
         mBitmap = nullptr;
