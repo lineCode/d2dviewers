@@ -119,10 +119,11 @@ protected:
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
 
+    auto showWaveform = mShowWaveform;
+    mShowWaveform = inClient;
+
     auto showChannel = mShowChannel;
     mShowChannel = inClient && (x < 80);
-    if (showChannel != mShowChannel)
-      changed();
 
     mProxChannel = -1;
     if (x < 80) {
@@ -137,6 +138,9 @@ protected:
           }
         }
       }
+
+    if ((showWaveform != mShowWaveform) || (showChannel != mShowChannel))
+      changed();
     }
   //}}}
   //{{{
@@ -201,23 +205,26 @@ protected:
     auto rVol= RectF (getClientF().width - 20,0, getClientF().width, getVolume() * 0.8f * getClientF().height);
     dc->FillRectangle (rVol, getYellowBrush());
     //}}}
-    //{{{  blue waveform
-    auto secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
-    uint8_t* power = nullptr;
-    auto frames = 0;
-    auto rWave = RectF (0,0,1,0);
-    for (; rWave.left < getClientF().width; rWave.left++, rWave.right++) {
-      if (!frames)
-        power = mPlayer->getPower (secs, frames);
-      if (power) {
-        rWave.top = (float)*power++;
-        rWave.bottom = rWave.top + *power++;
-        dc->FillRectangle (rWave, getBlueBrush());
-        frames--;
+
+    if (mShowWaveform || !(dynamic_cast<cHlsRadio*>(mPlayer))->isTvChannel()) {
+      //{{{  blue waveform
+      auto secs = mPlayer->getPlaySecs() - (mPlayer->getSecsPerAudFrame() * getClientF().width / 2.0);
+      uint8_t* power = nullptr;
+      auto frames = 0;
+      auto rWave = RectF (0,0,1,0);
+      for (; rWave.left < getClientF().width; rWave.left++, rWave.right++) {
+        if (!frames)
+          power = mPlayer->getPower (secs, frames);
+        if (power) {
+          rWave.top = (float)*power++;
+          rWave.bottom = rWave.top + *power++;
+          dc->FillRectangle (rWave, getBlueBrush());
+          frames--;
+          }
+        secs += mPlayer->getSecsPerAudFrame();
         }
-      secs += mPlayer->getSecsPerAudFrame();
       }
-    //}}}
+      //}}}
 
     //{{{  topLine info text
     wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
@@ -347,6 +354,7 @@ private:
 
   int mHttpRxBytes = 0;
 
+  bool mShowWaveform = false;
   bool mShowChannel = false;
 
   HANDLE mSemaphore;

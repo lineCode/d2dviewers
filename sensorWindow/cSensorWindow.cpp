@@ -36,9 +36,9 @@ public:
       }
 
     if (mSensorId == 0x1519)
-      pll (16, 1, 1);
+      setPll (16, 1, 1);
 
-    preview();
+    setPreview();
 
     auto loaderThread = thread([=]() { loader(); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
@@ -95,19 +95,19 @@ protected:
       case 'B': setFocus (--mFocus); break;
       case 'N': setFocus (++mFocus); break;
 
-      case 'Q': preview(); break;
-      case 'W': capture(); break;
-      case 'E': bayer(); break;
-      case 'J': jpeg (1600, 1200); break;
+      case 'Q': setPreview(); break;
+      case 'W': setCapture(); break;
+      case 'E': setBayer(); break;
+      case 'J': setJpeg (1600, 1200); break;
 
-      case 'A': pll (++pllm, plln, pllp); break;
-      case 'Z': pll (--pllm, plln, pllp); break;
-      case 'S': pll (pllm, ++plln, pllp); break;
-      case 'X': pll (pllm, --plln, pllp); break;
-      case 'D': pll (pllm, plln, ++pllp); break;;
-      case 'C': pll (pllm, plln, --pllp); break;
-      case 'R': pll (80, 11, 0); break;  // 80 Mhz
-      case 'T': pll (16, 1, 1); break;  // 48 Mhz
+      case 'A': setPll (++mPllm, mPlln, mPllp); break;
+      case 'Z': setPll(--mPllm, mPlln, mPllp); break;
+      case 'S': setPll(mPllm, ++mPlln, mPllp); break;
+      case 'X': setPll(mPllm, --mPlln, mPllp); break;
+      case 'D': setPll(mPllm, mPlln, ++mPllp); break;;
+      case 'C': setPll(mPllm, mPlln, --mPllp); break;
+      case 'R': setPll(80, 11, 0); break;  // 80 Mhz
+      case 'T': setPll(16, 1, 1); break;  // 48 Mhz
 
       default: wcout << L"key:" << key << endl;
       }
@@ -165,58 +165,35 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    drawBackground (dc, mFramePtr);
-    drawSamplesFramesTitle (dc);
-    drawSensor (dc, mSensorId);
+    drawBackground (dc);
+    drawTitle (dc);
+    drawSensorInfo (dc, mSensorId);
 
     if (mWaveform) {
+      drawMidLine (dc, 8);
       drawLeftLabels (dc, 8);
       drawSamples (dc, 0x100);
       drawGraticule (dc, 8);
-      drawMidLine (dc, 8);
       }
 
-    if (!mBayer10 && !mJpeg422 && mHistogram)
-      drawLumaHistogram (dc);
-
-    if (!mBayer10 && !mJpeg422 && mVector)
-      drawChromaVector (dc);
+    if (!mBayer && !mJpeg422) {
+      if (mHistogram)
+        drawLumaHistogram (dc);
+      if (mVector)
+        drawChromaVector (dc);
+      }
     }
   //}}}
 
 private:
   //{{{
-  void drawBackground (ID2D1DeviceContext* dc, uint8_t* framePtr) {
+  void drawBackground (ID2D1DeviceContext* dc) {
 
+    auto framePtr = mFramePtr;
     if (framePtr && (framePtr != mLastFramePtr)) {
       mGrabbedFrameBytes = mFrameBytes;
-      makeBitmap (framePtr, mFrameBytes);
+      makeBitmap (framePtr, mFrameBytes, mWidth, mHeight);
       framePtr = mLastFramePtr;
-
-      if (mJpeg422) {
-        //writeReg (0xc6, 0xa90a); printf ("JPEG_QSCALE_1 %d\n",readReg (0xc8));
-        //int qscale1 = readReg (0xc8);
-        int qscale1 = 1;
-
-        BYTE jpegHeader [1000];
-        int jpegHeaderBytes  = setJpegHeader (jpegHeader, mWidth, mHeight, 0, qscale1);
-        BYTE* endPtr = framePtr + mFrameBytes - 4;
-        int jpegBytes = *endPtr++;
-        jpegBytes += (*endPtr++) << 8;
-        jpegBytes += (*endPtr++) << 16;
-        int status = *endPtr;
-
-        char filename[200];
-        sprintf (filename, "C:\\Users\\nnn\\Pictures\\Camera Roll\\cam%2d.jpg", mJpegFrameCount++);
-
-        if ((status & 0x0f) == 0x01) {
-          FILE* imfile = fopen (filename,"wb");
-          fwrite (jpegHeader, 1, jpegHeaderBytes, imfile);     // write JPEG header
-          fwrite (framePtr, 1, jpegBytes, imfile); // write JPEG data
-          fwrite ("\xff\xd9", 1, 2, imfile);                   // write JPEG EOI marker
-          fclose (imfile);
-          }
-        }
       }
 
     if (mBitmap)
@@ -226,20 +203,20 @@ private:
     }
   //}}}
   //{{{
-  void drawSamplesFramesTitle (ID2D1DeviceContext* dc) {
+  void drawTitle (ID2D1DeviceContext* dc) {
 
     wstringstream str;
     str << L" fs:" << mFrames / getTimer()
         << L" bytes:" << mGrabbedFrameBytes
-        << L" w:" << mWidth
-        << L" h:" << mHeight
+        << L" width:" << mWidth
+        << L" height:" << mHeight
         << L" focus:" << mFocus;
     dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                   RectF(mLeftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
     }
   //}}}
   //{{{
-  void drawSensor (ID2D1DeviceContext* dc, int sensorid) {
+  void drawSensorInfo (ID2D1DeviceContext* dc, int sensorid) {
 
     if (sensorid == 0x1519) {
       wstring wstr = L"Mt9d111";
@@ -321,7 +298,7 @@ private:
     dc->DrawText (mGraticuleStr.data(), (uint32_t)mGraticuleStr.size(), getTextFormat(),
                   RectF (0, 0, mLeftPixels, mRowPixels), getWhiteBrush());
 
-    auto rg = RectF (0, mRowPixels, 0, (rows+1)*mRowPixels);
+    auto rGraticule = RectF (0, mRowPixels, 0, (rows+1)*mRowPixels);
     auto leftSample = mMidSample - ((getClientF().width/2.0f - mLeftPixels) * mSamplesPerPixel);
     auto graticule = int(leftSample + (mSamplesPerGraticule - 1.0)) / (int)mSamplesPerGraticule;
     auto graticuleSample = graticule * mSamplesPerGraticule;
@@ -332,16 +309,16 @@ private:
       if (!more)
         graticuleSample = (double)mMaxSamples;
 
-      rg.left = float((graticuleSample - mMidSample) / mSamplesPerPixel) + getClientF().width/2.0f;
-      rg.right = rg.left+1;
+      rGraticule.left = float((graticuleSample - mMidSample) / mSamplesPerPixel) + getClientF().width/2.0f;
+      rGraticule.right = rGraticule.left + 1.0f;
       if (graticule > 0)
-        dc->FillRectangle (rg, getGreyBrush());
+        dc->FillRectangle (rGraticule, getGreyBrush());
 
       graticule++;
       graticuleSample += mSamplesPerGraticule;
 
-      rg.left = rg.right;
-      more &= rg.left < getClientF().width;
+      rGraticule.left = rGraticule.right;
+      more &= rGraticule.left < getClientF().width;
       }
     }
   //}}}
@@ -535,99 +512,15 @@ private:
     }
   //}}}
   //{{{
-  void makeBitmap (uint8_t* frameBuffer, int frameBytes) {
+  void makeBitmap (uint8_t* frameBuffer, int frameBytes, int width, int height) {
 
     // create bitmap from frameBuffer
-    auto bufferLen = mWidth * mHeight * 4;
+    auto bufferLen = width * height * 4;
     auto bufferAlloc = (uint8_t*)malloc (bufferLen);
     auto buffer = bufferAlloc;
 
-    if (mJpeg422) {
-      if ((frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
-        //{{{  decode jpeg
-        auto endPtr = frameBuffer + frameBytes - 4;
-
-        int jpegBytes = *endPtr++;
-        jpegBytes += (*endPtr++) << 8;
-        jpegBytes += (*endPtr++) << 16;
-
-        auto status = *endPtr;
-        if ((status & 0x0f) == 0x01) {
-          cinfo.err = jpeg_std_error (&jerr);
-          jpeg_create_decompress (&cinfo);
-          jpegHeaderBytes = setJpegHeader (jpegHeader, mWidth, mHeight, 0, 6);
-
-          jpeg_mem_src (&cinfo, jpegHeader, jpegHeaderBytes);
-          jpeg_read_header (&cinfo, TRUE);
-          cinfo.out_color_space = JCS_EXT_BGRA;
-
-          //wraparound problem if (frame >= maxSamplePtr)  frame = samples;
-          frameBuffer[jpegBytes] = 0xff;
-          frameBuffer[jpegBytes+1] = 0xd9;
-          jpeg_mem_src (&cinfo, frameBuffer, jpegBytes+2);
-          jpeg_start_decompress (&cinfo);
-
-          while (cinfo.output_scanline < cinfo.output_height) {
-            unsigned char* bufferArray[1];
-            bufferArray[0] = buffer + (cinfo.output_scanline * cinfo.output_width * cinfo.output_components);
-            jpeg_read_scanlines(&cinfo, bufferArray, 1);
-            }
-
-          jpeg_finish_decompress (&cinfo);
-          jpeg_destroy_decompress (&cinfo);
-          }
-        else
-          printf ("err status %x %d %d\n", status, frameBytes, jpegBytes);
-        }
-        //}}}
-      }
-    else if (mBayer10) {
-      //{{{  bayer
-      //  g r    right to left
-      //  b g
-      int x = 0;
-      int y = 0;
-
-      auto bufferEnd = buffer + bufferLen;
-      while (buffer < bufferEnd) {
-        if (frameBuffer >= mMaxSamplePtr)
-          frameBuffer = mSamples;
-
-        if ((y & 0x01) == 0) {
-          // even lines
-          *buffer++ = 0;
-          *buffer++ = *frameBuffer++;; // g1
-          *buffer++ = 0;
-          *buffer++ = 255;
-
-          *buffer++ = 0;
-          *buffer++ = 0;
-          *buffer++ = *frameBuffer++;  // r
-          *buffer++ = 255;
-          }
-
-        else {
-          // odd lines
-          *buffer++ = *frameBuffer++; // b
-          *buffer++ = 0;
-          *buffer++ = 0;
-          *buffer++ = 255;
-
-          *buffer++ = 0;
-          *buffer++ = *frameBuffer++; // g2
-          *buffer++ = 0;
-          *buffer++ = 255;
-          }
-        x += 2;
-
-        if (x >= mWidth) {
-          y++;
-          x = 0;
-          }
-        }
-      }
-      //}}}
-    else {
+    bool ok = false;
+    if (!mJpeg422 && !mBayer && (frameBytes == width * height * 2)) {
       //{{{  yuv
       if (mHistogram)
         for (auto i = 0; i < 0x100; i++)
@@ -677,75 +570,176 @@ private:
         for (auto i = 0; i < 0x100 >> mBucket; i++)
           mHistogramValues[i] = (mHistogramValues[i] << 8) / maxHistogram;
         }
+
+      ok = true;
+      }
+      //}}}
+    else if (mJpeg422 && (frameBytes != 800*600*2) && (frameBytes != 1600*800*2) && (frameBytes != 1600*800)) {
+      //{{{  decode jpeg
+      auto endPtr = frameBuffer + frameBytes - 4;
+
+      int jpegBytes = *endPtr++;
+      jpegBytes += (*endPtr++) << 8;
+      jpegBytes += (*endPtr++) << 16;
+
+      auto status = *endPtr;
+      if ((status & 0x0f) == 0x01) {
+        cinfo.err = jpeg_std_error (&jerr);
+        jpeg_create_decompress (&cinfo);
+        jpegHeaderBytes = setJpegHeader (jpegHeader, width, height, 0, 6);
+
+        jpeg_mem_src (&cinfo, jpegHeader, jpegHeaderBytes);
+        jpeg_read_header (&cinfo, TRUE);
+        cinfo.out_color_space = JCS_EXT_BGRA;
+
+        //wraparound problem if (frame >= maxSamplePtr)  frame = samples;
+        frameBuffer[jpegBytes] = 0xff;
+        frameBuffer[jpegBytes+1] = 0xd9;
+        jpeg_mem_src (&cinfo, frameBuffer, jpegBytes+2);
+        jpeg_start_decompress (&cinfo);
+
+        while (cinfo.output_scanline < cinfo.output_height) {
+          unsigned char* bufferArray[1];
+          bufferArray[0] = buffer + (cinfo.output_scanline * cinfo.output_width * cinfo.output_components);
+          jpeg_read_scanlines(&cinfo, bufferArray, 1);
+          }
+
+        jpeg_finish_decompress (&cinfo);
+        jpeg_destroy_decompress (&cinfo);
+        ok = true;
+
+
+        if (false) {
+          //writeReg (0xc6, 0xa90a); printf ("JPEG_QSCALE_1 %d\n",readReg (0xc8));
+          //int qscale1 = readReg (0xc8);
+          int qscale1 = 1;
+
+          BYTE jpegHeader [1000];
+          int jpegHeaderBytes  = setJpegHeader (jpegHeader, width, height, 0, qscale1);
+          BYTE* endPtr = frameBuffer + mFrameBytes - 4;
+          int jpegBytes = *endPtr++;
+          jpegBytes += (*endPtr++) << 8;
+          jpegBytes += (*endPtr++) << 16;
+          int status = *endPtr;
+
+          char filename[200];
+          sprintf (filename, "C:\\Users\\nnn\\Pictures\\Camera Roll\\cam%2d.jpg", mJpegFrameCount++);
+
+          if ((status & 0x0f) == 0x01) {
+            FILE* imfile = fopen (filename,"wb");
+            fwrite (jpegHeader, 1, jpegHeaderBytes, imfile); // write JPEG header
+            fwrite (frameBuffer, 1, jpegBytes, imfile);         // write JPEG data
+            fwrite ("\xff\xd9", 1, 2, imfile);               // write JPEG EOI marker
+            fclose (imfile);
+            }
+          }
+        }
+      else
+        printf ("err status %x %d %d\n", status, frameBytes, jpegBytes);
+      }
+      //}}}
+    else if (mBayer && (frameBytes == 1608 * 1208)) {
+      //{{{  bayer
+      //  g r    right to left
+      //  b g
+      int x = 0;
+      int y = 0;
+
+      auto bufferEnd = buffer + bufferLen;
+      while (buffer < bufferEnd) {
+        if (frameBuffer >= mMaxSamplePtr)
+          frameBuffer = mSamples;
+
+        if ((y & 0x01) == 0) {
+          // even lines
+          *buffer++ = 0;
+          *buffer++ = *frameBuffer++;; // g1
+          *buffer++ = 0;
+          *buffer++ = 255;
+
+          *buffer++ = 0;
+          *buffer++ = 0;
+          *buffer++ = *frameBuffer++;  // r
+          *buffer++ = 255;
+          }
+
+        else {
+          // odd lines
+          *buffer++ = *frameBuffer++; // b
+          *buffer++ = 0;
+          *buffer++ = 0;
+          *buffer++ = 255;
+
+          *buffer++ = 0;
+          *buffer++ = *frameBuffer++; // g2
+          *buffer++ = 0;
+          *buffer++ = 255;
+          }
+        x += 2;
+
+        if (x >= width) {
+          y++;
+          x = 0;
+          }
+        }
+
+      ok = true;
       }
       //}}}
 
-    if (mBitmap) {
-      auto pixelSize = mBitmap->GetPixelSize();
-      if ((pixelSize.width != mWidth) || (pixelSize.height != mHeight)) {
+    if (ok) {
+      if (mBitmap) {
+        auto pixelSize = mBitmap->GetPixelSize();
+        if ((pixelSize.width != width) || (pixelSize.height != height)) {
+          mBitmap->Release();
+          mBitmap = nullptr;
+          }
+        }
+      if (!mBitmap)
+        getDeviceContext()->CreateBitmap (SizeU(width, height), getBitmapProperties(), &mBitmap);
+
+      mBitmap->CopyFromMemory (&RectU (0, 0, width, height), bufferAlloc, width*4);
+      free (bufferAlloc);
+      }
+    else {
+      printf ("bytes:%d jpeg:%d bayer:%d w:%d h:%d\n", frameBytes, mJpeg422, mBayer, width, height);
+      if (mBitmap) {
         mBitmap->Release();
         mBitmap = nullptr;
         }
       }
-    if (!mBitmap)
-      getDeviceContext()->CreateBitmap (SizeU(mWidth, mHeight), getBitmapProperties(), &mBitmap);
-
-    mBitmap->CopyFromMemory (&RectU (0, 0, mWidth, mHeight), bufferAlloc, mWidth*4);
-    free (bufferAlloc);
     }
   //}}}
 
   //{{{
-  void pll (int m, int n, int p) {
+  void setPll (int m, int n, int p) {
 
-    pllm = m;
-    plln = n;
-    pllp = p;
+    mPllm = m;
+    mPlln = n;
+    mPllp = p;
 
     if (mSensorId == 0x1519) {
       printf ("pll m:%d n:%d p:%d Fpfd(2-13):%d Fvco(110-240):%d Fout(6-80):%d\n",
-              pllm, plln, pllp,
-              24000000 / (plln+1),
-              (24000000 / (plln+1))*pllm,
-              ((24000000 / (plln+1) * pllm)/ (2*(pllp+1))) );
+              mPllm, mPlln, mPllp,
+               24000000 / (mPlln+1),
+              (24000000 / (mPlln+1))*mPllm,
+             ((24000000 / (mPlln+1) * mPllm)/ (2*(mPllp+1))) );
 
       //  PLL (24mhz/(N+1))*M / 2*(P+1)
-      writeReg (0x66, (pllm << 8) | plln);  // PLL Control 1    M:15:8,N:7:0 - M=16, N=1 (24mhz/(n1+1))*m16 / 2*(p1+1) = 48mhz
-      writeReg (0x67, 0x0500 | pllp);  // PLL Control 2 0x05:15:8,P:7:0 - P=3
+      writeReg (0x66, (mPllm << 8) | mPlln);  // PLL Control 1    M:15:8,N:7:0 - M=16, N=1 (24mhz/(n1+1))*m16 / 2*(p1+1) = 48mhz
+      writeReg (0x67, 0x0500 | mPllp);  // PLL Control 2 0x05:15:8,P:7:0 - P=3
       writeReg (0x65, 0xA000);  // Clock CNTRL - PLL ON
       writeReg (0x65, 0x2000);  // Clock CNTRL - USE PLL
       }
     }
   //}}}
   //{{{
-  void capture() {
-
-    wcout << L"capture" << endl;
-
-    mWidth = 1600;
-    mHeight = 1200;
-    mJpeg422 = false;
-    mBayer10 = false;
-
-    if (mSensorId == 0x1519) {
-      writeReg (0xF0, 1);
-      writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
-      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
-      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
-      }
-    else {
-      writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0002); // sequencer.params.mode - capture video
-      writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
-      }
-
-    mFramePtr = NULL;
-    }
-  //}}}
-  //{{{
-  void preview() {
+  void setPreview() {
 
     wcout << L"preview" << endl;
 
+    mBayer = false;
+    mJpeg422 = false;
     if (mSensorId == 0x1519) {
       mWidth = 800;
       mHeight = 600;
@@ -760,19 +754,43 @@ private:
       writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0000); // sequencer.params.mode - none
       writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0001); // sequencer.cmd - goto preview mode A
       }
-    mJpeg422 = false;
-    mBayer10 = false;
 
     mFramePtr = NULL;
     }
   //}}}
   //{{{
-  void jpeg (int width, int height) {
+  void setCapture() {
 
+    wcout << L"capture" << endl;
+
+    mBayer = false;
+    mJpeg422 = false;
+    mWidth = 1600;
+    mHeight = 1200;
+    if (mSensorId == 0x1519) {
+      writeReg (0xF0, 1);
+      writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
+      writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
+      writeReg (0xC6, 0xA103); writeReg (0xC8, 0x02); // Sequencer goto capture B
+      }
+    else {
+      writeReg (0x338C, 0xA120); writeReg (0x3390, 0x0002); // sequencer.params.mode - capture video
+      writeReg (0x338C, 0xA103); writeReg (0x3390, 0x0002); // sequencer.cmd - goto capture mode B
+      }
+
+
+    mFramePtr = NULL;
+    }
+  //}}}
+  //{{{
+  void setJpeg (int width, int height) {
+
+    wcout << L"jpeg" << endl;
+
+    mBayer = false;
+    mJpeg422 = true;
     mWidth = width;
     mHeight = height;
-    mJpeg422 = true;
-    mBayer10 = false;
 
     //{{{  last data byte status ifp page2 0x02
     // b:0 = 1  transfer done
@@ -833,12 +851,12 @@ private:
     writeReg (0xc6, 0x2776); writeReg (0xc8, 0x0001);
 
     // mode OUTPUT WIDTH HEIGHT B
-    writeReg (0xc6, 0x2707); writeReg (0xc8, mWidth);
-    writeReg (0xc6, 0x2709); writeReg (0xc8, mHeight);
+    writeReg (0xc6, 0x2707); writeReg (0xc8, width);
+    writeReg (0xc6, 0x2709); writeReg (0xc8, height);
 
     // mode SPOOF WIDTH HEIGHT B
-    writeReg (0xc6, 0x2779); writeReg (0xc8, mWidth);
-    writeReg (0xc6, 0x277b); writeReg (0xc8, mHeight);
+    writeReg (0xc6, 0x2779); writeReg (0xc8, width);
+    writeReg (0xc6, 0x277b); writeReg (0xc8, height);
 
     //writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
     writeReg (0xC6, 0xA120); writeReg (0xC8, 0x02); // Sequencer.params.mode - capture video
@@ -862,14 +880,16 @@ private:
     }
   //}}}
   //{{{
-  void bayer() {
+  void setBayer() {
 
     if (mSensorId == 0x1519) {
       wcout << L"bayer" << endl;
+
+      mBayer = true;
+      mJpeg422 = false;
+
       mWidth = 1608;
       mHeight = 1200;
-      mJpeg422 = false;
-      mBayer10 = true;
 
       writeReg (0xF0, 1);
       writeReg (0x09, 0x0008); // factory bypass 10 bit sensor
@@ -899,10 +919,7 @@ private:
   uint8_t* nextPacket (uint8_t* samplePtr, int packetLen) {
   // return nextPacket start address, wraparound if no room for another packetLen packet
 
-    if (samplePtr + packetLen + packetLen <= mMaxSamplePtr)
-      return samplePtr + packetLen;
-    else
-      return mSamples;
+    return (samplePtr + packetLen + packetLen <= mMaxSamplePtr) ? samplePtr + packetLen : mSamples;
     }
   //}}}
   //{{{
@@ -981,7 +998,7 @@ private:
     }
   //}}}
 
-  //{{{  private vars
+  //{{{  vars
   int mSensorId = 0;
 
   float mLeftPixels = 50.0f;
@@ -1012,14 +1029,14 @@ private:
 
   int mWidth = 800;
   int mHeight = 600;
-  ID2D1Bitmap* mBitmap = nullptr;
-
-  bool mBayer10 = false;
   bool mJpeg422 = false;
+  bool mBayer = false;
   bool mWaveform = false;
   bool mHistogram = true;
   bool mVector = true;
   int mJpegFrameCount = 0;
+
+  ID2D1Bitmap* mBitmap = nullptr;
 
   int mFocus = 0;
   uint8_t mBucket = 1;
@@ -1040,9 +1057,9 @@ private:
   int transitionCount [32];
   //}}}
   //{{{  pll
-  int pllm = 16;
-  int plln = 1;
-  int pllp = 1;
+  int mPllm = 16;
+  int mPlln = 1;
+  int mPllp = 1;
   //}}}
   //{{{  jpeg
   struct jpeg_decompress_struct cinfo;
