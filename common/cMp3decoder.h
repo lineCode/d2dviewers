@@ -2424,10 +2424,8 @@ private:
     dct32 (subBandSamples + (channel*36*32) + (frame*32), tmp);
 
     auto offsetSynthBuf = mSynthBuf[channel] + mSynthBufOffset[channel];
-    for (auto j = 0; j < 32; j++) // could 16bit integer limit here
+    for (auto j = 0; j < 32; j++) // could 32bit to 16bit - could limit 
       offsetSynthBuf[j] = tmp[j];
-
-    // copy to avoid wrap
     memcpy (offsetSynthBuf + 512, offsetSynthBuf, 32 * sizeof(int16_t));
 
     auto samples2 = outSamples + 31 * mNumChannels;
@@ -2502,7 +2500,7 @@ private:
       calcPower (&subBandSamples[0][0][0], power);
 
     if (outSamples) {
-      // apply synthFilter to generate outSamples
+      // synthFilter subBandsamples to outSamples, using synthBuffer
       for (auto channel = 0; channel < mNumChannels; channel++) {
         auto outSamplesPtr = outSamples + channel;
         for (auto frame = 0; frame < numFrames; frame++) {
