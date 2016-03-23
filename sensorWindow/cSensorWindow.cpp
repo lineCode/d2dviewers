@@ -38,9 +38,11 @@ public:
     if (mSensorId == 0x1519) {
       setPll (16, 1, 1);
       //setPll(80, 11, 0);  // 80 Mhz
+      setPreview();
       //setJpeg (1600, 1200);
       }
-    setPreview();
+    else
+      setPreview();
 
     auto loaderThread = thread([=]() { loader(); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
