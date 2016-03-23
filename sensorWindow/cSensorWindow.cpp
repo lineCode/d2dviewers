@@ -35,9 +35,11 @@ public:
       wcout << L"sensorid " << hex<< mSensorId << endl;
       }
 
-    if (mSensorId == 0x1519)
+    if (mSensorId == 0x1519) {
       setPll (16, 1, 1);
-
+      //setPll(80, 11, 0);  // 80 Mhz
+      //setJpeg (1600, 1200);
+      }
     setPreview();
 
     auto loaderThread = thread([=]() { loader(); });
@@ -736,6 +738,7 @@ private:
 
     mBayer = false;
     mJpeg422 = false;
+
     if (mSensorId == 0x1519) {
       mWidth = 800;
       mHeight = 600;
@@ -763,6 +766,7 @@ private:
     mJpeg422 = false;
     mWidth = 1600;
     mHeight = 1200;
+
     if (mSensorId == 0x1519) {
       writeReg (0xF0, 1);
       writeReg (0x09, 0x000A); // factory bypass 10 bit sensor
