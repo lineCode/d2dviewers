@@ -4,8 +4,17 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <math.h>
+
+#ifdef WIN32
+  #define pvPortMalloc malloc
+  #define vPortFree free
+#else
+  #include "cmsis_os.h"
+  #include "../Bsp/cLcd.h"
+#endif
 //}}}
 //{{{  defines
+#define PI 3.141592654f
 #define FRAC_BITS   15
 #define WFRAC_BITS  14
 
@@ -802,21 +811,19 @@ public:
 
     if (!table_4_3_exp) {
       //{{{  compute n ^ (4/3) and store it in mantissa/exp format
-      table_4_3_exp = (int8_t*)malloc ((8191 + 16)*4 * sizeof(table_4_3_exp[0]));
-      table_4_3_value = (uint32_t*)malloc ((8191 + 16)*4 * sizeof(table_4_3_value[0]));
+      table_4_3_exp = (int8_t*)pvPortMalloc ((8191 + 16)*4 * sizeof (table_4_3_exp[0]));
+      table_4_3_value = (uint32_t*)pvPortMalloc ((8191 + 16)*4 * sizeof (table_4_3_value[0]));
+
       for (auto i = 1; i < (8191 + 16) * 4; i++) {
         int e;
-        auto f = pow ((double)(i/4), 4.0 / 3.0) * pow(2, (i&3)*0.25);
-        auto fm = frexp (f, &e);
-        auto m = (uint32_t)(fm * (1LL << 31) + 0.5);
-        e += FRAC_BITS - 31 + 5 - 100;
-        table_4_3_value[i] = m;
-        table_4_3_exp[i] = -e;
+        float fm = frexpf (powf (i/4.0f, 4.0f/3.0f) * powf (2.0f, (i & 3) * 0.25f), &e);
+        table_4_3_value[i] = (uint32_t)(fm * (1LL << 31) + 0.5f);
+        table_4_3_exp[i] = -e - FRAC_BITS + 31 - 5 + 100;
         }
 
       for (auto i = 0; i < 512*16; i++){
-        auto exponent = (i >> 4);
-        auto f = pow (i & 15, 4.0 / 3.0) * pow (2, (exponent - 400) * 0.25 + FRAC_BITS + 5);
+        auto exponent = i >> 4;
+        float f = powf (float(i & 15), 4.0f / 3.0f) * powf (2.0f, (exponent - 400.0f) * 0.25f + FRAC_BITS + 5.0f);
         expval_table[exponent][i & 15] = (uint32_t)f;
         if ((i & 15) == 1)
           exp_table[exponent]= (uint32_t)f;
@@ -825,11 +832,11 @@ public:
       for (auto i = 0; i < 7; i++) {
         int v;
         if (i != 6) {
-          float f = (float)tan ((double)i * M_PI / 12.0);
-          v = FIXR(f / (1.0 + f));
+          float f = (float)tanf (i * PI / 12.0f);
+          v = FIXR(f / (1.0f + f));
           }
         else
-          v = FIXR(1.0);
+          v = FIXR(1.0f);
         is_table[0][i] = v;
         is_table[1][6 - i] = v;
         }
@@ -840,10 +847,10 @@ public:
       for (auto i = 0; i < 16; i++)
         for (auto j = 0; j < 2; j++) {
           auto e = -(j + 1) * ((i + 1) >> 1);
-          auto f = pow(2.0, e / 4.0);
+          float f = powf (2.0f, e / 4.0f);
           auto k = i & 1;
           is_table_lsf[j][k ^ 1][i] = FIXR(f);
-          is_table_lsf[j][k][i] = FIXR(1.0);
+          is_table_lsf[j][k][i] = FIXR(1.0f);
           }
 
       for (auto i = 0; i < 8; i++) {
@@ -886,7 +893,7 @@ public:
 
         auto h = &mp3_huff_tables[i];
         auto xsize = h->xsize;
-        auto n = xsize * xsize;
+        //auto n = xsize * xsize;
 
         int j = 0;
         for (auto x = 0; x < xsize; x++)
@@ -919,12 +926,12 @@ public:
           if (j == 2 && i % 3 != 1)
             continue;
 
-          double d = sin (M_PI * (i + 0.5) / 36.0);
+          float d = sinf (PI * (i + 0.5f) / 36.0f);
           if (j == 1) {
               if (i >= 30)
                 d = 0;
               else if (i >= 24)
-                d = sin (M_PI * (i - 18 + 0.5) / 12.0);
+                d = sinf (PI * (i - 18 + 0.5f) / 12.0f);
               else if (i >= 18)
                 d = 1;
             }
@@ -932,11 +939,11 @@ public:
             if (i <  6)
               d = 0;
             else if (i < 12)
-              d = sin (M_PI * (i -  6 + 0.5) / 12.0);
+              d = sinf (PI * (i -  6 + 0.5f) / 12.0f);
             else if (i < 18)
               d = 1;
             }
-          d *= 0.5 / cos (M_PI * (2 * i + 19) / 72);
+          d *= 0.5f / cosf (PI * (2.0f * i + 19) / 72.0f);
           if (j == 2)
             mdct_win[j][i/3] = FIXHR((d / (1 << 5)));
           else
@@ -1004,7 +1011,7 @@ private:
   //}}}
   //{{{
   int buildVlcTable (vlc_t* vlc, int table_nb_bits, int nb_codes, const void* bits, int bits_wrap, int bits_size,
-                  const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
+                     const void *codes, int codes_wrap, int codes_size, uint32_t code_prefix, int n_prefix) {
 
     auto table_size = 1 << table_nb_bits;
     auto table_index = vlc->table_size;
@@ -1028,7 +1035,7 @@ private:
       if (n <= 0)
         continue;
       n -= n_prefix;
-      int code_prefix2 = code >> n;
+      uint32_t code_prefix2 = code >> n;
       if (n > 0 && code_prefix2 == code_prefix) {
         if (n <= table_nb_bits) {
           int j = (code << (table_nb_bits - n)) & (table_size - 1);
@@ -1292,7 +1299,6 @@ private:
     mSampleRate = mp3_freq_tab[mSampleRateIndex] >> (mLsf + mpeg25);
     mSampleRateIndex += 3 * (mLsf + mpeg25);
     mErrorProtection = ((header >> 16) & 1) ^ 1;
-    mSampleRate = mSampleRate;
 
     auto bitrate_index = (header >> 12) & 0xf;
     auto padding = (header >> 9) & 1;
@@ -1311,7 +1317,7 @@ private:
   //}}}
 
   //{{{
-  void imdct12 (int* out, int* in) {
+  void imdct12 (int32_t* out, int32_t* in) {
 
     auto in0 = in[0*3];
     auto in1 = in[1*3] + in[0*3];
@@ -1345,7 +1351,7 @@ private:
     }
   //}}}
   //{{{
-  void imdct36 (int* out, int* buf, int* in, int* win) {
+  void imdct36 (int32_t* out, int32_t* buf, int32_t* in, int32_t* win) {
 
     for (auto i = 17; i >= 1; i--)
       in[i] += in[i-1];
@@ -2153,7 +2159,8 @@ private:
   int decodeLayer3 (int32_t* subBandSamples) {
 
     int mainDataBegin = get_bits (&mBitstream, mLsf ? 8 : 9);
-    int privateBits = get_bits (&mBitstream, mLsf ? mNumChannels : mNumChannels == 2 ? 3 : 5);
+    //int privateBits =
+    get_bits (&mBitstream, mLsf ? mNumChannels : mNumChannels == 2 ? 3 : 5);
     int numGranules = mLsf ? 1 : 2;
 
     granule_t mGranules[2][2];
@@ -2411,8 +2418,10 @@ private:
 
     for (auto channel = 0; channel < 2; channel++) {
       float value = 0;
-      for (auto i = 0; i < 36*32; i++)
-        value += (*subBandSamples) * (*subBandSamples++);
+      for (auto i = 0; i < 36*32; i++) {
+        value += (*subBandSamples) * (*subBandSamples);
+        subBandSamples++;
+        }
       *power++ = (float)sqrt (value / (36 * 32 * 256));
       }
     }
@@ -2424,7 +2433,7 @@ private:
     dct32 (subBandSamples + (channel*36*32) + (frame*32), tmp);
 
     auto offsetSynthBuf = mSynthBuf[channel] + mSynthBufOffset[channel];
-    for (auto j = 0; j < 32; j++) // could 32bit to 16bit - could limit 
+    for (auto j = 0; j < 32; j++) // could 32bit to 16bit - could limit
       offsetSynthBuf[j] = tmp[j];
     memcpy (offsetSynthBuf + 512, offsetSynthBuf, 32 * sizeof(int16_t));
 
