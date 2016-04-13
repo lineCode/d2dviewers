@@ -271,7 +271,7 @@ protected:
       wstringstream str;
       str << mPlaySecs
           << L" " << mMp3File->getMaxSecs()
-          << L" " << mMp3File->getBitRate()/1000
+          << L" " << mMp3File->getBitRate()
           << L" " << getAudSampleRate()
           << L" " << mMp3File->getChannels()
           << L" " << mMp3File->getMode();

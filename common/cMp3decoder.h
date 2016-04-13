@@ -1307,9 +1307,8 @@ private:
     mNumChannels = (mode == 3) ? 1 : 2; // mono flags
 
     if (bitrate_index != 0) {
-      auto frame_size = mp3_bitrate_tab[mLsf][bitrate_index];
-      mBitRate = frame_size * 1000;
-      return (frame_size * 144000) / (mSampleRate << mLsf) + padding;
+      mBitRate = mp3_bitrate_tab[mLsf][bitrate_index];
+      return (mBitRate * 144000) / (mSampleRate << mLsf) + padding;
       }
     else
       return 0;
