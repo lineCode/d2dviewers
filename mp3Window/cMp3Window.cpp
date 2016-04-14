@@ -383,7 +383,7 @@ private:
     }
   //}}}
   //{{{
-  void player() {
+  void oldPlayer() {
 
     CoInitialize (NULL);
 
@@ -405,6 +405,66 @@ private:
       else
         audSilence();
       }
+
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void player() {
+
+    CoInitialize (NULL);
+
+    cMp3Decoder* mMp3Decoder = new cMp3Decoder();
+
+    while (!mMp3File || mMp3File->getMaxSecs() < 1)
+      Sleep (10);
+    auto samples = (int16_t*)malloc (1152*2*2);
+    audOpen (getAudSampleRate(), 16, 2);
+
+    auto fileHandle = CreateFile (mMp3File->getFullFileName().c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto mFileBytes = (int)GetFileSize (fileHandle, NULL);
+
+    int chunkSize = 8192;
+    auto chunkBuffer = (uint8_t*)malloc (chunkSize + 1044);
+
+    mPlaySecs = 0;
+    auto mPlayBytes = 0;
+    while (mPlayBytes < mFileBytes) {
+      DWORD chunkBytesLeft;
+      ReadFile (fileHandle, chunkBuffer, chunkSize, &chunkBytesLeft, NULL);
+      printf ("readChunk %d of %d\n", chunkSize, chunkBytesLeft);
+      if (!chunkBytesLeft)
+        break;
+
+      auto chunkPtr = chunkBuffer;
+      int bytesUsed;
+      while (bytesUsed = mMp3Decoder->findNextHeader (chunkPtr, chunkBytesLeft)) {
+        chunkPtr += bytesUsed;
+        chunkBytesLeft -= bytesUsed;
+        mPlayBytes += bytesUsed;
+
+        if (mMp3Decoder->getFrameBodySize() > (int)chunkBytesLeft) {
+          // load rest of frame
+          DWORD bytesLoaded;
+          ReadFile (fileHandle, chunkPtr + chunkBytesLeft, mMp3Decoder->getFrameBodySize() - chunkBytesLeft, &bytesLoaded, NULL);
+          printf ("readRestFrame %d of %d\n", mMp3Decoder->getFrameBodySize() - chunkBytesLeft, bytesLoaded);
+          if (!bytesLoaded)
+            break;
+          chunkBytesLeft += bytesLoaded;
+          }
+
+        bytesUsed = mMp3Decoder->decodeFrameBody (chunkPtr, nullptr, samples);
+        audPlay (samples, 1152*2*2, 1.0f);
+        chunkPtr += bytesUsed;
+        chunkBytesLeft -= bytesUsed;
+        mPlayBytes += bytesUsed;
+        if (mPlaySecs  < mMp3File->getMaxSecs()) {
+          mPlaySecs += getSecsPerAudFrame();
+          changed();
+          }
+        }
+      }
+    CloseHandle (fileHandle);
 
     CoUninitialize();
     }

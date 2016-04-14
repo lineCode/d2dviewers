@@ -114,14 +114,15 @@ public:
 
     auto time = getTimer();
     cMp3Decoder mMp3Decoder;
-    auto ptr = fileBuffer + mTagSize;
+    auto fileBufferPtr = fileBuffer + mTagSize;
     int bufferBytes = mFileBytes - mTagSize;
     while (bufferBytes > 0) {
       cAudFrame* audFrame = new cAudFrame();
       audFrame->set (0, 2, mSampleRate, loadSamples ? 1152 : 0);
-      int bytesUsed = mMp3Decoder.decodeFrame (ptr, bufferBytes, &audFrame->mPower[0], loadSamples ? audFrame->mSamples : nullptr);
+      int bytesUsed = mMp3Decoder.decodeNextFrame (fileBufferPtr, bufferBytes,
+                                                   &audFrame->mPower[0], loadSamples ? audFrame->mSamples : nullptr);
       if (bytesUsed > 0) {
-        ptr += bytesUsed;
+        fileBufferPtr += bytesUsed;
         bufferBytes -= bytesUsed;
         mSampleRate = mMp3Decoder.getSampleRate();
         mBitRate = mMp3Decoder.getBitRate();
