@@ -422,14 +422,14 @@ private:
     audOpen (getAudSampleRate(), 16, 2);
 
     auto fileHandle = CreateFile (mMp3File->getFullFileName().c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    auto mFileBytes = (int)GetFileSize (fileHandle, NULL);
+    auto mFileSize = (int)GetFileSize (fileHandle, NULL);
 
     int chunkSize = 8192;
     auto chunkBuffer = (uint8_t*)malloc (chunkSize + 1044);
 
     mPlaySecs = 0;
     auto mPlayBytes = 0;
-    while (mPlayBytes < mFileBytes) {
+    while (mPlayBytes < mFileSize) {
       DWORD chunkBytesLeft;
       ReadFile (fileHandle, chunkBuffer, chunkSize, &chunkBytesLeft, NULL);
       printf ("readChunk %d of %d\n", chunkSize, chunkBytesLeft);
