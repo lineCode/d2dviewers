@@ -54,6 +54,11 @@ public:
     }
   //}}}
   //{{{
+  int getTagSize() {
+    return mTagSize;
+    }
+  //}}}
+  //{{{
   double getMaxSecs() {
     return mFrames.size() * getSecsPerFrame();
     }
@@ -103,19 +108,20 @@ public:
   void load (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, bool loadSamples) {
 
     auto fileHandle = CreateFile (mFullFileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    auto mFileBytes = GetFileSize (fileHandle, NULL);
+    auto mFileSize = GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
     if (!mLoaded) {
-      mTagSize = id3tag (dc, bitmapProperties, fileBuffer, mFileBytes);
+      mTagSize = id3tag (dc, bitmapProperties, fileBuffer, mFileSize);
       mLoaded = 1;
       }
 
     auto time = getTimer();
     cMp3Decoder mMp3Decoder;
+
     auto fileBufferPtr = fileBuffer + mTagSize;
-    int bufferBytes = mFileBytes - mTagSize;
+    int bufferBytes = mFileSize - mTagSize;
     while (bufferBytes > 0) {
       cAudFrame* audFrame = new cAudFrame();
       audFrame->set (0, 2, mSampleRate, loadSamples ? 1152 : 0);
@@ -262,8 +268,10 @@ private:
 
   wstring mFileName;
   wstring mFullFileName;
+
   int mLoaded = 0;
   int mTagSize = 0;
+  double mDurationSecs = 0;
 
   int mSampleRate = 44100;
   int mChannels = 2;
