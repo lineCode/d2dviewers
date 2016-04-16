@@ -29,6 +29,7 @@
 #  include <cmath>
 #endif
 #include <limits>
+#include <locale>
 #include <ostream>
 #include <ratio>
 #include <stdexcept>
@@ -43,7 +44,7 @@ namespace date
 // MSVC's constexpr support is still a WIP, even in VS2015.
 // Fall back to a lesser mode to support it.
 // TODO: Remove this or retest later once MSVC's constexpr improves.
-#if defined (_MSC_VER)
+#if defined(_MSC_VER)
 #  define CONSTDATA const
 #  define CONSTCD11
 #  define CONSTCD14
@@ -787,12 +788,14 @@ class save_stream
     std::ostream& os_;
     char fill_;
     std::ios::fmtflags flags_;
+    std::locale loc_;
 
 public:
     ~save_stream()
     {
         os_.fill(fill_);
         os_.flags(flags_);
+        os_.imbue(loc_);
     }
 
     save_stream(const save_stream&) = delete;
@@ -802,8 +805,15 @@ public:
         : os_(os)
         , fill_(os.fill())
         , flags_(os.flags())
+        , loc_(os.getloc())
         {}
 };
+
+#ifdef __GNUC__
+// GCC complains about __int128 with -pedantic or -pedantic-errors
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 
 template <class T>
 struct choose_trunc_type
@@ -825,6 +835,10 @@ struct choose_trunc_type
                      >::type
                  >::type;
 };
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
 template <class T>
 CONSTCD11
@@ -855,8 +869,13 @@ trunc(T t) NOEXCEPT
     static_assert(digits < numeric_limits<I>::digits, "");
     CONSTDATA auto max = I{1} << (digits-1);
     CONSTDATA auto min = -max;
+    const auto negative = t < T{0};
     if (min <= t && t <= max && t != 0 && t == t)
+    {
         t = static_cast<T>(static_cast<I>(t));
+        if (t == 0 && negative)
+            t = -t;
+    }
     return t;
 }
 
@@ -871,6 +890,9 @@ trunc(const std::chrono::duration<Rep, Period>& d)
 {
     return To{detail::trunc(std::chrono::duration_cast<To>(d).count())};
 }
+
+// VS Update 2 provides floor, ceil, round, abs in chrono.
+#if _MSC_FULL_VER < 190023918
 
 // round down
 template <class To, class Rep, class Period>
@@ -894,6 +916,8 @@ round(const std::chrono::duration<Rep, Period>& d)
 {
     auto t0 = floor<To>(d);
     auto t1 = t0 + To{1};
+    if (t1 == To{0} && t0 < To{0})
+        t1 = -t1;
     auto diff0 = d - t0;
     auto diff1 = t1 - d;
     if (diff0 == diff1)
@@ -932,17 +956,6 @@ abs(std::chrono::duration<Rep, Period> d)
     return d >= d.zero() ? d : -d;
 }
 
-// trunc towards zero
-template <class To, class Clock, class FromDuration>
-CONSTCD11
-inline
-std::chrono::time_point<Clock, To>
-trunc(const std::chrono::time_point<Clock, FromDuration>& tp)
-{
-    using std::chrono::time_point;
-    return time_point<Clock, To>{trunc<To>(tp.time_since_epoch())};
-}
-
 // round down
 template <class To, class Clock, class FromDuration>
 CONSTCD11
@@ -974,6 +987,19 @@ ceil(const std::chrono::time_point<Clock, FromDuration>& tp)
 {
     using std::chrono::time_point;
     return time_point<Clock, To>{ceil<To>(tp.time_since_epoch())};
+}
+
+#endif  // _MSC_FULL_VER < 190023918
+
+// trunc towards zero
+template <class To, class Clock, class FromDuration>
+CONSTCD11
+inline
+std::chrono::time_point<Clock, To>
+trunc(const std::chrono::time_point<Clock, FromDuration>& tp)
+{
+    using std::chrono::time_point;
+    return time_point<Clock, To>{trunc<To>(tp.time_since_epoch())};
 }
 
 // day
@@ -2325,14 +2351,7 @@ year_month_day::operator day_point() const NOEXCEPT
     auto const d = static_cast<unsigned>(d_);
     auto const era = (y >= 0 ? y : y-399) / 400;
     auto const yoe = static_cast<unsigned>(y - era * 400);       // [0, 399]
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4146) // unary minus operator applied to unsigned type, result still unsigned
-#endif
-    auto const doy = (153*(m + (m > 2 ? -3u : 9)) + 2)/5 + d-1;  // [0, 365]
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
+    auto const doy = (153*(m > 2 ? m-3 : m+9) + 2)/5 + d-1;      // [0, 365]
     auto const doe = yoe * 365 + yoe/4 - yoe/100 + doy;          // [0, 146096]
     return day_point{days{era * 146097 + static_cast<int>(doe) - 719468}};
 }
@@ -2437,14 +2456,7 @@ year_month_day::from_day_point(const day_point& dp) NOEXCEPT
     auto const doy = doe - (365*yoe + yoe/4 - yoe/100);                // [0, 365]
     auto const mp = (5*doy + 2)/153;                                   // [0, 11]
     auto const d = doy - (153*mp+2)/5 + 1;                             // [1, 31]
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4146) // unary minus operator applied to unsigned type, result still unsigned
-#endif
-    auto const m = mp + (mp < 10 ? 3 : -9u);                           // [1, 12]
-#ifdef _MSVC_VER
-#pragma warning(pop)
-#endif
+    auto const m = mp < 10 ? mp+3 : mp-9;                              // [1, 12]
     return year_month_day{date::year{y + (m <= 2)}, date::month(m), date::day(d)};
 }
 
@@ -3556,7 +3568,9 @@ public:
         os.width(2);
         os << std::abs(t.m_.count()) << ':';
         os.width(2);
-        os << std::abs(t.s_.count()) << '.';
+        os << std::abs(t.s_.count())
+           << use_facet<numpunct<char>>(os.getloc()).decimal_point();
+        os.imbue(locale{});
 #if __cplusplus >= 201402
         CONSTDATA auto cl10 = ceil_log10(Period::den);
         using scale = std::ratio_multiply<Period, std::ratio<pow10(cl10)>>;
