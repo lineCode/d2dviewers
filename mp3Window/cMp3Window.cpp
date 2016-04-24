@@ -269,14 +269,9 @@ public:
   IDWriteTextFormat* mTextFormat = nullptr;
   };
 //}}}
-//{{{  static vars
-static cLcd* mLcd = nullptr;
-
-std::vector<std::string> mp3Files;
-//}}}
 
 //{{{
-static void listDirectory (std::string& parentName, char* directoryName, char* pathMatchName) {
+static void listDirectory (std::vector<std::string>& files, std::string& parentName, char* directoryName, char* pathMatchName) {
 
   std::string mDirName = directoryName;
   std::string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
@@ -288,10 +283,10 @@ static void listDirectory (std::string& parentName, char* directoryName, char* p
   if (file != INVALID_HANDLE_VALUE) {
     do {
       if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
-        listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        listDirectory (files, mFullDirName, findFileData.cFileName, pathMatchName);
 
       else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-        mp3Files.push_back (mFullDirName + "\\" + findFileData.cFileName);
+        files.push_back (mFullDirName + "\\" + findFileData.cFileName);
 
       } while (FindNextFileA (file, &findFileData));
 
@@ -394,7 +389,7 @@ private:
 
     int fileIndex = 0;
     bool fileIndexChanged;
-    root->addTopLeft (new cListWidget (mp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
+    root->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
 
     bool mVolumeChanged;
     root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
@@ -409,7 +404,7 @@ private:
     root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
 
     bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    mIsDirectory ? listDirectory (std::string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
+    mIsDirectory ? listDirectory (mMp3Files, std::string(), fileName, "*.mp3") : mMp3Files.push_back (fileName);
 
 
     audOpen (44100, 16, 2);
@@ -419,7 +414,7 @@ private:
     memset (samples, 0, 1152*2*2);
 
     while (true) {
-      auto fileHandle = CreateFileA (mp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
       auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
@@ -461,6 +456,8 @@ private:
     CoUninitialize();
     }
   //}}}
+  cLcd* mLcd = nullptr;
+  std::vector<std::string> mMp3Files;
   };
 
 //{{{
