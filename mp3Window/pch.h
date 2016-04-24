@@ -18,8 +18,6 @@
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
 
-#include "concurrent_vector.h"
-
 // direct2d
 #include <d3d11.h>
 #include <d3d11_1.h>
@@ -29,15 +27,5 @@
 #include <d2d1helper.h>
 #include <dwrite.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-  #include <libavcodec/avcodec.h>
-  #include <libavformat/avformat.h>
-#ifdef __cplusplus
-}
-#endif
-
 using namespace Microsoft::WRL;
 using namespace D2D1;
-using namespace std;

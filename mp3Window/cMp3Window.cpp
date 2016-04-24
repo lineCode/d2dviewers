@@ -44,12 +44,12 @@ public:
     wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
     wstring wstr = converter.from_bytes (str);
     mDc->DrawText (wstr.data(), (uint32_t)wstr.size(), mTextFormat, RectF (float(x), float(y), float(x+width), float(y + height)), brush);
-    return 100;
+    return 400;
     }
   //}}}
   //{{{
   int measure (int fontHeight, std::string str) {
-    return 1;
+    return 400;
     }
   //}}}
 
@@ -275,9 +275,8 @@ public:
 //}}}
 //{{{  static vars
 static cLcd* mLcd = nullptr;
+
 std::vector<std::string> mp3Files;
-float* mWaveform;
-int mPlayFrame = 0;
 //}}}
 
 //{{{
@@ -312,27 +311,12 @@ public:
   //{{{
   void run (wchar_t* title, int width, int height, char* fileName) {
 
-    initialise (title, width+10, height+10);
+    initialise (title, width+10, height+6);
 
     mLcd = new cLcd();
     cRootContainer rootContainer (cLcd::getWidth(), cLcd::getHeight());
-    auto root = cRootContainer::get();
 
-    int fileIndex = 0;
-    bool fileIndexChanged;
-    root->addTopLeft (new cListWidget (mp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
-
-    bool mVolumeChanged;
-    root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
-
-    mPlayFrame = 0;
-    mWaveform = (float*)malloc (480*2*4);
-    root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
-
-    bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    mIsDirectory ? listDirectory (string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
-
-    thread ([=]() { player(); }).detach();
+    thread ([=]() { loadThread (fileName); }).detach();
 
     messagePump();
     };
@@ -406,36 +390,78 @@ protected:
 
 private:
   //{{{
-  void player() {
+  void loadThread (char* fileName) {
 
     CoInitialize (NULL);
 
-    cMp3Decoder mMp3Decoder;
-    auto samples = (int16_t*)malloc (1152*2*2);
+    auto root = cRootContainer::get();
 
-    auto fileHandle = CreateFileA (mp3Files[0].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    auto mFileSize = (int)GetFileSize (fileHandle, NULL);
-    auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-    auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+    int fileIndex = 0;
+    bool fileIndexChanged;
+    root->addTopLeft (new cListWidget (mp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
+
+    bool mVolumeChanged;
+    root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
+
+    float position = 0.0f;
+    bool positionChanged = false;
+    root->addBottomLeft (new cValueBox (position, positionChanged, LCD_BLUE, root->getWidth(), 8));
+
+
+    int mPlayFrame = 0;
+    auto mWaveform = (float*)malloc (480*2*4);
+    root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
+
+    bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    mIsDirectory ? listDirectory (string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
+
 
     audOpen (44100, 16, 2);
 
-    auto playPtr = 0;
-    while (playPtr < mFileSize) {
-      int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, mFileSize - playPtr,  &mWaveform[(mPlayFrame % 480) * 2], samples);
-      if (bytesUsed > 0) {
-        audPlay (samples, 1152*2*2, 1.0f);
-        playPtr = playPtr + bytesUsed;
-        mPlayFrame++;
-        //printf ("%d %f %f %f\n", skipped, playPtr, mPlaySecs, mMp3File->getMaxSecs());
-        changed();
+    cMp3Decoder mMp3Decoder;
+    auto samples = (int16_t*)malloc (1152*2*2);
+    memset (samples, 0, 1152*2*2);
+
+    while (true) {
+      auto fileHandle = CreateFileA (mp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      auto fileSize = (int)GetFileSize (fileHandle, NULL);
+      auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
+      auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+      auto playPtr = 0;
+      while (playPtr < fileSize) {
+        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr,  &mWaveform[(mPlayFrame % 480) * 2], samples);
+        if (bytesUsed > 0) {
+          audPlay (samples, 1152*2*2, 1.0f);
+          playPtr = playPtr + bytesUsed;
+          mPlayFrame++;
+          //printf ("%d %f %f %f\n", skipped, playPtr, mPlaySecs, mMp3File->getMaxSecs());
+          changed();
+          }
+        else
+          break;
+
+        if (fileIndexChanged)
+          break;
+        else if (positionChanged) {
+          //{{{  skip
+          playPtr = int(position * fileSize);
+          positionChanged = false;
+          break;
+          }
+          //}}}
+        else
+          position = (float)playPtr / (float)fileSize;
         }
-      else
-        break;
+
+      if (!fileIndexChanged)
+        fileIndex++;
+      fileIndexChanged = false;
+
+      UnmapViewOfFile (fileBuffer);
+      CloseHandle (fileHandle);
       }
 
-    UnmapViewOfFile (fileBuffer);
-    CloseHandle (fileHandle);
     CoUninitialize();
     }
   //}}}
