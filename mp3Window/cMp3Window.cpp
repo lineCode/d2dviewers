@@ -4,8 +4,6 @@
 
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
-#include <locale>
-#include <codecvt>
 
 #include "../common/cAudio.h"
 
@@ -19,14 +17,6 @@
 
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
-//{{{
-class cLcd : public iDraw {
-public:
-  cLcd() {}
-  virtual ~cLcd() {}
-
-  };
-//}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -35,8 +25,7 @@ public:
   void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+6);
-
-    root = new cRootContainer (width+10, height+6);
+    root = new cRootContainer (width, height);
 
     auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
@@ -46,12 +35,11 @@ public:
     };
   //}}}
   //{{{
-  void listDirectory (std::string& parentName, char* directoryName, char* pathMatchName) {
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
 
-    std::string mDirName = directoryName;
-    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
-    std::string searchStr (mFullDirName +  "\\*");
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
 
+    std::string searchStr (mFullDirName +  "/*");
     WIN32_FIND_DATAA findFileData;
     auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
                                   FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
@@ -59,72 +47,14 @@ public:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
           listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-
         else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mMp3Files.push_back (mFullDirName + "\\" + findFileData.cFileName);
-
+          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
         } while (FindNextFileA (file, &findFileData));
 
       FindClose (file);
       }
     }
   //}}}
-
-protected:
-  //{{{
-  bool onKey (int key) {
-
-    switch (key) {
-      case 0x10: // shift
-      case 0x11: // control
-      case 0x00: return false;
-      case 0x1B: return true;
-
-      //case 0x20: togglePlaying(); break;
-      //case 0x21: incPlaySecs (-5); changed(); break;
-      //case 0x22: incPlaySecs(5); changed(); break;
-      //case 0x23: setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
-      //case 0x24: setPlaySecs (0); changed(); break;
-      //case 0x25: incPlaySecs (-1); changed(); break;
-      //case 0x27: incPlaySecs (1); changed(); break;
-      //case 0x26: setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
-      //case 0x28: setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
-
-      default: printf ("key %x\n", key);
-      }
-
-    return false;
-    }
-  //}}}
-  void onMouseWheel (int delta) {}
-  void onMouseProx (bool inClient, int x, int y) {}
-  //{{{
-  void onMouseDown (bool right, int x, int y) {
-
-    cRootContainer::get()->press (0, x, y, 0,  0, 0);
-    }
-  //}}}
-  //{{{
-  void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
-
-    cRootContainer::get()->press (1, x, y, 0, xInc, yInc);
-    }
-  //}}}
-  //{{{
-  void onMouseUp  (bool right, bool mouseMoved, int x, int y) {
-
-    cRootContainer::get()->release();
-    changed();
-    }
-  //}}}
-  //{{{
-  void onDraw (ID2D1DeviceContext* dc) {
-
-    cRootContainer::get()->draw (this);
-    changed();
-    }
-  //}}}
-
   //{{{  iDraw
   uint16_t getWidth() { return 480; }
   uint16_t getHeight() { return 272; }
@@ -132,16 +62,25 @@ protected:
   uint8_t getLineHeight() { return 19; }
 
   //{{{
-  int text (uint32_t col, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
-
+    // ccreate layout
     std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring wstr = converter.from_bytes (str);
+    std::wstring wstr = converter.from_bytes(str);
+    IDWriteTextLayout* textLayout;
+    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
 
-    getDeviceContext()->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), RectF (float(x), float(y), float(x+width), float(y + height)), brush);
-    return 400;
+    // draw it
+    ID2D1SolidColorBrush* brush;
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0xFF0000) >> 16) / 255.0f,
+                                                       ((colour & 0xFF00) >> 8) / 255.0f,
+                                                        (colour & 0xff) / 255.0f, 1.0f), &brush);
+    getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, brush);
+
+    // return measure
+    DWRITE_TEXT_METRICS metrics;
+    textLayout->GetMetrics (&metrics);
+    return (int)metrics.width;
     }
   //}}}
   //{{{
@@ -150,7 +89,6 @@ protected:
     }
   //}}}
 
-  #define ABS(X) ((X) > 0 ? (X) : -(X))
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
     }
@@ -161,21 +99,23 @@ protected:
     }
   //}}}
   //{{{
-  void rect (uint32_t col, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
     ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0xFF0000) >> 16) / 255.0f,
+                                                       ((colour & 0xFF00)>> 8) / 255.0f,
+                                                        (colour & 0xff) / 255.0f, 1.0f), &brush);
     getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), brush);
     }
   //}}}
 
   //{{{
-  void cLcd::pixelClipped (uint32_t colour, int16_t x, int16_t y) {
+  void pixelClipped (uint32_t colour, int16_t x, int16_t y) {
 
       rectClipped (colour, x, y, 1, 1);
     }
   //}}}
   //{{{
-  void cLcd::stampClipped (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void stampClipped (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     if (!width || !height || x < 0)
       return;
@@ -200,7 +140,7 @@ protected:
     }
   //}}}
   //{{{
-  void cLcd::rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     if (x >= getWidth())
       return;
@@ -234,7 +174,7 @@ protected:
     }
   //}}}
   //{{{
-  void cLcd::rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     rectClipped (colour, x, y, width, 1);
     rectClipped (colour, x + width, y, 1, height);
@@ -243,14 +183,14 @@ protected:
     }
   //}}}
   //{{{
-  void cLcd::clear (uint32_t colour) {
+  void clear (uint32_t colour) {
 
     rect (colour, 0, 0, getWidth(), getHeight());
     }
   //}}}
 
   //{{{
-  void cLcd::ellipse (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
+  void ellipse (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
 
     if (!xradius)
       return;
@@ -278,7 +218,7 @@ protected:
     }
   //}}}
   //{{{
-  void cLcd::ellipseOutline (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
+  void ellipseOutline (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
 
     if (xradius && yradius) {
       int x1 = 0;
@@ -305,8 +245,9 @@ protected:
     }
   //}}}
 
+  #define ABS(X) ((X) > 0 ? (X) : -(X))
   //{{{
-  void cLcd::line (uint32_t colour, int16_t x1, int16_t y1, int16_t x2, int16_t y2) {
+  void line (uint32_t colour, int16_t x1, int16_t y1, int16_t x2, int16_t y2) {
 
     int16_t deltax = ABS(x2 - x1);        /* The difference between the x's */
     int16_t deltay = ABS(y2 - y1);        /* The difference between the y's */
@@ -371,6 +312,12 @@ protected:
   //}}}
   //}}}
 
+protected:
+  void onMouseDown (bool right, int x, int y) { root->press (0, x, y, 0,  0, 0); }
+  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { root->press (1, x, y, 0, xInc, yInc); }
+  void onMouseUp (bool right, bool mouseMoved, int x, int y) { root->release(); }
+  void onDraw (ID2D1DeviceContext* dc) { root->draw (this); changed(); }
+
 private:
   //{{{
   void loadThread (char* fileName) {
@@ -397,8 +344,8 @@ private:
     root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
     //}}}
 
-    if (GetFileAttributesA(fileName) & FILE_ATTRIBUTE_DIRECTORY)
-      listDirectory(std::string(), fileName, "*.mp3");
+    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory (std::string(), fileName, "*.mp3");
     else
       mMp3Files.push_back (fileName);
 
@@ -413,6 +360,8 @@ private:
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
       auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+
+      memset (mWaveform, 0, 480*2*4);
 
       auto playPtr = 0;
       while (playPtr < fileSize) {
@@ -459,9 +408,7 @@ private:
 
 //{{{
 int main (int argc, char* argv[]) {
-
   startTimer();
-
   cMp3Window mp3Window;
   mp3Window.run (L"mp3window", 480, 272, argv[1]);
   }

@@ -12,12 +12,6 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cContainer.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\shared\widgets\cListWidget.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -40,6 +34,9 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\decoders\cMp3decoder.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cContainer.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

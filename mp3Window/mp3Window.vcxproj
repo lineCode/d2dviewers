@@ -38,7 +38,6 @@
     <ClInclude Include="..\..\shared\widgets\cWaveformWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cWidget.h" />
     <ClInclude Include="..\..\shared\widgets\iDraw.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

@@ -14,7 +14,10 @@
 #include <tchar.h>
 #include <io.h>
 
+#include <locale>
+#include <codecvt>
 #include <thread>
+
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
 

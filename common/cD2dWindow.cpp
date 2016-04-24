@@ -379,17 +379,17 @@ void cD2dWindow::createDirect2d() {
 
   // create DWriteFactory
   DWriteCreateFactory (DWRITE_FACTORY_TYPE_SHARED,
-                       __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&DWriteFactory));
+                       __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&mDWriteFactory));
 
   createDeviceResources();
   createSizedResources();
 
   // create arial textFormat using DWriteFactory
-  DWriteFactory->CreateTextFormat (L"Consolas", NULL,
-                                   DWRITE_FONT_WEIGHT_REGULAR,
-                                   DWRITE_FONT_STYLE_NORMAL,
-                                   DWRITE_FONT_STRETCH_NORMAL,
-                                   16.0f, L"en-us", &textFormat);
+  mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
+                                    DWRITE_FONT_WEIGHT_REGULAR,
+                                    DWRITE_FONT_STYLE_NORMAL,
+                                    DWRITE_FONT_STRETCH_NORMAL,
+                                    16.0f, L"en-us", &textFormat);
   textFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
 
   // create solid brushes

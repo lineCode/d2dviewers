@@ -29,7 +29,7 @@ public:
 
   bool getMouseDown() { return mMouseDown; }
 
-  IDWriteFactory* getDwriteFactory() { return DWriteFactory; }
+  IDWriteFactory* getDwriteFactory() { return mDWriteFactory; }
 
   void changed() { mChanged = true; }
   void setChangeRate (int changeRate) { mChangeRate = changeRate; }
@@ -95,7 +95,7 @@ private:
   bool mMouseTracking= false;
   //{{{  deviceIndependentResources
   ComPtr<ID2D1Factory1> mD2D1Factory;
-  IDWriteFactory* DWriteFactory;
+  IDWriteFactory* mDWriteFactory;
   //}}}
   //{{{  deviceResources
   ComPtr<ID3D11Device1> mD3dDevice1;
