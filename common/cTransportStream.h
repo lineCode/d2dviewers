@@ -6,7 +6,7 @@
 #include <string>
 #include <time.h>
 
-#include "huffDecoder.h"
+#include "../../shared/decoders/huffDecoder.h"
 #include "dvbSubtitle.h"
 //}}}
 //{{{  macros

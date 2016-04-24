@@ -25,252 +25,10 @@ public:
   cLcd() {}
   virtual ~cLcd() {}
 
-  static uint16_t getWidth() { return 480; }
-  static uint16_t getHeight() { return 272; }
-  static uint8_t getFontHeight() { return 16; }
-  static uint8_t getLineHeight() { return 19; }
-
-  //{{{
-  int text (uint32_t col, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    ID2D1SolidColorBrush* brush;
-    mDc->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
-
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring wstr = converter.from_bytes (str);
-    mDc->DrawText (wstr.data(), (uint32_t)wstr.size(), mTextFormat, RectF (float(x), float(y), float(x+width), float(y + height)), brush);
-    return 400;
-    }
-  //}}}
-  //{{{
-  int measure (int fontHeight, std::string str) {
-    return 400;
-    }
-  //}}}
-
-  #define ABS(X) ((X) > 0 ? (X) : -(X))
-  //{{{
-  void pixel (uint32_t colour, int16_t x, int16_t y) {
-    }
-  //}}}
-  //{{{
-  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    rect (colour, x,y, width, height);
-    }
-  //}}}
-  //{{{
-  void rect (uint32_t col, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    ID2D1SolidColorBrush* brush;
-    mDc->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
-    mDc->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), brush);
-    }
-  //}}}
-  //{{{
-  void cLcd::pixelClipped (uint32_t colour, int16_t x, int16_t y) {
-
-      rectClipped (colour, x, y, 1, 1);
-    }
-  //}}}
-  //{{{
-  void cLcd::stampClipped (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    if (!width || !height || x < 0)
-      return;
-
-    if (y < 0) {
-      // top clip
-      if (y + height <= 0)
-        return;
-      height += y;
-      src += -y * width;
-      y = 0;
-      }
-
-    if (y + height > getHeight()) {
-      // bottom yclip
-      if (y >= getHeight())
-        return;
-      height = getHeight() - y;
-      }
-
-    stamp (colour, src, x, y, width, height);
-    }
-  //}}}
-  //{{{
-  void cLcd::rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    if (x >= getWidth())
-      return;
-    if (y >= getHeight())
-      return;
-
-    int xend = x + width;
-    if (xend <= 0)
-      return;
-
-    int yend = y + height;
-    if (yend <= 0)
-      return;
-
-    if (x < 0)
-      x = 0;
-    if (xend > getWidth())
-      xend = getWidth();
-
-    if (y < 0)
-      y = 0;
-    if (yend > getHeight())
-      yend = getHeight();
-
-    if (!width)
-      return;
-    if (!height)
-      return;
-
-    rect (colour, x, y, xend - x, yend - y);
-    }
-  //}}}
-  //{{{
-  void cLcd::rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    rectClipped (colour, x, y, width, 1);
-    rectClipped (colour, x + width, y, 1, height);
-    rectClipped (colour, x, y + height, width, 1);
-    rectClipped (colour, x, y, 1, height);
-    }
-  //}}}
-  //{{{
-  void cLcd::clear (uint32_t colour) {
-
-    rect (colour, 0, 0, getWidth(), getHeight());
-    }
-  //}}}
-  //{{{
-  void cLcd::ellipse (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
-
-    if (!xradius)
-      return;
-    if (!yradius)
-      return;
-
-    int x1 = 0;
-    int y1 = -yradius;
-    int err = 2 - 2*xradius;
-    float k = (float)yradius / xradius;
-
-    do {
-      rectClipped (colour, (x-(uint16_t)(x1 / k)), y + y1, (2*(uint16_t)(x1 / k) + 1), 1);
-      rectClipped (colour, (x-(uint16_t)(x1 / k)), y - y1, (2*(uint16_t)(x1 / k) + 1), 1);
-
-      int e2 = err;
-      if (e2 <= x1) {
-        err += ++x1 * 2 + 1;
-        if (-y1 == x && e2 <= y1)
-          e2 = 0;
-        }
-      if (e2 > y1)
-        err += ++y1*2 + 1;
-      } while (y1 <= 0);
-    }
-  //}}}
-  //{{{
-  void cLcd::ellipseOutline (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
-
-    if (xradius && yradius) {
-      int x1 = 0;
-      int y1 = -yradius;
-      int err = 2 - 2*xradius;
-      float k = (float)yradius / xradius;
-
-      do {
-        rectClipped (colour, x - (uint16_t)(x1 / k), y + y1, 1, 1);
-        rectClipped (colour, x + (uint16_t)(x1 / k), y + y1, 1, 1);
-        rectClipped (colour, x + (uint16_t)(x1 / k), y - y1, 1, 1);
-        rectClipped (colour, x - (uint16_t)(x1 / k), y - y1, 1, 1);
-
-        int e2 = err;
-        if (e2 <= x1) {
-          err += ++x1*2 + 1;
-          if (-y1 == x1 && e2 <= y1)
-            e2 = 0;
-          }
-        if (e2 > y1)
-          err += ++y1*2 + 1;
-        } while (y1 <= 0);
-      }
-    }
-  //}}}
-  //{{{
-  void cLcd::line (uint32_t colour, int16_t x1, int16_t y1, int16_t x2, int16_t y2) {
-
-    int16_t deltax = ABS(x2 - x1);        /* The difference between the x's */
-    int16_t deltay = ABS(y2 - y1);        /* The difference between the y's */
-    int16_t x = x1;                       /* Start x off at the first pixel */
-    int16_t y = y1;                       /* Start y off at the first pixel */
-
-    int16_t xinc1;
-    int16_t xinc2;
-    if (x2 >= x1) {               /* The x-values are increasing */
-      xinc1 = 1;
-      xinc2 = 1;
-      }
-    else {                         /* The x-values are decreasing */
-      xinc1 = -1;
-      xinc2 = -1;
-      }
-
-    int yinc1;
-    int yinc2;
-    if (y2 >= y1) {                 /* The y-values are increasing */
-      yinc1 = 1;
-      yinc2 = 1;
-      }
-    else {                         /* The y-values are decreasing */
-      yinc1 = -1;
-      yinc2 = -1;
-      }
-
-    int den = 0;
-    int num = 0;
-    int num_add = 0;
-    int num_pixels = 0;
-    if (deltax >= deltay) {        /* There is at least one x-value for every y-value */
-      xinc1 = 0;                  /* Don't change the x when numerator >= denominator */
-      yinc2 = 0;                  /* Don't change the y for every iteration */
-      den = deltax;
-      num = deltax / 2;
-      num_add = deltay;
-      num_pixels = deltax;         /* There are more x-values than y-values */
-      }
-    else {                         /* There is at least one y-value for every x-value */
-      xinc2 = 0;                  /* Don't change the x for every iteration */
-      yinc1 = 0;                  /* Don't change the y when numerator >= denominator */
-      den = deltay;
-      num = deltay / 2;
-      num_add = deltax;
-      num_pixels = deltay;         /* There are more y-values than x-values */
-    }
-
-    for (int curpixel = 0; curpixel <= num_pixels; curpixel++) {
-      rectClipped (colour, x, y, 1, 1);   /* Draw the current pixel */
-      num += num_add;                            /* Increase the numerator by the top of the fraction */
-      if (num >= den) {                          /* Check if numerator >= denominator */
-        num -= den;                             /* Calculate the new numerator value */
-        x += xinc1;                             /* Change the x as appropriate */
-        y += yinc1;                             /* Change the y as appropriate */
-        }
-      x += xinc2;                               /* Change the x as appropriate */
-      y += yinc2;                               /* Change the y as appropriate */
-      }
-    }
-  //}}}
-
-  ID2D1DeviceContext* mDc = nullptr;
-  IDWriteTextFormat* mTextFormat = nullptr;
   };
 //}}}
 
-class cMp3Window : public cD2dWindow, public cAudio {
+class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
   virtual ~cMp3Window() {}
   //{{{
@@ -278,8 +36,7 @@ public:
 
     initialise (title, width+10, height+6);
 
-    mLcd = new cLcd();
-    root = new cRootContainer (cLcd::getWidth(), cLcd::getHeight());
+    root = new cRootContainer (width+10, height+6);
 
     auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
@@ -363,12 +120,255 @@ protected:
   //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
-    mLcd->mDc = dc;
-    mLcd->mTextFormat = getTextFormat();
-    mLcd->mTextFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
-    cRootContainer::get()->draw (mLcd);
+    cRootContainer::get()->draw (this);
     changed();
     }
+  //}}}
+
+  //{{{  iDraw
+  uint16_t getWidth() { return 480; }
+  uint16_t getHeight() { return 272; }
+  uint8_t getFontHeight() { return 16; }
+  uint8_t getLineHeight() { return 19; }
+
+  //{{{
+  int text (uint32_t col, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    ID2D1SolidColorBrush* brush;
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
+
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring wstr = converter.from_bytes (str);
+
+    getDeviceContext()->DrawText (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), RectF (float(x), float(y), float(x+width), float(y + height)), brush);
+    return 400;
+    }
+  //}}}
+  //{{{
+  int measure (int fontHeight, std::string str) {
+    return 400;
+    }
+  //}}}
+
+  #define ABS(X) ((X) > 0 ? (X) : -(X))
+  //{{{
+  void pixel (uint32_t colour, int16_t x, int16_t y) {
+    }
+  //}}}
+  //{{{
+  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    rect (colour, x,y, width, height);
+    }
+  //}}}
+  //{{{
+  void rect (uint32_t col, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    ID2D1SolidColorBrush* brush;
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
+    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), brush);
+    }
+  //}}}
+
+  //{{{
+  void cLcd::pixelClipped (uint32_t colour, int16_t x, int16_t y) {
+
+      rectClipped (colour, x, y, 1, 1);
+    }
+  //}}}
+  //{{{
+  void cLcd::stampClipped (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    if (!width || !height || x < 0)
+      return;
+
+    if (y < 0) {
+      // top clip
+      if (y + height <= 0)
+        return;
+      height += y;
+      src += -y * width;
+      y = 0;
+      }
+
+    if (y + height > getHeight()) {
+      // bottom yclip
+      if (y >= getHeight())
+        return;
+      height = getHeight() - y;
+      }
+
+    stamp (colour, src, x, y, width, height);
+    }
+  //}}}
+  //{{{
+  void cLcd::rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    if (x >= getWidth())
+      return;
+    if (y >= getHeight())
+      return;
+
+    int xend = x + width;
+    if (xend <= 0)
+      return;
+
+    int yend = y + height;
+    if (yend <= 0)
+      return;
+
+    if (x < 0)
+      x = 0;
+    if (xend > getWidth())
+      xend = getWidth();
+
+    if (y < 0)
+      y = 0;
+    if (yend > getHeight())
+      yend = getHeight();
+
+    if (!width)
+      return;
+    if (!height)
+      return;
+
+    rect (colour, x, y, xend - x, yend - y);
+    }
+  //}}}
+  //{{{
+  void cLcd::rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    rectClipped (colour, x, y, width, 1);
+    rectClipped (colour, x + width, y, 1, height);
+    rectClipped (colour, x, y + height, width, 1);
+    rectClipped (colour, x, y, 1, height);
+    }
+  //}}}
+  //{{{
+  void cLcd::clear (uint32_t colour) {
+
+    rect (colour, 0, 0, getWidth(), getHeight());
+    }
+  //}}}
+
+  //{{{
+  void cLcd::ellipse (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
+
+    if (!xradius)
+      return;
+    if (!yradius)
+      return;
+
+    int x1 = 0;
+    int y1 = -yradius;
+    int err = 2 - 2*xradius;
+    float k = (float)yradius / xradius;
+
+    do {
+      rectClipped (colour, (x-(uint16_t)(x1 / k)), y + y1, (2*(uint16_t)(x1 / k) + 1), 1);
+      rectClipped (colour, (x-(uint16_t)(x1 / k)), y - y1, (2*(uint16_t)(x1 / k) + 1), 1);
+
+      int e2 = err;
+      if (e2 <= x1) {
+        err += ++x1 * 2 + 1;
+        if (-y1 == x && e2 <= y1)
+          e2 = 0;
+        }
+      if (e2 > y1)
+        err += ++y1*2 + 1;
+      } while (y1 <= 0);
+    }
+  //}}}
+  //{{{
+  void cLcd::ellipseOutline (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
+
+    if (xradius && yradius) {
+      int x1 = 0;
+      int y1 = -yradius;
+      int err = 2 - 2*xradius;
+      float k = (float)yradius / xradius;
+
+      do {
+        rectClipped (colour, x - (uint16_t)(x1 / k), y + y1, 1, 1);
+        rectClipped (colour, x + (uint16_t)(x1 / k), y + y1, 1, 1);
+        rectClipped (colour, x + (uint16_t)(x1 / k), y - y1, 1, 1);
+        rectClipped (colour, x - (uint16_t)(x1 / k), y - y1, 1, 1);
+
+        int e2 = err;
+        if (e2 <= x1) {
+          err += ++x1*2 + 1;
+          if (-y1 == x1 && e2 <= y1)
+            e2 = 0;
+          }
+        if (e2 > y1)
+          err += ++y1*2 + 1;
+        } while (y1 <= 0);
+      }
+    }
+  //}}}
+
+  //{{{
+  void cLcd::line (uint32_t colour, int16_t x1, int16_t y1, int16_t x2, int16_t y2) {
+
+    int16_t deltax = ABS(x2 - x1);        /* The difference between the x's */
+    int16_t deltay = ABS(y2 - y1);        /* The difference between the y's */
+    int16_t x = x1;                       /* Start x off at the first pixel */
+    int16_t y = y1;                       /* Start y off at the first pixel */
+
+    int16_t xinc1;
+    int16_t xinc2;
+    if (x2 >= x1) {               /* The x-values are increasing */
+      xinc1 = 1;
+      xinc2 = 1;
+      }
+    else {                         /* The x-values are decreasing */
+      xinc1 = -1;
+      xinc2 = -1;
+      }
+
+    int yinc1;
+    int yinc2;
+    if (y2 >= y1) {                 /* The y-values are increasing */
+      yinc1 = 1;
+      yinc2 = 1;
+      }
+    else {                         /* The y-values are decreasing */
+      yinc1 = -1;
+      yinc2 = -1;
+      }
+
+    int den = 0;
+    int num = 0;
+    int num_add = 0;
+    int num_pixels = 0;
+    if (deltax >= deltay) {        /* There is at least one x-value for every y-value */
+      xinc1 = 0;                  /* Don't change the x when numerator >= denominator */
+      yinc2 = 0;                  /* Don't change the y for every iteration */
+      den = deltax;
+      num = deltax / 2;
+      num_add = deltay;
+      num_pixels = deltax;         /* There are more x-values than y-values */
+      }
+    else {                         /* There is at least one y-value for every x-value */
+      xinc2 = 0;                  /* Don't change the x for every iteration */
+      yinc1 = 0;                  /* Don't change the y when numerator >= denominator */
+      den = deltay;
+      num = deltay / 2;
+      num_add = deltax;
+      num_pixels = deltay;         /* There are more y-values than x-values */
+    }
+
+    for (int curpixel = 0; curpixel <= num_pixels; curpixel++) {
+      rectClipped (colour, x, y, 1, 1);   /* Draw the current pixel */
+      num += num_add;                            /* Increase the numerator by the top of the fraction */
+      if (num >= den) {                          /* Check if numerator >= denominator */
+        num -= den;                             /* Calculate the new numerator value */
+        x += xinc1;                             /* Change the x as appropriate */
+        y += yinc1;                             /* Change the y as appropriate */
+        }
+      x += xinc2;                               /* Change the x as appropriate */
+      y += yinc2;                               /* Change the y as appropriate */
+      }
+    }
+  //}}}
   //}}}
 
 private:
@@ -451,7 +451,6 @@ private:
     }
   //}}}
   //{{{  vars
-  cLcd* mLcd = nullptr;
   cRootContainer* root = nullptr;
 
   std::vector<std::string> mMp3Files;

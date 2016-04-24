@@ -6,7 +6,7 @@
 #include "../common/cD2DWindow.h"
 
 #include "../common/usbUtils.h"
-#include "../common/jpegHeader.h"
+#include "../../shared/decoders/jpegHeader.h"
 
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
