@@ -25,7 +25,7 @@ public:
   void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+6);
-    root = new cRootContainer (width, height);
+    mRoot = new cRootContainer (width, height);
 
     auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
@@ -313,10 +313,10 @@ public:
   //}}}
 
 protected:
-  void onMouseDown (bool right, int x, int y) { root->press (0, x, y, 0,  0, 0); }
-  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { root->press (1, x, y, 0, xInc, yInc); }
-  void onMouseUp (bool right, bool mouseMoved, int x, int y) { root->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { root->draw (this); }
+  void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
+  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
+  void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
+  void onDraw (ID2D1DeviceContext* dc) { mRoot->draw (this); }
 
 private:
   //{{{
@@ -327,21 +327,21 @@ private:
     //{{{  create filelist widget
     int fileIndex = 0;
     bool fileIndexChanged;
-    root->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
+    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     //}}}
     //{{{  create volume widget
     bool mVolumeChanged;
-    root->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     //}}}
     //{{{  create position widget
     float position = 0.0f;
     bool positionChanged = false;
-    root->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, root->getWidth(), 8));
+    mRoot->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, mRoot->getWidth(), 8));
     //}}}
     //{{{  create waveform widget
     int mPlayFrame = 0;
     auto mWaveform = (float*)malloc (480*2*4);
-    root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
+    mRoot->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), mRoot->getHeight()));
     //}}}
 
     if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
@@ -399,7 +399,7 @@ private:
     }
   //}}}
   //{{{  vars
-  cRootContainer* root = nullptr;
+  cRootContainer* mRoot = nullptr;
 
   std::vector<std::string> mMp3Files;
   //}}}
