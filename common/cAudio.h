@@ -148,7 +148,7 @@ public:
     }
   //}}}
 
-  float mVolume = 1.0f;
+  float mVolume = 0.8f;
 
 private:
   int16_t* mSilence;

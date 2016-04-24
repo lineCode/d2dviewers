@@ -285,8 +285,5 @@ $RECYCLE.BIN/
 *.~c
 mpeg2dec/sample_mpeg2.m2v
 *.~vcxproj
-*.db
-*.db
-*.db
-*.db
-*.db
+*.*.db
+.~gitignore

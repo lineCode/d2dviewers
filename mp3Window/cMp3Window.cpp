@@ -281,7 +281,9 @@ public:
     mLcd = new cLcd();
     root = new cRootContainer (cLcd::getWidth(), cLcd::getHeight());
 
-    std::thread ([=]() { loadThread (fileName); }).detach();
+    auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
+    SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+    loaderThread.detach();
 
     messagePump();
     };
@@ -382,12 +384,12 @@ private:
     //}}}
     //{{{  create volume widget
     bool mVolumeChanged;
-    root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
+    root->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
     //}}}
     //{{{  create position widget
     float position = 0.0f;
     bool positionChanged = false;
-    root->addBottomLeft (new cValueBox (position, positionChanged, LCD_BLUE, root->getWidth(), 8));
+    root->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, root->getWidth(), 8));
     //}}}
     //{{{  create waveform widget
     int mPlayFrame = 0;
@@ -431,7 +433,6 @@ private:
           //{{{  skip
           playPtr = int(position * fileSize);
           positionChanged = false;
-          break;
           }
           //}}}
         else
