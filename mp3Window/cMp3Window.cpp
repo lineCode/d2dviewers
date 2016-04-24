@@ -21,7 +21,6 @@
 //}}}
 //{{{
 class cLcd : public iDraw {
-#define ABS(X) ((X) > 0 ? (X) : -(X))
 public:
   cLcd() {}
   virtual ~cLcd() {}
@@ -49,6 +48,7 @@ public:
     }
   //}}}
 
+  #define ABS(X) ((X) > 0 ? (X) : -(X))
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
     }
@@ -270,34 +270,8 @@ public:
   };
 //}}}
 
-//{{{
-static void listDirectory (std::vector<std::string>& files, std::string& parentName, char* directoryName, char* pathMatchName) {
-
-  std::string mDirName = directoryName;
-  std::string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
-  std::string searchStr (mFullDirName +  "\\*");
-
-  WIN32_FIND_DATAA findFileData;
-  auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-  if (file != INVALID_HANDLE_VALUE) {
-    do {
-      if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
-        listDirectory (files, mFullDirName, findFileData.cFileName, pathMatchName);
-
-      else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-        files.push_back (mFullDirName + "\\" + findFileData.cFileName);
-
-      } while (FindNextFileA (file, &findFileData));
-
-    FindClose (file);
-    }
-  }
-//}}}
-
 class cMp3Window : public cD2dWindow, public cAudio {
 public:
-  cMp3Window() {}
   virtual ~cMp3Window() {}
   //{{{
   void run (wchar_t* title, int width, int height, char* fileName) {
@@ -305,12 +279,36 @@ public:
     initialise (title, width+10, height+6);
 
     mLcd = new cLcd();
-    cRootContainer rootContainer (cLcd::getWidth(), cLcd::getHeight());
+    root = new cRootContainer (cLcd::getWidth(), cLcd::getHeight());
 
     std::thread ([=]() { loadThread (fileName); }).detach();
 
     messagePump();
     };
+  //}}}
+  //{{{
+  void listDirectory (std::string& parentName, char* directoryName, char* pathMatchName) {
+
+    std::string mDirName = directoryName;
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
+    std::string searchStr (mFullDirName +  "\\*");
+
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+          mMp3Files.push_back (mFullDirName + "\\" + findFileData.cFileName);
+
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
+    }
   //}}}
 
 protected:
@@ -339,16 +337,8 @@ protected:
     return false;
     }
   //}}}
-  //{{{
-  void onMouseWheel (int delta) {
-
-     changed();
-    }
-  //}}}
-  //{{{
-  void onMouseProx (bool inClient, int x, int y) {
-    }
-  //}}}
+  void onMouseWheel (int delta) {}
+  void onMouseProx (bool inClient, int x, int y) {}
   //{{{
   void onMouseDown (bool right, int x, int y) {
 
@@ -385,27 +375,30 @@ private:
 
     CoInitialize (NULL);
 
-    auto root = cRootContainer::get();
-
+    //{{{  create filelist widget
     int fileIndex = 0;
     bool fileIndexChanged;
     root->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
-
+    //}}}
+    //{{{  create volume widget
     bool mVolumeChanged;
     root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
-
+    //}}}
+    //{{{  create position widget
     float position = 0.0f;
     bool positionChanged = false;
     root->addBottomLeft (new cValueBox (position, positionChanged, LCD_BLUE, root->getWidth(), 8));
-
-
+    //}}}
+    //{{{  create waveform widget
     int mPlayFrame = 0;
     auto mWaveform = (float*)malloc (480*2*4);
     root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
+    //}}}
 
-    bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    mIsDirectory ? listDirectory (mMp3Files, std::string(), fileName, "*.mp3") : mMp3Files.push_back (fileName);
-
+    if (GetFileAttributesA(fileName) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory(std::string(), fileName, "*.mp3");
+    else
+      mMp3Files.push_back (fileName);
 
     audOpen (44100, 16, 2);
 
@@ -456,8 +449,12 @@ private:
     CoUninitialize();
     }
   //}}}
+  //{{{  vars
   cLcd* mLcd = nullptr;
+  cRootContainer* root = nullptr;
+
   std::vector<std::string> mMp3Files;
+  //}}}
   };
 
 //{{{
