@@ -29,6 +29,14 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cListWidget.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cRootContainer.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cTextBox.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cValueBox.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cWaveformWidget.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\cWidget.h" />
+    <ClInclude Include="..\..\stm32Mp3\widgets\iDraw.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cMp3decoder.h" />
     <ClInclude Include="..\common\cMp3File.h" />

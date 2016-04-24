@@ -130,10 +130,12 @@ public:
       if (bytesUsed > 0) {
         fileBufferPtr += bytesUsed;
         bufferBytes -= bytesUsed;
+
         mSampleRate = mMp3Decoder.getSampleRate();
         mBitRate = mMp3Decoder.getBitRate();
         mChannels = mMp3Decoder.getNumChannels();
         mMode = mMp3Decoder.getMode();
+
         mFrames.push_back (audFrame);
         }
       else

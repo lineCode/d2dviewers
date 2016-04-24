@@ -148,8 +148,9 @@ public:
     }
   //}}}
 
-private:
   float mVolume = 1.0f;
+
+private:
   int16_t* mSilence;
 
   IXAudio2* mxAudio2;

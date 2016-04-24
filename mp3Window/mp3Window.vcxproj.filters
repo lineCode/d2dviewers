@@ -21,6 +21,30 @@
     <ClInclude Include="..\common\cMp3File.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cListWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cRootContainer.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cTextBox.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cValueBox.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cWaveformWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\cWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\stm32Mp3\widgets\iDraw.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">
