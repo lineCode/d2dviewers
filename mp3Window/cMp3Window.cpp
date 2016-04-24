@@ -8,7 +8,6 @@
 #include <codecvt>
 
 #include "../common/cAudio.h"
-#include "../common/cMp3File.h"
 
 #include "../../shared/widgets/cWidget.h"
 #include "../../shared/widgets/cContainer.h"
@@ -17,11 +16,8 @@
 #include "../../shared/widgets/cWaveformWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
-//}}}
-//{{{  typedef
-class cMp3Window;
-typedef void (cMp3Window::*cMp3WindowFunc)();
-typedef void (cMp3Window::*cMp3WindowFileFunc)(cMp3File* file);
+
+#include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 //{{{
 class cLcd : public iDraw {
@@ -41,8 +37,8 @@ public:
     ID2D1SolidColorBrush* brush;
     mDc->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
 
-    wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
-    wstring wstr = converter.from_bytes (str);
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+    std::wstring wstr = converter.from_bytes (str);
     mDc->DrawText (wstr.data(), (uint32_t)wstr.size(), mTextFormat, RectF (float(x), float(y), float(x+width), float(y + height)), brush);
     return 400;
     }
@@ -280,11 +276,11 @@ std::vector<std::string> mp3Files;
 //}}}
 
 //{{{
-static void listDirectory (string& parentName, char* directoryName, char* pathMatchName) {
+static void listDirectory (std::string& parentName, char* directoryName, char* pathMatchName) {
 
-  string mDirName = directoryName;
-  string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
-  string searchStr (mFullDirName +  "\\*");
+  std::string mDirName = directoryName;
+  std::string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
+  std::string searchStr (mFullDirName +  "\\*");
 
   WIN32_FIND_DATAA findFileData;
   auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
@@ -316,7 +312,7 @@ public:
     mLcd = new cLcd();
     cRootContainer rootContainer (cLcd::getWidth(), cLcd::getHeight());
 
-    thread ([=]() { loadThread (fileName); }).detach();
+    std::thread ([=]() { loadThread (fileName); }).detach();
 
     messagePump();
     };
@@ -413,7 +409,7 @@ private:
     root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
 
     bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    mIsDirectory ? listDirectory (string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
+    mIsDirectory ? listDirectory (std::string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
 
 
     audOpen (44100, 16, 2);

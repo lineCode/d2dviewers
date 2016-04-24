@@ -2,7 +2,7 @@
 #pragma once
 //{{{  includes
 #include "../common/cAudFrame.h"
-#include "../common/cMp3decoder.h"
+#include "../../shared/decoders/"
 
 #include "../common/cJpegImage.h"
 

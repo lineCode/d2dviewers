@@ -29,6 +29,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\decoders\cMp3decoder.h" />
     <ClInclude Include="..\..\shared\widgets\cContainer.h" />
     <ClInclude Include="..\..\shared\widgets\cListWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cRootContainer.h" />
@@ -39,8 +40,6 @@
     <ClInclude Include="..\..\shared\widgets\iDraw.h" />
     <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cMp3decoder.h" />
-    <ClInclude Include="..\common\cMp3File.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
