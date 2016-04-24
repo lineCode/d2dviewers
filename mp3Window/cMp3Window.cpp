@@ -10,13 +10,13 @@
 #include "../common/cAudio.h"
 #include "../common/cMp3File.h"
 
-#include "../widgets/cWidget.h"
-#include "../widgets/cContainer.h"
-#include "../widgets/cRootContainer.h"
-#include "../widgets/cListWidget.h"
-#include "../widgets/cWaveformWidget.h"
-#include "../widgets/cTextBox.h"
-#include "../widgets/cValueBox.h"
+#include "../../shared/widgets/cWidget.h"
+#include "../../shared/widgets/cContainer.h"
+#include "../../shared/widgets/cRootContainer.h"
+#include "../../shared/widgets/cListWidget.h"
+#include "../../shared/widgets/cWaveformWidget.h"
+#include "../../shared/widgets/cTextBox.h"
+#include "../../shared/widgets/cValueBox.h"
 //}}}
 //{{{  typedef
 class cMp3Window;

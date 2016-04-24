@@ -29,18 +29,18 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\widgets\cContainer.h" />
+    <ClInclude Include="..\..\shared\widgets\cListWidget.h" />
+    <ClInclude Include="..\..\shared\widgets\cRootContainer.h" />
+    <ClInclude Include="..\..\shared\widgets\cTextBox.h" />
+    <ClInclude Include="..\..\shared\widgets\cValueBox.h" />
+    <ClInclude Include="..\..\shared\widgets\cWaveformWidget.h" />
+    <ClInclude Include="..\..\shared\widgets\cWidget.h" />
+    <ClInclude Include="..\..\shared\widgets\iDraw.h" />
     <ClInclude Include="..\..\stm32Mp3\widgets\cContainer.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cListWidget.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cRootContainer.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cTextBox.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cValueBox.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cWaveformWidget.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\cWidget.h" />
-    <ClInclude Include="..\..\stm32Mp3\widgets\iDraw.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
     <ClInclude Include="..\common\cMp3decoder.h" />
     <ClInclude Include="..\common\cMp3File.h" />
-    <ClInclude Include="..\common\cVolume.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
