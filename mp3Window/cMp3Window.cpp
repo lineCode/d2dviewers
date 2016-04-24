@@ -4,6 +4,8 @@
 
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
+#include <locale>
+#include <codecvt>
 
 #include "../common/cAudio.h"
 #include "../common/cMp3File.h"
@@ -22,110 +24,6 @@ typedef void (cMp3Window::*cMp3WindowFunc)();
 typedef void (cMp3Window::*cMp3WindowFileFunc)(cMp3File* file);
 //}}}
 //{{{
-class cMp3Files {
-public:
-  cMp3Files() {}
-  virtual ~cMp3Files() {}
-
-  //{{{
-  void scan (wstring& parentName, wchar_t* directoryName, wchar_t* pathMatchName, int& numFiles, int& numDirs,
-             cMp3Window* mp3Window, cMp3WindowFunc func) {
-  // directoryName is findFileData.cFileName wchar_t*
-
-    mDirName = directoryName;
-    mFullDirName = parentName.empty() ? directoryName : parentName + L"\\" + directoryName;
-    auto searchStr (mFullDirName +  L"\\*");
-
-    WIN32_FIND_DATA findFileData;
-    auto file = FindFirstFileEx (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                 FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-    if (file != INVALID_HANDLE_VALUE) {
-      do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != L'.'))  {
-          auto directory = new cMp3Files();
-          directory->scan (mFullDirName, findFileData.cFileName, pathMatchName, numFiles, numDirs, mp3Window, func);
-          mDirectories.push_back (directory);
-         (mp3Window->*func)();
-          }
-        else if (PathMatchSpec (findFileData.cFileName, pathMatchName)) {
-          mFiles.push_back (new cMp3File (mFullDirName, findFileData.cFileName));
-          (mp3Window->*func)();
-          }
-        } while (FindNextFile (file, &findFileData));
-      FindClose (file);
-      }
-
-    numDirs += (int)mDirectories.size();
-    numFiles += (int)mFiles.size();
-    }
-  //}}}
-
-  //{{{
-  cMp3File* pick (D2D1_POINT_2F& point) {
-
-    for (auto directory : mDirectories) {
-      auto pickedFile = directory->pick (point);
-      if (pickedFile)
-        return pickedFile;
-      }
-
-    for (auto file : mFiles)
-      if (file->pick (point))
-        return file;
-
-    return nullptr;
-    }
-  //}}}
-
-  //{{{
-  void traverseFiles (cMp3Window* mp3Window, cMp3WindowFileFunc mp3Func) {
-
-    for (auto directory : mDirectories)
-      directory->traverseFiles (mp3Window, mp3Func);
-
-    for (auto file : mFiles)
-      (mp3Window->*mp3Func)(file);
-    }
-  //}}}
-  //{{{
-  void simpleLayout (D2D1_RECT_F& rect) {
-
-    for (auto directory : mDirectories)
-      directory->simpleLayout (rect);
-
-    for (auto file : mFiles) {
-      file->setLayout (rect);
-      rect.top += 20.0f;
-      rect.bottom += 20.0f;
-      }
-    }
-  //}}}
-  //{{{
-  cMp3File* nextLoadFile() {
-
-    for (auto directory : mDirectories) {
-      auto file = directory->nextLoadFile();
-      if (file)
-        return file;
-      }
-
-    for (auto file : mFiles)
-      if (!file->isLoaded())
-        return file;
-
-    return nullptr;
-    }
-  //}}}
-
-private:
-  // private vars
-  wstring mDirName;
-  wstring mFullDirName;
-  concurrency::concurrent_vector<cMp3File*> mFiles;
-  concurrency::concurrent_vector<cMp3Files*> mDirectories;
-  };
-//}}}
-//{{{
 class cLcd : public iDraw {
 #define ABS(X) ((X) > 0 ? (X) : -(X))
 public:
@@ -139,7 +37,14 @@ public:
 
   //{{{
   int text (uint32_t col, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    return 1;
+
+    ID2D1SolidColorBrush* brush;
+    mDc->CreateSolidColorBrush (ColorF (((col & 0xFF0000) >> 16) / 255.0f, ((col & 0xFF00)>> 8) / 255.0f, (col & 0xff) / 255.0f, 1.0f), &brush);
+
+    wstring_convert<codecvt_utf8_utf16<wchar_t>> converter;
+    wstring wstr = converter.from_bytes (str);
+    mDc->DrawText (wstr.data(), (uint32_t)wstr.size(), mTextFormat, RectF (float(x), float(y), float(x+width), float(y + height)), brush);
+    return 100;
     }
   //}}}
   //{{{
@@ -154,6 +59,7 @@ public:
   //}}}
   //{{{
   void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    rect (colour, x,y, width, height);
     }
   //}}}
   //{{{
@@ -364,16 +270,47 @@ public:
   //}}}
 
   ID2D1DeviceContext* mDc = nullptr;
+  IDWriteTextFormat* mTextFormat = nullptr;
   };
 //}}}
+//{{{  static vars
 static cLcd* mLcd = nullptr;
+std::vector<std::string> mp3Files;
+float* mWaveform;
+int mPlayFrame = 0;
+//}}}
 
-class cMp3Window : public cD2dWindow, public cAudio, public cMp3Files {
+//{{{
+static void listDirectory (string& parentName, char* directoryName, char* pathMatchName) {
+
+  string mDirName = directoryName;
+  string mFullDirName = parentName.empty() ? directoryName : parentName + "\\" + directoryName;
+  string searchStr (mFullDirName +  "\\*");
+
+  WIN32_FIND_DATAA findFileData;
+  auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+  if (file != INVALID_HANDLE_VALUE) {
+    do {
+      if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+        listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+
+      else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+        mp3Files.push_back (mFullDirName + "\\" + findFileData.cFileName);
+
+      } while (FindNextFileA (file, &findFileData));
+
+    FindClose (file);
+    }
+  }
+//}}}
+
+class cMp3Window : public cD2dWindow, public cAudio {
 public:
   cMp3Window() {}
-  ~cMp3Window() {}
+  virtual ~cMp3Window() {}
   //{{{
-  void run (wchar_t* title, int width, int height, wchar_t* wFileName) {
+  void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+10);
 
@@ -381,16 +318,19 @@ public:
     cRootContainer rootContainer (cLcd::getWidth(), cLcd::getHeight());
     auto root = cRootContainer::get();
 
+    int fileIndex = 0;
+    bool fileIndexChanged;
+    root->addTopLeft (new cListWidget (mp3Files, fileIndex, fileIndexChanged, root->getWidth(), root->getHeight()));
+
     bool mVolumeChanged;
     root->addTopRight (new cValueBox (mVolume, mVolumeChanged, LCD_YELLOW, cWidget::getBoxHeight()-1, root->getHeight()-6));
 
-    //mIsDirectory = (GetFileAttributes (wFileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    //if (mIsDirectory) {
-    //  thread ([=]() { fileScanner (wFileName); }).detach();
-    //  thread ([=]() { filesLoader (0); } ).detach();
-    //  }
-    mMp3File = new cMp3File (wFileName);
-    thread ([=]() { mMp3File->load (getDeviceContext(), getBitmapProperties(), false); }).detach();
+    mPlayFrame = 0;
+    mWaveform = (float*)malloc (480*2*4);
+    root->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, root->getWidth(), root->getHeight()));
+
+    bool mIsDirectory = (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    mIsDirectory ? listDirectory (string(), fileName, "*.mp3") : mp3Files.push_back (fileName);
 
     thread ([=]() { player(); }).detach();
 
@@ -408,19 +348,15 @@ protected:
       case 0x00: return false;
       case 0x1B: return true;
 
-      case 0x20: togglePlaying(); break;
-
-      case 0x21: incPlaySecs (-5); changed(); break;
-      case 0x22: incPlaySecs(5); changed(); break;
-
-      case 0x23: setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
-      case 0x24: setPlaySecs (0); changed(); break;
-
-      case 0x25: incPlaySecs (-1); changed(); break;
-      case 0x27: incPlaySecs (1); changed(); break;
-
-      case 0x26: setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
-      case 0x28: setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
+      //case 0x20: togglePlaying(); break;
+      //case 0x21: incPlaySecs (-5); changed(); break;
+      //case 0x22: incPlaySecs(5); changed(); break;
+      //case 0x23: setPlaySecs (mMp3File->getMaxSecs()); changed(); break;
+      //case 0x24: setPlaySecs (0); changed(); break;
+      //case 0x25: incPlaySecs (-1); changed(); break;
+      //case 0x27: incPlaySecs (1); changed(); break;
+      //case 0x26: setPlaying (false); incPlaySecs (-getSecsPerAudFrame()); changed(); break;
+      //case 0x28: setPlaying (false); incPlaySecs (getSecsPerAudFrame()); break;
 
       default: printf ("key %x\n", key);
       }
@@ -431,28 +367,12 @@ protected:
   //{{{
   void onMouseWheel (int delta) {
 
-    mLayoutOffset += delta/6;
-    if (mLayoutOffset > 0)
-      mLayoutOffset = 0;
-    simpleLayout (RectF (0, mLayoutOffset, getClientF().width, mLayoutOffset + 20.0f));
-
-    //auto ratio = controlKeyDown ? 1.5f : shiftKeyDown ? 1.2f : 1.1f;
-    //if (delta > 0)
-    //  ratio = 1.0f/ratio;
-
-    //setVolume (getVolume() * ratio);
-
-    changed();
+     changed();
     }
   //}}}
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
-
-  cMp3File* proxFile = (x < 100) ? pick (Point2F ((float)x, (float)y)) : nullptr;
-  if (mProxFile != proxFile) {
-    mProxFile = proxFile;
     }
-  }
   //}}}
   //{{{
   void onMouseDown (bool right, int x, int y) {
@@ -474,158 +394,17 @@ protected:
     }
   //}}}
   //{{{
-  void onDraw1 (ID2D1DeviceContext* dc) {
-
-    dc->Clear (ColorF(ColorF::Black));
-
-    //if (mMp3File && mMp3File->getBitmap())
-    //  dc->DrawBitmap (mMp3File->getBitmap(), RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
-
-    // yellow volume bar
-    dc->FillRectangle (RectF (getClientF().width-20,0, getClientF().width, getVolume()*0.8f*getClientF().height), getYellowBrush());
-
-    if (mMp3File) {
-      auto rows = 6;
-      auto frame = int(mPlaySecs / getSecsPerAudFrame());
-      for (auto row = 0; row < rows; row++) {
-        D2D1_RECT_F r;
-        r.left = 0;
-        for (auto x = 0; x < getClientF().width; x++) {
-          r.right = r.left + 1.0f;
-          if (mMp3File->getFrame (frame)) {
-            r.top =    ((row + 0.5f) * getClientF().height / rows) - mMp3File->getFrame (frame)->mPower[0];
-            r.bottom = ((row + 0.5f) * getClientF().height / rows) + mMp3File->getFrame (frame)->mPower[1];
-            dc->FillRectangle (r, getBlueBrush());
-            }
-          r.left += 1.0f;
-          frame++;
-          }
-        }
-      }
-
-    if (mIsDirectory)
-      traverseFiles (this, &cMp3Window::drawFileInfo);
-    else {
-      wstringstream str;
-      str << mPlaySecs
-          << L" " << mMp3File->getMaxSecs()
-          << L" " << mMp3File->getBitRate()
-          << L" " << getAudSampleRate()
-          << L" " << mMp3File->getChannels()
-          << L" " << mMp3File->getMode();
-      dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
-                    RectF(0.0f, 0.0f, getClientF().width, getClientF().height), getWhiteBrush());
-      }
-    }
-  //}}}
-  //{{{
   void onDraw (ID2D1DeviceContext* dc) {
 
     mLcd->mDc = dc;
+    mLcd->mTextFormat = getTextFormat();
+    mLcd->mTextFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
     cRootContainer::get()->draw (mLcd);
     changed();
     }
   //}}}
 
 private:
-  //{{{
-  void drawFileInfo (cMp3File* file) {
-
-    getDeviceContext()->DrawText (file->getFileName().data(), (uint32_t)file->getFileName().size(), getTextFormat(),
-                                  file->getLayout(),
-                                  !file->isLoaded() ? getGreyBrush() :
-                                   ((file == mMp3File) || (file == mProxFile) ? getWhiteBrush() : getBlueBrush()));
-    }
-  //}}}
-
-  // iPlayer
-  //{{{
-  int getAudSampleRate() {
-    return mMp3File->getSampleRate();
-    }
-  //}}}
-  //{{{
-  double getSecsPerAudFrame() {
-    return mMp3File->getSecsPerFrame();
-    }
-  //}}}
-  //{{{
-  double getSecsPerVidFrame() {
-    return 0;
-    }
-  //}}}
-  //{{{
-  bool getPlaying() {
-    return mPlaying;
-    }
-  //}}}
-  //{{{
-  double getPlaySecs() {
-    return mPlaySecs;
-    }
-  //}}}
-  //{{{
-  void setPlaySecs (double secs) {
-    if (secs < 0)
-      mPlaySecs = 0;
-    else if (secs > mMp3File->getMaxSecs())
-      mPlaySecs = mMp3File->getMaxSecs();
-    else
-      mPlaySecs = secs;
-    }
-  //}}}
-  //{{{
-  void incPlaySecs (double inc) {
-    setPlaySecs (mPlaySecs + inc);
-    }
-  //}}}
-  //{{{
-  void setPlaying (bool playing) {
-    mPlaying = playing;
-    }
-  //}}}
-  //{{{
-  void togglePlaying() {
-    setPlaying (!mPlaying);
-    }
-  //}}}
-
-  // thread funcs
-  //{{{
-  void fileScanner (wchar_t* rootDir) {
-
-    auto time = getTimer();
-
-    scan (wstring(), rootDir, L"*.mp3", mNumNestedFiles, mNumNestedDirs,  this, &cMp3Window::changed);
-    simpleLayout (RectF (0, mLayoutOffset, getClientF().width, mLayoutOffset + 20.0f));
-    changed();
-
-    wcout << L"scanDirectoryFunc - files:" << mNumNestedFiles
-          << L" directories:" << mNumNestedDirs
-          << L" took:" << getTimer() - time
-          << endl;
-    }
-  //}}}
-  //{{{
-  void filesLoader (int index) {
-
-    // give scanner a chance to get going
-    auto slept = 0;
-    while (slept < 10)
-      Sleep (slept++);
-
-    while (slept < 20) {
-      cMp3File* mp3File = nextLoadFile();
-      if (mp3File) {
-        mp3File->load (getDeviceContext(), getBitmapProperties(), false);
-        }
-      else
-        Sleep (++slept);
-      }
-
-    wcout << L"filesLoader:" << index << L" slept:" << slept << endl;
-    }
-  //}}}
   //{{{
   void player() {
 
@@ -634,36 +413,21 @@ private:
     cMp3Decoder mMp3Decoder;
     auto samples = (int16_t*)malloc (1152*2*2);
 
-    auto fileHandle = CreateFile (mMp3File->getFullFileName().c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    auto fileHandle = CreateFileA (mp3Files[0].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     auto mFileSize = (int)GetFileSize (fileHandle, NULL);
     auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
     auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
 
-    while (!mMp3File || mMp3File->getMaxSecs() < 1)
-      Sleep (10);
+    audOpen (44100, 16, 2);
 
-    audOpen (getAudSampleRate(), 16, 2);
-
-    mPlaySecs = 0;
-    double lastPlaySecs = 0;
     auto playPtr = 0;
-
-    bool skipped = false;
     while (playPtr < mFileSize) {
-      int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + mMp3File->getTagSize() + playPtr, mFileSize - playPtr, nullptr, samples);
+      int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, mFileSize - playPtr,  &mWaveform[(mPlayFrame % 480) * 2], samples);
       if (bytesUsed > 0) {
-        if (!skipped)
-          audPlay (samples, 1152*2*2, 1.0f);
-
-        skipped = lastPlaySecs != mPlaySecs;
-        playPtr = skipped ? int ((mFileSize - mMp3File->getTagSize()) * (mPlaySecs / mMp3File->getMaxSecs())) : playPtr + bytesUsed;
-
+        audPlay (samples, 1152*2*2, 1.0f);
+        playPtr = playPtr + bytesUsed;
+        mPlayFrame++;
         //printf ("%d %f %f %f\n", skipped, playPtr, mPlaySecs, mMp3File->getMaxSecs());
-
-        mPlaySecs += getSecsPerAudFrame();
-        if (mPlaySecs > mMp3File->getMaxSecs())
-          mPlaySecs = mMp3File->getMaxSecs();
-        lastPlaySecs = mPlaySecs;
         changed();
         }
       else
@@ -672,30 +436,13 @@ private:
 
     UnmapViewOfFile (fileBuffer);
     CloseHandle (fileHandle);
-
     CoUninitialize();
     }
-  //}}}
-
-  //{{{  private vars
-  bool mIsDirectory = false;
-  float mLayoutOffset = 0;
-
-  bool mDownConsumed = false;
-
-  bool mPlaying = true;
-  double mPlaySecs = 0;
-
-  int mNumNestedDirs = 0;
-  int mNumNestedFiles = 0;
-
-  cMp3File* mMp3File = nullptr;
-  cMp3File* mProxFile = nullptr;
   //}}}
   };
 
 //{{{
-int wmain (int argc, wchar_t* argv[]) {
+int main (int argc, char* argv[]) {
 
   startTimer();
 
