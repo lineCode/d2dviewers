@@ -316,7 +316,7 @@ protected:
   void onMouseDown (bool right, int x, int y) { root->press (0, x, y, 0,  0, 0); }
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) { root->press (1, x, y, 0, xInc, yInc); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { root->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { root->draw (this); changed(); }
+  void onDraw (ID2D1DeviceContext* dc) { root->draw (this); }
 
 private:
   //{{{
@@ -355,13 +355,12 @@ private:
     auto samples = (int16_t*)malloc (1152*2*2);
     memset (samples, 0, 1152*2*2);
 
-    while (true) {
+    while (fileIndex < mMp3Files.size()) {
+      memset (mWaveform, 0, 480*2*4);
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
       auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
-
-      memset (mWaveform, 0, 480*2*4);
 
       auto playPtr = 0;
       while (playPtr < fileSize) {

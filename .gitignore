@@ -262,6 +262,7 @@ Temporary Items
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
+*.VC.db
 
 # Folder config file
 Desktop.ini
@@ -277,11 +278,5 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
-*.~h
-*.opendb
-*.~cpp
-*.~asm
-*.~~h
-*.~c
-mpeg2dec/sample_mpeg2.m2v
+*.~*
 d2dviewers.VC.db
