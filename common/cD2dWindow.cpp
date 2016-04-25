@@ -384,7 +384,7 @@ void cD2dWindow::createDirect2d() {
   createDeviceResources();
   createSizedResources();
 
-  // create arial textFormat using DWriteFactory
+  // create Consolas textFormat using DWriteFactory
   mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
                                     DWRITE_FONT_WEIGHT_REGULAR,
                                     DWRITE_FONT_STYLE_NORMAL,
@@ -392,7 +392,7 @@ void cD2dWindow::createDirect2d() {
                                     16.0f, L"en-us", &textFormat);
   textFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
 
-  // create solid brushes
+  // create some solid brushes
   mDeviceContext->CreateSolidColorBrush (ColorF (ColorF::CornflowerBlue), &blueBrush);
   mDeviceContext->CreateSolidColorBrush (ColorF (0x000000), &blackBrush);
   mDeviceContext->CreateSolidColorBrush (ColorF (0x303030), &dimGreyBrush);

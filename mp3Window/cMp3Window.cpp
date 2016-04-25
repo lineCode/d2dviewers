@@ -19,14 +19,14 @@
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
-  virtual ~cMp3Window() {}
   //{{{
   void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+6);
     mRoot = new cRootContainer (width, height);
 
-    auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
+    auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music"); });
+    //auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
     loaderThread.detach();
 
@@ -65,16 +65,17 @@ public:
   //{{{
   int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    // ccreate layout
+    // create layout
     std::wstring wstr = converter.from_bytes (str.data());
     IDWriteTextLayout* textLayout;
     getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
 
     // draw it
     ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0xFF0000) >> 16) / 255.0f,
-                                                       ((colour & 0xFF00) >> 8) / 255.0f,
-                                                        (colour & 0xff) / 255.0f, 1.0f), &brush);
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0x00FF0000) >> 16) / 255.0f,
+                                                       ((colour & 0x0000FF00)>> 8) / 255.0f,
+                                                        (colour & 0x000000FF) / 255.0f,
+                                                       ((colour & 0xFF000000) >> 24) / 255.0f), &brush);
     getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, brush);
 
     // return measure
@@ -348,7 +349,7 @@ private:
       listDirectory (std::string(), fileName, "*.mp3");
     else
       mMp3Files.push_back (fileName);
-
+    printf ("files listed %s %d\n", fileName, (int)mMp3Files.size());
     audOpen (44100, 16, 2);
 
     cMp3Decoder mMp3Decoder;
