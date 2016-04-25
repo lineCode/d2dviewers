@@ -15,14 +15,8 @@
 
 class cMp3File {
 public:
-  cMp3File (wchar_t* fileName) : mFileName(fileName), mFullFileName (fileName) {}
   cMp3File (wstring& parentName, wchar_t* fileName) : mFileName(fileName), mFullFileName (parentName + L"\\" + fileName) {}
 
-  //{{{
-  int isLoaded() {
-    return mLoaded;
-    }
-  //}}}
   //{{{
   wstring getFileName() {
     return mFileName;
@@ -31,6 +25,12 @@ public:
   //{{{
   wstring getFullFileName() {
     return mFullFileName;
+    }
+  //}}}
+
+  //{{{
+  int isLoaded() {
+    return mLoaded;
     }
   //}}}
   //{{{
@@ -70,40 +70,16 @@ public:
   //}}}
 
   //{{{
-  cAudFrame* getFrame (int frame) {
-    return (frame >= 0) && (frame < mFrames.size()) ? mFrames[frame] : nullptr;
-    }
-  //}}}
-  //{{{
   ID2D1Bitmap* getBitmap() {
     return mBitmap;
     }
   //}}}
-
   //{{{
-  D2D1_RECT_F& getLayout() {
-    return mLayout;
-    }
-  //}}}
-  //{{{
-  void setLayout (D2D1_RECT_F& layout) {
-    mLayout = layout;
-    }
-  //}}}
-  //{{{
-  bool pick (D2D1_POINT_2F& point) {
-
-    return (point.x > mLayout.left) && (point.x < mLayout.right) &&
-           (point.y > mLayout.top) && (point.y < mLayout.bottom);
+  cAudFrame* getFrame (int frame) {
+    return (frame >= 0) && (frame < mFrames.size()) ? mFrames[frame] : nullptr;
     }
   //}}}
 
-  //{{{
-  void selected (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties) {
-    if (mLoaded < 2)
-      load (dc, bitmapProperties, true);
-    }
-  //}}}
   //{{{
   void load (ID2D1DeviceContext* dc, D2D1_BITMAP_PROPERTIES bitmapProperties, bool loadSamples) {
 
@@ -279,8 +255,6 @@ private:
   int mChannels = 2;
   int mBitRate = 0;
   int mMode = 0;
-
-  D2D1_RECT_F mLayout = {0,0,0,0};
 
   ID2D1Bitmap* mBitmap = nullptr;
   concurrency::concurrent_vector<cAudFrame*> mFrames;

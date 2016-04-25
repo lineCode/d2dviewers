@@ -4,7 +4,6 @@
 
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
-
 #include "../common/cAudio.h"
 
 #include "../../shared/widgets/cWidget.h"
@@ -55,18 +54,19 @@ public:
       }
     }
   //}}}
-  //{{{  iDraw
+
+  // iDraw
+  //{{{  iDraw gets
   uint16_t getWidth() { return 480; }
   uint16_t getHeight() { return 272; }
   uint8_t getFontHeight() { return 16; }
   uint8_t getLineHeight() { return 19; }
-
+  //}}}
   //{{{
   int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     // ccreate layout
-    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-    std::wstring wstr = converter.from_bytes(str);
+    std::wstring wstr = converter.from_bytes (str.data());
     IDWriteTextLayout* textLayout;
     getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
 
@@ -88,26 +88,26 @@ public:
     return 400;
     }
   //}}}
-
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
     }
   //}}}
   //{{{
   void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    rect (colour, x,y, width, height);
+    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
     }
   //}}}
   //{{{
   void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
     ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0xFF0000) >> 16) / 255.0f,
-                                                       ((colour & 0xFF00)>> 8) / 255.0f,
-                                                        (colour & 0xff) / 255.0f, 1.0f), &brush);
+    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0x00FF0000) >> 16) / 255.0f,
+                                                       ((colour & 0x0000FF00)>> 8) / 255.0f,
+                                                        (colour & 0x000000FF) / 255.0f,
+                                                       ((colour & 0xFF000000) >> 24) / 255.0f), &brush);
     getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), brush);
     }
   //}}}
-
+  //{{{  iDraw utils
   //{{{
   void pixelClipped (uint32_t colour, int16_t x, int16_t y) {
 
@@ -359,8 +359,7 @@ private:
       memset (mWaveform, 0, 480*2*4);
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
-      auto mapHandle = CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL);
-      auto fileBuffer = (uint8_t*)MapViewOfFile (mapHandle, FILE_MAP_READ, 0, 0, 0);
+      auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
 
       auto playPtr = 0;
       while (playPtr < fileSize) {
@@ -401,7 +400,9 @@ private:
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
-  std::vector<std::string> mMp3Files;
+  std::vector <std::string> mMp3Files;
+
+  std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
   //}}}
   };
 
