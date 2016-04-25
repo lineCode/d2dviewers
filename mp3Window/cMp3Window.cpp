@@ -10,6 +10,7 @@
 #include "../../shared/widgets/cContainer.h"
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
+#include "../../shared/widgets/cWaveWidget.h"
 #include "../../shared/widgets/cWaveformWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
@@ -326,6 +327,20 @@ public:
   //}}}
 
 protected:
+  //{{{
+  bool onKey (int key) {
+
+    switch (key) {
+      case 0x10: // shift
+      case 0x11: // control
+      case 0x00: return false;
+      case 0x1B: return true; // escape
+      default: printf ("key %x\n", key);
+      }
+
+    return false;
+    }
+  //}}}
   void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
@@ -359,32 +374,32 @@ private:
     bool positionChanged = false;
     mRoot->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, mRoot->getWidth(), 8));
     //}}}
-    //{{{  create waveform widget
     int mPlayFrame = 0;
-    auto mWaveform = (float*)malloc (mRoot->getWidth()*2*4);
-    mRoot->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), mRoot->getHeight()));
-    //}}}
+    auto mWaveform = (uint8_t*)malloc (40*60*60*2);
+    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
+    mRoot->addBottomLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
 
     while (fileIndex < mMp3Files.size()) {
-      memset (mWaveform, 0, mRoot->getWidth()*2*4);
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
 
+      mPlayFrame = 0;
       auto playPtr = 0;
       while (playPtr < fileSize) {
         mWait = true;
         mReady = false;
-        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr,
-                                                     &mWaveform[(mPlayFrame % mRoot->getWidth()) * 2], mSamples);
+        float waveformSample[2];
+        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr, waveformSample, mSamples);
         mReady = true;
         if (bytesUsed > 0) {
           while (mWait)
             Sleep (2);
           playPtr = playPtr + bytesUsed;
+
+          mWaveform[mPlayFrame * 2] = (uint8_t)waveformSample[0];
+          mWaveform[(mPlayFrame * 2) + 1] = (uint8_t)waveformSample[1];
           mPlayFrame++;
-          //printf ("%d %f %f %f\n", skipped, playPtr, mPlaySecs, mMp3File->getMaxSecs());
-          //changed();
           }
         else
           break;
