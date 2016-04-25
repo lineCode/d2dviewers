@@ -91,6 +91,7 @@ public:
   //}}}
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
+    rect (colour, x, y, 1, 1);
     }
   //}}}
   //{{{
@@ -321,6 +322,16 @@ protected:
 
 private:
   //{{{
+  void listThread (char* fileName) {
+
+    auto time = getTimer();
+    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory (std::string(), fileName, "*.mp3");
+
+    printf ("files listed %s %d took %f\n", fileName, (int)mMp3Files.size(), getTimer() - time);
+    }
+  //}}}
+  //{{{
   void loadThread (char* fileName) {
 
     CoInitialize (NULL);
@@ -345,11 +356,11 @@ private:
     mRoot->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), mRoot->getHeight()));
     //}}}
 
-    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
-      listDirectory (std::string(), fileName, "*.mp3");
+    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) {
+      std::thread ([=]() { listThread (fileName); } ).detach();
+      }
     else
       mMp3Files.push_back (fileName);
-    printf ("files listed %s %d\n", fileName, (int)mMp3Files.size());
     audOpen (44100, 16, 2);
 
     cMp3Decoder mMp3Decoder;
