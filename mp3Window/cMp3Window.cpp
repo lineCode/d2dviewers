@@ -38,6 +38,8 @@ public:
     memset (mSilence, 0, 1152*2*2);
     std::thread([=]() { audioThread(); }).detach();
 
+    getDeviceContext()->CreateSolidColorBrush (ColorF(ColorF::CornflowerBlue), &mBrush);
+
     mRoot = new cRootContainer (width, height);
     std::thread([=]() { loadThread (fileName ? fileName : "D:/music"); }).detach();
     setChangeRate (1);
@@ -68,60 +70,12 @@ public:
   //}}}
 
   // iDraw
-  //{{{  iDraw gets
+  //{{{  iDraw utils
   uint16_t getWidth() { return mRoot->getWidth(); }
   uint16_t getHeight() { return mRoot->getHeight(); }
   uint8_t getFontHeight() { return 16; }
   uint8_t getLineHeight() { return 19; }
-  //}}}
-  //{{{
-  int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    // create layout
-    std::wstring wstr = converter.from_bytes (str.data());
-    IDWriteTextLayout* textLayout;
-    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
-
-    // draw it
-    ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0x00FF0000) >> 16) / 255.0f,
-                                                       ((colour & 0x0000FF00)>> 8) / 255.0f,
-                                                        (colour & 0x000000FF) / 255.0f,
-                                                       ((colour & 0xFF000000) >> 24) / 255.0f), &brush);
-    getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, brush);
-
-    // return measure
-    DWRITE_TEXT_METRICS metrics;
-    textLayout->GetMetrics (&metrics);
-    return (int)metrics.width;
-    }
-  //}}}
-  //{{{
-  int measure (int fontHeight, std::string str) {
-    return 400;
-    }
-  //}}}
-  //{{{
-  void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rect (colour, x, y, 1, 1);
-    }
-  //}}}
-  //{{{
-  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
-    }
-  //}}}
-  //{{{
-  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    ID2D1SolidColorBrush* brush;
-    getDeviceContext()->CreateSolidColorBrush (ColorF (((colour & 0x00FF0000) >> 16) / 255.0f,
-                                                       ((colour & 0x0000FF00)>> 8) / 255.0f,
-                                                        (colour & 0x000000FF) / 255.0f,
-                                                       ((colour & 0xFF000000) >> 24) / 255.0f), &brush);
-    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), brush);
-    }
-  //}}}
-  //{{{  iDraw utils
   //{{{
   void pixelClipped (uint32_t colour, int16_t x, int16_t y) {
 
@@ -325,6 +279,44 @@ public:
     }
   //}}}
   //}}}
+  //{{{
+  int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    // create layout
+    std::wstring wstr = converter.from_bytes (str.data());
+    IDWriteTextLayout* textLayout;
+    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
+
+    // draw it
+    mBrush->SetColor (ColorF(((colour & 0x00FF0000) >> 16) / 255.0f, ((colour & 0x0000FF00) >> 8) / 255.0f,
+                              (colour & 0x000000FF) / 255.0f,        ((colour & 0xFF000000) >> 24) / 255.0f));
+    getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, mBrush);
+
+    // return measure
+    DWRITE_TEXT_METRICS metrics;
+    textLayout->GetMetrics (&metrics);
+    return (int)metrics.width;
+    }
+  //}}}
+  //{{{
+  void pixel (uint32_t colour, int16_t x, int16_t y) {
+    rect (colour, x, y, 1, 1);
+    }
+  //}}}
+  //{{{
+  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
+    }
+  //}}}
+  //{{{
+  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    mBrush->SetColor (ColorF(((colour & 0x00FF0000) >> 16) / 255.0f, ((colour & 0x0000FF00) >> 8) / 255.0f,
+                              (colour & 0x000000FF) / 255.0f,        ((colour & 0xFF000000) >> 24) / 255.0f));
+    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), mBrush);
+    }
+  //}}}
 
 protected:
   //{{{
@@ -451,6 +443,8 @@ private:
   int16_t* mSilence = nullptr;
   bool mWait = false;
   bool mReady = false;
+
+  ID2D1SolidColorBrush* mBrush;
   //}}}
   };
 
