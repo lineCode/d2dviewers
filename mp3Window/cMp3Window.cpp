@@ -23,12 +23,23 @@ public:
   void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+6);
-    mRoot = new cRootContainer (width, height);
 
-    auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music"); });
-    //auto loaderThread = std::thread([=]() { loadThread(fileName ? fileName : "D:/music/_singles"); });
-    SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
-    loaderThread.detach();
+    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) {
+      //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
+      listThread (fileName ? fileName : "D:/music");
+      }
+    else
+      mMp3Files.push_back (fileName);
+
+    mSamples = (int16_t*)malloc (1152*2*2);
+    memset (mSamples, 0, 1152*2*2);
+    mSilence = (int16_t*)malloc (1152*2*2);
+    memset (mSilence, 0, 1152*2*2);
+    std::thread([=]() { audioThread(); }).detach();
+
+    mRoot = new cRootContainer (width, height);
+    std::thread([=]() { loadThread (fileName ? fileName : "D:/music"); }).detach();
+    setChangeRate (1);
 
     messagePump();
     };
@@ -57,8 +68,8 @@ public:
 
   // iDraw
   //{{{  iDraw gets
-  uint16_t getWidth() { return 480; }
-  uint16_t getHeight() { return 272; }
+  uint16_t getWidth() { return mRoot->getWidth(); }
+  uint16_t getHeight() { return mRoot->getHeight(); }
   uint8_t getFontHeight() { return 16; }
   uint8_t getLineHeight() { return 19; }
   //}}}
@@ -334,8 +345,6 @@ private:
   //{{{
   void loadThread (char* fileName) {
 
-    CoInitialize (NULL);
-
     //{{{  create filelist widget
     int fileIndex = 0;
     bool fileIndexChanged;
@@ -352,36 +361,30 @@ private:
     //}}}
     //{{{  create waveform widget
     int mPlayFrame = 0;
-    auto mWaveform = (float*)malloc (480*2*4);
+    auto mWaveform = (float*)malloc (mRoot->getWidth()*2*4);
     mRoot->addTopLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), mRoot->getHeight()));
     //}}}
 
-    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) {
-      std::thread ([=]() { listThread (fileName); } ).detach();
-      }
-    else
-      mMp3Files.push_back (fileName);
-    audOpen (44100, 16, 2);
-
-    cMp3Decoder mMp3Decoder;
-    auto samples = (int16_t*)malloc (1152*2*2);
-    memset (samples, 0, 1152*2*2);
-
     while (fileIndex < mMp3Files.size()) {
-      memset (mWaveform, 0, 480*2*4);
+      memset (mWaveform, 0, mRoot->getWidth()*2*4);
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       auto fileSize = (int)GetFileSize (fileHandle, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
 
       auto playPtr = 0;
       while (playPtr < fileSize) {
-        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr,  &mWaveform[(mPlayFrame % 480) * 2], samples);
+        mWait = true;
+        mReady = false;
+        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr,
+                                                     &mWaveform[(mPlayFrame % mRoot->getWidth()) * 2], mSamples);
+        mReady = true;
         if (bytesUsed > 0) {
-          audPlay (samples, 1152*2*2, 1.0f);
+          while (mWait)
+            Sleep (2);
           playPtr = playPtr + bytesUsed;
           mPlayFrame++;
           //printf ("%d %f %f %f\n", skipped, playPtr, mPlaySecs, mMp3File->getMaxSecs());
-          changed();
+          //changed();
           }
         else
           break;
@@ -405,6 +408,18 @@ private:
       UnmapViewOfFile (fileBuffer);
       CloseHandle (fileHandle);
       }
+    }
+  //}}}
+  //{{{
+  void audioThread() {
+
+    CoInitialize (NULL);
+    audOpen (44100, 16, 2);
+
+    while (true) {
+      audPlay (mReady ? mSamples : mSilence, 1152*2*2, 1.0f);
+      mWait = false;
+      }
 
     CoUninitialize();
     }
@@ -413,8 +428,14 @@ private:
   cRootContainer* mRoot = nullptr;
 
   std::vector <std::string> mMp3Files;
-
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
+
+  cMp3Decoder mMp3Decoder;
+
+  int16_t* mSamples = nullptr;
+  int16_t* mSilence = nullptr;
+  bool mWait = false;
+  bool mReady = false;
   //}}}
   };
 
@@ -422,6 +443,6 @@ private:
 int main (int argc, char* argv[]) {
   startTimer();
   cMp3Window mp3Window;
-  mp3Window.run (L"mp3window", 480, 272, argv[1]);
+  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1]);
   }
 //}}}
