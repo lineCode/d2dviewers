@@ -24,6 +24,7 @@ public:
   void run (wchar_t* title, int width, int height, char* fileName) {
 
     initialise (title, width+10, height+6);
+    mWaveform = (uint8_t*)malloc (40*60*60*2);
 
     if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY) {
       //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
@@ -47,30 +48,8 @@ public:
     messagePump();
     };
   //}}}
-  //{{{
-  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
 
-    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
-
-    std::string searchStr (mFullDirName +  "/*");
-    WIN32_FIND_DATAA findFileData;
-    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-    if (file != INVALID_HANDLE_VALUE) {
-      do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
-          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
-        } while (FindNextFileA (file, &findFileData));
-
-      FindClose (file);
-      }
-    }
-  //}}}
-
-  // iDraw
-  //{{{  iDraw utils
+  //{{{  iDraw 
   uint16_t getWidth() { return mRoot->getWidth(); }
   uint16_t getHeight() { return mRoot->getHeight(); }
   uint8_t getFontHeight() { return 16; }
@@ -288,8 +267,7 @@ public:
     getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
 
     // draw it
-    mBrush->SetColor (ColorF(((colour & 0x00FF0000) >> 16) / 255.0f, ((colour & 0x0000FF00) >> 8) / 255.0f,
-                              (colour & 0x000000FF) / 255.0f,        ((colour & 0xFF000000) >> 24) / 255.0f));
+    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
     getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, mBrush);
 
     // return measure
@@ -305,15 +283,12 @@ public:
   //}}}
   //{{{
   void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
     rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
     }
   //}}}
   //{{{
   void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    mBrush->SetColor (ColorF(((colour & 0x00FF0000) >> 16) / 255.0f, ((colour & 0x0000FF00) >> 8) / 255.0f,
-                              (colour & 0x000000FF) / 255.0f,        ((colour & 0xFF000000) >> 24) / 255.0f));
+    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
     getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), mBrush);
     }
   //}}}
@@ -329,7 +304,6 @@ protected:
       case 0x1B: return true; // escape
       default: printf ("key %x\n", key);
       }
-
     return false;
     }
   //}}}
@@ -340,6 +314,28 @@ protected:
 
 private:
   //{{{
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
+
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
+
+    std::string searchStr (mFullDirName +  "/*");
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
+    }
+  //}}}
+
+  //{{{
   void listThread (char* fileName) {
 
     auto time = getTimer();
@@ -347,6 +343,30 @@ private:
       listDirectory (std::string(), fileName, "*.mp3");
 
     printf ("files listed %s %d took %f\n", fileName, (int)mMp3Files.size(), getTimer() - time);
+    }
+  //}}}
+  //{{{
+  void preloadThread (char* fileName) {
+
+    auto time = getTimer();
+
+    mLoadFrame = 0;
+    auto fileBufferPtr = 0;
+    while (fileBufferPtr < mFileSize) {
+      float waveformSample[2];
+      int bytesUsed = mMp3Decoder.decodeNextFrame (
+        mFileBuffer + fileBufferPtr, mFileSize - fileBufferPtr, waveformSample, nullptr);
+      if (bytesUsed > 0) {
+        fileBufferPtr += bytesUsed;
+        mWaveform[mLoadFrame * 2] = (uint8_t)waveformSample[0];
+        mWaveform[(mLoadFrame * 2) + 1] = (uint8_t)waveformSample[1];
+        mLoadFrame++;
+        }
+      else
+        break;
+      }
+
+    printf ("file preload %s %d took %f\n", fileName, mFileSize, getTimer() - time);
     }
   //}}}
   //{{{
@@ -366,31 +386,33 @@ private:
     bool positionChanged = false;
     mRoot->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, mRoot->getWidth(), 8));
     //}}}
-    int mPlayFrame = 0;
-    auto mWaveform = (uint8_t*)malloc (40*60*60*2);
-    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
+    mPlayFrame = 0;
+    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mLoadFrame, mWaveform, mRoot->getWidth(), 30));
     mRoot->addBottomLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
 
     while (fileIndex < mMp3Files.size()) {
+      auto time = getTimer();
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-      auto fileSize = (int)GetFileSize (fileHandle, NULL);
+      mFileSize = (int)GetFileSize (fileHandle, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+      mFileBuffer = (uint8_t*)malloc (mFileSize);
+      memcpy (mFileBuffer, fileBuffer, mFileSize);
+      printf ("file load %s %d took %f\n", fileName, mFileSize, getTimer() - time);
+
+      std::thread ([=]() { preloadThread (fileName); } ).detach();
 
       mPlayFrame = 0;
-      auto playPtr = 0;
-      while (playPtr < fileSize) {
+      auto fileBufferPtr = 0;
+      while (fileBufferPtr < mFileSize) {
         mWait = true;
         mReady = false;
-        float waveformSample[2];
-        int bytesUsed = mMp3Decoder.decodeNextFrame (fileBuffer + playPtr, fileSize - playPtr, waveformSample, mSamples);
+        int bytesUsed = mMp3Decoder.decodeNextFrame (
+          mFileBuffer + fileBufferPtr, mFileSize - fileBufferPtr, nullptr, mSamples);
         mReady = true;
         if (bytesUsed > 0) {
+          fileBufferPtr += bytesUsed;
           while (mWait)
             Sleep (2);
-          playPtr = playPtr + bytesUsed;
-
-          mWaveform[mPlayFrame * 2] = (uint8_t)waveformSample[0];
-          mWaveform[(mPlayFrame * 2) + 1] = (uint8_t)waveformSample[1];
           mPlayFrame++;
           }
         else
@@ -400,18 +422,19 @@ private:
           break;
         else if (positionChanged) {
           //{{{  skip
-          playPtr = int(position * fileSize);
+          fileBufferPtr = int(position * mFileSize);
           positionChanged = false;
           }
           //}}}
         else
-          position = (float)playPtr / (float)fileSize;
+          position = (float)fileBufferPtr / (float)mFileSize;
         }
 
       if (!fileIndexChanged)
         fileIndex++;
       fileIndexChanged = false;
 
+      free (mFileBuffer);
       UnmapViewOfFile (fileBuffer);
       CloseHandle (fileHandle);
       }
@@ -424,7 +447,7 @@ private:
     audOpen (44100, 16, 2);
 
     while (true) {
-      audPlay (mReady ? mSamples : mSilence, 1152*2*2, 1.0f);
+      mReady ? audPlay (mSamples, 1152*2*2, 1.0f) : audSilence();
       mWait = false;
       }
 
@@ -438,6 +461,13 @@ private:
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   cMp3Decoder mMp3Decoder;
+
+  uint8_t* mFileBuffer = nullptr;
+  int mFileSize = 0;
+
+  int mPlayFrame = 0;
+  int mLoadFrame = 0;
+  uint8_t* mWaveform = nullptr;
 
   int16_t* mSamples = nullptr;
   int16_t* mSilence = nullptr;
