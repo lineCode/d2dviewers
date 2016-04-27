@@ -352,56 +352,61 @@ private:
 
     cMp3Decoder mMp3Decoder;
 
-    mLoadedFrame = 0;
+    auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
+    printf ("tagBytes %d\n", tagBytes);
+
     auto filePosition = 0;
+    mLoadedFrame = 0;
     int bytesUsed = 0;
     do {
       mFramePosition [mLoadedFrame] = filePosition;
       bytesUsed = mMp3Decoder.decodeNextFrame (
         mFileBuffer + filePosition, mFileSize - filePosition, mWaveform + (mLoadedFrame++ * 2), nullptr);
+      float bytesPerFrame = (filePosition - tagBytes) / (float)mLoadedFrame;
+      mMaxFrame = int((mFileSize - tagBytes) / bytesPerFrame);
+      //printf ("bytesUsed %d %3.2f %d\n", bytesUsed, bytesPerFrame, mMaxFrame);
+
       filePosition += bytesUsed;
       } while ((bytesUsed > 0) && (filePosition < mFileSize));
 
+    mMaxFrame = mLoadedFrame;
     printf ("file wave frames:%d fileSize:%d took:%f\n", mLoadedFrame, mFileSize, getTimer() - time);
     }
   //}}}
   //{{{
   void loadThread (char* fileName) {
 
-    //{{{  create filelist widget
+    cMp3Decoder mMp3Decoder;
+    //{{{  widgets, vars
     int fileIndex = 0;
-    bool fileIndexChanged;
-    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
-    //}}}
-    //{{{  create volume widget
-    bool mVolumeChanged;
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    //}}}
+    bool fileIndexChanged = false;
+    bool mVolumeChanged = false;
     bool mFrameChanged = false;;
     mPlayFrame = 0;
-    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mLoadedFrame, mWaveChanged, mWaveform, mRoot->getWidth(), 30));
-    mRoot->addBottomLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
 
-    cMp3Decoder mMp3Decoder;
+    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
+    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mLoadedFrame, mMaxFrame, mWaveform, mWaveChanged,
+                                        mRoot->getWidth(), mRoot->getBoxHeight()*2));
+    mRoot->addBottomLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
+    //}}}
 
     while (true) {
-      auto time = getTimer();
-
+      //{{{  open and load file into fileBuffer
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       mFileSize = (int)GetFileSize (fileHandle, NULL);
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
       mFileBuffer = (uint8_t*)malloc (mFileSize);
       memcpy (mFileBuffer, fileBuffer, mFileSize);
-      printf ("file load %s %d took %f\n", fileName, mFileSize, getTimer() - time);
-      std::thread ([=]() { waveThread(); } ).detach();
+      //}}}
+      std::thread ([=](){waveThread();}).detach();
 
       mPlayFrame = 0;
-      auto filePosition = 0;
-      while (filePosition < mFileSize) {
+      auto filePosition = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
+      do {
         mWait = true;
         mReady = false;
-        int bytesUsed = mMp3Decoder.decodeNextFrame (
-          mFileBuffer + filePosition, mFileSize - filePosition, nullptr, mSamples);
+        int bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, nullptr, mSamples);
         mReady = true;
         if (bytesUsed > 0) {
           filePosition += bytesUsed;
@@ -412,21 +417,21 @@ private:
         else
           break;
 
-        if (fileIndexChanged)
-          break;
-        else if (mWaveChanged) {
-          // skip by frame
+        if (mWaveChanged) {
           filePosition = mFramePosition [mPlayFrame];
           mWaveChanged = false;
           }
-        }
+        } while (!fileIndexChanged && (filePosition < mFileSize));
+
       if (!fileIndexChanged)
         fileIndex = fileIndex >= (int)mMp3Files.size() ? 0 : fileIndex + 1;
       fileIndexChanged = false;
 
+      //{{{  close file and fileBuffer
       free (mFileBuffer);
       UnmapViewOfFile (fileBuffer);
       CloseHandle (fileHandle);
+      //}}}
       }
     }
   //}}}
@@ -455,6 +460,7 @@ private:
 
   int mPlayFrame = 0;
   int mLoadedFrame = 0;
+  int mMaxFrame = 0;
   bool mWaveChanged = false;
   uint8_t* mWaveform = nullptr;
   int* mFramePosition = nullptr;
