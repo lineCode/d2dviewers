@@ -349,21 +349,18 @@ private:
   void waveThread() {
 
     auto time = getTimer();
+
     cMp3Decoder mMp3Decoder;
 
     mLoadedFrame = 0;
-    uint8_t* waveformPtr = mWaveform;
     auto filePosition = 0;
     int bytesUsed = 0;
     do {
       mFramePosition [mLoadedFrame] = filePosition;
-      bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, waveformPtr, nullptr);
-      if (bytesUsed > 0) {
-        filePosition += bytesUsed;
-        waveformPtr += 2;
-        mLoadedFrame++;
-        }
-      } while (bytesUsed > 0 && filePosition < mFileSize);
+      bytesUsed = mMp3Decoder.decodeNextFrame (
+        mFileBuffer + filePosition, mFileSize - filePosition, mWaveform + (mLoadedFrame++ * 2), nullptr);
+      filePosition += bytesUsed;
+      } while ((bytesUsed > 0) && (filePosition < mFileSize));
 
     printf ("file wave frames:%d fileSize:%d took:%f\n", mLoadedFrame, mFileSize, getTimer() - time);
     }
@@ -379,11 +376,6 @@ private:
     //{{{  create volume widget
     bool mVolumeChanged;
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    //}}}
-    //{{{  create position widget
-    float position = 0.0f;
-    bool positionChanged = false;
-    mRoot->addBottomLeft (new cValueBox (position, positionChanged, COL_BLUE, mRoot->getWidth(), 8));
     //}}}
     bool mFrameChanged = false;;
     mPlayFrame = 0;
@@ -422,31 +414,19 @@ private:
 
         if (fileIndexChanged)
           break;
-        else if (positionChanged) {
-          //{{{  skip by position
-          filePosition = int(position * mFileSize);
-          positionChanged = false;
-          }
-          //}}}
         else if (mWaveChanged) {
-          //{{{  skip by frame
-          filePosition = int ((float(mPlayFrame) / float(mLoadedFrame)) * mFileSize);
+          // skip by frame
+          filePosition = mFramePosition [mPlayFrame];
           mWaveChanged = false;
           }
-          //}}}
-        position = (float)filePosition / (float)mFileSize;
         }
-
       if (!fileIndexChanged)
-        fileIndex++;
+        fileIndex = fileIndex >= (int)mMp3Files.size() ? 0 : fileIndex + 1;
       fileIndexChanged = false;
 
       free (mFileBuffer);
       UnmapViewOfFile (fileBuffer);
       CloseHandle (fileHandle);
-
-      if (fileIndex >= mMp3Files.size())
-        fileIndex = 0;
       }
     }
   //}}}
