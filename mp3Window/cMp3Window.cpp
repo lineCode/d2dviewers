@@ -11,7 +11,8 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveWidget.h"
-#include "../../shared/widgets/cWholeWaveWidget.h"
+#include "../../shared/widgets/cWaveCentredWidget.h"
+#include "../../shared/widgets/cWaveOverviewWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 
@@ -317,22 +318,19 @@ private:
   //{{{
   void loadThread (std::string fileName) {
 
-    cMp3Decoder mMp3Decoder;
-    //{{{  widgets, vars
     int fileIndex = 0;
     bool fileIndexChanged = false;
     bool mVolumeChanged = false;
     bool mFrameChanged = false;;
     mPlayFrame = 0;
-
     mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    mRoot->addTopLeft (new cWholeWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame,mWaveChanged,
-                                             mRoot->getWidth(), mRoot->getBoxHeight()*2));
-    mRoot->addBottomLeft (new cWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                           mRoot->getWidth(), mRoot->getBoxHeight()*4));
-    //}}}
+    mRoot->addTopLeft (new cWaveOverviewWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame,mWaveChanged,
+                                                mRoot->getWidth(), mRoot->getBoxHeight()*2));
+    mRoot->addBottomLeft (new cWaveCentredWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                                  mRoot->getWidth(), mRoot->getBoxHeight()*4));
 
+    cMp3Decoder mMp3Decoder;
     while (true) {
       //{{{  open and load file into fileBuffer
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);

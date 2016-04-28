@@ -30,12 +30,14 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\shared\decoders\cMp3decoder.h" />
+    <ClInclude Include="..\..\shared\widgets\cCentreWaveWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cContainer.h" />
     <ClInclude Include="..\..\shared\widgets\cListWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cRootContainer.h" />
     <ClInclude Include="..\..\shared\widgets\cTextBox.h" />
     <ClInclude Include="..\..\shared\widgets\cValueBox.h" />
-    <ClInclude Include="..\..\shared\widgets\cWaveformWidget.h" />
+    <ClInclude Include="..\..\shared\widgets\cWaveWidget.h" />
+    <ClInclude Include="..\..\shared\widgets\cWholeWaveWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cWidget.h" />
     <ClInclude Include="..\..\shared\widgets\iDraw.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
