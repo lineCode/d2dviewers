@@ -11,7 +11,7 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveWidget.h"
-#include "../../shared/widgets/cWaveformWidget.h"
+#include "../../shared/widgets/cWholeWaveWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 
@@ -327,9 +327,10 @@ private:
 
     mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    mRoot->addTopLeft (new cWaveWidget (mPlayFrame, mLoadedFrame, mMaxFrame, mWaveform, mWaveChanged,
-                                        mRoot->getWidth(), mRoot->getBoxHeight()*2));
-    mRoot->addBottomLeft (new cWaveformWidget (mPlayFrame, mWaveform, mRoot->getWidth(), 30));
+    mRoot->addTopLeft (new cWholeWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame,mWaveChanged,
+                                             mRoot->getWidth(), mRoot->getBoxHeight()*2));
+    mRoot->addBottomLeft (new cWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                           mRoot->getWidth(), mRoot->getBoxHeight()*4));
     //}}}
 
     while (true) {
@@ -415,7 +416,7 @@ private:
     // correct maxFrame to counted frame
     mMaxFrame = mLoadedFrame;
 
-    printf ("wave frames:%d fileSize:%d tag:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, getTimer() - time);
+    printf ("wave frames:%d fileSize:%d tag:%d max:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, maxLR, getTimer() - time);
     }
   //}}}
   //{{{
