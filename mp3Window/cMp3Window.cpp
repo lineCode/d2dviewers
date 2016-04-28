@@ -21,12 +21,12 @@
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
   //{{{
-  void run (wchar_t* title, int width, int height, char* fileName) {
+  void run (wchar_t* title, int width, int height, std::string fileName) {
 
     initialise (title, width+10, height+6);
 
-    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
-      listThread (fileName ? fileName : "D:/music");
+    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+      listThread (fileName.empty() ? "D:/music" : fileName.c_str());
       //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
     else
       mMp3Files.push_back (fileName);
@@ -39,10 +39,11 @@ public:
     memset (mSamples, 0, 1152*2*2);
     std::thread([=]() { audioThread(); }).detach();
 
+    // create brush
     getDeviceContext()->CreateSolidColorBrush (ColorF(ColorF::CornflowerBlue), &mBrush);
 
     mRoot = new cRootContainer (width, height);
-    std::thread([=]() { loadThread (fileName ? fileName : "D:/music"); }).detach();
+    std::thread([=]() { loadThread (fileName.empty() ? "D:/music" : fileName); }).detach();
     setChangeRate (1);
 
     messagePump();
@@ -314,67 +315,7 @@ protected:
 
 private:
   //{{{
-  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
-
-    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
-
-    std::string searchStr (mFullDirName +  "/*");
-    WIN32_FIND_DATAA findFileData;
-    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-    if (file != INVALID_HANDLE_VALUE) {
-      do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
-          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
-        } while (FindNextFileA (file, &findFileData));
-
-      FindClose (file);
-      }
-    }
-  //}}}
-  //{{{
-  void listThread (char* fileName) {
-
-    auto time = getTimer();
-
-    if (GetFileAttributesA (fileName) & FILE_ATTRIBUTE_DIRECTORY)
-      listDirectory (std::string(), fileName, "*.mp3");
-
-    printf ("files listed %s %d took %f\n", fileName, (int)mMp3Files.size(), getTimer() - time);
-    }
-  //}}}
-  //{{{
-  void waveThread() {
-
-    auto time = getTimer();
-
-    cMp3Decoder mMp3Decoder;
-
-    auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
-    printf ("tagBytes %d\n", tagBytes);
-
-    auto filePosition = 0;
-    mLoadedFrame = 0;
-    int bytesUsed = 0;
-    do {
-      mFramePosition [mLoadedFrame] = filePosition;
-      bytesUsed = mMp3Decoder.decodeNextFrame (
-        mFileBuffer + filePosition, mFileSize - filePosition, mWaveform + (mLoadedFrame++ * 2), nullptr);
-      float bytesPerFrame = (filePosition - tagBytes) / (float)mLoadedFrame;
-      mMaxFrame = int((mFileSize - tagBytes) / bytesPerFrame);
-      //printf ("bytesUsed %d %3.2f %d\n", bytesUsed, bytesPerFrame, mMaxFrame);
-
-      filePosition += bytesUsed;
-      } while ((bytesUsed > 0) && (filePosition < mFileSize));
-
-    mMaxFrame = mLoadedFrame;
-    printf ("file wave frames:%d fileSize:%d took:%f\n", mLoadedFrame, mFileSize, getTimer() - time);
-    }
-  //}}}
-  //{{{
-  void loadThread (char* fileName) {
+  void loadThread (std::string fileName) {
 
     cMp3Decoder mMp3Decoder;
     //{{{  widgets, vars
@@ -395,18 +336,21 @@ private:
       //{{{  open and load file into fileBuffer
       auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       mFileSize = (int)GetFileSize (fileHandle, NULL);
+
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+
       mFileBuffer = (uint8_t*)malloc (mFileSize);
       memcpy (mFileBuffer, fileBuffer, mFileSize);
       //}}}
       std::thread ([=](){waveThread();}).detach();
 
+      int bytesUsed;
       mPlayFrame = 0;
       auto filePosition = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
       do {
         mWait = true;
         mReady = false;
-        int bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, nullptr, mSamples);
+        bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, nullptr, mSamples);
         mReady = true;
         if (bytesUsed > 0) {
           filePosition += bytesUsed;
@@ -414,14 +358,12 @@ private:
             Sleep (2);
           mPlayFrame++;
           }
-        else
-          break;
 
         if (mWaveChanged) {
           filePosition = mFramePosition [mPlayFrame];
           mWaveChanged = false;
           }
-        } while (!fileIndexChanged && (filePosition < mFileSize));
+        } while (!fileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
 
       if (!fileIndexChanged)
         fileIndex = fileIndex >= (int)mMp3Files.size() ? 0 : fileIndex + 1;
@@ -436,6 +378,47 @@ private:
     }
   //}}}
   //{{{
+  void waveThread() {
+
+    auto time = getTimer();
+
+    cMp3Decoder mMp3Decoder;
+    auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
+    auto filePosition = tagBytes;
+    auto wavePtr = mWaveform;
+
+    uint8_t maxLR = 0;
+    mLoadedFrame = 0;
+    int bytesUsed = 0;
+    do {
+      mFramePosition [mLoadedFrame] = filePosition;
+
+      // get ready to load next frame wave, zero values, copy max, inc pointer, then fill in new values and new max
+      *wavePtr = 0;
+      *(wavePtr+1) = 0;
+      *(wavePtr+2) = maxLR;
+      mLoadedFrame++;
+      bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, wavePtr, nullptr);
+      uint8_t valueL = *wavePtr++;
+      uint8_t valueR = *wavePtr++;
+      if (valueL > maxLR)
+        maxLR = valueL;
+      if (valueR > maxLR)
+        maxLR = valueR;
+      *wavePtr = maxLR;
+
+      // predict maxFrame from running totals
+      filePosition += bytesUsed;
+      mMaxFrame = int(float(mFileSize - tagBytes) * float(mLoadedFrame) / float(filePosition - tagBytes));
+      } while ((bytesUsed > 0) && (filePosition < mFileSize));
+
+    // correct maxFrame to counted frame
+    mMaxFrame = mLoadedFrame;
+
+    printf ("wave frames:%d fileSize:%d tag:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, getTimer() - time);
+    }
+  //}}}
+  //{{{
   void audioThread() {
 
     CoInitialize (NULL);
@@ -447,6 +430,38 @@ private:
       }
 
     CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void listThread (std::string fileName) {
+
+    auto time = getTimer();
+
+    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory (std::string(), fileName, "*.mp3");
+
+    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mMp3Files.size(), getTimer() - time);
+    }
+  //}}}
+  //{{{
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
+
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
+
+    std::string searchStr (mFullDirName +  "/*");
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
     }
   //}}}
   //{{{  vars
