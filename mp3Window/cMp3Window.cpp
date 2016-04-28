@@ -11,6 +11,7 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveWidget.h"
+#include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cWaveCentredWidget.h"
 #include "../../shared/widgets/cWaveOverviewWidget.h"
 #include "../../shared/widgets/cTextBox.h"
@@ -32,8 +33,8 @@ public:
     else
       mMp3Files.push_back (fileName);
 
-    mFramePosition = (int*)malloc (40*60*60*2*sizeof(int));
-    mWaveform = (uint8_t*)malloc (40*60*60*2*sizeof(uint8_t));
+    mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
+    mWaveform = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
 
     mVolume = 0.3f;
     mSamples = (int16_t*)malloc (1152*2*2);
@@ -304,6 +305,7 @@ protected:
       case 0x11: // control
       case 0x00: return false;
       case 0x1B: return true; // escape
+      case 0x20: mPlaying = ! mPlaying; return false; // space
       default: printf ("key %x\n", key);
       }
     return false;
@@ -326,9 +328,9 @@ private:
     mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     mRoot->addTopLeft (new cWaveOverviewWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame,mWaveChanged,
-                                                mRoot->getWidth(), mRoot->getBoxHeight()*2));
-    mRoot->addBottomLeft (new cWaveCentredWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                                  mRoot->getWidth(), mRoot->getBoxHeight()*4));
+                                         mRoot->getWidth(), mRoot->getBoxHeight()*2));
+    mRoot->addNextBelow (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                               mRoot->getWidth(), mRoot->getBoxHeight()*4));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
@@ -353,7 +355,7 @@ private:
         mReady = true;
         if (bytesUsed > 0) {
           filePosition += bytesUsed;
-          while (mWait)
+          while (mWait && !fileIndexChanged)
             Sleep (2);
           mPlayFrame++;
           }
@@ -367,6 +369,7 @@ private:
       if (!fileIndexChanged)
         fileIndex = fileIndex >= (int)mMp3Files.size() ? 0 : fileIndex + 1;
       fileIndexChanged = false;
+      mPlaying = true;
 
       //{{{  close file and fileBuffer
       free (mFileBuffer);
@@ -424,8 +427,8 @@ private:
     audOpen (44100, 16, 2);
 
     while (true) {
-      mReady ? audPlay (mSamples, 1152*2*2, 1.0f) : audSilence();
-      mWait = false;
+      mReady && mPlaying ? audPlay (mSamples, 1152*2*2, 1.0f) : audSilence();
+      mWait = !mPlaying;
       }
 
     CoUninitialize();
@@ -482,6 +485,7 @@ private:
   int16_t* mSamples = nullptr;
   bool mWait = false;
   bool mReady = false;
+  bool mPlaying = true;
 
   ID2D1SolidColorBrush* mBrush;
   //}}}
