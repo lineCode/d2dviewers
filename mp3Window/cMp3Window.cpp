@@ -327,10 +327,8 @@ private:
     mPlayFrame = 0;
     mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    mRoot->addTopLeft (new cWaveOverviewWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame,mWaveChanged,
-                                         mRoot->getWidth(), mRoot->getBoxHeight()*2));
-    mRoot->addNextBelow (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                               mRoot->getWidth(), mRoot->getBoxHeight()*4));
+    mRoot->addTopLeft (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
