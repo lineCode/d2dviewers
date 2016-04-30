@@ -11,9 +11,9 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveWidget.h"
-#include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cWaveCentredWidget.h"
 #include "../../shared/widgets/cWaveOverviewWidget.h"
+#include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 
@@ -314,7 +314,7 @@ protected:
   void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { mRoot->draw (this); }
+  void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
   //{{{
@@ -328,6 +328,10 @@ private:
     mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     mRoot->addTopLeft (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
+    mRoot->addNextBelow (new cWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
+    mRoot->addNextBelow (new cWaveCentredWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                             mRoot->getWidth(), mRoot->getBoxHeight()*3));
 
     cMp3Decoder mMp3Decoder;
@@ -365,7 +369,7 @@ private:
         } while (!fileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
 
       if (!fileIndexChanged)
-        fileIndex = fileIndex >= (int)mMp3Files.size() ? 0 : fileIndex + 1;
+        fileIndex = (fileIndex + 1) % mMp3Files.size();
       fileIndexChanged = false;
       mPlaying = true;
 
