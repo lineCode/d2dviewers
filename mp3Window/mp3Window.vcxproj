@@ -30,6 +30,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\shared\decoders\cMp3decoder.h" />
+    <ClInclude Include="..\..\shared\decoders\tjpgd.h" />
     <ClInclude Include="..\..\shared\widgets\cCentreWaveWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cContainer.h" />
     <ClInclude Include="..\..\shared\widgets\cListWidget.h" />
@@ -49,6 +50,7 @@
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
     <ProjectName>mp3Window</ProjectName>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

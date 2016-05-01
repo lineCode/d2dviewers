@@ -17,6 +17,8 @@
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 
+// notyet
+//#include "../../shared/decoders/tjpgd.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 
