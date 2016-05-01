@@ -4,15 +4,7 @@
 #include <windows.h>
 #include <wrl.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 #define _USE_MATH_DEFINES
-#include <math.h>
-#include <fcntl.h>
-#include <string.h>
-#include <tchar.h>
-#include <io.h>
 
 #include <locale>
 #include <codecvt>
