@@ -44,7 +44,7 @@ public:
     mFileSize = (int)GetFileSize (mFileHandle, NULL);
     mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
 
-    mPoolBuffer = malloc (3100);
+    mPoolBuffer = (uint8_t*)malloc (3100);
     return cTinyJpeg::initialise (mPoolBuffer, 3100);
     }
   //}}}
@@ -88,7 +88,7 @@ private:
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
   uint8_t* mFrameBuffer = nullptr;
-  void* mPoolBuffer;
+  uint8_t* mPoolBuffer;
   };
 //}}}
 
