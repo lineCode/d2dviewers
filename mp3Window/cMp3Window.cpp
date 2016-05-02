@@ -241,12 +241,12 @@ public:
     }
   //}}}
   //{{{
-  void rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height, uint8_t thickness) {
 
-    rectClipped (colour, x, y, width, 1);
-    rectClipped (colour, x + width-1, y, 1, height);
-    rectClipped (colour, x, y + height-1, width, 1);
-    rectClipped (colour, x, y, 1, height);
+    rectClipped (colour, x, y, width, thickness);
+    rectClipped (colour, x + width-thickness, y, thickness, height);
+    rectClipped (colour, x, y + height-thickness, width, thickness);
+    rectClipped (colour, x, y, thickness, height);
     }
   //}}}
   //{{{
