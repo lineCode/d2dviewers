@@ -30,7 +30,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\shared\decoders\cMp3decoder.h" />
-    <ClInclude Include="..\..\shared\decoders\tjpgd.h" />
+    <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h" />
     <ClInclude Include="..\..\shared\widgets\cCentreWaveWidget.h" />
     <ClInclude Include="..\..\shared\widgets\cContainer.h" />
     <ClInclude Include="..\..\shared\widgets\cListWidget.h" />

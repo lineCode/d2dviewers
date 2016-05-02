@@ -18,8 +18,83 @@
 #include "../../shared/widgets/cValueBox.h"
 
 // notyet
-//#include "../../shared/decoders/tjpgd.h"
+#include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
+//}}}
+
+//{{{  struct IODEV
+typedef struct {
+  //FIL* file;
+  BYTE* frameBuffer;
+  UINT width;
+  UINT height;
+  } IODEV;
+//}}}
+//{{{
+static UINT inFunc (JDEC* jdec, BYTE* buffer, UINT bytes) {
+
+  IODEV* dev = (IODEV*)jdec->device;
+
+  //if (buffer)
+  //  f_read (dev->file, buffer, bytes, &bytes);
+  //else
+  //  f_lseek (dev->file, f_tell (dev->file) + bytes);
+
+  return bytes;
+  }
+//}}}
+//{{{
+static UINT outFunc (JDEC* jdec, BYTE* bitmap, JRECT* rect) {
+
+  IODEV* dev = (IODEV*)jdec->device;
+
+  UINT x;
+  UINT y;
+  BYTE* dst = dev->frameBuffer + ((rect->top * dev->width) + rect->left) * 4;
+  for (y = rect->top; y <= rect->bottom; y++) {
+    for (x = rect->left; x <= rect->right; x++) {
+      *dst++ = *bitmap++; // B
+      *dst++ = *bitmap++; // G
+      *dst++ = *bitmap++; // R
+      *dst++ = 0xFF;      // A
+      }
+    dst += (dev->width - (rect->right - rect->left + 1)) * 4;
+    }
+
+  return y < dev->height;
+  }
+//}}}
+//{{{
+static void tjpegDecode (char* fileName) {
+
+  //FIL file;
+  //if (f_open (&file, fileName, FA_OPEN_EXISTING | FA_READ) == FR_OK) {
+  JDEC jdec;
+  IODEV device = {/*&file,*/ NULL, 0};
+  void* workBuf = malloc (3100);
+  if (jd_prepare (&jdec, inFunc, workBuf, 3100, &device) == JDR_OK) {
+    // decompress to frameBuffer with 1/1 scaling
+    //device.frameBuffer = (BYTE*)LCD_FB_START_ADDRESS;
+    //device.width = BSP_LCD_GetXSize();
+    //device.height = BSP_LCD_GetYSize();
+
+    UINT scale = 1;
+    while ((scale <= 4) && ((jdec.width/scale > device.width) || (jdec.height/scale > device.height)))
+      scale++;
+
+    //sprintf (debStr, "%s %ux%u %u %u used", fileName, jdec.width, jdec.height, scale, 3100 - jdec.sz_pool);
+    //BSP_LCD_DisplayStringAtLine ((debLine++)%20, (uint8_t*)debStr);
+
+    jd_decomp (&jdec, outFunc, scale-1);
+    }
+  //else {
+  //  sprintf (debStr, "%s jpeg decode failed", fileName);
+  //  BSP_LCD_DisplayStringAtLine ((debLine++)%20, (uint8_t*)debStr);
+  //  }
+
+  free (workBuf);
+  //f_close (device.file);
+  }
 //}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {

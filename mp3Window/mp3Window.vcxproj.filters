@@ -45,7 +45,7 @@
     <ClInclude Include="..\..\shared\widgets\cWholeWaveWidget.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\tjpgd.h">
+    <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
