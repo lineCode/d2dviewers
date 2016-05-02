@@ -16,84 +16,85 @@
 #include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
+#include "../../shared/widgets/cPicWidget.h"
 
 // notyet
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
+static const bool kAudio = false;
 
 //{{{  struct IODEV
 typedef struct {
-  //FIL* file;
+  uint8_t* fileBuffer;
+  int fileSize;
   BYTE* frameBuffer;
   UINT width;
   UINT height;
   } IODEV;
 //}}}
 //{{{
-static UINT inFunc (JDEC* jdec, BYTE* buffer, UINT bytes) {
+static UINT inFunc (JDEC* jd, BYTE* buffer, UINT bytes) {
 
-  IODEV* dev = (IODEV*)jdec->device;
-
-  //if (buffer)
-  //  f_read (dev->file, buffer, bytes, &bytes);
-  //else
-  //  f_lseek (dev->file, f_tell (dev->file) + bytes);
+  auto dev = (IODEV*)jd->device;
+  if (buffer)
+    memcpy (buffer, dev->fileBuffer, bytes);
+  dev->fileBuffer += bytes;
 
   return bytes;
   }
 //}}}
 //{{{
-static UINT outFunc (JDEC* jdec, BYTE* bitmap, JRECT* rect) {
+static UINT outFunc (JDEC* jd, BYTE* bitmap, JRECT* rect) {
 
-  IODEV* dev = (IODEV*)jdec->device;
+  auto dev = (IODEV*)jd->device;
 
-  UINT x;
-  UINT y;
-  BYTE* dst = dev->frameBuffer + ((rect->top * dev->width) + rect->left) * 4;
-  for (y = rect->top; y <= rect->bottom; y++) {
-    for (x = rect->left; x <= rect->right; x++) {
+  auto dst = dev->frameBuffer + ((rect->top * dev->width) + rect->left) * 3;
+  for (auto y = rect->top; y <= rect->bottom; y++) {
+    for (auto x = rect->left; x <= rect->right; x++) {
       *dst++ = *bitmap++; // B
       *dst++ = *bitmap++; // G
       *dst++ = *bitmap++; // R
-      *dst++ = 0xFF;      // A
       }
-    dst += (dev->width - (rect->right - rect->left + 1)) * 4;
+    dst += (dev->width - (rect->right - rect->left + 1)) * 3;
     }
 
-  return y < dev->height;
+  return rect->bottom < dev->height;
   }
 //}}}
 //{{{
-static void tjpegDecode (char* fileName) {
+static void tinyJpegDecode (const char* fileName, uint8_t*& piccy, int& picWidth, int& picHeight) {
 
-  //FIL file;
-  //if (f_open (&file, fileName, FA_OPEN_EXISTING | FA_READ) == FR_OK) {
+  auto fileHandle = CreateFileA (fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+  int fileSize = (int)GetFileSize (fileHandle, NULL);
+  auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+
   JDEC jdec;
-  IODEV device = {/*&file,*/ NULL, 0};
+  IODEV device = {fileBuffer, fileSize, NULL, 0, 0};
   void* workBuf = malloc (3100);
-  if (jd_prepare (&jdec, inFunc, workBuf, 3100, &device) == JDR_OK) {
-    // decompress to frameBuffer with 1/1 scaling
-    //device.frameBuffer = (BYTE*)LCD_FB_START_ADDRESS;
-    //device.width = BSP_LCD_GetXSize();
-    //device.height = BSP_LCD_GetYSize();
 
-    UINT scale = 1;
+  if (jd_prepare (&jdec, inFunc, workBuf, 3100, &device) == JDR_OK) {
+    device.frameBuffer = (BYTE*)malloc (jdec.width * jdec.height * 3);
+    device.width = jdec.width;
+    device.height = jdec.height;
+
+    auto scale = 1;
     while ((scale <= 4) && ((jdec.width/scale > device.width) || (jdec.height/scale > device.height)))
       scale++;
 
-    //sprintf (debStr, "%s %ux%u %u %u used", fileName, jdec.width, jdec.height, scale, 3100 - jdec.sz_pool);
-    //BSP_LCD_DisplayStringAtLine ((debLine++)%20, (uint8_t*)debStr);
+    printf ("%s %ux%u %u %u used\n", fileName, jdec.width, jdec.height, scale, 3100 - jdec.sz_pool);
 
     jd_decomp (&jdec, outFunc, scale-1);
     }
-  //else {
-  //  sprintf (debStr, "%s jpeg decode failed", fileName);
-  //  BSP_LCD_DisplayStringAtLine ((debLine++)%20, (uint8_t*)debStr);
-  //  }
 
   free (workBuf);
-  //f_close (device.file);
+
+  UnmapViewOfFile (fileBuffer);
+  CloseHandle (fileHandle);
+
+  picWidth = jdec.width;
+  picHeight = jdec.height;
+  piccy = device.frameBuffer;
   }
 //}}}
 
@@ -104,26 +105,31 @@ public:
 
     initialise (title, width+10, height+6);
 
-    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-      listThread (fileName.empty() ? "D:/music" : fileName.c_str());
-      //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
-    else
-      mMp3Files.push_back (fileName);
-
-    mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
-    mWaveform = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
-
-    mVolume = 0.3f;
-    mSamples = (int16_t*)malloc (1152*2*2);
-    memset (mSamples, 0, 1152*2*2);
-    std::thread([=]() { audioThread(); }).detach();
-
     // create brush
     getDeviceContext()->CreateSolidColorBrush (ColorF(ColorF::CornflowerBlue), &mBrush);
 
     mRoot = new cRootContainer (width, height);
-    std::thread([=]() { loadThread (fileName.empty() ? "D:/music" : fileName); }).detach();
     setChangeRate (1);
+
+    if (kAudio) {
+      if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+        listDirectory (std::string(), fileName, "*.mp3");
+        //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
+      else
+        mMp3Files.push_back (fileName);
+
+      mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
+      mWaveform = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
+      mVolume = 0.3f;
+      mSamples = (int16_t*)malloc (1152*2*2);
+      memset (mSamples, 0, 1152*2*2);
+      std::thread([=]() { audioThread(); }).detach();
+      std::thread([=]() { loadMp3Thread (fileName.empty() ? "D:/music" : fileName); }).detach();
+      }
+    else {
+      listDirectory (std::string(), fileName, "*.jpg");
+      std::thread([=]() { loadJpegThread (fileName.empty() ? "D:/music" : fileName); }).detach();
+      }
 
     messagePump();
     };
@@ -154,7 +160,7 @@ public:
   //}}}
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rect (colour, x, y, 1, 1);
+    rectClipped (0xFF000000 | colour, x, y, 1, 1);
     }
   //}}}
   //{{{
@@ -238,8 +244,8 @@ public:
   void rectOutline (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     rectClipped (colour, x, y, width, 1);
-    rectClipped (colour, x + width, y, 1, height);
-    rectClipped (colour, x, y + height, width, 1);
+    rectClipped (colour, x + width-1, y, 1, height);
+    rectClipped (colour, x, y + height-1, width, 1);
     rectClipped (colour, x, y, 1, height);
     }
   //}}}
@@ -395,7 +401,28 @@ protected:
 
 private:
   //{{{
-  void loadThread (std::string fileName) {
+  void loadJpegThread (std::string fileName) {
+
+    int fileIndex = 0;
+    bool fileIndexChanged = false;
+    uint8_t* piccy = nullptr;
+    int picWidth = 0;
+    int picHeight = 0;
+
+    mRoot->addTopRight (new cPicWidget (piccy, picWidth, picHeight, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+
+    while (true) {
+      if (fileIndexChanged) {
+        tinyJpegDecode (mMp3Files[fileIndex].c_str(), piccy, picWidth, picHeight);
+        fileIndexChanged = false;
+        }
+      Sleep (100);
+      }
+    }
+  //}}}
+  //{{{
+  void loadMp3Thread (std::string fileName) {
 
     int fileIndex = 0;
     bool fileIndexChanged = false;
