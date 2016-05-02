@@ -25,19 +25,46 @@
 static const bool kAudio = false;
 
 //{{{
-class cMyTinyJpeg : public cTinyJpeg {
+class cFileMapTinyJpeg : public cTinyJpeg {
 public:
-  uint8_t* fileBuffer;
-  int fileSize;
-  BYTE* frameBuffer;
+  //{{{
+  cFileMapTinyJpeg (std::string fileName) {
+    mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    mFileSize = (int)GetFileSize (mFileHandle, NULL);
+    mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+    }
+  //}}}
+  //{{{
+  cFileMapTinyJpeg() {
+    UnmapViewOfFile (mFileBuffer);
+    CloseHandle (mFileHandle);
+
+    free (mPool);
+    }
+  //}}}
+
+  uint8_t* getPic() { return mFrameBuffer; }
+  //{{{
+  JRESULT initialise() {
+    mPool = malloc (3100);
+    mPoolSize = 3100;
+    return cTinyJpeg::initialise();
+    }
+  //}}}
+  //{{{
+  JRESULT decode (BYTE scale, uint8_t* frameBuffer) {
+    mFrameBuffer = frameBuffer;
+    return cTinyJpeg::decode (scale);
+    }
+  //}}}
 
 protected:
   //{{{
   UINT readBytes (BYTE* buffer, UINT bytes) {
 
     if (buffer)
-      memcpy (buffer, fileBuffer, bytes);
-    fileBuffer += bytes;
+      memcpy (buffer, mFileBuffer, bytes);
+    mFileBuffer += bytes;
 
     return bytes;
     }
@@ -45,19 +72,25 @@ protected:
   //{{{
   UINT outputRect (BYTE* bitmap, JRECT* rect) {
 
-    auto dst = frameBuffer + ((rect->top * mWidth) + rect->left) * 3;
+    auto dst = mFrameBuffer + ((rect->top * getWidth()) + rect->left) * 3;
     for (auto y = rect->top; y <= rect->bottom; y++) {
       for (auto x = rect->left; x <= rect->right; x++) {
         *dst++ = *bitmap++; // B
         *dst++ = *bitmap++; // G
         *dst++ = *bitmap++; // R
         }
-      dst += (mWidth - (rect->right - rect->left + 1)) * 3;
+      dst += (getWidth() - (rect->right - rect->left + 1)) * 3;
       }
 
-    return rect->bottom < mHeight;
+    return rect->bottom < getHeight();
     }
   //}}}
+
+private:
+  HANDLE mFileHandle;
+  uint8_t* mFileBuffer = nullptr;
+  int mFileSize = 0;
+  uint8_t* mFrameBuffer = nullptr;
   };
 //}}}
 
@@ -538,29 +571,22 @@ private:
   //{{{
   void tinyJpegDecode (std::string fileName, uint8_t*& pic, int& picWidth, int& picHeight) {
 
-    cMyTinyJpeg tinyJpeg;
-    auto fileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    tinyJpeg.fileSize = (int)GetFileSize (fileHandle, NULL);
-    tinyJpeg.fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+    cFileMapTinyJpeg tinyJpeg (fileName);
 
     auto scale = 1;
-    void* pool = malloc (3100);
-    if (tinyJpeg.initialise (pool, 3100) == cMyTinyJpeg::JDR_OK) {
-      while ((scale <= 3) && ((tinyJpeg.mWidth/scale > getWidth()) || (tinyJpeg.mHeight/scale > getHeight())))
+    if (tinyJpeg.initialise() == cTinyJpeg::JDR_OK) {
+      while ((scale <= 3) && ((tinyJpeg.getWidth() /scale > getWidth()) || (tinyJpeg.getHeight() /scale > getHeight())))
         scale++;
-      printf ("%s scale:%d size:%ux%u poolLeft:%u\n", fileName.c_str(), scale, tinyJpeg.mWidth, tinyJpeg.mHeight, tinyJpeg.mPoolSize);
-      tinyJpeg.frameBuffer = (BYTE*)malloc (tinyJpeg.mWidth/scale * tinyJpeg.mHeight/scale * 3);
-      tinyJpeg.decode (scale);
+      printf ("%s scale:%d size:%ux%u poolLeft:%u\n",
+              fileName.c_str(), scale, tinyJpeg.getWidth(), tinyJpeg.getHeight(), tinyJpeg.getPoolSize());
+
+      tinyJpeg.decode (scale, (BYTE*)malloc (tinyJpeg.getWidth() /scale * tinyJpeg.getHeight() /scale * 3));
+
+      pic = tinyJpeg.getPic();
+      picWidth = tinyJpeg.getWidth() / scale;
+      picHeight = tinyJpeg.getHeight() / scale;
       }
 
-    free (pool);
-
-    UnmapViewOfFile (tinyJpeg.fileBuffer);
-    CloseHandle (fileHandle);
-
-    picWidth = tinyJpeg.mWidth / scale;
-    picHeight = tinyJpeg.mHeight / scale;
-    pic = tinyJpeg.frameBuffer;
     }
   //}}}
 
