@@ -49,15 +49,18 @@ public:
     }
   //}}}
   //{{{
-  uint8_t* decode (BYTE scale) {
-    mFrameBuffer = (BYTE*)malloc ((getWidth() / scale) * (getHeight() / scale) * 3);
-    return cTinyJpeg::decode (scale) == JDR_OK ? mFrameBuffer : nullptr;
+  uint8_t* decode (BYTE scaleShift) {
+
+    mFrameWidth = getWidth() >> scaleShift;
+    mFrameHeight = getHeight() >> scaleShift;
+    mFrameBuffer = (BYTE*)malloc (mFrameWidth * mFrameHeight * 3);
+    return cTinyJpeg::decode (scaleShift) == JDR_OK ? mFrameBuffer : nullptr;
     }
   //}}}
 
 protected:
   //{{{
-  UINT readBytes (BYTE* buffer, UINT bytes) {
+  uint32_t readBytes (uint8_t* buffer, uint32_t bytes) {
 
     if (buffer)
       memcpy (buffer, mFileBuffer, bytes);
@@ -67,20 +70,20 @@ protected:
     }
   //}}}
   //{{{
-  UINT outputRect (BYTE* bitmap, JRECT* rect) {
+  uint32_t outputRect (uint8_t* bitmap, JRECT rect) {
   // output a MCU, usually 8x8 block
 
-    auto dst = mFrameBuffer + ((rect->top * getWidth()) + rect->left) * 3;
-    for (auto y = rect->top; y <= rect->bottom; y++) {
-      for (auto x = rect->left; x <= rect->right; x++) {
+    auto dst = mFrameBuffer + ((rect.top * mFrameWidth) + rect.left) * 3;
+    for (auto y = rect.top; y <= rect.bottom; y++) {
+      for (auto x = rect.left; x <= rect.right; x++) {
         *dst++ = *bitmap++; // B
         *dst++ = *bitmap++; // G
         *dst++ = *bitmap++; // R
         }
-      dst += (getWidth() - (rect->right - rect->left + 1)) * 3;
+      dst += (mFrameWidth - (rect.right - rect.left + 1)) * 3;
       }
 
-    return rect->bottom < getHeight();
+    return rect.bottom < mFrameHeight;
     }
   //}}}
 
@@ -91,6 +94,8 @@ private:
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
+  int mFrameWidth = 0;
+  int mFrameHeight = 0;
   uint8_t* mFrameBuffer = nullptr;
   };
 //}}}
@@ -124,7 +129,7 @@ public:
       std::thread([=]() { loadMp3Thread(); }).detach();
       }
     else {
-      listDirectory (std::string(),  fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
+      listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
       std::thread([=]() { loadJpegThread(); }).detach();
       }
 
@@ -575,16 +580,21 @@ private:
     auto time = getTimer();
     cFileMapTinyJpeg jpegDecoder;
 
-    auto scale = 1;
     if (jpegDecoder.initialise (fileName) == cTinyJpeg::JDR_OK) {
-      while ((scale <= 3) && ((jpegDecoder.getWidth() /scale > getWidth()) || (jpegDecoder.getHeight() /scale > getHeight())))
-        scale++;
-      printf ("%s scale:%d size:%ux%u pool:%u t:%5.4f\n",
-              fileName.c_str(), scale, jpegDecoder.getWidth(), jpegDecoder.getHeight(), jpegDecoder.getPoolBytesLeft(), getTimer() - time);
+      // scale to fit
+      auto scale = 1;
+      auto scaleShift = 0;
+      while ((scaleShift < 3) &&
+             ((jpegDecoder.getWidth() / scale > getWidth()) || (jpegDecoder.getHeight() /scale > getHeight()))) {
+        scale *= 2;
+        scaleShift++;
+        }
+
       free (pic);
-      picWidth = jpegDecoder.getWidth() / scale;
-      picHeight = jpegDecoder.getHeight() / scale;
-      pic = jpegDecoder.decode (scale);
+
+      picWidth = jpegDecoder.getWidth() >> scaleShift;
+      picHeight = jpegDecoder.getHeight() >> scaleShift;
+      pic = jpegDecoder.decode (scaleShift);
       }
     }
   //}}}
