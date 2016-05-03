@@ -70,20 +70,21 @@ protected:
     }
   //}}}
   //{{{
-  uint32_t outputRect (uint8_t* bitmap, JRECT rect) {
+  uint32_t outputRect (uint8_t* bitmap, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
   // output a MCU, usually 8x8 block
 
-    auto dst = mFrameBuffer + ((rect.top * mFrameWidth) + rect.left) * 3;
-    for (auto y = rect.top; y <= rect.bottom; y++) {
-      for (auto x = rect.left; x <= rect.right; x++) {
+    auto stride = (mFrameWidth - width) * 3;
+    auto dst = mFrameBuffer + ((y * mFrameWidth) + x) * 3;
+    for (uint32_t j = 0; j < height; j++) {
+      for (uint32_t i = 0; i < width; i++) {
         *dst++ = *bitmap++; // B
         *dst++ = *bitmap++; // G
         *dst++ = *bitmap++; // R
         }
-      dst += (mFrameWidth - (rect.right - rect.left + 1)) * 3;
+      dst += stride;
       }
 
-    return rect.bottom < mFrameHeight;
+    return y + height <= mFrameHeight;
     }
   //}}}
 
@@ -94,8 +95,8 @@ private:
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
-  int mFrameWidth = 0;
-  int mFrameHeight = 0;
+  uint32_t mFrameWidth = 0;
+  uint32_t mFrameHeight = 0;
   uint8_t* mFrameBuffer = nullptr;
   };
 //}}}
