@@ -32,11 +32,11 @@ public:
 
     UnmapViewOfFile (mFileBuffer);
     CloseHandle (mFileHandle);
+
     free (mPoolBuffer);
     }
   //}}}
 
-  uint8_t* getPic() { return mFrameBuffer; }
   //{{{
   JRESULT initialise (std::string fileName) {
 
@@ -49,9 +49,9 @@ public:
     }
   //}}}
   //{{{
-  JRESULT decode (BYTE scale) {
-    mFrameBuffer = (BYTE*)malloc ((getWidth() /scale) * (getHeight() /scale) * 3);
-    return cTinyJpeg::decode (scale);
+  uint8_t* decode (BYTE scale) {
+    mFrameBuffer = (BYTE*)malloc ((getWidth() / scale) * (getHeight() / scale) * 3);
+    return cTinyJpeg::decode (scale) == JDR_OK ? mFrameBuffer : nullptr;
     }
   //}}}
 
@@ -68,6 +68,7 @@ protected:
   //}}}
   //{{{
   UINT outputRect (BYTE* bitmap, JRECT* rect) {
+  // output a MCU, usually 8x8 block
 
     auto dst = mFrameBuffer + ((rect->top * getWidth()) + rect->left) * 3;
     for (auto y = rect->top; y <= rect->bottom; y++) {
@@ -84,11 +85,13 @@ protected:
   //}}}
 
 private:
+  uint8_t* mPoolBuffer;
+
   HANDLE mFileHandle;
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
+
   uint8_t* mFrameBuffer = nullptr;
-  uint8_t* mPoolBuffer;
   };
 //}}}
 
@@ -107,7 +110,7 @@ public:
 
     if (kAudio) {
       if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-        listDirectory (std::string(), fileName, "*.mp3");
+        listDirectory (std::string(), fileName.empty() ? "D:/music" : fileName, "*.mp3");
         //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
       else
         mMp3Files.push_back (fileName);
@@ -118,11 +121,11 @@ public:
       mSamples = (int16_t*)malloc (1152*2*2);
       memset (mSamples, 0, 1152*2*2);
       std::thread([=]() { audioThread(); }).detach();
-      std::thread([=]() { loadMp3Thread (fileName.empty() ? "D:/music" : fileName); }).detach();
+      std::thread([=]() { loadMp3Thread(); }).detach();
       }
     else {
-      listDirectory (std::string(), fileName, "*.jpg");
-      std::thread([=]() { loadJpegThread (fileName.empty() ? "D:/music" : fileName); }).detach();
+      listDirectory (std::string(),  fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
+      std::thread([=]() { loadJpegThread(); }).detach();
       }
 
     messagePump();
@@ -154,7 +157,7 @@ public:
   //}}}
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rectClipped (0xFF000000 | colour, x, y, 1, 1);
+    rectClipped (colour, x, y, 1, 1);
     }
   //}}}
   //{{{
@@ -395,7 +398,7 @@ protected:
 
 private:
   //{{{
-  void loadJpegThread (std::string fileName) {
+  void loadJpegThread() {
 
     uint8_t* piccy = nullptr;
     int picWidth = 0;
@@ -416,7 +419,7 @@ private:
     }
   //}}}
   //{{{
-  void loadMp3Thread (std::string fileName) {
+  void loadMp3Thread() {
 
     int fileIndex = 0;
     bool fileIndexChanged = false;
@@ -569,19 +572,19 @@ private:
   //{{{
   void jpegDecode (std::string fileName, uint8_t*& pic, int& picWidth, int& picHeight) {
 
+    auto time = getTimer();
     cFileMapTinyJpeg jpegDecoder;
 
     auto scale = 1;
     if (jpegDecoder.initialise (fileName) == cTinyJpeg::JDR_OK) {
       while ((scale <= 3) && ((jpegDecoder.getWidth() /scale > getWidth()) || (jpegDecoder.getHeight() /scale > getHeight())))
         scale++;
-      printf ("%s scale:%d size:%ux%u poolBytesLeft:%u\n",
-              fileName.c_str(), scale, jpegDecoder.getWidth(), jpegDecoder.getHeight(), jpegDecoder.getPoolBytesLeft());
-      jpegDecoder.decode (scale);
-
-      pic = jpegDecoder.getPic();
+      printf ("%s scale:%d size:%ux%u pool:%u t:%5.4f\n",
+              fileName.c_str(), scale, jpegDecoder.getWidth(), jpegDecoder.getHeight(), jpegDecoder.getPoolBytesLeft(), getTimer() - time);
+      free (pic);
       picWidth = jpegDecoder.getWidth() / scale;
       picHeight = jpegDecoder.getHeight() / scale;
+      pic = jpegDecoder.decode (scale);
       }
     }
   //}}}
@@ -615,6 +618,6 @@ private:
 int main (int argc, char* argv[]) {
   startTimer();
   cMp3Window mp3Window;
-  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1]);
+  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
