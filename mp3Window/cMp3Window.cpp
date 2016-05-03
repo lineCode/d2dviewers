@@ -591,11 +591,14 @@ private:
         scaleShift++;
         }
 
+
+      picWidth = 0;
+      picHeight = 0;
       free (pic);
 
+      pic = jpegDecoder.decode (scaleShift);
       picWidth = jpegDecoder.getWidth() >> scaleShift;
       picHeight = jpegDecoder.getHeight() >> scaleShift;
-      pic = jpegDecoder.decode (scaleShift);
       }
     }
   //}}}
