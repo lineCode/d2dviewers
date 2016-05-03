@@ -60,7 +60,7 @@ public:
 
 protected:
   //{{{
-  uint32_t readBytes (uint8_t* buffer, uint32_t bytes) {
+  uint32_t read (uint8_t* buffer, uint32_t bytes) {
 
     if (buffer)
       memcpy (buffer, mFileBuffer, bytes);
@@ -70,7 +70,7 @@ protected:
     }
   //}}}
   //{{{
-  uint32_t outputRect (uint8_t* bitmap, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
+  uint32_t output (uint8_t* bitmap, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
   // output a MCU, usually 8x8 block
 
     auto stride = (mFrameWidth - width) * 3;
