@@ -119,7 +119,7 @@ public:
         listDirectory (std::string(), fileName.empty() ? "D:/music" : fileName, "*.mp3");
         //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
       else
-        mMp3Files.push_back (fileName);
+        mFileList.push_back (fileName);
 
       mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
       mWaveform = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
@@ -392,6 +392,10 @@ protected:
       case 0x00: return false;
       case 0x1B: return true; // escape
       case 0x20: mPlaying = ! mPlaying; return false; // space
+
+      case 0x26: mFileIndex--; mFileIndexChanged = true; break; // up arrow
+      case 0x28: mFileIndex++; mFileIndexChanged = true; break; // down arrow
+
       default: printf ("key %x\n", key);
       }
     return false;
@@ -409,16 +413,16 @@ private:
     uint8_t* piccy = nullptr;
     int picWidth = 0;
     int picHeight = 0;
-    int fileIndex = 0;
-    bool fileIndexChanged = false;
+    mFileIndex = 0;
 
     mRoot->addTopLeft (new cPicWidget (piccy, picWidth, picHeight, mRoot->getWidth(), mRoot->getHeight()));
-    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
 
+    mFileIndexChanged = true;
     while (true) {
-      if (fileIndexChanged) {
-        jpegDecode (mMp3Files[fileIndex].c_str(), piccy, picWidth, picHeight);
-        fileIndexChanged = false;
+      if (mFileIndexChanged) {
+        jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+        mFileIndexChanged = false;
         }
       Sleep (100);
       }
@@ -432,7 +436,7 @@ private:
     bool mVolumeChanged = false;
     bool mFrameChanged = false;;
     mPlayFrame = 0;
-    mRoot->addTopLeft (new cListWidget (mMp3Files, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     mRoot->addTopLeft (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                             mRoot->getWidth(), mRoot->getBoxHeight()*3));
@@ -444,7 +448,7 @@ private:
     cMp3Decoder mMp3Decoder;
     while (true) {
       //{{{  open and load file into fileBuffer
-      auto fileHandle = CreateFileA (mMp3Files[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      auto fileHandle = CreateFileA (mFileList[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       mFileSize = (int)GetFileSize (fileHandle, NULL);
 
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
@@ -476,7 +480,7 @@ private:
         } while (!fileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
 
       if (!fileIndexChanged)
-        fileIndex = (fileIndex + 1) % mMp3Files.size();
+        fileIndex = (fileIndex + 1) % mFileList.size();
       fileIndexChanged = false;
       mPlaying = true;
 
@@ -551,7 +555,7 @@ private:
     if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
       listDirectory (std::string(), fileName, "*.mp3");
 
-    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mMp3Files.size(), getTimer() - time);
+    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mFileList.size(), getTimer() - time);
     }
   //}}}
   //{{{
@@ -568,7 +572,7 @@ private:
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
           listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
         else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mMp3Files.push_back (mFullDirName + "/" + findFileData.cFileName);
+          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
         } while (FindNextFileA (file, &findFileData));
 
       FindClose (file);
@@ -606,7 +610,9 @@ private:
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
-  std::vector <std::string> mMp3Files;
+  int mFileIndex = 0;
+  bool mFileIndexChanged = false;
+  std::vector <std::string> mFileList;
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   uint8_t* mFileBuffer = nullptr;
