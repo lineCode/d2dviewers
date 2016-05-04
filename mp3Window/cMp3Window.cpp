@@ -599,6 +599,8 @@ private:
       free (pic);
 
       mBitmapWidget->setPic (bitmap);
+      //mBitmapWidget->setSize (picWidth, picHeight);
+      mBitmapWidget->setSize (mRoot->getWidth(), mRoot->getHeight());
       }
     }
   //}}}
