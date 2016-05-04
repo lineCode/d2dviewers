@@ -44,17 +44,8 @@ public:
     mFileSize = (int)GetFileSize (mFileHandle, NULL);
     mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
 
-    mPoolBuffer = (uint8_t*)malloc (3100);
-    return cTinyJpeg::initialise (mPoolBuffer, 3100);
-    }
-  //}}}
-  //{{{
-  uint8_t* decode (BYTE scaleShift) {
-
-    mFrameWidth = getWidth() >> scaleShift;
-    mFrameHeight = getHeight() >> scaleShift;
-    mFrameBuffer = (BYTE*)malloc (mFrameWidth * mFrameHeight * 3);
-    return cTinyJpeg::decode (scaleShift) == JDR_OK ? mFrameBuffer : nullptr;
+    mPoolBuffer = (uint8_t*)malloc (4096);
+    return cTinyJpeg::initialise (mPoolBuffer, 4096);
     }
   //}}}
 
@@ -69,24 +60,6 @@ protected:
     return bytes;
     }
   //}}}
-  //{{{
-  uint32_t output (uint8_t* bitmap, uint32_t x, uint32_t y, uint32_t width, uint32_t height) {
-  // output a MCU, usually 8x8 block
-
-    auto stride = (mFrameWidth - width) * 3;
-    auto dst = mFrameBuffer + ((y * mFrameWidth) + x) * 3;
-    for (uint32_t j = 0; j < height; j++) {
-      for (uint32_t i = 0; i < width; i++) {
-        *dst++ = *bitmap++; // B
-        *dst++ = *bitmap++; // G
-        *dst++ = *bitmap++; // R
-        }
-      dst += stride;
-      }
-
-    return y + height <= mFrameHeight;
-    }
-  //}}}
 
 private:
   uint8_t* mPoolBuffer;
@@ -94,10 +67,6 @@ private:
   HANDLE mFileHandle;
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
-
-  uint32_t mFrameWidth = 0;
-  uint32_t mFrameHeight = 0;
-  uint8_t* mFrameBuffer = nullptr;
   };
 //}}}
 
@@ -144,6 +113,22 @@ public:
   uint8_t getLineHeight() { return 19; }
 
   //{{{
+  void pixel (uint32_t colour, int16_t x, int16_t y) {
+    rectClipped (colour, x, y, 1, 1);
+    }
+  //}}}
+  //{{{
+  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
+    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x + width), float(y + height)), mBrush);
+    }
+  //}}}
+  //{{{
+  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
+    }
+  //}}}
+  //{{{
   int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     // create layout
@@ -162,19 +147,16 @@ public:
     }
   //}}}
   //{{{
-  void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rectClipped (colour, x, y, 1, 1);
-    }
-  //}}}
-  //{{{
-  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
-    }
-  //}}}
-  //{{{
-  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
-    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x+width), float(y + height)), mBrush);
+  void copy (uint32_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    if (src && width && height) {
+      for (auto j = y; j < y + height; j++)
+        for (auto i = x; i < x + width; i++) {
+          mBrush->SetColor (ColorF (*src));
+          getDeviceContext()->FillRectangle (RectF (float(i), float(j), float(i + 1), float(j + 1)), mBrush);
+          src++;
+          }
+      }
     }
   //}}}
 
@@ -410,9 +392,9 @@ private:
   //{{{
   void loadJpegThread() {
 
-    uint8_t* piccy = nullptr;
-    int picWidth = 0;
-    int picHeight = 0;
+    uint32_t* piccy = nullptr;
+    uint16_t picWidth = 0;
+    uint16_t picHeight = 0;
     mFileIndex = 0;
 
     mRoot->addTopLeft (new cPicWidget (piccy, picWidth, picHeight, mRoot->getWidth(), mRoot->getHeight()));
@@ -580,11 +562,9 @@ private:
     }
   //}}}
   //{{{
-  void jpegDecode (std::string fileName, uint8_t*& pic, int& picWidth, int& picHeight) {
+  void jpegDecode (std::string fileName, uint32_t*& pic, uint16_t& picWidth, uint16_t& picHeight) {
 
-    auto time = getTimer();
     cFileMapTinyJpeg jpegDecoder;
-
     if (jpegDecoder.initialise (fileName) == cTinyJpeg::JDR_OK) {
       // scale to fit
       auto scale = 1;
