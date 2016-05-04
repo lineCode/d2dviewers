@@ -17,7 +17,7 @@
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 #include "../../shared/widgets/cPicWidget.h"
-#include "../../shared/widgets/cPicBitMapWidget.h"
+#include "../../shared/widgets/cBitmapWidget.h"
 
 // notyet
 #include "../../shared/decoders/cTinyJpeg.h"
@@ -405,8 +405,8 @@ private:
     uint16_t picHeight = 0;
     mFileIndex = 0;
 
-    mPicWidget = new cPicBitMapWidget (mRoot->getWidth(), mRoot->getHeight());
-    mRoot->addTopLeft (mPicWidget);
+    mBitmapWidget = new cBitmapWidget (mRoot->getWidth(), mRoot->getHeight());
+    mRoot->addTopLeft (mBitmapWidget);
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
@@ -590,10 +590,15 @@ private:
         scaleShift++;
         }
 
+      ID2D1Bitmap* bitmap;
+      auto picWidth = jpegDecoder.getWidth() >> scaleShift;
+      auto picHeight = jpegDecoder.getHeight() >> scaleShift;
+      getDeviceContext()->CreateBitmap (SizeU (picWidth, picHeight), getBitmapProperties(), &bitmap);
       auto pic = jpegDecoder.decode (scaleShift);
-      mPicWidget->setPic (getDeviceContext(), getBitmapProperties(),
-                          pic, jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift);
+      bitmap->CopyFromMemory (&RectU (0, 0, picWidth, picHeight), pic, picWidth*4);
       free (pic);
+
+      mBitmapWidget->setPic (bitmap);
       }
     }
   //}}}
@@ -622,7 +627,7 @@ private:
   bool mPlaying = true;
 
   ID2D1SolidColorBrush* mBrush;
-  cPicBitMapWidget* mPicWidget = nullptr;
+  cBitmapWidget* mBitmapWidget = nullptr;
   //}}}
   };
 
