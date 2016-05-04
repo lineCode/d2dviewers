@@ -17,6 +17,7 @@
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
 #include "../../shared/widgets/cPicWidget.h"
+#include "../../shared/widgets/cPicBitMapWidget.h"
 
 // notyet
 #include "../../shared/decoders/cTinyJpeg.h"
@@ -98,6 +99,7 @@ public:
       std::thread([=]() { audioThread(); }).detach();
       std::thread([=]() { loadMp3Thread(); }).detach();
       }
+
     else {
       listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
       std::thread([=]() { loadJpegThread(); }).detach();
@@ -157,6 +159,12 @@ public:
           src++;
           }
       }
+    }
+  //}}}
+  //{{{
+  void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    getDeviceContext()->DrawBitmap (bitMap, RectF ((float)x, (float)y, (float)width,(float)height));
     }
   //}}}
 
@@ -397,8 +405,14 @@ private:
     uint16_t picHeight = 0;
     mFileIndex = 0;
 
-    mRoot->addTopLeft (new cPicWidget (piccy, picWidth, picHeight, mRoot->getWidth(), mRoot->getHeight()));
+    mPicWidget = new cPicBitMapWidget (mRoot->getWidth(), mRoot->getHeight());
+    mRoot->addTopLeft (mPicWidget);
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+
+    while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
+      jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+      mFileIndex++;
+      }
 
     mFileIndexChanged = true;
     while (true) {
@@ -406,7 +420,8 @@ private:
         jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
         mFileIndexChanged = false;
         }
-      Sleep (100);
+      else
+        Sleep (100);
       }
     }
   //}}}
@@ -575,14 +590,10 @@ private:
         scaleShift++;
         }
 
-
-      picWidth = 0;
-      picHeight = 0;
+      auto pic = jpegDecoder.decode (scaleShift);
+      mPicWidget->setPic (getDeviceContext(), getBitmapProperties(),
+                          pic, jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift);
       free (pic);
-
-      pic = jpegDecoder.decode (scaleShift);
-      picWidth = jpegDecoder.getWidth() >> scaleShift;
-      picHeight = jpegDecoder.getHeight() >> scaleShift;
       }
     }
   //}}}
@@ -611,6 +622,7 @@ private:
   bool mPlaying = true;
 
   ID2D1SolidColorBrush* mBrush;
+  cPicBitMapWidget* mPicWidget = nullptr;
   //}}}
   };
 
