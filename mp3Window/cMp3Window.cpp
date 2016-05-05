@@ -30,33 +30,27 @@ class cFileMapTinyJpeg : public cTinyJpeg {
 public:
   //{{{
   ~cFileMapTinyJpeg() {
-
     UnmapViewOfFile (mFileBuffer);
     CloseHandle (mFileHandle);
-
-    free (mPoolBuffer);
     }
   //}}}
 
   //{{{
-  JRESULT initialise (std::string fileName) {
+  bool readHeader (std::string fileName) {
 
     mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     mFileSize = (int)GetFileSize (mFileHandle, NULL);
     mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
     mFileBufferPtr = mFileBuffer;
 
-    mPoolBuffer = (uint8_t*)malloc (4096);
-    auto result = cTinyJpeg::initialise (mPoolBuffer, 4096);
+    bool ok = cTinyJpeg::readHeader();
+    if (ok && getThumbOffset()) {
+      printf ("found thumb %d\n", getThumbOffset());
+      mFileBufferPtr = mFileBuffer + getThumbOffset();
+      ok = cTinyJpeg::readHeader();
+      }
 
-    printf ("%s\n", fileName.c_str());
-    for (auto i = 0; i < 32; i ++)
-      printf ("%02x ", mFileBuffer[i]);
-    printf ("\n");
-
-    readExif (mFileBuffer, mFileSize);
-
-    return result;
+    return ok;
     }
   //}}}
 
@@ -64,17 +58,13 @@ protected:
   //{{{
   uint32_t read (uint8_t* buffer, uint32_t bytes) {
 
-    if (buffer)
-      memcpy (buffer, mFileBufferPtr, bytes);
+    memcpy (buffer, mFileBufferPtr, bytes);
     mFileBufferPtr += bytes;
-
     return bytes;
     }
   //}}}
 
 private:
-  uint8_t* mPoolBuffer;
-
   HANDLE mFileHandle;
   uint8_t* mFileBuffer = nullptr;
   uint8_t* mFileBufferPtr = nullptr;
@@ -592,7 +582,7 @@ private:
   void jpegDecode (std::string fileName, uint32_t*& pic, uint16_t& picWidth, uint16_t& picHeight) {
 
     cFileMapTinyJpeg jpegDecoder;
-    if (jpegDecoder.initialise (fileName) == cTinyJpeg::JDR_OK) {
+    if (jpegDecoder.readHeader (fileName)) {
       // scale to fit
       auto scale = 1;
       auto scaleShift = 0;
@@ -606,7 +596,7 @@ private:
       auto picWidth = jpegDecoder.getWidth() >> scaleShift;
       auto picHeight = jpegDecoder.getHeight() >> scaleShift;
       getDeviceContext()->CreateBitmap (SizeU (picWidth, picHeight), getBitmapProperties(), &bitmap);
-      auto pic = jpegDecoder.decode (scaleShift);
+      auto pic = jpegDecoder.decodeBody (scaleShift);
       bitmap->CopyFromMemory (&RectU (0, 0, picWidth, picHeight), pic, picWidth*4);
       free (pic);
 
