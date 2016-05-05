@@ -525,9 +525,9 @@ private:
     switch (marker) {
       case 0xFFC0: str = L"sof0"; break;
       case 0xFFC2: str = L"sof2"; break;
-      case 0xFFC4: str = L"huff"; break;
+      case 0xFFC4: str = L"dht"; break;
       case 0xFFDA: str = L"sos"; break;
-      case 0xFFDB: str = L"quan"; break;
+      case 0xFFDB: str = L"dqt"; break;
       case 0xFFDD: str = L"dri"; break;
       case 0xFFE0: str = L"app0"; break;
       case 0xFFE1: str = L"app1"; break;

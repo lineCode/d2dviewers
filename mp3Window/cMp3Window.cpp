@@ -113,6 +113,7 @@ public:
 
     else {
       listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
+      printf ("found %d piccies\n", (int)mFileList.size());
       std::thread([=]() { loadJpegThread(); }).detach();
       }
 
