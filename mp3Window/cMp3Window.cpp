@@ -399,7 +399,7 @@ private:
 
     for (auto j = 0; j < 4; j++)
       for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * 120));
+        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeight()/4));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
