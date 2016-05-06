@@ -28,41 +28,31 @@ static const bool kAudio = false;
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
 public:
-  //{{{
   ~cFileMapTinyJpeg() {
     UnmapViewOfFile (mFileBuffer);
     CloseHandle (mFileHandle);
     }
-  //}}}
 
-  //{{{
   bool readHeader (std::string fileName) {
-
     mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     mFileSize = (int)GetFileSize (mFileHandle, NULL);
     mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
     mFileBufferPtr = mFileBuffer;
 
     bool ok = cTinyJpeg::readHeader();
-    if (ok && getThumbOffset()) {
-      //printf ("found thumb %d\n", getThumbOffset());
+    if (ok && getThumbBytes()) {
       mFileBufferPtr = mFileBuffer + getThumbOffset();
       ok = cTinyJpeg::readHeader();
       }
-
     return ok;
     }
-  //}}}
 
 protected:
-  //{{{
   uint32_t read (uint8_t* buffer, uint32_t bytes) {
-
     memcpy (buffer, mFileBufferPtr, bytes);
     mFileBufferPtr += bytes;
     return bytes;
     }
-  //}}}
 
 private:
   HANDLE mFileHandle;
@@ -166,7 +156,7 @@ public:
   //{{{
   void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    getDeviceContext()->DrawBitmap (bitMap, RectF ((float)x, (float)y, (float)width,(float)height));
+    getDeviceContext()->DrawBitmap (bitMap, RectF ((float)x, (float)y, (float)x+width,(float)y+height));
     }
   //}}}
 
@@ -407,8 +397,9 @@ private:
     uint16_t picHeight = 0;
     mFileIndex = 0;
 
-    mBitmapWidget = new cBitmapWidget (mRoot->getWidth(), mRoot->getHeight());
-    mRoot->addTopLeft (mBitmapWidget);
+    for (auto j = 0; j < 4; j++)
+      for (auto i = 0; i < 6; i++)
+        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * 120));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
@@ -600,8 +591,7 @@ private:
       bitmap->CopyFromMemory (&RectU (0, 0, picWidth, picHeight), pic, picWidth*4);
       free (pic);
 
-      mBitmapWidget->setPic (bitmap);
-      mBitmapWidget->setSize (picWidth, picHeight);
+      ((cBitmapWidget*)mBitmapWidgets[mNumWidget++ % 24])->setPic (bitmap);
       }
     }
   //}}}
@@ -630,7 +620,8 @@ private:
   bool mPlaying = true;
 
   ID2D1SolidColorBrush* mBrush;
-  cBitmapWidget* mBitmapWidget = nullptr;
+  std::vector <cWidget*> mBitmapWidgets;
+  int mNumWidget = 0;
   //}}}
   };
 
