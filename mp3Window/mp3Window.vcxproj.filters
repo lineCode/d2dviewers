@@ -48,6 +48,9 @@
     <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cNumBox.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

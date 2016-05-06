@@ -18,8 +18,8 @@
 #include "../../shared/widgets/cValueBox.h"
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cBitmapWidget.h"
+#include "../../shared/widgets/cNumBox.h"
 
-// notyet
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
@@ -96,7 +96,6 @@ public:
       printf ("found %d piccies\n", (int)mFileList.size());
       std::thread([=]() { loadJpegThread(); }).detach();
       }
-
     messagePump();
     };
   //}}}
@@ -401,6 +400,8 @@ private:
       for (auto i = 0; i < 6; i++)
         mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeight()/4));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 100));
+    mRoot->addNextBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
       jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
@@ -561,8 +562,10 @@ private:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
           listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName)) {
           mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
+          mCount++;
+          }
         } while (FindNextFileA (file, &findFileData));
 
       FindClose (file);
@@ -591,7 +594,7 @@ private:
       bitmap->CopyFromMemory (&RectU (0, 0, picWidth, picHeight), pic, picWidth*4);
       free (pic);
 
-      ((cBitmapWidget*)mBitmapWidgets[mNumWidget++ % 24])->setPic (bitmap);
+      ((cBitmapWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (bitmap);
       }
     }
   //}}}
@@ -614,6 +617,11 @@ private:
   uint8_t* mWaveform = nullptr;
   int* mFramePosition = nullptr;
 
+  float mCount = 0;
+  bool mCountChanged = false;
+  float mNumWidget = 0;
+  bool mNumChanged = false;
+
   int16_t* mSamples = nullptr;
   bool mWait = false;
   bool mReady = false;
@@ -621,7 +629,6 @@ private:
 
   ID2D1SolidColorBrush* mBrush;
   std::vector <cWidget*> mBitmapWidgets;
-  int mNumWidget = 0;
   //}}}
   };
 
