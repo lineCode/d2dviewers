@@ -12,7 +12,28 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\iDraw.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\decoders\cMp3decoder.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cBitmapWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cContainer.h">
+      <Filter>header</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\shared\widgets\cListWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cNumBox.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\widgets\cPicWidget.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\widgets\cRootContainer.h">
@@ -24,31 +45,19 @@
     <ClInclude Include="..\..\shared\widgets\cValueBox.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWidget.h">
+    <ClInclude Include="..\..\shared\widgets\cWaveCentredWidget.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\iDraw.h">
+    <ClInclude Include="..\..\shared\widgets\cWaveLensWidget.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\cMp3decoder.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cContainer.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cCentreWaveWidget.h">
+    <ClInclude Include="..\..\shared\widgets\cWaveOverviewWidget.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\widgets\cWaveWidget.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWholeWaveWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cNumBox.h">
+    <ClInclude Include="..\..\shared\widgets\cWidget.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
