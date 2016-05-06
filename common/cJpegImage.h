@@ -559,7 +559,7 @@ private:
     }
   //}}}
   //{{{
-  DWORD getExifOffset (BYTE* ptr, bool intelEndian) {
+  DWORD getExifLong (BYTE* ptr, bool intelEndian) {
 
     return getExifWord (ptr + (intelEndian ? 2 : 0), intelEndian) << 16 |
            getExifWord (ptr + (intelEndian ? 0 : 2), intelEndian);
@@ -568,8 +568,8 @@ private:
   //{{{
   float getExifSignedRational (BYTE* ptr, bool intelEndian, DWORD& numerator, DWORD& denominator) {
 
-    numerator = getExifOffset (ptr, intelEndian);
-    denominator = getExifOffset (ptr+4, intelEndian);
+    numerator = getExifLong (ptr, intelEndian);
+    denominator = getExifLong (ptr+4, intelEndian);
 
     if (denominator == 0)
       return 0;
@@ -627,8 +627,8 @@ private:
     for (auto entry = 0; entry < numDirectoryEntries; entry++) {
       auto tag = getExifWord (ptr, intelEndian);
       auto format = getExifWord (ptr+2, intelEndian);
-      auto components = getExifOffset (ptr+4, intelEndian);
-      auto offset = getExifOffset (ptr+8, intelEndian);
+      auto components = getExifLong (ptr+4, intelEndian);
+      auto offset = getExifLong (ptr+8, intelEndian);
       auto bytes = components * kBytesPerFormat[format];
       auto valuePtr = (bytes <= 4) ? ptr+8 : offsetBasePtr + offset;
       ptr += 12;
@@ -638,7 +638,7 @@ private:
       switch (tag) {
         //{{{
         case 0x00:  // version
-          gpsInfo->mVersion = getExifOffset (valuePtr, intelEndian);
+          gpsInfo->mVersion = getExifLong (valuePtr, intelEndian);
           break;
         //}}}
         //{{{
@@ -753,8 +753,8 @@ private:
     for (auto entry = 0; entry < numDirectoryEntries; entry++) {
       auto tag = getExifWord (ptr, intelEndian);
       auto format = getExifWord (ptr+2, intelEndian);
-      auto components = getExifOffset (ptr+4, intelEndian);
-      auto offset = getExifOffset (ptr+8, intelEndian);
+      auto components = getExifLong (ptr+4, intelEndian);
+      auto offset = getExifLong (ptr+8, intelEndian);
       auto bytes = components * kBytesPerFormat[format];
       auto valuePtr = (bytes <= 4) ? ptr+8 : offsetBasePtr + offset;
       ptr += 12;
@@ -795,7 +795,7 @@ private:
         }
       }
 
-    auto extraDirectoryOffset = getExifOffset (ptr, intelEndian);
+    auto extraDirectoryOffset = getExifLong (ptr, intelEndian);
     if (extraDirectoryOffset > 4)
       parseExifDirectory (offsetBasePtr, offsetBasePtr + extraDirectoryOffset, intelEndian);
     }
@@ -854,7 +854,7 @@ private:
 
     if (exifIdPtr) {
       //   check exifId, ignore trailing two nulls
-      if (getExifOffset (exifIdPtr, false) != 0x45786966) {
+      if (getExifLong (exifIdPtr, false) != 0x45786966) {
         //{{{  return false if not EXIF
         wcout << L"parseHeader EXIF00 ident error - " << mFullFilename << endl;
         return false;
@@ -874,7 +874,7 @@ private:
         //}}}
       exifIdPtr += 2;
 
-      auto firstOffset = getExifOffset (exifIdPtr, intelEndian);
+      auto firstOffset = getExifLong (exifIdPtr, intelEndian);
       if (firstOffset != 8) {
         //{{{  return false if unusual firstOffset,
         wcout << L"parseHeader firstOffset warning - " << mFullFilename << L" " << firstOffset << endl;

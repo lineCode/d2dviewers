@@ -45,7 +45,7 @@ public:
 
     bool ok = cTinyJpeg::readHeader();
     if (ok && getThumbOffset()) {
-      printf ("found thumb %d\n", getThumbOffset());
+      //printf ("found thumb %d\n", getThumbOffset());
       mFileBufferPtr = mFileBuffer + getThumbOffset();
       ok = cTinyJpeg::readHeader();
       }
@@ -601,8 +601,7 @@ private:
       free (pic);
 
       mBitmapWidget->setPic (bitmap);
-      //mBitmapWidget->setSize (picWidth, picHeight);
-      mBitmapWidget->setSize (mRoot->getWidth(), mRoot->getHeight());
+      mBitmapWidget->setSize (picWidth, picHeight);
       }
     }
   //}}}
