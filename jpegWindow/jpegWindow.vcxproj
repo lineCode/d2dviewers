@@ -33,10 +33,11 @@
     <ClInclude Include="..\common\cJpegImage.h" />
     <ClInclude Include="..\common\date.h" />
     <ClInclude Include="..\common\timer.h" />
-    <ClInclude Include="..\inc\jconfig.h" />
-    <ClInclude Include="..\inc\jerror.h" />
-    <ClInclude Include="..\inc\jmorecfg.h" />
-    <ClInclude Include="..\inc\jpeglib.h" />
+    <ClInclude Include="..\inc\jpeglib\jconfig.h" />
+    <ClInclude Include="..\inc\jpeglib\jerror.h" />
+    <ClInclude Include="..\inc\jpeglib\jmorecfg.h" />
+    <ClInclude Include="..\inc\jpeglib\jpeglib.h" />
+    <ClInclude Include="..\inc\jpeglib\turbojpeg.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

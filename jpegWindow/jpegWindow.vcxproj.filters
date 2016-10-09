@@ -6,19 +6,7 @@
     <ClCompile Include="cJpegWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\inc\jconfig.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inc\jerror.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inc\jmorecfg.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\inc\jpeglib.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\timer.h">
@@ -31,6 +19,21 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cJpegImage.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\jpeglib\jconfig.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\jpeglib\jerror.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\jpeglib\jmorecfg.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\jpeglib\jpeglib.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\inc\jpeglib\turbojpeg.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
