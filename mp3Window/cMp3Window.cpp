@@ -23,7 +23,7 @@
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
-static const bool kAudio = false;
+static const bool kAudio = true;
 
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
@@ -83,7 +83,7 @@ public:
         mFileList.push_back (fileName);
 
       mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
-      mWaveform = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
+      mWave = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
       mVolume = 0.3f;
       mSamples = (int16_t*)malloc (1152*2*2);
       memset (mSamples, 0, 1152*2*2);
@@ -92,7 +92,7 @@ public:
       }
 
     else {
-      listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/guardian cartoons" : fileName, "*.jpg");
+      listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/lamorna" : fileName, "*.jpg");
       std::thread([=]() { loadJpegThread(); }).detach();
       }
     messagePump();
@@ -428,11 +428,11 @@ private:
     mPlayFrame = 0;
     mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    mRoot->addTopLeft (new cWaveLensWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+    mRoot->addTopLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                             mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextBelow (new cWaveWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+    mRoot->addNextBelow (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                             mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextBelow (new cWaveCentredWidget (mWaveform, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+    mRoot->addNextBelow (new cWaveCentredWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                             mRoot->getWidth(), mRoot->getBoxHeight()*3));
 
     cMp3Decoder mMp3Decoder;
@@ -490,7 +490,7 @@ private:
     cMp3Decoder mMp3Decoder;
     auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
     auto filePosition = tagBytes;
-    auto wavePtr = mWaveform;
+    auto wavePtr = mWave;
 
     uint8_t maxLR = 0;
     mLoadedFrame = 0;
@@ -498,19 +498,16 @@ private:
     do {
       mFramePosition [mLoadedFrame] = filePosition;
 
-      // get ready to load next frame wave, zero values, copy max, inc pointer, then fill in new values and new max
-      *wavePtr = 0;
-      *(wavePtr+1) = 0;
-      *(wavePtr+2) = maxLR;
-      mLoadedFrame++;
+      // use mWave[0] as max
       bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, wavePtr, nullptr);
       uint8_t valueL = *wavePtr++;
-      uint8_t valueR = *wavePtr++;
       if (valueL > maxLR)
         maxLR = valueL;
+      uint8_t valueR = *wavePtr++;
       if (valueR > maxLR)
         maxLR = valueR;
-      *wavePtr = maxLR;
+      *mWave = maxLR;
+      mLoadedFrame++;
 
       // predict maxFrame from running totals
       filePosition += bytesUsed;
@@ -613,7 +610,7 @@ private:
   int mLoadedFrame = 0;
   int mMaxFrame = 0;
   bool mWaveChanged = false;
-  uint8_t* mWaveform = nullptr;
+  uint8_t* mWave = nullptr;
   int* mFramePosition = nullptr;
 
   float mCount = 0;
