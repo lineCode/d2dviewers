@@ -388,34 +388,41 @@ protected:
 
 private:
   //{{{
-  void loadJpegThread() {
+  void loadWaveThread() {
 
-    uint32_t* piccy = nullptr;
-    uint16_t picWidth = 0;
-    uint16_t picHeight = 0;
-    mFileIndex = 0;
+    auto time = getTimer();
 
-    for (auto j = 0; j < 4; j++)
-      for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeight()/4));
-    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
-    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 100));
-    mRoot->addNextBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
+    cMp3Decoder mMp3Decoder;
+    auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
+    auto filePosition = tagBytes;
 
-    while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
-      jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
-      mFileIndex++;
-      }
+    // use mWave[0] as max
+    *mWave = 0;
+    auto wavePtr = mWave + 1;
 
-    mFileIndexChanged = true;
-    while (true) {
-      if (mFileIndexChanged) {
-        jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
-        mFileIndexChanged = false;
-        }
-      else
-        Sleep (100);
-      }
+    mLoadedFrame = 0;
+    int bytesUsed = 0;
+    do {
+      mFramePosition [mLoadedFrame] = filePosition;
+
+      bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, wavePtr, nullptr);
+      if (*wavePtr > *mWave)
+        *mWave = *wavePtr;
+      wavePtr++;
+      if (*wavePtr > *mWave)
+        *mWave = *wavePtr;
+      wavePtr++;
+      mLoadedFrame++;
+
+      // predict maxFrame from running totals
+      filePosition += bytesUsed;
+      mMaxFrame = int(float(mFileSize - tagBytes) * float(mLoadedFrame) / float(filePosition - tagBytes));
+      } while ((bytesUsed > 0) && (filePosition < mFileSize));
+
+    // correct maxFrame to counted frame
+    mMaxFrame = mLoadedFrame;
+
+    printf ("wave frames:%d fileSize:%d tag:%d max:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, *mWave, getTimer() - time);
     }
   //}}}
   //{{{
@@ -426,6 +433,7 @@ private:
     bool mVolumeChanged = false;
     bool mFrameChanged = false;;
     mPlayFrame = 0;
+
     mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     mRoot->addTopLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
@@ -446,7 +454,7 @@ private:
       mFileBuffer = (uint8_t*)malloc (mFileSize);
       memcpy (mFileBuffer, fileBuffer, mFileSize);
       //}}}
-      std::thread ([=](){waveThread();}).detach();
+      std::thread ([=](){loadWaveThread();}).detach();
 
       int bytesUsed;
       mPlayFrame = 0;
@@ -483,44 +491,6 @@ private:
     }
   //}}}
   //{{{
-  void waveThread() {
-
-    auto time = getTimer();
-
-    cMp3Decoder mMp3Decoder;
-    auto tagBytes = mMp3Decoder.findId3tag (mFileBuffer, mFileSize);
-    auto filePosition = tagBytes;
-    auto wavePtr = mWave;
-
-    uint8_t maxLR = 0;
-    mLoadedFrame = 0;
-    int bytesUsed = 0;
-    do {
-      mFramePosition [mLoadedFrame] = filePosition;
-
-      // use mWave[0] as max
-      bytesUsed = mMp3Decoder.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, wavePtr, nullptr);
-      uint8_t valueL = *wavePtr++;
-      if (valueL > maxLR)
-        maxLR = valueL;
-      uint8_t valueR = *wavePtr++;
-      if (valueR > maxLR)
-        maxLR = valueR;
-      *mWave = maxLR;
-      mLoadedFrame++;
-
-      // predict maxFrame from running totals
-      filePosition += bytesUsed;
-      mMaxFrame = int(float(mFileSize - tagBytes) * float(mLoadedFrame) / float(filePosition - tagBytes));
-      } while ((bytesUsed > 0) && (filePosition < mFileSize));
-
-    // correct maxFrame to counted frame
-    mMaxFrame = mLoadedFrame;
-
-    printf ("wave frames:%d fileSize:%d tag:%d max:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, maxLR, getTimer() - time);
-    }
-  //}}}
-  //{{{
   void audioThread() {
 
     CoInitialize (NULL);
@@ -545,6 +515,38 @@ private:
     printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mFileList.size(), getTimer() - time);
     }
   //}}}
+  //{{{
+  void loadJpegThread() {
+
+    uint32_t* piccy = nullptr;
+    uint16_t picWidth = 0;
+    uint16_t picHeight = 0;
+    mFileIndex = 0;
+
+    for (auto j = 0; j < 4; j++)
+      for (auto i = 0; i < 6; i++)
+        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeight()/4));
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 100));
+    mRoot->addNextBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
+
+    while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
+      jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+      mFileIndex++;
+      }
+
+    mFileIndexChanged = true;
+    while (true) {
+      if (mFileIndexChanged) {
+        jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+        mFileIndexChanged = false;
+        }
+      else
+        Sleep (100);
+      }
+    }
+  //}}}
+
   //{{{
   void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
 
