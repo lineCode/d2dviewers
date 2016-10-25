@@ -242,7 +242,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="cHlsRadioWindow.cpp" />
+    <ClCompile Include="cHlsWindow.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -387,11 +387,7 @@
     <ClInclude Include="..\agg\include\util\agg_color_conv_rgb16.h" />
     <ClInclude Include="..\agg\include\util\agg_color_conv_rgb8.h" />
     <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cHlsChunk.h" />
-    <ClInclude Include="..\common\cHlsRadio.h" />
     <ClInclude Include="..\common\cHttp.h" />
-    <ClInclude Include="..\common\cParsedUrl.h" />
-    <ClInclude Include="..\common\cRadioChan.h" />
     <ClInclude Include="..\common\cYuvFrame.h" />
     <ClInclude Include="..\common\iPlayer.h" />
     <ClInclude Include="pch.h" />

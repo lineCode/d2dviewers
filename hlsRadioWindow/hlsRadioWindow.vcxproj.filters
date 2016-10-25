@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="cHlsRadioWindow.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="..\agg\src\agg_arc.cpp">
       <Filter>agg</Filter>
@@ -115,6 +114,7 @@
     <ClCompile Include="..\agg\parse_lion.cpp">
       <Filter>agg</Filter>
     </ClCompile>
+    <ClCompile Include="cHlsWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\agg\include\agg_alpha_mask_u8.h">
@@ -525,19 +525,7 @@
     <ClInclude Include="..\common\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cHlsChunk.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\cHlsRadio.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\cHttp.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\cParsedUrl.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\cRadioChan.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cYuvFrame.h">

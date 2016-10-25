@@ -16,6 +16,7 @@
 #include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
+#include "../../shared/widgets/cSelectValueBox.h"
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cBitmapWidget.h"
 #include "../../shared/widgets/cNumBox.h"
@@ -434,9 +435,12 @@ private:
     bool mFrameChanged = false;;
     mPlayFrame = 0;
 
+    bool mValueChanged = false;
+    int mValue = 6;
+
     mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged,
                                         mRoot->getWidth(), mRoot->getHeight() -mRoot->getBoxHeight()*3*3));
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW,
                                        cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
     mRoot->addBottomLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                                mRoot->getWidth(), mRoot->getBoxHeight()*3));
@@ -444,6 +448,13 @@ private:
                                           mRoot->getWidth(), mRoot->getBoxHeight()*3));
     mRoot->addNextAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                                 mRoot->getWidth(), mRoot->getBoxHeight()*3));
+
+    mRoot->addTopLeft (new cSelectValueBox ("radio4", 4, mValue, mValueChanged,
+                                            mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
+    mRoot->addNextRight (new cSelectValueBox ("radio5", 5, mValue, mValueChanged,
+                                              mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
+    mRoot->addNextRight (new cSelectValueBox ("radio6", 6, mValue, mValueChanged,
+                                              mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
