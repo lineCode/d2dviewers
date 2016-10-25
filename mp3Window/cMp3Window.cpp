@@ -11,7 +11,7 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveWidget.h"
-#include "../../shared/widgets/cWaveCentredWidget.h"
+#include "../../shared/widgets/cWaveCentreWidget.h"
 #include "../../shared/widgets/cWaveOverviewWidget.h"
 #include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
@@ -88,7 +88,7 @@ public:
       mSamples = (int16_t*)malloc (1152*2*2);
       memset (mSamples, 0, 1152*2*2);
       std::thread([=]() { audioThread(); }).detach();
-      std::thread([=]() { loadMp3Thread(); }).detach();
+      std::thread([=]() { playThread(); }).detach();
       }
 
     else {
@@ -388,7 +388,7 @@ protected:
 
 private:
   //{{{
-  void loadWaveThread() {
+  void waveThread() {
 
     auto time = getTimer();
 
@@ -426,7 +426,7 @@ private:
     }
   //}}}
   //{{{
-  void loadMp3Thread() {
+  void playThread() {
 
     int fileIndex = 0;
     bool fileIndexChanged = false;
@@ -434,14 +434,16 @@ private:
     bool mFrameChanged = false;;
     mPlayFrame = 0;
 
-    mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
-    mRoot->addTopLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextBelow (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextBelow (new cWaveCentredWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                            mRoot->getWidth(), mRoot->getBoxHeight()*3));
+    mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged,
+                                        mRoot->getWidth(), mRoot->getHeight() -mRoot->getBoxHeight()*3*3));
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 
+                                       cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
+    mRoot->addBottomLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                               mRoot->getWidth(), mRoot->getBoxHeight()*3));
+    mRoot->addNextAbove (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                          mRoot->getWidth(), mRoot->getBoxHeight()*3));
+    mRoot->addNextAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                                mRoot->getWidth(), mRoot->getBoxHeight()*3));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
@@ -454,7 +456,7 @@ private:
       mFileBuffer = (uint8_t*)malloc (mFileSize);
       memcpy (mFileBuffer, fileBuffer, mFileSize);
       //}}}
-      std::thread ([=](){loadWaveThread();}).detach();
+      std::thread ([=](){waveThread();}).detach();
 
       int bytesUsed;
       mPlayFrame = 0;
