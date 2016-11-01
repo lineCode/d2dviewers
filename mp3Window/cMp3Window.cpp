@@ -122,7 +122,7 @@ public:
     }
   //}}}
   //{{{
-  int text (uint32_t colour, int fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  int text (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     // create layout
     std::wstring wstr = converter.from_bytes (str.data());
