@@ -140,7 +140,7 @@ public:
     }
   //}}}
   //{{{
-  void copy (uint32_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void copy (uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     if (src && width && height) {
       for (auto j = y; j < y + height; j++)
