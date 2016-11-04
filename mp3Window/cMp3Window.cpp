@@ -16,7 +16,7 @@
 #include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
-#include "../../shared/widgets/cSelectValueBox.h"
+#include "../../shared/widgets/cSelectBox.h"
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cBitmapWidget.h"
 #include "../../shared/widgets/cNumBox.h"
@@ -99,12 +99,14 @@ public:
     messagePump();
     };
   //}}}
-  //{{{  iDraw
-  uint16_t getWidth() { return mRoot->getWidth(); }
-  uint16_t getHeight() { return mRoot->getHeight(); }
+  //{{{  lcd interface
+  uint16_t getWidthPix() { return mRoot->getWidthPix(); }
+  uint16_t getHeightPix() { return mRoot->getHeightPix(); }
+
   uint8_t getFontHeight() { return 16; }
   uint8_t getLineHeight() { return 19; }
-
+  //}}}
+  //{{{  iDraw interface
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
     rectClipped (colour, x, y, 1, 1);
@@ -152,6 +154,8 @@ public:
       }
     }
   //}}}
+  void copy (uint8_t* src, int16_t srcx, int16_t srcy, uint16_t srcWidth, int16_t srcHeight,
+             int16_t dstx, int16_t dsty, uint16_t dstWidth, uint16_t dstHeight) {};
   //{{{
   void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
@@ -180,11 +184,11 @@ public:
       y = 0;
       }
 
-    if (y + height > getHeight()) {
+    if (y + height > getHeightPix()) {
       // bottom yclip
-      if (y >= getHeight())
+      if (y >= getHeightPix())
         return;
-      height = getHeight() - y;
+      height = getHeightPix() - y;
       }
 
     stamp (colour, src, x, y, width, height);
@@ -193,9 +197,9 @@ public:
   //{{{
   void rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    if (x >= getWidth())
+    if (x >= getWidthPix())
       return;
-    if (y >= getHeight())
+    if (y >= getHeightPix())
       return;
 
     int xend = x + width;
@@ -208,13 +212,13 @@ public:
 
     if (x < 0)
       x = 0;
-    if (xend > getWidth())
-      xend = getWidth();
+    if (xend > getWidthPix())
+      xend = getWidthPix();
 
     if (y < 0)
       y = 0;
-    if (yend > getHeight())
-      yend = getHeight();
+    if (yend > getHeightPix())
+      yend = getHeightPix();
 
     if (!width)
       return;
@@ -236,7 +240,7 @@ public:
   //{{{
   void clear (uint32_t colour) {
 
-    rect (colour, 0, 0, getWidth(), getHeight());
+    rect (colour, 0, 0, getWidthPix(), getHeightPix());
     }
   //}}}
 
@@ -439,22 +443,19 @@ private:
     int mValue = 6;
 
     mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged,
-                                        mRoot->getWidth(), mRoot->getHeight() -mRoot->getBoxHeight()*3*3));
+                                        mRoot->getWidth(), mRoot->getHeight() - 9));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW,
-                                       cWidget::getBoxHeight()-1, mRoot->getHeight()-6));
+                                       1 , mRoot->getHeight()-6));
     mRoot->addBottomLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                               mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextAbove (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                          mRoot->getWidth(), mRoot->getBoxHeight()*3));
-    mRoot->addNextAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                                mRoot->getWidth(), mRoot->getBoxHeight()*3));
+                                               mRoot->getWidth(), 3));
+    mRoot->addAbove (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                          mRoot->getWidth(), 3));
+    mRoot->addAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
+                                                mRoot->getWidth(), 3));
 
-    mRoot->addTopLeft (new cSelectValueBox ("radio4", 4, mValue, mValueChanged,
-                                            mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
-    mRoot->addNextRight (new cSelectValueBox ("radio5", 5, mValue, mValueChanged,
-                                              mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
-    mRoot->addNextRight (new cSelectValueBox ("radio6", 6, mValue, mValueChanged,
-                                              mRoot->getBoxHeight()*3, mRoot->getBoxHeight()*2));
+    mRoot->addTopLeft (new cSelectBox ("radio4", 4, mValue, mValueChanged, 3,2));
+    mRoot->add (new cSelectBox ("radio5", 5, mValue, mValueChanged, 3, 2));
+    mRoot->add (new cSelectBox ("radio6", 6, mValue, mValueChanged, 3, 2));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
@@ -538,10 +539,10 @@ private:
 
     for (auto j = 0; j < 4; j++)
       for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->add (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeight()/4));
+        mBitmapWidgets.push_back (mRoot->addAtPix (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeightPix()/4));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 100));
-    mRoot->addNextBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
+    mRoot->add (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
       jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
@@ -592,7 +593,7 @@ private:
       auto scale = 1;
       auto scaleShift = 0;
       while ((scaleShift < 3) &&
-             ((jpegDecoder.getWidth() / scale > getWidth()) || (jpegDecoder.getHeight() /scale > getHeight()))) {
+             ((jpegDecoder.getWidth() / scale > getWidthPix()) || (jpegDecoder.getHeight() /scale > getHeightPix()))) {
         scale *= 2;
         scaleShift++;
         }
