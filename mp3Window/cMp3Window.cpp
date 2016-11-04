@@ -20,9 +20,12 @@
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cBitmapWidget.h"
 #include "../../shared/widgets/cNumBox.h"
+#include "../../shared/widgets/cSelectBmpWidget.h"
 
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
+
+#include "../../shared/icons/radioIcon.h"
 //}}}
 static const bool kAudio = true;
 
@@ -141,13 +144,15 @@ public:
     return (int)metrics.width;
     }
   //}}}
+
   //{{{
   void copy (uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     if (src && width && height) {
       for (auto j = y; j < y + height; j++)
         for (auto i = x; i < x + width; i++) {
-          mBrush->SetColor (ColorF (*src));
+          uint32_t colour = *((uint32_t*)src);
+          mBrush->SetColor (ColorF (colour));
           getDeviceContext()->FillRectangle (RectF (float(i), float(j), float(i + 1), float(j + 1)), mBrush);
           src++;
           }
@@ -160,6 +165,37 @@ public:
   void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     getDeviceContext()->DrawBitmap (bitMap, RectF ((float)x, (float)y, (float)x+width,(float)y+height));
+    }
+  //}}}
+
+  //{{{
+  void size (const uint8_t* src, uint8_t* dst, uint16_t components,
+             uint16_t srcWidth, uint16_t srcHeight, uint16_t dstWidth, uint16_t dstHeight) {
+
+    uint32_t xStep16 = ((srcWidth - 1) << 16) / (dstWidth - 1);
+    uint32_t yStep16 = ((srcHeight - 1) << 16) / (dstHeight - 1);
+
+    uint32_t ySrcOffset = srcWidth * components;
+
+    for (uint32_t y16 = 0; y16 < dstHeight * yStep16; y16 += yStep16) {
+      uint8_t yweight2 = (y16 >> 9) & 0x7F;
+      uint8_t yweight1 = 0x80 - yweight2;
+      const uint8_t* srcy = src + (y16 >> 16) * ySrcOffset;
+
+      for (uint32_t x16 = 0; x16 < dstWidth * xStep16; x16 += xStep16) {
+        uint8_t xweight2 = (x16 >> 9) & 0x7F;
+        uint8_t xweight1 = 0x80 - xweight2;
+
+        const uint8_t* srcy1x1 = srcy + (x16 >> 16) * components;
+        const uint8_t* srcy1x2 = srcy1x1 + components;
+        const uint8_t* srcy2x1 = srcy1x1 + ySrcOffset;
+        const uint8_t* srcy2x2 = srcy2x1 + components;
+        for (auto component = 0; component < components; component++)
+          *dst++ = (((*srcy1x1++ * xweight1 + *srcy1x2++ * xweight2) * yweight1) +
+                     (*srcy2x1++ * xweight1 + *srcy2x2++ * xweight2) * yweight2) >> 14;
+        *dst++ = 0;
+        }
+      }
     }
   //}}}
 
@@ -442,6 +478,9 @@ private:
     bool mValueChanged = false;
     int mValue = 6;
 
+    bool mTuneChanChanged = false;
+    int mTuneChan = 6;
+
     mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged,
                                         mRoot->getWidth(), mRoot->getHeight() - 9));
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW,
@@ -453,9 +492,12 @@ private:
     mRoot->addAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
                                                 mRoot->getWidth(), 3));
 
-    mRoot->addTopLeft (new cSelectBox ("radio4", 4, mValue, mValueChanged, 3,2));
+    mRoot->addTopLeft (new cSelectBox ("radio4", 4, mValue, mValueChanged, 3, 2));
     mRoot->add (new cSelectBox ("radio5", 5, mValue, mValueChanged, 3, 2));
     mRoot->add (new cSelectBox ("radio6", 6, mValue, mValueChanged, 3, 2));
+
+    mRoot->add (new cSelectBmpWidget (r1x80, 1, mTuneChan, mTuneChanChanged, 3, 3));
+    mRoot->add (new cSelectBmpWidget (r2x80, 1, mTuneChan, mTuneChanChanged, 3, 3));
 
     cMp3Decoder mMp3Decoder;
     while (true) {

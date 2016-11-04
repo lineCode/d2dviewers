@@ -251,6 +251,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\icons\radioIcon.h" />
     <ClInclude Include="..\agg\include\agg_alpha_mask_u8.h" />
     <ClInclude Include="..\agg\include\agg_arc.h" />
     <ClInclude Include="..\agg\include\agg_array.h" />

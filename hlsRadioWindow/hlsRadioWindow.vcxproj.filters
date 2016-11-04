@@ -537,6 +537,9 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\shared\icons\radioIcon.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="agg">
