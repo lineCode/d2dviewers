@@ -1,0 +1,282 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="art_uta_vpath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_vpath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_vpath_bpath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_vpath_dash.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_vpath_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="libart-features.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_alphagamma.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_bpath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_gray_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_misc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_pixbuf.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rect.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rect_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rect_uta.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_render.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_render_gradient.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_render_mask.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_render_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_a_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_affine_private.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_bitmap_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_pixbuf_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_rgba_affine.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgb_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_rgba.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_intersect.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_ops.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_point.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_render_aa.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_vpath.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_vpath_stroke.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_svp_wind.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_uta.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_uta_ops.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_uta_rect.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="art_uta_svp.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="main.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="art_uta_ops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_uta_rect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_uta_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_uta_vpath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_vpath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_vpath_bpath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_vpath_dash.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_vpath_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libart.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libart-features.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_alphagamma.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_bpath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_filterlevel.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_gray_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_misc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_pathcode.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_pixbuf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_point.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rect_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rect_uta.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_render.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_render_gradient.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_render_mask.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_render_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_a_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_affine_private.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_bitmap_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_pixbuf_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_rgba_affine.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgb_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_rgba.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_intersect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_ops.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_point.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_render_aa.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_vpath.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_vpath_stroke.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_svp_wind.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="art_uta.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

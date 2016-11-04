@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sqlite", "sqlite\sqlite\sql
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bintoc", "bintoc\bintoc.vcxproj", "{E4447D52-6EEB-419D-933B-320A5957BCAE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libart", "libart\libart.vcxproj", "{1008B789-9FC7-4250-9860-2C29D2701619}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +73,14 @@ Global
 		{E4447D52-6EEB-419D-933B-320A5957BCAE}.Release|x64.Build.0 = Release|x64
 		{E4447D52-6EEB-419D-933B-320A5957BCAE}.Release|x86.ActiveCfg = Release|Win32
 		{E4447D52-6EEB-419D-933B-320A5957BCAE}.Release|x86.Build.0 = Release|Win32
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Debug|x64.ActiveCfg = Debug|x64
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Debug|x64.Build.0 = Debug|x64
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Debug|x86.ActiveCfg = Debug|Win32
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Debug|x86.Build.0 = Debug|Win32
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Release|x64.ActiveCfg = Release|x64
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Release|x64.Build.0 = Release|x64
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Release|x86.ActiveCfg = Release|Win32
+		{1008B789-9FC7-4250-9860-2C29D2701619}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
