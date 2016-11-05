@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="art-display.c" />
     <ClCompile Include="art_affine.c" />
     <ClCompile Include="art_alphagamma.c" />
     <ClCompile Include="art_bpath.c" />
@@ -59,7 +60,6 @@
     <ClCompile Include="art_vpath_dash.c" />
     <ClCompile Include="art_vpath_svp.c" />
     <ClCompile Include="libart-features.c" />
-    <ClCompile Include="main.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="art_affine.h" />

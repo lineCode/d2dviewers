@@ -135,9 +135,7 @@
     <ClCompile Include="art_uta_svp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="main.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
+    <ClCompile Include="art-display.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="art_uta_ops.h">
