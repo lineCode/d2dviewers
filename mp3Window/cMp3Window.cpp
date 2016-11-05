@@ -151,10 +151,9 @@ public:
     if (src && width && height) {
       for (auto j = y; j < y + height; j++)
         for (auto i = x; i < x + width; i++) {
-          uint32_t colour = *((uint32_t*)src);
-          mBrush->SetColor (ColorF (colour));
+          mBrush->SetColor (ColorF (*((uint32_t*)src)));
           getDeviceContext()->FillRectangle (RectF (float(i), float(j), float(i + 1), float(j + 1)), mBrush);
-          src++;
+          src += 4;
           }
       }
     }
@@ -471,33 +470,26 @@ private:
 
     int fileIndex = 0;
     bool fileIndexChanged = false;
-    bool mVolumeChanged = false;
-    bool mFrameChanged = false;;
-    mPlayFrame = 0;
 
     bool mValueChanged = false;
     int mValue = 6;
+    mRoot->addTopLeft (new cSelectBmpWidget (r1x80, 1, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBmpWidget (r2x80, 2, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBmpWidget (r3x80, 3, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBmpWidget (r4x80, 4, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBmpWidget (r5x80, 5, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBmpWidget (r6x80, 6, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cSelectBox ("radio7", 7, mValue, mValueChanged, 3, 2));
 
-    bool mTuneChanChanged = false;
-    int mTuneChan = 6;
+    mPlayFrame = 0;
+    bool mFrameChanged = false;;
+    mRoot->addAt (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 13), 0, 4);
+    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
 
-    mRoot->addTopLeft (new cListWidget (mFileList, fileIndex, fileIndexChanged,
-                                        mRoot->getWidth(), mRoot->getHeight() - 9));
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW,
-                                       1 , mRoot->getHeight()-6));
-    mRoot->addBottomLeft (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                               mRoot->getWidth(), 3));
-    mRoot->addAbove (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                          mRoot->getWidth(), 3));
-    mRoot->addAbove (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged,
-                                                mRoot->getWidth(), 3));
-
-    mRoot->addTopLeft (new cSelectBox ("radio4", 4, mValue, mValueChanged, 3, 2));
-    mRoot->add (new cSelectBox ("radio5", 5, mValue, mValueChanged, 3, 2));
-    mRoot->add (new cSelectBox ("radio6", 6, mValue, mValueChanged, 3, 2));
-
-    mRoot->add (new cSelectBmpWidget (r1x80, 1, mTuneChan, mTuneChanChanged, 3, 3));
-    mRoot->add (new cSelectBmpWidget (r2x80, 1, mTuneChan, mTuneChanChanged, 3, 3));
+    bool mVolumeChanged = false;
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
 
     cMp3Decoder mMp3Decoder;
     while (true) {
