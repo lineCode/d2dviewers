@@ -30,15 +30,13 @@
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 #include "../common/cHttp.h"
+
 #include "../../shared/decoders/cHlsLoader.h"
-#include "../../shared/widgets/cHlsDotsBox.h"
-//}}}
-static int mPlayFrame = 0;
 #include "../../shared/widgets/cHlsPowerWidget.h"
 #include "../../shared/widgets/cHlsInfoBox.h"
-
-static const bool kAudio = true;
-
+#include "../../shared/widgets/cHlsDotsBox.h"
+//}}}
+static const bool kJpeg = false;
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
 public:
@@ -91,61 +89,76 @@ public:
     mRoot = new cRootContainer (width, height);
     setChangeRate (1);
 
-    if (kAudio) {
-      mHlsLoader = new cHlsLoader();
-      mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
-
-      mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
-      mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r2x80, 2, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r3x80, 3, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r4x80, 4, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r5x80, 5, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r6x80, 6, mTuneChan, mTuneChanChanged, 4, 4));
-      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 1.2f), -2.0f + mRoot->getWidth()/2.0f, -3.0f + mRoot->getHeight());
-      mRoot->addBottomRight (new cDotsBox (mHlsLoader));
-
-      // launch loaderThread
-      std::thread ([=]() { loader(); } ).detach();
-
-      // launch playerThread, higher priority
-      auto playerThread = std::thread ([=]() { player(); });
-      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
-      playerThread.detach();
-
-
-      //if (fileName.empty())
-      //  mFileList.push_back ("C:/Users/colin/Desktop/Bread.mp3");
-      //else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-      //  listDirectory (std::string(), fileName, "*.mp3");
-        //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
-      //else
-      //  mFileList.push_back (fileName);
-       //
-      //mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
-      //mWave = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
-      //mVolume = 0.3f;
-      //mSamples = (int16_t*)malloc (1152*2*2);
-      //memset (mSamples, 0, 1152*2*2);
-      //std::thread([=]() { audioThread(); }).detach();
-      //std::thread([=]() { playThread(); }).detach();
-      }
-
-    else {
+    if (kJpeg) {
+      //{{{  jpeg viewer
       listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/lamorna" : fileName, "*.jpg");
       std::thread([=]() { loadJpegThread(); }).detach();
       }
+      //}}}
+    else if (fileName.empty()) {
+      //{{{  hls player
+      mHlsLoader = new cHlsLoader();
+      mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
+      mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
+      mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanChanged, 4, 4));
+      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 1.2f), -2.0f + mRoot->getWidth()/2.0f, -3.0f + mRoot->getHeight());
+      mRoot->addBottomRight (new cDotsBox (mHlsLoader));
+
+      mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
+
+      // launch loaderThread
+      std::thread ([=]() { hlsLoader(); } ).detach();
+
+      // launch playerThread, higher priority
+      auto playerThread = std::thread ([=]() { hlsPlayer(); });
+      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+      playerThread.detach();
+      }
+      //}}}
+    else {
+      //{{{  mp3 player
+      bool mFrameChanged = false;;
+      mPlayFrame = 0;
+      mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
+      mWave = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
+      mSamples = (int16_t*)malloc (1152*2*2);
+      memset (mSamples, 0, 1152*2*2);
+
+      mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
+      mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+      mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+      mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+
+      mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
+
+      if (fileName.empty())
+        mFileList.push_back ("C:/Users/colin/Desktop/Bread.mp3");
+      else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+        listDirectory (std::string(), fileName, "*.mp3");
+        //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
+      else
+        mFileList.push_back (fileName);
+
+      std::thread([=]() { audioThread(); }).detach();
+      std::thread([=]() { playThread(); }).detach();
+      }
+      //}}}
 
     messagePump();
     };
   //}}}
-  //{{{  lcd interface
-  uint16_t getWidthPix() { return mRoot->getWidthPix(); }
-  uint16_t getHeightPix() { return mRoot->getHeightPix(); }
+  //{{{  Lcd interface
+  uint16_t getLcdWidthPix() { return mRoot->getWidthPix(); }
+  uint16_t getLcdHeightPix() { return mRoot->getHeightPix(); }
 
-  uint8_t getFontHeight() { return 16; }
-  uint8_t getLineHeight() { return 19; }
+  uint8_t getLcdFontHeight() { return 16; }
+  uint8_t getLcdLineHeight() { return 19; }
   //}}}
   //{{{  iDraw interface
   //{{{
@@ -265,11 +278,11 @@ public:
       y = 0;
       }
 
-    if (y + height > getHeightPix()) {
+    if (y + height > getLcdHeightPix()) {
       // bottom yclip
-      if (y >= getHeightPix())
+      if (y >= getLcdHeightPix())
         return;
-      height = getHeightPix() - y;
+      height = getLcdHeightPix() - y;
       }
 
     stamp (colour, src, x, y, width, height);
@@ -278,9 +291,9 @@ public:
   //{{{
   void rectClipped (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
-    if (x >= getWidthPix())
+    if (x >= getLcdWidthPix())
       return;
-    if (y >= getHeightPix())
+    if (y >= getLcdHeightPix())
       return;
 
     int xend = x + width;
@@ -293,13 +306,13 @@ public:
 
     if (x < 0)
       x = 0;
-    if (xend > getWidthPix())
-      xend = getWidthPix();
+    if (xend > getLcdWidthPix())
+      xend = getLcdWidthPix();
 
     if (y < 0)
       y = 0;
-    if (yend > getHeightPix())
-      yend = getHeightPix();
+    if (yend > getLcdHeightPix())
+      yend = getLcdHeightPix();
 
     if (!width)
       return;
@@ -321,7 +334,7 @@ public:
   //{{{
   void clear (uint32_t colour) {
 
-    rect (colour, 0, 0, getWidthPix(), getHeightPix());
+    rect (colour, 0, 0, getLcdWidthPix(), getLcdHeightPix());
     }
   //}}}
 
@@ -514,23 +527,10 @@ private:
   //{{{
   void playThread() {
 
-    int fileIndex = 0;
-    bool fileIndexChanged = false;
-
-    mPlayFrame = 0;
-    bool mFrameChanged = false;;
-    mRoot->addAt (new cListWidget (mFileList, fileIndex, fileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 13), 0, 4);
-    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-
-    bool mVolumeChanged = false;
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
-
     cMp3Decoder mMp3Decoder;
     while (true) {
       //{{{  open and load file into fileBuffer
-      auto fileHandle = CreateFileA (mFileList[fileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      auto fileHandle = CreateFileA (mFileList[mFileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
       mFileSize = (int)GetFileSize (fileHandle, NULL);
 
       auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
@@ -550,7 +550,7 @@ private:
         mReady = true;
         if (bytesUsed > 0) {
           filePosition += bytesUsed;
-          while (mWait && !fileIndexChanged)
+          while (mWait && !mFileIndexChanged)
             Sleep (2);
           mPlayFrame++;
           }
@@ -559,11 +559,11 @@ private:
           filePosition = mFramePosition [mPlayFrame];
           mWaveChanged = false;
           }
-        } while (!fileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
+        } while (!mFileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
 
-      if (!fileIndexChanged)
-        fileIndex = (fileIndex + 1) % mFileList.size();
-      fileIndexChanged = false;
+      if (!mFileIndexChanged)
+        mFileIndex = (mFileIndex + 1) % mFileList.size();
+      mFileIndexChanged = false;
       mPlaying = true;
 
       //{{{  close file and fileBuffer
@@ -588,6 +588,7 @@ private:
     CoUninitialize();
     }
   //}}}
+
   //{{{
   void listThread (std::string fileName) {
 
@@ -604,7 +605,6 @@ private:
 
     uint16_t picWidth = 0;
     uint16_t picHeight = 0;
-    mFileIndex = 0;
 
     bool mPicValueChanged = false;
 
@@ -632,30 +632,29 @@ private:
   //}}}
 
   //{{{
-  void loader() {
-  // loader task, handles all http gets, sleep 1s if no load suceeded
+  void hlsLoader() {
 
     CoInitialize (NULL);
 
-    mPlayFrame = mHlsLoader->changeChan (mTuneChan);
+    mHlsLoader->changeChan (mHlsChan);
 
     while (true) {
-      if (mTuneChanChanged) {
-        mPlayFrame = mHlsLoader->changeChan (mTuneChan);
-        mTuneChanChanged = false;
+      if (mHlsChanChanged) {
+        mHlsLoader->changeChan (mHlsChan);
+        mHlsChanChanged = false;
         }
 
-      if (!mHlsLoader->load (mPlayFrame)) {
+      if (!mHlsLoader->load()) {
         Sleep (1000);
         }
-      wait();
+      WaitForSingleObject (mHlsSem, 20 * 1000);
       }
 
     CoUninitialize();
     }
   //}}}
   //{{{
-  void player() {
+  void hlsPlayer() {
 
     CoInitialize (NULL);
     audOpen (48000, 16, 2);
@@ -663,30 +662,25 @@ private:
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
-      auto audSamples = mHlsLoader->getSamples (mPlayFrame, seqNum);
+      auto audSamples = mHlsLoader->getSamples (seqNum);
       audPlay (audSamples, 4096, 1.0f);
 
       if (audSamples)
-        mPlayFrame++;
+        mHlsLoader->mPlayFrame++;
 
       if (!seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
-        signal();
+        ReleaseSemaphore (mHlsSem, 1, NULL);
+        }
+
+      if (mVolumeChanged) {
+        setVolume (mVolume);
+        mVolumeChanged = false;
         }
       }
 
     audClose();
     CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void wait() {
-    WaitForSingleObject (mSemaphore, 20 * 1000);
-    }
-  //}}}
-  //{{{
-  void signal() {
-    ReleaseSemaphore (mSemaphore, 1, NULL);
     }
   //}}}
 
@@ -722,7 +716,7 @@ private:
       auto scale = 1;
       auto scaleShift = 0;
       while ((scaleShift < 3) &&
-             ((jpegDecoder.getWidth() / scale > getWidthPix()) || (jpegDecoder.getHeight() /scale > getHeightPix()))) {
+             ((jpegDecoder.getWidth() / scale > getLcdWidthPix()) || (jpegDecoder.getHeight() /scale > getLcdHeightPix()))) {
         scale *= 2;
         scaleShift++;
         }
@@ -740,12 +734,14 @@ private:
 
   int mFileIndex = 0;
   bool mFileIndexChanged = false;
+
   std::vector <std::string> mFileList;
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
+  int mPlayFrame = 0;
   int mLoadedFrame = 0;
   int mMaxFrame = 0;
   bool mWaveChanged = false;
@@ -765,11 +761,14 @@ private:
   ID2D1SolidColorBrush* mBrush;
   std::vector <cPicWidget*> mPicWidgets;
 
+  bool mVolumeChanged = false;
+  float mVolume = 0.7f;
+
   // hls
   cHlsLoader* mHlsLoader;
-  HANDLE mSemaphore;
-  bool mTuneChanChanged = false;
-  int mTuneChan = 4;
+  HANDLE mHlsSem;
+  bool mHlsChanChanged = false;
+  int mHlsChan = 4;
   //}}}
   };
 
@@ -786,6 +785,6 @@ int main (int argc, char* argv[]) {
 
   startTimer();
   cMp3Window mp3Window;
-  mp3Window.run (L"mp3window", 480, 272, argv[1] ? std::string(argv[1]) : std::string());
+  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
