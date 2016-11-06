@@ -584,10 +584,10 @@ private:
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
     mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
 
-    while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
-      jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
-      mFileIndex++;
-      }
+    //while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
+    //  jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+    //  mFileIndex++;
+    //  }
 
     mFileIndexChanged = true;
     while (true) {
