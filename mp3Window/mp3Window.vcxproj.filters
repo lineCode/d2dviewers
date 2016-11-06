@@ -4,24 +4,6 @@
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cMp3Window.cpp" />
-    <ClCompile Include="..\..\shared\icons\r1x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\icons\r2x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\icons\r3x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\icons\r4x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\icons\r5x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\icons\r6x80.c">
-      <Filter>icons</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h">
@@ -83,9 +65,6 @@
     <Filter Include="header">
       <UniqueIdentifier>{7234d2f0-7b58-4dac-9284-ec8e3256c524}</UniqueIdentifier>
       <Extensions>.h</Extensions>
-    </Filter>
-    <Filter Include="icons">
-      <UniqueIdentifier>{3e92f8bb-66fd-4431-ad61-8da405f0fc90}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

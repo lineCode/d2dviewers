@@ -18,484 +18,26 @@
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
 
-#include "../../shared/decoders/cTinyJpeg.h"
-#include "../../shared/decoders/cMp3Decoder.h"
-
 #include "../../shared/icons/radioIcon.h"
 
-#include <winsock2.h>
-#include <WS2tcpip.h>
-#pragma comment (lib,"ws2_32.lib")
+#include "../../shared/decoders/cTinyJpeg.h"
+#include "../../shared/decoders/cMp3Decoder.h"
 
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
 
+#include <winsock2.h>
+#include <WS2tcpip.h>
+#pragma comment (lib,"ws2_32.lib")
 #include "../common/cHttp.h"
+#include "../../shared/decoders/cHlsLoader.h"
+#include "../../shared/widgets/cHlsDotsBox.h"
 //}}}
+static int mPlayFrame = 0;
+#include "../../shared/widgets/cHlsPowerWidget.h"
+#include "../../shared/widgets/cHlsInfoBox.h"
+
 static const bool kAudio = true;
-
-//{{{
-class cHlsChan {
-public:
-  cHlsChan() {}
-  virtual ~cHlsChan() {}
-
-  // gets
-  int getChan() { return mChan; }
-  int getSampleRate() { return kSampleRate; }
-  int getSamplesPerFrame() { return kSamplesPerFrame; }
-  int getFramesPerChunk() { return kFramesPerChunk; }
-  int getFramesFromSec (int sec) { return int (sec * getFramesPerSecond()); }
-  float getFramesPerSecond() { return (float)kSampleRate / (float)kSamplesPerFrame; }
-
-  int getLowBitrate() { return 48000; }
-  int getMidBitrate() { return 128000; }
-  int getHighBitrate() { return 320000; }
-
-  int getBaseSeqNum() { return mBaseSeqNum; }
-
-  std::string getHost() { return mHost; }
-  std::string getTsPath (int seqNum, int bitrate) { return getPathRoot (bitrate) + '-' + toString (seqNum) + ".ts"; }
-  std::string getChanName (int chan) { return kChanNames [chan]; }
-  std::string getDateTime() { return mDateTime; }
-  std::string getChanInfoStr() { return mChanInfoStr; }
-
-  // set
-  //{{{
-  void setChan (cHttp& http, int chan) {
-
-    mChan = chan;
-    mHost = "as-hls-uk-live.bbcfmt.vo.llnwd.net";
-
-    #ifdef STM32F769I_DISCO
-      BSP_LED_On (LED2);
-    #endif
-
-    //cLcd::debug (mHost);
-    if (http.get (mHost, getM3u8path()) == 302) {
-      mHost = http.getRedirectedHost();
-      http.get (mHost, getM3u8path());
-      //cLcd::debug (mHost);
-      }
-    else
-      mHost = http.getRedirectedHost();
-    //cLcd::debug (getM3u8path());
-
-    // find #EXT-X-MEDIA-SEQUENCE in .m3u8, point to seqNum string, extract seqNum from playListBuf
-    auto extSeq = strstr ((char*)http.getContent(), "#EXT-X-MEDIA-SEQUENCE:") + strlen ("#EXT-X-MEDIA-SEQUENCE:");
-    auto extSeqEnd = strchr (extSeq, '\n');
-    *extSeqEnd = '\0';
-    mBaseSeqNum = atoi (extSeq) + 3;
-
-    auto extDateTime = strstr (extSeqEnd + 1, "#EXT-X-PROGRAM-DATE-TIME:") + strlen ("#EXT-X-PROGRAM-DATE-TIME:");
-    auto extDateTimeEnd = strchr (extDateTime, '\n');
-    *extDateTimeEnd = '\0';
-    mDateTime = extDateTime;
-
-    mChanInfoStr = toString (http.getResponse()) + ' ' + http.getInfoStr() + ' ' + getM3u8path() + ' ' + mDateTime;
-    //cLcd::debug (mDateTime + " " + cLcd::dec (mBaseSeqNum));
-    }
-  //}}}
-
-private:
-  //{{{  const
-  const int kSampleRate = 48000;
-  const int kSamplesPerFrame = 1024;
-  const int kFramesPerChunk = 300;
-
-  const int kPool        [7] = {      0,      7,      7,      7,      6,      6,      6 };
-  const char* kChanNames [7] = { "none", "radio1", "radio2", "radio3", "radio4", "radio5", "radio6" };
-  const char* kPathNames [7] = { "none", "bbc_radio_one", "bbc_radio_two", "bbc_radio_three",
-                                         "bbc_radio_fourfm", "bbc_radio_five_live", "bbc_6music" };
-  //}}}
-  //{{{
-  std::string getPathRoot (int bitrate) {
-    return "pool_" + toString (kPool[mChan]) + "/live/" + kPathNames[mChan] + '/' + kPathNames[mChan] +
-           ".isml/" + kPathNames[mChan] + "-audio=" + toString (bitrate);
-    }
-  //}}}
-  std::string getM3u8path () { return getPathRoot (getMidBitrate()) + ".norewind.m3u8"; }
-
-  // vars
-  int mChan = 0;
-  int mBaseSeqNum = 0;
-  std::string mHost;
-  std::string mDateTime;
-  std::string mChanInfoStr;
-  };
-//}}}
-//{{{
-class cHlsChunk {
-public:
-  //{{{
-  cHlsChunk() {
-    mAudio = (int16_t*)pvPortMalloc (300 * 1024 * 2 * 2);
-    mPower = (uint8_t*)pvPortMalloc (300 * 2);
-    }
-  //}}}
-  //{{{
-  ~cHlsChunk() {
-    NeAACDecClose (mDecoder);
-    if (mPower)
-      vPortFree (mPower);
-    if (mAudio)
-      vPortFree (mAudio);
-    }
-  //}}}
-
-  // gets
-  int getSeqNum() { return mSeqNum; }
-  int getBitrate() { return mBitrate; }
-  int getFramesLoaded() { return mFramesLoaded; }
-  bool getLoaded() { return mLoaded; }
-  bool getLoading() { return mLoading; }
-  std::string getInfoStr() { return mInfoStr; }
-
-  int16_t* getSamples (int frameInChunk) { return (mAudio + (frameInChunk * mSamplesPerFrame * 2)); }
-  //{{{
-  uint8_t* getPower (int frameInChunk, int& frames) {
-    frames = getFramesLoaded() - frameInChunk;
-    return mPower + (frameInChunk * 2);
-    }
-  //}}}
-
-  //{{{
-  bool load (cHttp& http, cHlsChan* hlsChan, int seqNum, int bitrate) {
-
-    auto ok = true;
-    mLoading = true;
-
-    mFramesLoaded = 0;
-    mSeqNum = seqNum;
-    mBitrate = bitrate;
-
-    auto response = http.get (hlsChan->getHost(), hlsChan->getTsPath (seqNum, mBitrate));
-    if (response == 200) {
-      // aacHE has double size frames, treat as two normal frames
-      int framesPerAacFrame = mBitrate <= 48000 ? 2 : 1;
-      mSamplesPerFrame = hlsChan->getSamplesPerFrame();
-      int samplesPerAacFrame = mSamplesPerFrame * framesPerAacFrame;
-
-      auto loadPtr = http.getContent();
-      auto loadEnd = http.getContentEnd();
-      loadEnd = packTsBuffer (loadPtr, loadEnd);
-
-      int16_t* buffer = mAudio;
-
-      if (!mDecoder) {
-        //{{{  create, init aac decoder
-        mDecoder = NeAACDecOpen();
-
-        NeAACDecConfiguration* config = NeAACDecGetCurrentConfiguration (mDecoder);
-        config->outputFormat = FAAD_FMT_16BIT;
-        NeAACDecSetConfiguration (mDecoder, config);
-
-        unsigned long sampleRate;
-        uint8_t chans;
-        NeAACDecInit (mDecoder, loadPtr, 2048, &sampleRate, &chans);
-
-        NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
-        }
-        //}}}
-
-      uint8_t* powerPtr = mPower;
-      while (loadPtr < loadEnd) {
-        NeAACDecFrameInfo frameInfo;
-        NeAACDecDecode2 (mDecoder, &frameInfo, loadPtr, 2048, (void**)(&buffer), samplesPerAacFrame * 2 * 2);
-        loadPtr += frameInfo.bytesconsumed;
-        for (int i = 0; i < framesPerAacFrame; i++) {
-          //{{{  calc left, right power
-          int valueL = 0;
-          int valueR = 0;
-          for (int j = 0; j < mSamplesPerFrame; j++) {
-            short sample = (*buffer++) >> 4;
-            valueL += sample * sample;
-            sample = (*buffer++) >> 4;
-            valueR += sample * sample;
-            }
-
-          uint8_t leftPix = (uint8_t)sqrt(valueL / (mSamplesPerFrame * 32.0f));
-          *powerPtr++ = (272/2) - leftPix;
-          *powerPtr++ = leftPix + (uint8_t)sqrt(valueR / (mSamplesPerFrame * 32.0f));
-          mFramesLoaded++;
-          }
-          //}}}
-        }
-
-      http.freeContent();
-      mInfoStr = "ok " + toString (seqNum) + ':' + toString (bitrate/1000) + 'k';
-      }
-    else {
-      mSeqNum = 0;
-      mInfoStr = toString (response) + ':' + toString (seqNum) + ':' + toString (bitrate/1000) + "k " + http.getInfoStr();
-      ok = false;
-
-      }
-
-    mLoaded = true;
-    mLoading = false;
-    return ok;
-    }
-  //}}}
-  //{{{
-  void invalidate() {
-    mSeqNum = 0;
-    mFramesLoaded = 0;
-    mLoaded = false;
-    }
-  //}}}
-
-private:
-  //{{{
-  uint8_t* packTsBuffer (uint8_t* ptr, uint8_t* endPtr) {
-  // pack transportStream to aac frames in same buffer
-
-    auto toPtr = ptr;
-    while ((ptr < endPtr) && (*ptr++ == 0x47)) {
-      auto payStart = *ptr & 0x40;
-      auto pid = ((*ptr & 0x1F) << 8) | *(ptr+1);
-      auto headerBytes = (*(ptr+2) & 0x20) ? (4 + *(ptr+3)) : 3;
-      ptr += headerBytes;
-      auto tsFrameBytesLeft = 187 - headerBytes;
-      if (pid == 34) {
-        if (payStart && !(*ptr) && !(*(ptr+1)) && (*(ptr+2) == 1) && (*(ptr+3) == 0xC0)) {
-          int pesHeaderBytes = 9 + *(ptr+8);
-          ptr += pesHeaderBytes;
-          tsFrameBytesLeft -= pesHeaderBytes;
-          }
-        memcpy (toPtr, ptr, tsFrameBytesLeft);
-        toPtr += tsFrameBytesLeft;
-        }
-      ptr += tsFrameBytesLeft;
-      }
-
-    return toPtr;
-    }
-  //}}}
-
-  // vars
-  NeAACDecHandle mDecoder = 0;
-  int16_t* mAudio = nullptr;
-  uint8_t* mPower = nullptr;
-
-  int mSeqNum = 0;
-  int mBitrate = 0;
-  int mFramesLoaded = 0;
-  int mSamplesPerFrame = 0;
-
-  bool mLoaded = false;
-  bool mLoading = false;
-  std::string mInfoStr;
-  };
-//}}}
-//{{{
-class cHlsLoader : public cHlsChan {
-public:
-  cHlsLoader() {}
-  virtual ~cHlsLoader() {}
-
-  int getBitrate() { return mBitrate; }
-  int getLoading() { return mLoading; }
-  //{{{
-  std::string getFrameStr (int frame) {
-
-    int secsSinceMidnight = int (frame / getFramesPerSecond());
-    int secs = secsSinceMidnight % 60;
-    int mins = (secsSinceMidnight / 60) % 60;
-    int hours = secsSinceMidnight / (60*60);
-
-    return toString (hours) + ':' + toString (mins) + ':' + toString (secs);
-    }
-  //}}}
-  //{{{
-  std::string getInfoStr (int frame) {
-    return getChanName (getChan()) + ':' + toString (getBitrate()/1000) + "k " + getFrameStr (frame);
-    }
-  //}}}
-  //{{{
-  std::string getChunkInfoStr (int chunk) {
-    return getChunkNumStr (chunk) + ':' + mChunks[chunk].getInfoStr();
-    }
-  //}}}
-  //{{{
-  void getChunkLoad (int chunk, bool& loaded, bool& loading) {
-    loaded = mChunks[chunk].getLoaded();
-    loading = mChunks[chunk].getLoading();
-    }
-  //}}}
-
-  //{{{
-  uint8_t* getPower (int frame, int& frames) {
-  // return pointer to frame power org,len uint8_t pairs
-  // frames = number of valid frames
-
-    int seqNum;
-    int chunk = 0;
-    int frameInChunk;
-    frames = 0;
-    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getPower (frameInChunk, frames) : nullptr;
-    }
-  //}}}
-  //{{{
-  int16_t* getSamples (int frame, int& seqNum) {
-  // return audio buffer for frame
-
-    int chunk;
-    int frameInChunk;
-    return findFrame (frame, seqNum, chunk, frameInChunk) ? mChunks[chunk].getSamples (frameInChunk) : nullptr;
-    }
-  //}}}
-
-  //{{{
-  int changeChan (int chan) {
-
-    setChan (mHttp, chan);
-    mBitrate = getMidBitrate();
-
-    int hour = ((getDateTime()[11] - '0') * 10) + (getDateTime()[12] - '0');
-    int min =  ((getDateTime()[14] - '0') * 10) + (getDateTime()[15] - '0');
-    int sec =  ((getDateTime()[17] - '0') * 10) + (getDateTime()[18] - '0');
-    int secsSinceMidnight = (hour * 60 * 60) + (min * 60) + sec;
-    mBaseFrame = getFramesFromSec (secsSinceMidnight);
-
-    invalidateChunks();
-    return mBaseFrame;
-    }
-  //}}}
-  void setBitrate (int bitrate) { mBitrate = bitrate; }
-
-  //{{{
-  bool load (int frame) {
-  // return false if any load failed
-
-    bool ok = true;
-
-    mLoading = 0;
-    int chunk;
-    int seqNum = getSeqNumFromFrame (frame);
-
-    if (!findSeqNumChunk (seqNum, mBitrate, 0, chunk)) {
-      // load required chunk
-      mLoading++;
-      ok &= mChunks[chunk].load (mHttp, this, seqNum, mBitrate);
-      }
-
-    if (!findSeqNumChunk (seqNum, mBitrate, 1, chunk)) {
-      // load chunk before
-      mLoading++;
-      ok &= mChunks[chunk].load (mHttp, this, seqNum+1, mBitrate);
-      }
-
-    if (!findSeqNumChunk (seqNum, mBitrate, -1, chunk)) {
-      // load chunk after
-      mLoading++;
-      ok &= mChunks[chunk].load (mHttp, this, seqNum-1, mBitrate);
-      }
-    mLoading = 0;
-
-    return ok;
-    }
-  //}}}
-
-private:
-  //{{{
-  int getSeqNumFromFrame (int frame) {
-  // works for -ve frame
-
-    int r = frame - mBaseFrame;
-    if (r >= 0)
-      return getBaseSeqNum() + (r / getFramesPerChunk());
-    else
-      return getBaseSeqNum() - 1 - ((-r-1)/ getFramesPerChunk());
-    }
-  //}}}
-  //{{{
-  int getFrameInChunkFromFrame (int frame) {
-  // works for -ve frame
-
-    int r = (frame - mBaseFrame) % getFramesPerChunk();
-    return r < 0 ? r + getFramesPerChunk() : r;
-    }
-  //}}}
-  //{{{
-  std::string getChunkNumStr (int chunk) {
-    return mChunks[chunk].getSeqNum() ? toString (mChunks[chunk].getSeqNum() - getBaseSeqNum()) : "*";
-    }
-  //}}}
-
-  //{{{
-  bool findFrame (int frame, int& seqNum, int& chunk, int& frameInChunk) {
-  // return true, seqNum, chunk and frameInChunk of loadedChunk from frame
-  // - return false if not found
-
-    auto findSeqNum = getSeqNumFromFrame (frame);
-    for (auto i = 0; i < 3; i++) {
-      if ((mChunks[i].getSeqNum() != 0) && (findSeqNum == mChunks[i].getSeqNum())) {
-        auto findFrameInChunk = getFrameInChunkFromFrame (frame);
-        if ((mChunks[i].getFramesLoaded() > 0) && (findFrameInChunk < mChunks[i].getFramesLoaded())) {
-          seqNum = findSeqNum;
-          chunk = i;
-          frameInChunk = findFrameInChunk;
-          return true;
-          }
-        }
-      }
-
-    seqNum = 0;
-    chunk = 0;
-    frameInChunk = 0;
-    return false;
-    }
-  //}}}
-  //{{{
-  bool findSeqNumChunk (int seqNum, int bitrate, int offset, int& chunk) {
-  // return true if match found
-  // - if not, chunk = best reuse
-  // - reuse same seqNum chunk if diff bitrate ?
-
-    // look for matching chunk
-    chunk = 0;
-    while (chunk < 3) {
-      if (seqNum + offset == mChunks[chunk].getSeqNum())
-        return true;
-        //return bitrate != mChunks[chunk].getBitrate();
-      chunk++;
-      }
-
-    // look for stale chunk
-    chunk = 0;
-    while (chunk < 3) {
-      if ((mChunks[chunk].getSeqNum() < seqNum-1) || (mChunks[chunk].getSeqNum() > seqNum+1))
-        return false;
-      chunk++;
-      }
-
-    chunk = 0;
-    return false;
-    }
-  //}}}
-  //{{{
-  void invalidateChunks() {
-    for (auto i = 0; i < 3; i++)
-      mChunks[i].invalidate();
-    }
-  //}}}
-
-  // private vars
-  cHttp mHttp;
-  cHlsChunk mChunks[3];
-  int mBaseFrame = 0;
-  int mBitrate = 0;
-  int mLoading = 0;
-  std::string mInfoStr;
-  };
-//}}}
-
-static int mTuneChan = 1;
-static bool mTuneChanChanged = false;
-static cHlsLoader* mHlsLoader;
-static HANDLE mSemaphore;
 
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
@@ -550,26 +92,25 @@ public:
     setChangeRate (1);
 
     if (kAudio) {
-      bool mValueChanged = false;
-      int mValue = 6;
-      mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r2x80, 2, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r3x80, 3, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r4x80, 4, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r5x80, 5, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r6x80, 6, mTuneChan, mValueChanged, 4, 4));
-      mRoot->add (new cSelectBox ("radio7", 7, mTuneChan, mValueChanged, 3, 2));
-
-      mChangeChannel = 4-1;
       mHlsLoader = new cHlsLoader();
       mSemaphore = CreateSemaphore (NULL, 0, 1, L"loadSem");  // initial 0, max 1
+
+      mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
+      mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r2x80, 2, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r3x80, 3, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r4x80, 4, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r5x80, 5, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->add (new cBmpWidget (r6x80, 6, mTuneChan, mTuneChanChanged, 4, 4));
+      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 1.2f), -2.0f + mRoot->getWidth()/2.0f, -3.0f + mRoot->getHeight());
+      mRoot->addBottomRight (new cDotsBox (mHlsLoader));
 
       // launch loaderThread
       std::thread ([=]() { loader(); } ).detach();
 
       // launch playerThread, higher priority
       auto playerThread = std::thread ([=]() { player(); });
-      //SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       playerThread.detach();
 
 
@@ -1096,17 +637,17 @@ private:
 
     CoInitialize (NULL);
 
-    cHttp http;
+    mPlayFrame = mHlsLoader->changeChan (mTuneChan);
+
     while (true) {
-      if (mTuneChan != mChangeChannel) {
-        mPlayFrame = mHlsLoader->changeChan (mChangeChannel);
-        mTuneChan = mChangeChannel;
+      if (mTuneChanChanged) {
+        mPlayFrame = mHlsLoader->changeChan (mTuneChan);
+        mTuneChanChanged = false;
         }
 
       if (!mHlsLoader->load (mPlayFrame)) {
         Sleep (1000);
         }
-      mHttpRxBytes = http.getRxBytes();
       wait();
       }
 
@@ -1205,7 +746,6 @@ private:
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
-  int mPlayFrame = 0;
   int mLoadedFrame = 0;
   int mMaxFrame = 0;
   bool mWaveChanged = false;
@@ -1225,8 +765,11 @@ private:
   ID2D1SolidColorBrush* mBrush;
   std::vector <cPicWidget*> mPicWidgets;
 
-  int mChangeChannel = 0;
-  int mHttpRxBytes = 0;
+  // hls
+  cHlsLoader* mHlsLoader;
+  HANDLE mSemaphore;
+  bool mTuneChanChanged = false;
+  int mTuneChan = 4;
   //}}}
   };
 
@@ -1243,6 +786,6 @@ int main (int argc, char* argv[]) {
 
   startTimer();
   cMp3Window mp3Window;
-  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1] ? std::string(argv[1]) : std::string());
+  mp3Window.run (L"mp3window", 480, 272, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
