@@ -670,7 +670,7 @@ private:
       if (audSamples)
         mHlsLoader->mPlayFrame++;
 
-      if (!seqNum || (seqNum != lastSeqNum)) {
+      if (mHlsChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
         ReleaseSemaphore (mHlsSem, 1, NULL);
         }
