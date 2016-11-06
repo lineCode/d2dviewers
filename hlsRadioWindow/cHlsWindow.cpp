@@ -1291,7 +1291,7 @@ private:
         }
       if (!mHlsLoader->load (getDeviceContext(), &http, mHlsLoader->getPlaySecs())) {
         printf ("sleep frame:%3.2f\n", mHlsLoader->getPlaySecs());
-        sleep (1000);
+        Sleep (1000);
         }
       mHttpRxBytes = http.getRxBytes();
       wait();
@@ -1329,7 +1329,6 @@ private:
     CoUninitialize();
     }
   //}}}
-
   //{{{
   void wait() {
     WaitForSingleObject (mSemaphore, 20 * 1000);
@@ -1340,12 +1339,6 @@ private:
     ReleaseSemaphore (mSemaphore, 1, NULL);
     }
   //}}}
-  //{{{
-  void sleep (int ms) {
-    Sleep (ms);
-    }
-  //}}}
-
   //{{{  vars
   cHlsLoader* mHlsLoader = nullptr;
 

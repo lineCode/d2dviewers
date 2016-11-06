@@ -80,8 +80,10 @@ public:
     setChangeRate (1);
 
     if (kAudio) {
-      if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-        listDirectory (std::string(), fileName.empty() ? "D:/music" : fileName, "*.mp3");
+      if (fileName.empty())
+        mFileList.push_back ("C:/Users/colin/Desktop/Bread.mp3");
+      else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+        listDirectory (std::string(), fileName, "*.mp3");
         //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
       else
         mFileList.push_back (fileName);
@@ -160,6 +162,15 @@ public:
   //}}}
   void copy (uint8_t* src, int16_t srcx, int16_t srcy, uint16_t srcWidth, int16_t srcHeight,
              int16_t dstx, int16_t dsty, uint16_t dstWidth, uint16_t dstHeight) {};
+
+  //{{{
+  ID2D1Bitmap* allocBitmap (uint16_t width, uint16_t height) {
+
+    ID2D1Bitmap* bitmap;
+    getDeviceContext()->CreateBitmap (SizeU (width, height), getBitmapProperties(), &bitmap);
+    return bitmap;
+    }
+  //}}}
   //{{{
   void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
@@ -573,10 +584,10 @@ private:
 
     for (auto j = 0; j < 4; j++)
       for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->addAtPix (new cBitmapWidget (160, 120), i * 160, j * mRoot->getHeightPix()/4));
+        mBitmapWidgets.push_back (mRoot->addAt (new cBitmapWidget (8.0f, 6.0f), i * 8.0f, j * 6.0f));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
-    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 100));
-    mRoot->add (new cNumBox ("show ", mNumWidget, mNumChanged, 100));
+    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
+    mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
 
     while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
       jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
@@ -632,15 +643,9 @@ private:
         scaleShift++;
         }
 
-      ID2D1Bitmap* bitmap;
-      auto picWidth = jpegDecoder.getWidth() >> scaleShift;
-      auto picHeight = jpegDecoder.getHeight() >> scaleShift;
-      getDeviceContext()->CreateBitmap (SizeU (picWidth, picHeight), getBitmapProperties(), &bitmap);
-      auto pic = jpegDecoder.decodeBody (scaleShift);
-      bitmap->CopyFromMemory (&RectU (0, 0, picWidth, picHeight), pic, picWidth*4);
-      free (pic);
-
-      ((cBitmapWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (bitmap);
+      ((cBitmapWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (
+        (uint8_t*)jpegDecoder.decodeBody (scaleShift),
+        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift);
       }
     }
   //}}}
