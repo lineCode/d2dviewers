@@ -107,7 +107,7 @@ public:
       mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanChanged, 4, 4));
       mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanChanged, 4, 4));
       mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 1.2f), -2.0f + mRoot->getWidth()/2.0f, -3.0f + mRoot->getHeight());
+      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 3), -2 + mRoot->getWidth()/2.0f, -3 + mRoot->getHeight());
       mRoot->addBottomRight (new cDotsBox (mHlsLoader));
 
       mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
@@ -183,7 +183,9 @@ public:
     // create layout
     std::wstring wstr = converter.from_bytes (str.data());
     IDWriteTextLayout* textLayout;
-    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(), getTextFormat(), width, height, &textLayout);
+    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(),
+                                          fontHeight <= getLcdFontHeight() ? getTextFormat() : getTextFormatSize (fontHeight),
+                                          width, height, &textLayout);
 
     // draw it
     mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));

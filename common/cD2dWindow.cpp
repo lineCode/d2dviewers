@@ -16,7 +16,7 @@ using namespace D2D1;
 
 // static var init
 cD2dWindow* cD2dWindow::mD2dWindow = NULL;
-
+int mFontSize = 0;
 //{{{
 LRESULT CALLBACK WndProc (HWND hWnd, unsigned int msg, WPARAM wparam, LPARAM lparam) {
 
@@ -64,6 +64,22 @@ void cD2dWindow::initialise (wchar_t* windowTitle, int width, int height) {
     }
   }
 //}}}
+
+IDWriteTextFormat* cD2dWindow::getTextFormatSize (int fontSize) {
+
+  if (fontSize != mFontSize) {
+    // create Consolas textFormatBig using DWriteFactory
+    mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
+                                      DWRITE_FONT_WEIGHT_REGULAR,
+                                      DWRITE_FONT_STYLE_NORMAL,
+                                      DWRITE_FONT_STRETCH_NORMAL,
+                                      float(fontSize), L"en-us", &textFormatSize);
+    textFormatSize->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
+    mFontSize = fontSize;
+    }
+
+  return textFormatSize;
+  }
 
 //{{{
 ID2D1Bitmap* cD2dWindow::makeBitmap (cYuvFrame* yuvFrame, ID2D1Bitmap*& bitmap, int64_t& bitmapPts) {

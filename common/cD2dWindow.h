@@ -15,6 +15,7 @@ public:
 
   ID2D1DeviceContext* getDeviceContext() { return mDeviceContext.Get(); }
   IDWriteTextFormat* getTextFormat() { return textFormat; }
+  IDWriteTextFormat* getTextFormatSize (int fontSize);
   ID2D1SolidColorBrush* getBlueBrush() { return blueBrush; }
   ID2D1SolidColorBrush* getBlackBrush() { return blackBrush; }
   ID2D1SolidColorBrush* getDimGreyBrush() { return dimGreyBrush; }
@@ -112,6 +113,7 @@ private:
   ComPtr<ID2D1DeviceContext> mDeviceContext;
 
   IDWriteTextFormat* textFormat;
+  IDWriteTextFormat* textFormatSize;
   ID2D1SolidColorBrush* blueBrush;
   ID2D1SolidColorBrush* blackBrush;
   ID2D1SolidColorBrush* dimGreyBrush;
