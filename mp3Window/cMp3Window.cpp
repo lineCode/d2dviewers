@@ -28,6 +28,8 @@ static const bool kAudio = false;
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
 public:
+  cFileMapTinyJpeg (uint16_t components) : cTinyJpeg(components) {}
+
   ~cFileMapTinyJpeg() {
     UnmapViewOfFile (mFileBuffer);
     CloseHandle (mFileHandle);
@@ -572,30 +574,27 @@ private:
   //{{{
   void loadJpegThread() {
 
-    uint32_t* piccy = nullptr;
     uint16_t picWidth = 0;
     uint16_t picHeight = 0;
     mFileIndex = 0;
-    bool mPicValueChanged = false;
-    int mPicValue = -1;
 
-    for (auto j = 0; j < 4; j++)
-      for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->addAt (new cPicWidget (8.0f, 6.0f, 4 * j + i, mPicValue, mPicValueChanged),
-                                                i * 8.0f, j * 6.0f));
-    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
+    bool mPicValueChanged = false;
+
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
     mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
 
-    //while (!mFileIndexChanged && (mFileIndex < mFileList.size()-1)) {
-    //  jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
-    //  mFileIndex++;
-    //  }
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), 10));
+
+    for (auto i = 0; i < 18; i++) {
+      auto picWidget = new cPicWidget (8.0f, 6.0f, i, mFileIndex, mFileIndexChanged);
+      mRoot->add (picWidget);
+      mPicWidgets.push_back(picWidget);
+      }
 
     mFileIndexChanged = true;
     while (true) {
       if (mFileIndexChanged) {
-        jpegDecode (mFileList[mFileIndex].c_str(), piccy, picWidth, picHeight);
+        jpegDecode (mFileIndex, picWidth, picHeight);
         mFileIndexChanged = false;
         }
       else
@@ -628,10 +627,10 @@ private:
     }
   //}}}
   //{{{
-  void jpegDecode (std::string fileName, uint32_t*& pic, uint16_t& picWidth, uint16_t& picHeight) {
+  void jpegDecode (int fileIndex, uint16_t& picWidth, uint16_t& picHeight) {
 
-    cFileMapTinyJpeg jpegDecoder;
-    if (jpegDecoder.readHeader (fileName)) {
+    cFileMapTinyJpeg jpegDecoder (4);
+    if (jpegDecoder.readHeader (mFileList[fileIndex].c_str())) {
       // scale to fit
       auto scale = 1;
       auto scaleShift = 0;
@@ -641,9 +640,10 @@ private:
         scaleShift++;
         }
 
-      ((cPicWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (
-        (uint8_t*)jpegDecoder.decodeBody (scaleShift),
-        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 4);
+      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setPic (
+        jpegDecoder.decodeBody (scaleShift), jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 4);
+      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setMyValue (fileIndex);
+      mNumWidget++;
       }
     }
   //}}}
@@ -677,7 +677,7 @@ private:
   bool mPlaying = true;
 
   ID2D1SolidColorBrush* mBrush;
-  std::vector <cWidget*> mBitmapWidgets;
+  std::vector <cPicWidget*> mPicWidgets;
   //}}}
   };
 
