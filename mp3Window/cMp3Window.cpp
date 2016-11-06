@@ -16,14 +16,14 @@
 #include "../../shared/widgets/cSelectBox.h"
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cNumBox.h"
-#include "../../shared/widgets/cSelectBmpWidget.h"
+#include "../../shared/widgets/cBmpWidget.h"
 
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 
 #include "../../shared/icons/radioIcon.h"
 //}}}
-static const bool kAudio = true;
+static const bool kAudio = false;
 
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
@@ -479,12 +479,12 @@ private:
 
     bool mValueChanged = false;
     int mValue = 6;
-    mRoot->addTopLeft (new cSelectBmpWidget (r1x80, 1, mValue, mValueChanged, 4, 4));
-    mRoot->add (new cSelectBmpWidget (r2x80, 2, mValue, mValueChanged, 4, 4));
-    mRoot->add (new cSelectBmpWidget (r3x80, 3, mValue, mValueChanged, 4, 4));
-    mRoot->add (new cSelectBmpWidget (r4x80, 4, mValue, mValueChanged, 4, 4));
-    mRoot->add (new cSelectBmpWidget (r5x80, 5, mValue, mValueChanged, 4, 4));
-    mRoot->add (new cSelectBmpWidget (r6x80, 6, mValue, mValueChanged, 4, 4));
+    mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r2x80, 2, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r3x80, 3, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r4x80, 4, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r5x80, 5, mValue, mValueChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r6x80, 6, mValue, mValueChanged, 4, 4));
     mRoot->add (new cSelectBox ("radio7", 7, mValue, mValueChanged, 3, 2));
 
     mPlayFrame = 0;
@@ -576,10 +576,13 @@ private:
     uint16_t picWidth = 0;
     uint16_t picHeight = 0;
     mFileIndex = 0;
+    bool mPicValueChanged = false;
+    int mPicValue = -1;
 
     for (auto j = 0; j < 4; j++)
       for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->addAt (new cPicWidget (8.0f, 6.0f), i * 8.0f, j * 6.0f));
+        mBitmapWidgets.push_back (mRoot->addAt (new cPicWidget (8.0f, 6.0f, 4 * j + i, mPicValue, mPicValueChanged),
+                                                i * 8.0f, j * 6.0f));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
     mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
@@ -640,7 +643,7 @@ private:
 
       ((cPicWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (
         (uint8_t*)jpegDecoder.decodeBody (scaleShift),
-        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 3);
+        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 4);
       }
     }
   //}}}
