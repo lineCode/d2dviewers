@@ -6,11 +6,8 @@
 #include "../common/cD2dWindow.h"
 #include "../common/cAudio.h"
 
-#include "../../shared/widgets/cWidget.h"
-#include "../../shared/widgets/cContainer.h"
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
-#include "../../shared/widgets/cWaveWidget.h"
 #include "../../shared/widgets/cWaveCentreWidget.h"
 #include "../../shared/widgets/cWaveOverviewWidget.h"
 #include "../../shared/widgets/cWaveLensWidget.h"
@@ -18,7 +15,6 @@
 #include "../../shared/widgets/cValueBox.h"
 #include "../../shared/widgets/cSelectBox.h"
 #include "../../shared/widgets/cPicWidget.h"
-#include "../../shared/widgets/cBitmapWidget.h"
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cSelectBmpWidget.h"
 
@@ -151,12 +147,11 @@ public:
   void copy (uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     if (src && width && height) {
-      for (auto j = y; j < y + height; j++)
-        for (auto i = x; i < x + width; i++) {
-          mBrush->SetColor (ColorF (*((uint32_t*)src)));
-          getDeviceContext()->FillRectangle (RectF (float(i), float(j), float(i + 1), float(j + 1)), mBrush);
-          src += 4;
-          }
+      ID2D1Bitmap* bitmap;
+      getDeviceContext()->CreateBitmap (SizeU (width, height), getBitmapProperties(), &bitmap);
+      bitmap->CopyFromMemory (&RectU (0, 0, width, height), src, width*4);
+      getDeviceContext()->DrawBitmap (bitmap, RectF ((float)x, (float)y, (float)x+width,(float)y+height));
+      bitmap->Release();
       }
     }
   //}}}
@@ -584,7 +579,7 @@ private:
 
     for (auto j = 0; j < 4; j++)
       for (auto i = 0; i < 6; i++)
-        mBitmapWidgets.push_back (mRoot->addAt (new cBitmapWidget (8.0f, 6.0f), i * 8.0f, j * 6.0f));
+        mBitmapWidgets.push_back (mRoot->addAt (new cPicWidget (8.0f, 6.0f), i * 8.0f, j * 6.0f));
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight()));
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
     mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
@@ -643,9 +638,9 @@ private:
         scaleShift++;
         }
 
-      ((cBitmapWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (
+      ((cPicWidget*)mBitmapWidgets[(int(mNumWidget++)) % 24])->setPic (
         (uint8_t*)jpegDecoder.decodeBody (scaleShift),
-        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift);
+        jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 3);
       }
     }
   //}}}
