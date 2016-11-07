@@ -34,6 +34,7 @@
 #include "../../shared/decoders/cHlsLoader.h"
 #include "../../shared/widgets/cHlsPowerWidget.h"
 #include "../../shared/widgets/cHlsInfoBox.h"
+#include "../../shared/widgets/cHlsIncBox.h"
 #include "../../shared/widgets/cHlsDotsBox.h"
 //}}}
 static const bool kJpeg = false;
@@ -239,7 +240,7 @@ protected:
 private:
   //{{{
   void initHlsMenu() {
-    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
+    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mPlayFrameChanged, mRoot->getWidth(), -3 + mRoot->getHeight()));
 
     mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsChanged, 4, 4));
     mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsChanged, 4, 4));
@@ -250,6 +251,8 @@ private:
     mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -2 + mRoot->getHeight());
 
     mRoot->addBottomRight (new cDotsBox (mHlsLoader));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "5s",  5, mPlayFrameChanged, 2));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-5s", -5, mPlayFrameChanged, 2));
 
     mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsChanged, 2));
     mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsChanged, 2));
@@ -288,9 +291,6 @@ private:
       int seqNum;
       auto audSamples = mHlsLoader->getSamples (seqNum);
       audPlay (audSamples, 4096, 1.0f);
-
-      if (audSamples)
-        mHlsLoader->mPlayFrame++;
 
       if (mHlsChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
@@ -553,6 +553,7 @@ private:
   bool mHlsChanged = false;
   int mHlsChan = 4;
   int mHlsBitrate = 128000;
+  bool mPlayFrameChanged = false;
   //}}}
   };
 
