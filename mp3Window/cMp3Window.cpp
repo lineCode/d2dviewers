@@ -107,7 +107,7 @@ public:
       mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanChanged, 4, 4));
       mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanChanged, 4, 4));
       mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 3), -2 + mRoot->getWidth()/2.0f, -3 + mRoot->getHeight());
+      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -3 + mRoot->getHeight());
       mRoot->addBottomRight (new cDotsBox (mHlsLoader));
 
       mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
@@ -154,8 +154,8 @@ public:
     };
   //}}}
   //{{{  iDraw
-  uint8_t getLcdFontHeight() { return 16; }
-  uint8_t getLcdLineHeight() { return 19; }
+  uint16_t getLcdFontHeight() { return 16; }
+  uint16_t getLcdLineHeight() { return 19; }
 
   uint16_t getLcdWidthPix() { return mRoot->getWidthPix(); }
   uint16_t getLcdHeightPix() { return mRoot->getHeightPix(); }
@@ -551,6 +551,6 @@ int main (int argc, char* argv[]) {
 
   startTimer();
   cMp3Window mp3Window;
-  mp3Window.run (L"mp3window", 480*2, 272*2, argv[1] ? std::string(argv[1]) : std::string());
+  mp3Window.run (L"mp3window", 480, 272, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
