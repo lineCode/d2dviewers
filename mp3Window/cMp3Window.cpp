@@ -240,23 +240,23 @@ protected:
 private:
   //{{{
   void initHlsMenu() {
-    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mPlayFrameChanged, mRoot->getWidth(), -3 + mRoot->getHeight()));
+    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
 
-    mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
     mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -2 + mRoot->getHeight());
 
     mRoot->addBottomRight (new cDotsBox (mHlsLoader));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "5s",  5, mPlayFrameChanged, 2));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-5s", -5, mPlayFrameChanged, 2));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "5s",  5, 2));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-5s", -5,  2));
 
-    mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsChanged, 2));
-    mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsChanged, 2));
-    mRoot->add (new cSelectText ("320", 320000, mHlsBitrate, mHlsChanged, 2));
+    mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
+    mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
+    mRoot->add (new cSelectText ("320", 320000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
     }
   //}}}
   //{{{
@@ -264,16 +264,14 @@ private:
 
     CoInitialize (NULL);
 
-    mHlsLoader->changeChan (mHlsChan, mHlsBitrate);
+    mHlsLoader->mChanChanged = true;
     while (true) {
-      if (mHlsChanged) {
+      if (mHlsLoader->mChanChanged)
         mHlsLoader->changeChan (mHlsChan, mHlsBitrate);
-        mHlsChanged = false;
-        }
 
-      if (!mHlsLoader->load()) {
+      if (!mHlsLoader->load())
         Sleep (1000);
-        }
+
       WaitForSingleObject (mHlsSem, 20 * 1000);
       }
 
@@ -292,7 +290,7 @@ private:
       auto audSamples = mHlsLoader->getSamples (seqNum);
       audPlay (audSamples, 4096, 1.0f);
 
-      if (mHlsChanged || !seqNum || (seqNum != lastSeqNum)) {
+      if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
         ReleaseSemaphore (mHlsSem, 1, NULL);
         }
@@ -550,10 +548,8 @@ private:
   // hls
   cHlsLoader* mHlsLoader;
   HANDLE mHlsSem;
-  bool mHlsChanged = false;
   int mHlsChan = 4;
   int mHlsBitrate = 128000;
-  bool mPlayFrameChanged = false;
   //}}}
   };
 
