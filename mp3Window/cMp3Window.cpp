@@ -13,7 +13,7 @@
 #include "../../shared/widgets/cWaveLensWidget.h"
 #include "../../shared/widgets/cTextBox.h"
 #include "../../shared/widgets/cValueBox.h"
-#include "../../shared/widgets/cSelectBox.h"
+#include "../../shared/widgets/cSelectText.h"
 #include "../../shared/widgets/cPicWidget.h"
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
@@ -100,15 +100,7 @@ public:
       mHlsLoader = new cHlsLoader();
       mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
-      mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
-      mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanChanged, 4, 4));
-      mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -3 + mRoot->getHeight());
-      mRoot->addBottomRight (new cDotsBox (mHlsLoader));
+      initHlsMenu();
 
       mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
 
@@ -130,12 +122,7 @@ public:
       mSamples = (int16_t*)malloc (1152*2*2);
       memset (mSamples, 0, 1152*2*2);
 
-      mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
-      mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-      mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-      mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-
-      mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
+      initMp3Menu();
 
       if (fileName.empty())
         mFileList.push_back ("C:/Users/colin/Desktop/Bread.mp3");
@@ -254,6 +241,87 @@ protected:
 
 private:
   //{{{
+  void initHlsMenu() {
+    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
+
+    mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsChanged, 4, 4));
+    mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -2 + mRoot->getHeight());
+
+    mRoot->addBottomRight (new cDotsBox (mHlsLoader));
+
+    mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsChanged, 2));
+    mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsChanged, 2));
+    mRoot->add (new cSelectText ("320", 320000, mHlsBitrate, mHlsChanged, 2));
+    }
+  //}}}
+  //{{{
+  void hlsLoader() {
+
+    CoInitialize (NULL);
+
+    mHlsLoader->changeChan (mHlsChan, mHlsBitrate);
+    while (true) {
+      if (mHlsChanged) {
+        mHlsLoader->changeChan (mHlsChan, mHlsBitrate);
+        mHlsChanged = false;
+        }
+
+      if (!mHlsLoader->load()) {
+        Sleep (1000);
+        }
+      WaitForSingleObject (mHlsSem, 20 * 1000);
+      }
+
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void hlsPlayer() {
+
+    CoInitialize (NULL);
+    audOpen (48000, 16, 2);
+
+    auto lastSeqNum = 0;
+    while (true) {
+      int seqNum;
+      auto audSamples = mHlsLoader->getSamples (seqNum);
+      audPlay (audSamples, 4096, 1.0f);
+
+      if (audSamples)
+        mHlsLoader->mPlayFrame++;
+
+      if (mHlsChanged || !seqNum || (seqNum != lastSeqNum)) {
+        lastSeqNum = seqNum;
+        ReleaseSemaphore (mHlsSem, 1, NULL);
+        }
+
+      if (mVolumeChanged) {
+        setVolume (mVolume);
+        mVolumeChanged = false;
+        }
+      }
+
+    audClose();
+    CoUninitialize();
+    }
+  //}}}
+
+  //{{{
+  void initMp3Menu() {
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
+    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
+    }
+  //}}}
+  //{{{
   void waveThread() {
 
     auto time = getTimer();
@@ -357,27 +425,9 @@ private:
   //}}}
 
   //{{{
-  void listThread (std::string fileName) {
-
-    auto time = getTimer();
-
-    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
-      listDirectory (std::string(), fileName, "*.mp3");
-
-    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mFileList.size(), getTimer() - time);
-    }
-  //}}}
-  //{{{
-  void loadJpegThread() {
-
-    uint16_t picWidth = 0;
-    uint16_t picHeight = 0;
-
-    bool mPicValueChanged = false;
-
+  void initJpegMenu() {
     mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
     mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
-
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), 10));
 
     for (auto i = 0; i < 18; i++) {
@@ -385,71 +435,8 @@ private:
       mRoot->add (picWidget);
       mPicWidgets.push_back(picWidget);
       }
-
-    mFileIndexChanged = true;
-    while (true) {
-      if (mFileIndexChanged) {
-        jpegDecode (mFileIndex, picWidth, picHeight);
-        mFileIndexChanged = false;
-        }
-      else
-        Sleep (100);
-      }
     }
   //}}}
-
-  //{{{
-  void hlsLoader() {
-
-    CoInitialize (NULL);
-
-    mHlsLoader->changeChan (mHlsChan, mHlsLoader->getLowBitrate());
-    while (true) {
-      if (mHlsChanChanged) {
-        mHlsLoader->changeChan (mHlsChan, mHlsLoader->getLowBitrate());
-        mHlsChanChanged = false;
-        }
-
-      if (!mHlsLoader->load()) {
-        Sleep (1000);
-        }
-      WaitForSingleObject (mHlsSem, 20 * 1000);
-      }
-
-    CoUninitialize();
-    }
-  //}}}
-  //{{{
-  void hlsPlayer() {
-
-    CoInitialize (NULL);
-    audOpen (48000, 16, 2);
-
-    auto lastSeqNum = 0;
-    while (true) {
-      int seqNum;
-      auto audSamples = mHlsLoader->getSamples (seqNum);
-      audPlay (audSamples, 4096, 1.0f);
-
-      if (audSamples)
-        mHlsLoader->mPlayFrame++;
-
-      if (mHlsChanChanged || !seqNum || (seqNum != lastSeqNum)) {
-        lastSeqNum = seqNum;
-        ReleaseSemaphore (mHlsSem, 1, NULL);
-        }
-
-      if (mVolumeChanged) {
-        setVolume (mVolume);
-        mVolumeChanged = false;
-        }
-      }
-
-    audClose();
-    CoUninitialize();
-    }
-  //}}}
-
   //{{{
   void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
 
@@ -494,19 +481,68 @@ private:
       }
     }
   //}}}
+  //{{{
+  void listThread (std::string fileName) {
+
+    auto time = getTimer();
+
+    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory (std::string(), fileName, "*.mp3");
+
+    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mFileList.size(), getTimer() - time);
+    }
+  //}}}
+  //{{{
+  void loadJpegThread() {
+
+    uint16_t picWidth = 0;
+    uint16_t picHeight = 0;
+
+    initJpegMenu();
+
+    mFileIndexChanged = true;
+    while (true) {
+      if (mFileIndexChanged) {
+        jpegDecode (mFileIndex, picWidth, picHeight);
+        mFileIndexChanged = false;
+        }
+      else
+        Sleep (100);
+      }
+    }
+  //}}}
 
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
+  ID2D1SolidColorBrush* mBrush;
+
+  // audio
+  int16_t* mSamples = nullptr;
+  bool mWait = false;
+  bool mReady = false;
+  bool mPlaying = true;
+
+  bool mVolumeChanged = false;
+  float mVolume = 0.7f;
+
+  // jpeg
   int mFileIndex = 0;
   bool mFileIndexChanged = false;
-
+  bool mPicValueChanged = false;
   std::vector <std::string> mFileList;
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
+
+  bool mCountChanged = false;
+  float mCount = 0;
+  bool mNumChanged = false;
+  float mNumWidget = 0;
+  std::vector <cPicWidget*> mPicWidgets;
 
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
+  // mp3
   int mPlayFrame = 0;
   int mLoadedFrame = 0;
   int mMaxFrame = 0;
@@ -514,27 +550,12 @@ private:
   uint8_t* mWave = nullptr;
   int* mFramePosition = nullptr;
 
-  float mCount = 0;
-  bool mCountChanged = false;
-  float mNumWidget = 0;
-  bool mNumChanged = false;
-
-  int16_t* mSamples = nullptr;
-  bool mWait = false;
-  bool mReady = false;
-  bool mPlaying = true;
-
-  ID2D1SolidColorBrush* mBrush;
-  std::vector <cPicWidget*> mPicWidgets;
-
-  bool mVolumeChanged = false;
-  float mVolume = 0.7f;
-
   // hls
   cHlsLoader* mHlsLoader;
   HANDLE mHlsSem;
-  bool mHlsChanChanged = false;
+  bool mHlsChanged = false;
   int mHlsChan = 4;
+  int mHlsBitrate = 128000;
   //}}}
   };
 
