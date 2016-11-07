@@ -65,10 +65,12 @@ void cD2dWindow::initialise (wchar_t* windowTitle, int width, int height) {
   }
 //}}}
 
+//{{{
 IDWriteTextFormat* cD2dWindow::getTextFormatSize (int fontSize) {
 
   if (fontSize != mFontSize) {
-    // create Consolas textFormatBig using DWriteFactory
+    if (textFormatSize)
+      textFormatSize->Release();
     mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
                                       DWRITE_FONT_WEIGHT_REGULAR,
                                       DWRITE_FONT_STYLE_NORMAL,
@@ -80,7 +82,7 @@ IDWriteTextFormat* cD2dWindow::getTextFormatSize (int fontSize) {
 
   return textFormatSize;
   }
-
+//}}}
 //{{{
 ID2D1Bitmap* cD2dWindow::makeBitmap (cYuvFrame* yuvFrame, ID2D1Bitmap*& bitmap, int64_t& bitmapPts) {
 
