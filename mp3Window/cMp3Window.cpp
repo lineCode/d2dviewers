@@ -141,9 +141,6 @@ public:
     };
   //}}}
   //{{{  iDraw
-  uint16_t getLcdFontHeight() { return 16; }
-  uint16_t getLcdLineHeight() { return 19; }
-
   uint16_t getLcdWidthPix() { return mRoot->getWidthPix(); }
   uint16_t getLcdHeightPix() { return mRoot->getHeightPix(); }
 
@@ -170,7 +167,7 @@ public:
     std::wstring wstr = converter.from_bytes (str.data());
     IDWriteTextLayout* textLayout;
     getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(),
-                                          fontHeight <= getLcdFontHeight() ? getTextFormat() : getTextFormatSize (fontHeight),
+                                          fontHeight <= cWidget::getFontHeight() ? getTextFormat() : getTextFormatSize (fontHeight),
                                           width, height, &textLayout);
 
     // draw it
@@ -476,7 +473,7 @@ private:
 
       mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setPic (
         jpegDecoder.decodeBody (scaleShift), jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 4);
-      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setMyValue (fileIndex);
+      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setSelectValue (fileIndex);
       mNumWidget++;
       }
     }
