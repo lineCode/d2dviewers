@@ -569,6 +569,7 @@ int main (int argc, char* argv[]) {
 
   startTimer();
   cMp3Window mp3Window;
+  //mp3Window.run (L"mp3window", 800, 480, argv[1] ? std::string(argv[1]) : std::string());
   mp3Window.run (L"mp3window", 480, 272, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
