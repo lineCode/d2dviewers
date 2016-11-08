@@ -6,6 +6,17 @@
 #include "../common/cD2dWindow.h"
 #include "../common/cAudio.h"
 
+#include "../../shared/decoders/cTinyJpeg.h"
+#include "../../shared/decoders/cMp3Decoder.h"
+
+#include "../libfaad/include/neaacdec.h"
+#pragma comment (lib,"libfaad.lib")
+
+#include <winsock2.h>
+#include <WS2tcpip.h>
+#pragma comment (lib,"ws2_32.lib")
+#include "../common/cHttp.h"
+
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveCentreWidget.h"
@@ -18,19 +29,6 @@
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
 
-
-#include "../../shared/decoders/cTinyJpeg.h"
-#include "../../shared/decoders/cMp3Decoder.h"
-
-#include "../libfaad/include/neaacdec.h"
-#pragma comment (lib,"libfaad.lib")
-
-#include <winsock2.h>
-#include <WS2tcpip.h>
-#pragma comment (lib,"ws2_32.lib")
-#include "../common/cHttp.h"
-
-#include "../../shared/hls/icons.h"
 #include "../../shared/hls/hls.h"
 //}}}
 static const bool kJpeg = false;
@@ -97,13 +95,13 @@ public:
       mHlsLoader = new cHlsLoader();
       mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
-      initHlsMenu();
+      hlsMenu (mRoot, mHlsLoader);
 
       // launch loaderThread
-      std::thread ([=]() { hlsLoader(); } ).detach();
+      std::thread ([=]() { hlsLoaderThread(); } ).detach();
 
       // launch playerThread, higher priority
-      auto playerThread = std::thread ([=]() { hlsPlayer(); });
+      auto playerThread = std::thread ([=]() { hlsPlayerThread(); });
       SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       playerThread.detach();
       }
@@ -230,8 +228,8 @@ protected:
         mFileIndex--;
         mFileIndexChanged = true;
 
-        if (mHlsLoader && mHlsChan > 1) {
-          mHlsChan--;
+        if (mHlsLoader && mHlsLoader->mHlsChan > 1) {
+          mHlsLoader->mHlsChan--;
           mHlsLoader->mChanChanged = true;
           }
         break;
@@ -241,8 +239,8 @@ protected:
         mFileIndex++;
         mFileIndexChanged = true;
 
-        if (mHlsLoader && mHlsChan < 6) {
-          mHlsChan++;
+        if (mHlsLoader && mHlsLoader->mHlsChan < 6) {
+          mHlsLoader->mHlsChan++;
           mHlsLoader->mChanChanged = true;
           }
         break;
@@ -253,7 +251,7 @@ protected:
       case 0x33:
       case 0x34:
       case 0x35:
-      case 0x36: mHlsChan = key - '0'; mHlsLoader->mChanChanged = true; break;
+      case 0x36: mHlsLoader->mHlsChan = key - '0'; mHlsLoader->mChanChanged = true; break;
 
       default: printf ("key %x\n", key);
       }
@@ -266,16 +264,15 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
-  #include "../../shared/hls/menu.inc"
   //{{{
-  void hlsLoader() {
+  void hlsLoaderThread() {
 
     CoInitialize (NULL);
 
     mHlsLoader->mChanChanged = true;
     while (true) {
       if (mHlsLoader->mChanChanged)
-        mHlsLoader->changeChan (mHlsChan, mHlsBitrate);
+        mHlsLoader->changeChan (mHlsLoader->mHlsChan, mHlsLoader->mHlsBitrate);
 
       if (!mHlsLoader->load())
         Sleep (1000);
@@ -287,7 +284,7 @@ private:
     }
   //}}}
   //{{{
-  void hlsPlayer() {
+  void hlsPlayerThread() {
 
     CoInitialize (NULL);
     audOpen (48000, 16, 2);
@@ -295,7 +292,7 @@ private:
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
-      auto audSamples = mHlsLoader->getSamples (seqNum, 1);
+      auto audSamples = mHlsLoader->getSamples (seqNum);
       audPlay (audSamples, 4096, 1.0f);
 
       if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
@@ -303,9 +300,9 @@ private:
         ReleaseSemaphore (mHlsSem, 1, NULL);
         }
 
-      if (mVolumeChanged) {
-        setVolume (mVolume);
-        mVolumeChanged = false;
+      if (mHlsLoader->mVolumeChanged) {
+        setVolume (mHlsLoader->mVolume);
+        mHlsLoader->mVolumeChanged = false;
         }
       }
 
@@ -556,8 +553,6 @@ private:
   // hls
   cHlsLoader* mHlsLoader;
   HANDLE mHlsSem;
-  int mHlsChan = 4;
-  int mHlsBitrate = 128000;
   //}}}
   };
 
