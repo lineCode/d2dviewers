@@ -218,14 +218,48 @@ protected:
   bool onKey (int key) {
 
     switch (key) {
+      case 0x00:
       case 0x10: // shift
       case 0x11: // control
-      case 0x00: return false;
-      case 0x1B: return true; // escape
-      case 0x20: mPlaying = ! mPlaying; return false; // space
+        return false;
+      case 0x1B: // escape
+        return true;
 
-      case 0x26: mFileIndex--; mFileIndexChanged = true; break; // up arrow
-      case 0x28: mFileIndex++; mFileIndexChanged = true; break; // down arrow
+      case 0x20: if (mHlsLoader) mHlsLoader->togglePlaying(); break;              // space
+      case 0x21: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-60); break;       // page up
+      case 0x22: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (60); break;        // page down
+      case 0x25: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-keyInc()); break; // left arrow
+      case 0x27: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (keyInc()); break;  // right arrow
+
+      case 0x26:
+        //{{{  up arrow
+        mFileIndex--;
+        mFileIndexChanged = true;
+
+        if (mHlsLoader && mHlsChan > 1) {
+          mHlsChan--;
+          mHlsLoader->mChanChanged;
+          }
+        break;
+        //}}}
+      case 0x28:
+        //{{{  down arrow
+        mFileIndex++;
+        mFileIndexChanged = true;
+
+        if (mHlsLoader && mHlsChan < 6) {
+          mHlsChan++;
+          mHlsLoader->mChanChanged;
+          }
+        break;
+        //}}}
+
+      case 0x31:
+      case 0x32:
+      case 0x33:
+      case 0x34:
+      case 0x35:
+      case 0x36: mHlsChan = key - '0'; mHlsLoader->mChanChanged; break;
 
       default: printf ("key %x\n", key);
       }
@@ -251,8 +285,8 @@ private:
     mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -2 + mRoot->getHeight());
 
     mRoot->addBottomRight (new cDotsBox (mHlsLoader));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "5s",  5, 2));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-5s", -5,  2));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "m",  60, 2));
+    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-m", -60,  2));
 
     mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
     mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
