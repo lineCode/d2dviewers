@@ -103,8 +103,6 @@ public:
 
       initHlsMenu();
 
-      mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
-
       // launch loaderThread
       std::thread ([=]() { hlsLoader(); } ).detach();
 
@@ -291,6 +289,8 @@ private:
     mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
     mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
     mRoot->add (new cSelectText ("320", 320000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
+
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
     }
   //}}}
   //{{{
@@ -321,7 +321,7 @@ private:
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
-      auto audSamples = mHlsLoader->getSamples (seqNum);
+      auto audSamples = mHlsLoader->getSamples (seqNum, 1);
       audPlay (audSamples, 4096, 1.0f);
 
       if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
