@@ -18,7 +18,6 @@
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
 
-#include "../../shared/icons/radioIcon.h"
 
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
@@ -31,11 +30,8 @@
 #pragma comment (lib,"ws2_32.lib")
 #include "../common/cHttp.h"
 
-#include "../../shared/decoders/cHlsLoader.h"
-#include "../../shared/widgets/cHlsPowerWidget.h"
-#include "../../shared/widgets/cHlsInfoBox.h"
-#include "../../shared/widgets/cHlsIncBox.h"
-#include "../../shared/widgets/cHlsDotsBox.h"
+#include "../../shared/hls/icons.h"
+#include "../../shared/hls/hls.h"
 //}}}
 static const bool kJpeg = false;
 //{{{
@@ -236,7 +232,7 @@ protected:
 
         if (mHlsLoader && mHlsChan > 1) {
           mHlsChan--;
-          mHlsLoader->mChanChanged;
+          mHlsLoader->mChanChanged = true;
           }
         break;
         //}}}
@@ -247,7 +243,7 @@ protected:
 
         if (mHlsLoader && mHlsChan < 6) {
           mHlsChan++;
-          mHlsLoader->mChanChanged;
+          mHlsLoader->mChanChanged = true;
           }
         break;
         //}}}
@@ -257,7 +253,7 @@ protected:
       case 0x33:
       case 0x34:
       case 0x35:
-      case 0x36: mHlsChan = key - '0'; mHlsLoader->mChanChanged; break;
+      case 0x36: mHlsChan = key - '0'; mHlsLoader->mChanChanged = true; break;
 
       default: printf ("key %x\n", key);
       }
@@ -270,29 +266,7 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
-  //{{{
-  void initHlsMenu() {
-    mRoot->addBottomLeft (new cPowerWidget (mHlsLoader, mRoot->getWidth(), -3 + mRoot->getHeight()));
-
-    mRoot->addTopLeft (new cBmpWidget (r1x80, 1, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r2x80, 2, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r3x80, 3, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r4x80, 4, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r5x80, 5, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->add (new cBmpWidget (r6x80, 6, mHlsChan, mHlsLoader->mChanChanged, 4, 4));
-    mRoot->addAt (new cInfoTextBox (mHlsLoader, mRoot->getWidth(), 2), -3 + mRoot->getWidth()/2.0f, -2 + mRoot->getHeight());
-
-    mRoot->addBottomRight (new cDotsBox (mHlsLoader));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader,  "m",  60, 2));
-    mRoot->addLeft (new cHlsIncBox (mHlsLoader, "-m", -60,  2));
-
-    mRoot->addBottomLeft (new cSelectText("48", 48000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
-    mRoot->add (new cSelectText ("128", 128000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
-    mRoot->add (new cSelectText ("320", 320000, mHlsBitrate, mHlsLoader->mChanChanged, 2));
-
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()));
-    }
-  //}}}
+  #include "../../shared/hls/menu.inc"
   //{{{
   void hlsLoader() {
 

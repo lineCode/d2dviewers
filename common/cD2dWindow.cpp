@@ -71,7 +71,7 @@ IDWriteTextFormat* cD2dWindow::getTextFormatSize (int fontSize) {
   if (fontSize != mFontSize) {
     if (textFormatSize)
       textFormatSize->Release();
-    mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
+    mDWriteFactory->CreateTextFormat (L"freesansbold", NULL,
                                       DWRITE_FONT_WEIGHT_REGULAR,
                                       DWRITE_FONT_STYLE_NORMAL,
                                       DWRITE_FONT_STRETCH_NORMAL,
@@ -403,7 +403,7 @@ void cD2dWindow::createDirect2d() {
   createSizedResources();
 
   // create Consolas textFormat using DWriteFactory
-  mDWriteFactory->CreateTextFormat (L"Consolas", NULL,
+  mDWriteFactory->CreateTextFormat (L"freesansbold", NULL,
                                     DWRITE_FONT_WEIGHT_REGULAR,
                                     DWRITE_FONT_STYLE_NORMAL,
                                     DWRITE_FONT_STRETCH_NORMAL,
