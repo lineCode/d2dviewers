@@ -95,6 +95,9 @@ public:
       mHlsLoader = new cHlsLoader();
       mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
+      mReSamples = (int16_t*)malloc (4096);
+      memset (mReSamples, 0, 4096);
+
       hlsMenu (mRoot, mHlsLoader);
 
       // launch loaderThread
@@ -265,6 +268,39 @@ protected:
 
 private:
   //{{{
+  float resample (int16_t* samples, int subFrame, int16_t* reSamples, float speed) {
+
+    int subSample = (1024 * subFrame) / kPowerPerFrame;
+    samples += subSample * 2;
+
+    float src = 0.0f;
+    if (speed > 0 && speed <= 2.0f) {
+      for (int i = 0; i < 1024; i++) {
+        float subSrc = src - trunc(src);
+        float invSubSrc =  1.0f - subSrc;
+        *reSamples++ = int16_t(((*(samples + int(src)*2) * invSubSrc) + (*(samples + int(src+1)*2) * subSrc)) / 2);
+        *reSamples++ = int16_t(((*(samples + int(src)*2 + 1) * invSubSrc) + (*(samples + int(src+1)*2+1) * subSrc)) / 2);
+        src += speed;
+        }
+      }
+    else if (speed <= 1.0f) {
+      // reverse
+      samples += 2048;
+      for (int i = 0; i < 1024; i++) {
+        *reSamples++ = *(samples - int(src)*2 - 1);
+        *reSamples++ = *(samples - int(src)*2 - 2);
+        src -= speed;
+        }
+      src = -src;
+      }
+    else
+      memset (reSamples, 0, 4096);
+
+    printf ("resample %d %d %4.3f used %4.3f\n", subFrame, subSample, speed, src);
+    return src;
+    }
+  //}}}
+  //{{{
   void hlsLoaderThread() {
 
     CoInitialize (NULL);
@@ -292,8 +328,22 @@ private:
     auto lastSeqNum = 0;
     while (true) {
       int seqNum;
-      auto audSamples = mHlsLoader->getSamples (seqNum);
-      audPlay (mHlsLoader->getPlaying() ? audSamples : nullptr, 4096, 1.0f);
+      int numSamples;
+      auto samples = mHlsLoader->getSamples (seqNum, numSamples);
+
+      if (mHlsLoader->getScrubbing() && samples) {
+        int subFrame = mHlsLoader->getPlaySubFrame();
+        float speed = 0.9f;
+        float inc = resample (samples, subFrame, mReSamples, mHlsLoader->mSpeed) / 1024.0f;
+        audPlay (mReSamples, 4096, 1.0f);
+        mHlsLoader->incPlayFrame (inc);
+        }
+      else if (mHlsLoader->getPlaying() && samples) {
+        audPlay (samples, 4096, 1.0f);
+        mHlsLoader->incPlayFrame (1);
+        }
+      else
+        audPlay (nullptr, 4096, 1.0f);
 
       if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
@@ -519,6 +569,7 @@ private:
 
   // audio
   int16_t* mSamples = nullptr;
+  int16_t* mReSamples = nullptr;
   bool mWait = false;
   bool mReady = false;
   bool mPlaying = true;
