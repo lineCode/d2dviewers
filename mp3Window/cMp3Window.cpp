@@ -220,8 +220,8 @@ protected:
       case 0x20: if (mHlsLoader) mHlsLoader->togglePlaying(); break;              // space
       case 0x21: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-60); break;       // page up
       case 0x22: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (60); break;        // page down
-      case 0x25: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-keyInc()); break; // left arrow
-      case 0x27: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (keyInc()); break;  // right arrow
+      case 0x25: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-(float)keyInc()); break; // left arrow
+      case 0x27: if (mHlsLoader) mHlsLoader->incPlayFrameSecs ((float)keyInc()); break;  // right arrow
 
       case 0x26:
         //{{{  up arrow
@@ -293,7 +293,7 @@ private:
     while (true) {
       int seqNum;
       auto audSamples = mHlsLoader->getSamples (seqNum);
-      audPlay (audSamples, 4096, 1.0f);
+      audPlay (mHlsLoader->getPlaying() ? audSamples : nullptr, 4096, 1.0f);
 
       if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
