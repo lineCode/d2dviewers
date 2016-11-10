@@ -293,9 +293,9 @@ private:
     audOpen (48000, 16, 2);
 
     uint32_t seqNum = 0;
-    int numSamples = 0;
+    uint32_t numSamples = 0;
     uint32_t lastSeqNum = 0;
-    int scrubCount = 0;
+    uint16_t scrubCount = 0;
     double scrubSample = 0;
     while (true) {
       if (mHlsLoader->getScrubbing()) {
