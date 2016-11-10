@@ -292,9 +292,9 @@ private:
     CoInitialize (NULL);
     audOpen (48000, 16, 2);
 
-    int seqNum = 0;
+    uint32_t seqNum = 0;
     int numSamples = 0;
-    auto lastSeqNum = 0;
+    uint32_t lastSeqNum = 0;
     int scrubCount = 0;
     double scrubSample = 0;
     while (true) {
