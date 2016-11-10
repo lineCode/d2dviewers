@@ -292,8 +292,8 @@ private:
     CoInitialize (NULL);
     audOpen (48000, 16, 2);
 
-    int seqNum;
-    int numSamples;
+    int seqNum = 0;
+    int numSamples = 0;
     auto lastSeqNum = 0;
     int scrubCount = 0;
     double scrubSample = 0;
@@ -309,18 +309,18 @@ private:
           audPlay (nullptr, 4096, 1.0f);
         if (scrubCount++ > 3)
           scrubCount = 0;
-
         //int srcSamplesConsumed = mHlsLoader->getReSamples (mHlsLoader->getPlaySample(), seqNum, numSamples, mReSamples, mHlsLoader->mSpeed);
         //audPlay (mReSamples, 4096, 1.0f);
         //mHlsLoader->incPlaySample (srcSamplesConsumed);
         }
-
       else if (mHlsLoader->getPlaying()) {
         auto sample = mHlsLoader->getPlaySamples (mHlsLoader->getPlaySample(), seqNum, numSamples);
         audPlay (sample, 4096, 1.0f);
         if (sample)
           mHlsLoader->incPlayFrame (1);
         }
+      else
+        audPlay (nullptr, 4096, 1.0f);
 
       if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
