@@ -221,10 +221,10 @@ protected:
         return true;
 
       case 0x20: if (mHlsLoader) mHlsLoader->togglePlaying(); break;              // space
-      case 0x21: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-60); break;       // page up
-      case 0x22: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (60); break;        // page down
-      case 0x25: if (mHlsLoader) mHlsLoader->incPlayFrameSecs (-(float)keyInc()); break; // left arrow
-      case 0x27: if (mHlsLoader) mHlsLoader->incPlayFrameSecs ((float)keyInc()); break;  // right arrow
+      case 0x21: if (mHlsLoader) mHlsLoader->incPlaySecs (-60); break;       // page up
+      case 0x22: if (mHlsLoader) mHlsLoader->incPlaySecs (60); break;        // page down
+      case 0x25: if (mHlsLoader) mHlsLoader->incPlaySecs (-keyInc()); break; // left arrow
+      case 0x27: if (mHlsLoader) mHlsLoader->incPlaySecs (keyInc()); break;  // right arrow
 
       case 0x26:
         //{{{  up arrow
@@ -268,36 +268,32 @@ protected:
 
 private:
   //{{{
-  float resample (int16_t* samples, int subFrame, int16_t* reSamples, float speed) {
-
-    int subSample = (1024 * subFrame) / kPowerPerFrame;
-    samples += subSample * 2;
+  int resample (int16_t* srcSamples, int16_t* dstSamples, float speed) {
 
     float src = 0.0f;
-    if (speed > 0 && speed <= 2.0f) {
+    if ((speed > 0) && (speed <= 2.0f)) {
       for (int i = 0; i < 1024; i++) {
         float subSrc = src - trunc(src);
-        float invSubSrc =  1.0f - subSrc;
-        *reSamples++ = int16_t(((*(samples + int(src)*2) * invSubSrc) + (*(samples + int(src+1)*2) * subSrc)) / 2);
-        *reSamples++ = int16_t(((*(samples + int(src)*2 + 1) * invSubSrc) + (*(samples + int(src+1)*2+1) * subSrc)) / 2);
+        float invSubSrc = 1.0f - subSrc;
+        *dstSamples++ = int16_t(((*(srcSamples + int(src)*2) * invSubSrc) + (*(srcSamples + int(src+1)*2) * subSrc)) / 2);
+        *dstSamples++ = int16_t(((*(srcSamples + int(src)*2 + 1) * invSubSrc) + (*(srcSamples + int(src+1)*2+1) * subSrc)) / 2);
         src += speed;
         }
       }
-    else if (speed <= 1.0f) {
+    else if ((speed < 0) && (speed > -2.0f)) {
       // reverse
-      samples += 2048;
+      srcSamples += 2048;
       for (int i = 0; i < 1024; i++) {
-        *reSamples++ = *(samples - int(src)*2 - 1);
-        *reSamples++ = *(samples - int(src)*2 - 2);
+        *dstSamples++ = *(srcSamples - int(src)*2 - 1);
+        *dstSamples++ = *(srcSamples - int(src)*2 - 2);
         src -= speed;
         }
       src = -src;
       }
     else
-      memset (reSamples, 0, 4096);
+      memset (dstSamples, 0, 4096);
 
-    printf ("resample %d %d %4.3f used %4.3f\n", subFrame, subSample, speed, src);
-    return src;
+    return int(src);
     }
   //}}}
   //{{{
@@ -329,18 +325,16 @@ private:
     while (true) {
       int seqNum;
       int numSamples;
-      auto samples = mHlsLoader->getSamples (seqNum, numSamples);
+      auto sample = mHlsLoader->getPlaySample (seqNum, numSamples);
 
-      if (mHlsLoader->getScrubbing() && samples) {
-        int subFrame = mHlsLoader->getPlaySubFrame();
-        float speed = 0.9f;
-        float inc = resample (samples, subFrame, mReSamples, mHlsLoader->mSpeed) / 1024.0f;
+      if (mHlsLoader->getScrubbing() && sample) {
+        int srcSamplesConsumed = resample (sample, mReSamples, mHlsLoader->mSpeed);
         audPlay (mReSamples, 4096, 1.0f);
-        mHlsLoader->incPlayFrame (inc);
+        mHlsLoader->incPlaySamples (srcSamplesConsumed);
         }
-      else if (mHlsLoader->getPlaying() && samples) {
-        audPlay (samples, 4096, 1.0f);
-        mHlsLoader->incPlayFrame (1);
+      else if (mHlsLoader->getPlaying() && sample) {
+        audPlay (sample, 4096, 1.0f);
+        mHlsLoader->incPlayFrames (1);
         }
       else
         audPlay (nullptr, 4096, 1.0f);
