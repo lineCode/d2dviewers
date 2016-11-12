@@ -92,13 +92,13 @@ public:
       //}}}
     else if (fileName.empty()) {
       //{{{  hls player
-      mHlsLoader = new cHlsLoader();
+      mHls = new cHls();
       mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
       mReSamples = (int16_t*)malloc (4096);
       memset (mReSamples, 0, 4096);
 
-      hlsMenu (mRoot, mHlsLoader);
+      hlsMenu (mRoot, mHls);
 
       // launch loaderThread
       std::thread ([=]() { hlsLoaderThread(); } ).detach();
@@ -220,20 +220,20 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x20: if (mHlsLoader) mHlsLoader->togglePlaying(); break;         // space
-      case 0x21: if (mHlsLoader) mHlsLoader->incPlaySec (-60); break;       // page up
-      case 0x22: if (mHlsLoader) mHlsLoader->incPlaySec (60); break;        // page down
-      case 0x25: if (mHlsLoader) mHlsLoader->incPlaySec (-keyInc()); break; // left arrow
-      case 0x27: if (mHlsLoader) mHlsLoader->incPlaySec (keyInc()); break;  // right arrow
+      case 0x20: if (mHls) mHls->togglePlaying(); break;         // space
+      case 0x21: if (mHls) mHls->incPlaySec (-60); break;       // page up
+      case 0x22: if (mHls) mHls->incPlaySec (60); break;        // page down
+      case 0x25: if (mHls) mHls->incPlaySec (-keyInc()); break; // left arrow
+      case 0x27: if (mHls) mHls->incPlaySec (keyInc()); break;  // right arrow
 
       case 0x26:
         //{{{  up arrow
         mFileIndex--;
         mFileIndexChanged = true;
 
-        if (mHlsLoader && mHlsLoader->mHlsChan > 1) {
-          mHlsLoader->mHlsChan--;
-          mHlsLoader->mChanChanged = true;
+        if (mHls && mHls->mHlsChan > 1) {
+          mHls->mHlsChan--;
+          mHls->mChanChanged = true;
           }
         break;
         //}}}
@@ -242,9 +242,9 @@ protected:
         mFileIndex++;
         mFileIndexChanged = true;
 
-        if (mHlsLoader && mHlsLoader->mHlsChan < 6) {
-          mHlsLoader->mHlsChan++;
-          mHlsLoader->mChanChanged = true;
+        if (mHls && mHls->mHlsChan < 6) {
+          mHls->mHlsChan++;
+          mHls->mChanChanged = true;
           }
         break;
         //}}}
@@ -254,7 +254,7 @@ protected:
       case 0x33:
       case 0x34:
       case 0x35:
-      case 0x36: mHlsLoader->mHlsChan = key - '0'; mHlsLoader->mChanChanged = true; break;
+      case 0x36: mHls->mHlsChan = key - '0'; mHls->mChanChanged = true; break;
 
       default: printf ("key %x\n", key);
       }
@@ -272,12 +272,12 @@ private:
 
     CoInitialize (NULL);
 
-    mHlsLoader->mChanChanged = true;
+    mHls->mChanChanged = true;
     while (true) {
-      if (mHlsLoader->mChanChanged)
-        mHlsLoader->changeChan (mHlsLoader->mHlsChan, mHlsLoader->mHlsBitrate);
+      if (mHls->mChanChanged)
+        mHls->changeChan (mHls->mHlsChan, mHls->mHlsBitrate);
 
-      if (!mHlsLoader->load())
+      if (!mHls->load())
         Sleep (1000);
 
       WaitForSingleObject (mHlsSem, 20 * 1000);
@@ -298,38 +298,38 @@ private:
     uint16_t scrubCount = 0;
     double scrubSample = 0;
     while (true) {
-      if (mHlsLoader->getScrubbing()) {
+      if (mHls->getScrubbing()) {
         if (scrubCount == 0)
-          scrubSample = mHlsLoader->getPlaySample();
+          scrubSample = mHls->getPlaySample();
         if (scrubCount < 3) {
-          auto sample = mHlsLoader->getPlaySamples (scrubSample + (scrubCount * kSamplesPerFrame), seqNum, numSamples);
+          auto sample = mHls->getPlaySamples (scrubSample + (scrubCount * kSamplesPerFrame), seqNum, numSamples);
           audPlay (sample, 4096, 1.0f);
           }
         else
           audPlay (nullptr, 4096, 1.0f);
         if (scrubCount++ > 3)
           scrubCount = 0;
-        //int srcSamplesConsumed = mHlsLoader->getReSamples (mHlsLoader->getPlaySample(), seqNum, numSamples, mReSamples, mHlsLoader->mSpeed);
+        //int srcSamplesConsumed = mHls->getReSamples (mHls->getPlaySample(), seqNum, numSamples, mReSamples, mHls->mSpeed);
         //audPlay (mReSamples, 4096, 1.0f);
-        //mHlsLoader->incPlaySample (srcSamplesConsumed);
+        //mHls->incPlaySample (srcSamplesConsumed);
         }
-      else if (mHlsLoader->getPlaying()) {
-        auto sample = mHlsLoader->getPlaySamples (mHlsLoader->getPlaySample(), seqNum, numSamples);
+      else if (mHls->getPlaying()) {
+        auto sample = mHls->getPlaySamples (mHls->getPlaySample(), seqNum, numSamples);
         audPlay (sample, 4096, 1.0f);
         if (sample)
-          mHlsLoader->incPlayFrame (1);
+          mHls->incPlayFrame (1);
         }
       else
         audPlay (nullptr, 4096, 1.0f);
 
-      if (mHlsLoader->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
+      if (mHls->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
         lastSeqNum = seqNum;
         ReleaseSemaphore (mHlsSem, 1, NULL);
         }
 
-      if (mHlsLoader->mVolumeChanged) {
-        setVolume (mHlsLoader->mVolume);
-        mHlsLoader->mVolumeChanged = false;
+      if (mHls->mVolumeChanged) {
+        setVolume (mHls->mVolume);
+        mHls->mVolumeChanged = false;
         }
       }
 
@@ -579,7 +579,7 @@ private:
   int* mFramePosition = nullptr;
 
   // hls
-  cHlsLoader* mHlsLoader;
+  cHls* mHls;
   HANDLE mHlsSem;
   //}}}
   };
