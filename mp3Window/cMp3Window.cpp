@@ -302,7 +302,7 @@ private:
         if (scrubCount == 0)
           scrubSample = mHlsLoader->getPlaySample();
         if (scrubCount < 3) {
-          auto sample = mHlsLoader->getPlaySamples (scrubSample + (scrubCount * mHlsLoader->getSamplesPerFrame()), seqNum, numSamples);
+          auto sample = mHlsLoader->getPlaySamples (scrubSample + (scrubCount * kSamplesPerFrame), seqNum, numSamples);
           audPlay (sample, 4096, 1.0f);
           }
         else
