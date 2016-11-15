@@ -39,44 +39,35 @@ static const bool kJpeg = false;
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
 public:
-  cFileMapTinyJpeg (uint16_t components) : cTinyJpeg(components) {}
+  cFileMapTinyJpeg (uint16_t components) : cTinyJpeg(components, nullptr) {}
 
   ~cFileMapTinyJpeg() {
-    UnmapViewOfFile (mFileBuffer);
+    UnmapViewOfFile (mBuffer);
     CloseHandle (mFileHandle);
     }
 
   bool readHeader (std::string fileName) {
     mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
     mFileSize = (int)GetFileSize (mFileHandle, NULL);
-    mFileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
-    mFileBufferPtr = mFileBuffer;
+    mBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+    mBufferPtr = mBuffer;
 
     bool ok = cTinyJpeg::readHeader();
     if (ok && getThumbBytes()) {
-      mFileBufferPtr = mFileBuffer + getThumbOffset();
+      mBufferPtr = mBuffer + getThumbOffset();
       ok = cTinyJpeg::readHeader();
       }
     return ok;
     }
 
-protected:
-  uint32_t read (uint8_t* buffer, uint32_t bytes) {
-    memcpy (buffer, mFileBufferPtr, bytes);
-    mFileBufferPtr += bytes;
-    return bytes;
-    }
-
 private:
   HANDLE mFileHandle;
-  uint8_t* mFileBuffer = nullptr;
-  uint8_t* mFileBufferPtr = nullptr;
   int mFileSize = 0;
   };
 //}}}
 
 //{{{
-class cProgram {
+class cScheduleItem {
 public:
   std::string mTitle;
   std::string mStart;
@@ -86,41 +77,10 @@ public:
   int mDuration;
   };
 //}}}
-std::vector<cProgram*> mSchedule;
+std::vector<cScheduleItem*> mSchedule;
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
-  //{{{
-  void loadSchedule() {
-
-    cHttp http;
-    http.get ("www.bbc.co.uk", "radio4/programmes/schedules/fm/today.json");
-
-    rapidjson::Document document;
-    if (document.Parse ((const char*)http.getContent()).HasParseError()) {
-      printf ("loadScheduleRapidJson error\n");
-      return;
-      }
-
-    rapidjson::Value::ConstMemberIterator broadcasts =
-      document.FindMember ("schedule")->value.GetObject().FindMember ("day")->value.GetObject().FindMember ("broadcasts");
-
-    for (rapidjson::Value::ConstValueIterator brIt = broadcasts->value.Begin(); brIt != broadcasts->value.End(); ++brIt) {
-      cProgram* curProgram = new cProgram();
-
-      curProgram->mStart = brIt->GetObject().FindMember ("start")->value.GetString();
-      curProgram->mEnd = brIt->GetObject().FindMember ("end")->value.GetString();
-      curProgram->mDuration =  brIt->GetObject().FindMember ("duration")->value.GetInt() / 60;
-
-      rapidjson::Value::ConstMemberIterator programme = brIt->GetObject().FindMember ("programme");
-      curProgram->mTitle = programme->value.GetObject().FindMember ("display_titles")->value.GetObject().FindMember ("title")->value.GetString();
-      curProgram->mSynopsis = programme->value.GetObject().FindMember ("short_synopsis")->value.GetString();
-      curProgram->mImagePid = programme->value.GetObject().FindMember ("image")->value.GetObject().FindMember ("pid")->value.GetString();
-
-      mSchedule.push_back (curProgram);
-      }
-    }
-  //}}}
   //{{{
   void run (wchar_t* title, int width, int height, std::string fileName) {
 
@@ -155,6 +115,8 @@ public:
       auto playerThread = std::thread ([=]() { hlsPlayerThread(); });
       SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       playerThread.detach();
+
+      loadSchedule();
       }
       //}}}
     else {
@@ -180,11 +142,6 @@ public:
       std::thread([=]() { playThread(); }).detach();
       }
       //}}}
-
-
-    loadSchedule();
-    for (auto p : mSchedule)
-      printf ("%s %s %d %s %s\n", p->mTitle.c_str(), p->mStart.c_str(), p->mDuration, p->mImagePid.c_str(), p->mSynopsis.c_str());
 
     messagePump();
     };
@@ -320,6 +277,67 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
+  //{{{
+  void loadSchedule() {
+
+    cHttp http;
+    //http.get ("www.bbc.co.uk", "radio1/programmes/schedules/today.json");
+    //http.get ("www.bbc.co.uk", "radio2/programmes/schedules/today.json");
+    //http.get ("www.bbc.co.uk", "radio3/programmes/schedules/today.json");
+    //http.get ("www.bbc.co.uk", "radio4/programmes/schedules/fm/today.json");
+    //http.get ("www.bbc.co.uk", "5live/programmes/schedules/today.json");
+    http.get ("www.bbc.co.uk", "6music/programmes/schedules/today.json");
+    printf ("get schedule %llx %d\n", (int64_t)http.getContent(), http.getContentSize());
+
+    rapidjson::Document document;
+    if (document.Parse ((const char*)http.getContent()).HasParseError()) {
+      printf ("loadScheduleRapidJson error\n");
+      return;
+      }
+
+    auto broadcasts = document.FindMember ("schedule")->
+                        value.GetObject().FindMember ("day")->
+                          value.GetObject().FindMember ("broadcasts");
+
+    for (auto brIt = broadcasts->value.Begin(); brIt != broadcasts->value.End(); ++brIt) {
+      auto item = new cScheduleItem();
+
+      auto broadcast = brIt->GetObject();
+      item->mStart    = broadcast.FindMember ("start")->value.GetString();
+      item->mEnd      = broadcast.FindMember ("end")->value.GetString();
+      item->mDuration = broadcast.FindMember ("duration")->value.GetInt() / 60;
+
+      auto prog = broadcast.FindMember ("programme")->value.GetObject();
+      item->mTitle    = prog.FindMember ("display_titles")->value.GetObject().FindMember ("title")->value.GetString();
+      item->mSynopsis = prog.FindMember ("short_synopsis")->value.GetString();
+      item->mImagePid = prog.FindMember ("image")->value.GetObject().FindMember ("pid")->value.GetString();
+
+      mSchedule.push_back (item);
+      }
+
+    for (auto item : mSchedule)
+      printf ("%s %3d %s %s %s\n",
+              item->mStart.c_str(), item->mDuration, item->mTitle.c_str(), item->mImagePid.c_str(), item->mSynopsis.c_str());
+
+    for (int i = 0; i < 12; i++) {
+      //http.get ("ichef.bbci.co.uk", "images/ic/736x414/" + mSchedule[i]->mImagePid + ".jpg");
+      http.get ("ichef.bbci.co.uk", "images/ic/160x90/" + mSchedule[i]->mImagePid + ".jpg");
+      //printf ("get image %llx %d\n", (int64_t)http.getContent(), http.getContentSize());
+
+      cTinyJpeg jpegDecoder (4, http.getContent());
+      if (jpegDecoder.readHeader()) {
+        auto picWidget = new cPicWidget (2, 1.5, i, mFileIndex, mFileIndexChanged);
+        picWidget->setPic (jpegDecoder.decodeBody (0), jpegDecoder.getWidth(), jpegDecoder.getHeight(), 4);
+        if (i == 0)
+          mRoot->addBottomLeft (picWidget);
+        else
+          mRoot->add (picWidget);
+        }
+      else
+        printf ("read header failed\n");
+      }
+    }
+  //}}}
   //{{{
   void hlsLoaderThread() {
 
