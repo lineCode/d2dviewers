@@ -31,40 +31,12 @@
 #include "../../shared/json/rapidjson/document.h"
 
 #include "../../shared/decoders/cTinyJpeg.h"
+#include "../../shared/decoders/cFileMapTinyJpeg.h"
+
 #include "../../shared/decoders/cMp3Decoder.h"
 #include "../../shared/hls/hls.h"
 //}}}
 static const bool kJpeg = false;
-
-//{{{
-class cFileMapTinyJpeg : public cTinyJpeg {
-public:
-  cFileMapTinyJpeg (uint16_t components) : cTinyJpeg(components, nullptr) {}
-
-  ~cFileMapTinyJpeg() {
-    UnmapViewOfFile (mBuffer);
-    CloseHandle (mFileHandle);
-    }
-
-  bool readHeader (std::string fileName) {
-    mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    mFileSize = (int)GetFileSize (mFileHandle, NULL);
-    mBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
-    mBufferPtr = mBuffer;
-
-    bool ok = cTinyJpeg::readHeader();
-    if (ok && getThumbBytes()) {
-      mBufferPtr = mBuffer + getThumbOffset();
-      ok = cTinyJpeg::readHeader();
-      }
-    return ok;
-    }
-
-private:
-  HANDLE mFileHandle;
-  int mFileSize = 0;
-  };
-//}}}
 
 //{{{
 class cScheduleItem {
@@ -295,23 +267,16 @@ private:
       return;
       }
 
-    auto broadcasts = document.FindMember ("schedule")->
-                        value.GetObject().FindMember ("day")->
-                          value.GetObject().FindMember ("broadcasts");
-
-    for (auto brIt = broadcasts->value.Begin(); brIt != broadcasts->value.End(); ++brIt) {
+    auto broadcasts = document["schedule"]["day"]["broadcasts"].GetArray();
+    for (auto brIt = broadcasts.Begin(); brIt != broadcasts.End(); ++brIt) {
       auto item = new cScheduleItem();
-
       auto broadcast = brIt->GetObject();
-      item->mStart    = broadcast.FindMember ("start")->value.GetString();
-      item->mEnd      = broadcast.FindMember ("end")->value.GetString();
-      item->mDuration = broadcast.FindMember ("duration")->value.GetInt() / 60;
-
-      auto prog = broadcast.FindMember ("programme")->value.GetObject();
-      item->mTitle    = prog.FindMember ("display_titles")->value.GetObject().FindMember ("title")->value.GetString();
-      item->mSynopsis = prog.FindMember ("short_synopsis")->value.GetString();
-      item->mImagePid = prog.FindMember ("image")->value.GetObject().FindMember ("pid")->value.GetString();
-
+      item->mStart    = broadcast["start"].GetString();
+      item->mEnd      = broadcast["end"].GetString();
+      item->mDuration = broadcast["duration"].GetInt() / 60;
+      item->mTitle    = broadcast["programme"]["display_titles"]["title"].GetString();
+      item->mSynopsis = broadcast["programme"]["short_synopsis"].GetString();
+      item->mImagePid = broadcast["programme"]["image"]["pid"].GetString();
       mSchedule.push_back (item);
       }
 
