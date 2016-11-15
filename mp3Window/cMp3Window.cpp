@@ -16,6 +16,9 @@
 #pragma comment (lib,"ws2_32.lib")
 #include "../common/cHttp.h"
 
+#define pvPortMalloc malloc
+#define vPortFree    free
+
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
 #include "../../shared/widgets/cWaveCentreWidget.h"
@@ -28,27 +31,13 @@
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
 
-#include "../../shared/json/rapidjson/document.h"
+#include "../../shared/hls/hls.h"
 
 #include "../../shared/decoders/cTinyJpeg.h"
 #include "../../shared/decoders/cFileMapTinyJpeg.h"
-
 #include "../../shared/decoders/cMp3Decoder.h"
-#include "../../shared/hls/hls.h"
 //}}}
 static const bool kJpeg = false;
-
-//{{{
-class cScheduleItem {
-public:
-  std::string mTitle;
-  std::string mStart;
-  std::string mEnd;
-  std::string mSynopsis;
-  std::string mImagePid;
-  int mDuration;
-  };
-//}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -86,8 +75,6 @@ public:
       auto playerThread = std::thread ([=]() { hlsPlayerThread(); });
       SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       playerThread.detach();
-
-      loadSchedule();
       }
       //}}}
     else {
@@ -248,59 +235,6 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
-  //{{{
-  void loadSchedule() {
-
-    cHttp http;
-    //http.get ("www.bbc.co.uk", "radio1/programmes/schedules/today.json");
-    //http.get ("www.bbc.co.uk", "radio2/programmes/schedules/today.json");
-    //http.get ("www.bbc.co.uk", "radio3/programmes/schedules/today.json");
-    //http.get ("www.bbc.co.uk", "radio4/programmes/schedules/fm/today.json");
-    //http.get ("www.bbc.co.uk", "5live/programmes/schedules/today.json");
-    http.get ("www.bbc.co.uk", "6music/programmes/schedules/today.json");
-    printf ("get schedule %llx %d\n", (int64_t)http.getContent(), http.getContentSize());
-
-    rapidjson::Document schedule;
-    if (schedule.Parse ((const char*)http.getContent()).HasParseError()) {
-      printf ("loadScheduleRapidJson error\n");
-      return;
-      }
-
-    for (auto& element : schedule["schedule"]["day"]["broadcasts"].GetArray()) {
-      auto item = new cScheduleItem();
-      auto broadcast = element.GetObject();
-      item->mStart    = broadcast["start"].GetString();
-      item->mEnd      = broadcast["end"].GetString();
-      item->mDuration = broadcast["duration"].GetInt() / 60;
-      item->mTitle    = broadcast["programme"]["display_titles"]["title"].GetString();
-      item->mSynopsis = broadcast["programme"]["short_synopsis"].GetString();
-      item->mImagePid = broadcast["programme"]["image"]["pid"].GetString();
-      mSchedule.push_back (item);
-      }
-
-    for (auto item : mSchedule)
-      printf ("%s %3d %s %s %s\n",
-              item->mStart.c_str(), item->mDuration, item->mTitle.c_str(), item->mImagePid.c_str(), item->mSynopsis.c_str());
-
-    for (int i = 0; i < 12; i++) {
-      //http.get ("ichef.bbci.co.uk", "images/ic/736x414/" + mSchedule[i]->mImagePid + ".jpg");
-      http.get ("ichef.bbci.co.uk", "images/ic/160x90/" + mSchedule[i]->mImagePid + ".jpg");
-      //printf ("get image %llx %d\n", (int64_t)http.getContent(), http.getContentSize());
-
-      cTinyJpeg jpegDecoder (4, http.getContent());
-      if (jpegDecoder.readHeader()) {
-        auto picWidget = new cPicWidget (2, 1.5, i, mFileIndex, mFileIndexChanged);
-        picWidget->setPic (jpegDecoder.decodeBody (0), jpegDecoder.getWidth(), jpegDecoder.getHeight(), 4);
-        if (i == 0)
-          mRoot->addBottomLeft (picWidget);
-        else
-          mRoot->add (picWidget);
-        }
-      else
-        printf ("read header failed\n");
-      }
-    }
-  //}}}
   //{{{
   void hlsLoaderThread() {
 
@@ -616,7 +550,6 @@ private:
   cHls* mHls;
   HANDLE mHlsSem;
   //}}}
-  std::vector<cScheduleItem*> mSchedule;
   };
 
 //{{{

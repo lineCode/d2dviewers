@@ -1,4 +1,4 @@
-// cHttp.h - shareable between win32 and stm32
+// cHttp.h 
 #pragma once
 //{{{  includes
 #include <string>
@@ -260,13 +260,7 @@ public:
   cHttp() : mResponse(0), mState(http_header), mParseHeaderState(http_parse_header_done),
             mChunked(0), mKeyStrLen(0), mValueStrLen(0),
             mContentLen(-1), mContentSize(0), mContent(nullptr),
-            mRedirectUrl(nullptr), mRxBytes(0)
-
-  #ifdef WIN32
-            , mWebSocket(-1) {}
-  #else
-            , mConn(nullptr) {}
-  #endif
+            mRedirectUrl(nullptr), mRxBytes(0), mWebSocket(-1) {}
   //}}}
   //{{{
   ~cHttp() {
@@ -278,10 +272,8 @@ public:
     if (mRedirectUrl)
       delete mRedirectUrl;
 
-  #ifdef WIN32
     if (mWebSocket != -1)
       closesocket (mWebSocket);
-  #endif
     }
   //}}}
 
@@ -342,8 +334,6 @@ public:
 
     std::string sendStr = "GET /" + path + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
 
-  #ifdef WIN32
-    //{{{  win32
     if ((mWebSocket == -1) || (host != mLastHost)) {
       // not connected or different host
       mLastHost = host;
@@ -428,79 +418,6 @@ public:
         bufferPtr += bytesReceived;
         }
       }
-    //}}}
-  #else
-    //{{{  lwip
-    // lwip find host ipAddress,
-    ip_addr_t ipAddr;
-    if (netconn_gethostbyname (host.c_str(), &ipAddr) != ERR_OK) {
-      //{{{  error return
-      mInfoStr = "getHostByNameFail" + host;
-      mResponse = -1;
-      return -1;
-      }
-      //}}}
-
-    mConn = netconn_new (NETCONN_TCP);
-    if (mConn == nullptr) {
-      //{{{  error return
-      mInfoStr = "netconnNewFail" + host;
-      mResponse = -2;
-      return -2;
-      }
-      //}}}
-    if (netconn_connect (mConn, &ipAddr, 80) != ERR_OK){
-      //{{{  error return
-      netconn_delete (mConn);
-      mInfoStr = "netconnFail";
-      //  %d.%d.%d.%d %s",
-      //         int(ipAddr.addr>>24), int (ipAddr.addr>>16) & 0xFF, int (ipAddr.addr>>8) & 0xFF, int(ipAddr.addr & 0xFF), host);
-      mResponse = -3;
-      return -3;
-      }
-      //}}}
-
-    // lwip write
-    if (netconn_write (mConn, sendStr.c_str(), (int)sendStr.size(), NETCONN_NOCOPY) != ERR_OK) {
-      //{{{  error return
-      netconn_delete (mConn);
-      mInfoStr = "netconnSendFail";
-      mResponse = -4;
-      return -4;
-      }
-      //}}}
-
-    // lwip recv
-    struct netbuf* buf = NULL;
-    bool needMoreData = true;
-    while (needMoreData) {
-      if (netconn_recv (mConn, &buf) != ERR_OK) {
-        //{{{  error return;
-        netconn_delete (mConn);
-        mInfoStr = "netconnRecvFail";
-        mResponse = -5;
-        return -5;
-        }
-        //}}}
-
-      char* bufferPtr;
-      uint16_t bufferBytesReceived;
-      netbuf_data (buf, (void**)(&bufferPtr), &bufferBytesReceived);
-
-      while (needMoreData && (bufferBytesReceived > 0)) {
-        int bytesReceived;
-        needMoreData = parseRecvData (bufferPtr, bufferBytesReceived, bytesReceived);
-        bufferBytesReceived -= bytesReceived;
-        bufferPtr += bytesReceived;
-        }
-
-      netbuf_delete (buf);
-      }
-
-    netconn_delete (mConn);
-    mConn = nullptr;
-    //}}}
-  #endif
 
     mRxBytes += mContentSize;
 
@@ -834,10 +751,6 @@ private:
   std::string mInfoStr;
   std::string mLastHost;
 
-  #ifdef WIN32
-    unsigned int mWebSocket;
-  #else
-    struct netconn* mConn;
-  #endif
+  unsigned int mWebSocket;
   //}}}
   };
