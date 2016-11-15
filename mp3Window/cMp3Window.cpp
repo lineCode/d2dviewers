@@ -49,7 +49,6 @@ public:
   int mDuration;
   };
 //}}}
-std::vector<cScheduleItem*> mSchedule;
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -261,16 +260,15 @@ private:
     http.get ("www.bbc.co.uk", "6music/programmes/schedules/today.json");
     printf ("get schedule %llx %d\n", (int64_t)http.getContent(), http.getContentSize());
 
-    rapidjson::Document document;
-    if (document.Parse ((const char*)http.getContent()).HasParseError()) {
+    rapidjson::Document schedule;
+    if (schedule.Parse ((const char*)http.getContent()).HasParseError()) {
       printf ("loadScheduleRapidJson error\n");
       return;
       }
 
-    auto broadcasts = document["schedule"]["day"]["broadcasts"].GetArray();
-    for (auto brIt = broadcasts.Begin(); brIt != broadcasts.End(); ++brIt) {
+    for (auto& element : schedule["schedule"]["day"]["broadcasts"].GetArray()) {
       auto item = new cScheduleItem();
-      auto broadcast = brIt->GetObject();
+      auto broadcast = element.GetObject();
       item->mStart    = broadcast["start"].GetString();
       item->mEnd      = broadcast["end"].GetString();
       item->mDuration = broadcast["duration"].GetInt() / 60;
@@ -618,6 +616,7 @@ private:
   cHls* mHls;
   HANDLE mHlsSem;
   //}}}
+  std::vector<cScheduleItem*> mSchedule;
   };
 
 //{{{
