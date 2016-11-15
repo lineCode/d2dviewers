@@ -2,12 +2,11 @@
 //{{{  includes
 #include "pch.h"
 
+#include <vector>
+
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
 #include "../common/cAudio.h"
-
-#include "../../shared/decoders/cTinyJpeg.h"
-#include "../../shared/decoders/cMp3Decoder.h"
 
 #include "../libfaad/include/neaacdec.h"
 #pragma comment (lib,"libfaad.lib")
@@ -29,8 +28,15 @@
 #include "../../shared/widgets/cNumBox.h"
 #include "../../shared/widgets/cBmpWidget.h"
 
+#include "rapidjson/document.h"
+
+#include "../../shared/decoders/cTinyJpeg.h"
+#include "../../shared/decoders/cMp3Decoder.h"
 #include "../../shared/hls/hls.h"
 //}}}
+#include "jsmn.h"
+using namespace rapidjson;
+
 static const bool kJpeg = false;
 //{{{
 class cFileMapTinyJpeg : public cTinyJpeg {
@@ -71,8 +77,141 @@ private:
   };
 //}}}
 
+//{{{
+class cProgram {
+public:
+  std::string mTitle;
+  std::string mStart;
+  std::string mEnd;
+  std::string mDuration;
+  std::string mSynopsis;
+  };
+//}}}
+std::vector<cProgram*> mSchedule;
+cProgram* curProgram = nullptr;
+//{{{
+static int dump (const char* js, jsmntok_t* token, size_t count) {
+
+  if (count == 0)
+    return 0;
+
+  switch (token->type) {
+    case JSMN_OBJECT:  {
+      int j = 0;
+      for (int i = 0; i < token->size; i++) {
+        j += dump (js, token + 1 + j, count - j);
+        j += dump (js, token + 1 + j, count - j);
+        }
+      return j + 1;
+      }
+
+    case JSMN_ARRAY: {
+      int j = 0;
+      for (int i = 0; i < token->size; i++)
+        j += dump (js, token + 1 + j, count - j);
+      return j + 1;
+      }
+
+    case JSMN_STRING: {
+      std::string str (js + token->start, token->end - token->start);
+      if (str == "start") {
+        curProgram = new cProgram();
+        mSchedule.push_back (curProgram);
+
+        std::string str1 (js + (token+1)->start, (token+1)->end - (token+1)->start);
+        if (curProgram)
+          curProgram->mStart = str1;
+        }
+      else if (str == "end") {
+        std::string str1 (js + (token+1)->start, (token+1)->end - (token+1)->start);
+        if (curProgram)
+          curProgram->mEnd = str1;
+        }
+      else if (str == "duration") {
+        std::string str1 (js + (token+1)->start, (token+1)->end - (token+1)->start);
+        if (curProgram)
+          curProgram->mDuration = str1;
+        }
+      else if (str == "title") {
+        std::string str1 (js + (token+1)->start, (token+1)->end - (token+1)->start);
+        if (curProgram)
+          curProgram->mTitle += str1 + " & ";
+        }
+      else if (str == "short_synopsis") {
+        std::string str1 (js + (token+1)->start, (token+1)->end - (token+1)->start);
+        if (curProgram)
+          curProgram->mSynopsis += str1;
+        }
+
+      return 1;
+      }
+
+    case JSMN_PRIMITIVE :
+      //printf ("PRIMITIVE:%.*s", token->end - token->start, js+token->start);
+      return 1;
+
+    default:;
+    }
+
+  return 0;
+  }
+//}}}
+
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
+  //{{{
+  void loadSchedule() {
+
+    cHttp http;
+
+    std::string host = "www.bbc.co.uk";
+    std::string json = "radio4/programmes/schedules/fm/today.json";
+    http.get (host, json);
+
+    // Allocate some tokens as a start
+    unsigned int maxTokenCount = 6000;
+    jsmntok_t* token = (jsmntok_t*)malloc (sizeof(*token) * maxTokenCount);
+
+    jsmn_parser jsmnParser;
+    jsmn_init (&jsmnParser);
+    int r = jsmn_parse (&jsmnParser, (const char*)http.getContent(), (size_t)http.getContentSize(), token, maxTokenCount);
+    printf  ("tokens %d\n", (int)r);
+
+    if (r < 0)
+      printf ("not enough tokens\n");
+    else
+      dump ((const char*)http.getContent(), token, jsmnParser.toknext);
+    }
+  //}}}
+  //{{{
+  void loadScheduleRapidJson() {
+
+    cHttp http;
+    http.get ("www.bbc.co.uk", "radio4/programmes/schedules/fm/today.json");
+
+    Document document;
+    if (document.Parse ((const char*)http.getContent()).HasParseError()) {
+      printf ("loadScheduleRapidJson error\n");
+      return;
+      }
+
+    Value::ConstMemberIterator broadcasts =
+      document.FindMember ("schedule")->value.GetObject().FindMember ("day")->value.GetObject().FindMember ("broadcasts");
+
+    //for (Value::ValueIterator brIt = broadcasts->value.Begin(); brIt != broadcasts->value.End(); ++brIt) {
+    //  Value::MemberIterator programme = brIt->GetObject().FindMember ("programme");
+    for (SizeType i = 0; i < broadcasts->value.Size(); i++) {
+      printf ("%d ", i);
+      Value::ConstMemberIterator programme = broadcasts->value[i].GetObject().FindMember ("programme");
+
+      printf ("%s ", programme->value.GetObject().FindMember ("display_titles")->value.GetObject().FindMember ("title")->value.GetString());
+      printf ("%s ", broadcasts->value[i].GetObject().FindMember ("start")->value.GetString());
+      printf ("%s ", broadcasts->value[i].GetObject().FindMember ("end")->value.GetString());
+      printf ("%dm ", broadcasts->value[i].GetObject().FindMember ("duration")->value.GetInt() / 60);
+      printf ("%s\n", programme->value.GetObject().FindMember ("short_synopsis")->value.GetString());
+      }
+    }
+  //}}}
   //{{{
   void run (wchar_t* title, int width, int height, std::string fileName) {
 
@@ -132,6 +271,14 @@ public:
       std::thread([=]() { playThread(); }).detach();
       }
       //}}}
+
+
+    //loadSchedule();
+    //printf ("schedule size %d\n", (int)mSchedule.size());
+    //for (auto program : mSchedule)
+    //  printf ("%s %s %s\n", program->mStart.c_str(), program->mDuration.c_str(), program->mSynopsis.c_str());
+
+    loadScheduleRapidJson();
 
     messagePump();
     };
