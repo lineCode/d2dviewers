@@ -243,9 +243,9 @@ private:
     mHls->mChanChanged = true;
     while (true) {
       if (mHls->mChanChanged)
-        mHls->changeChan (mHls->mHlsChan, mHls->mHlsBitrate);
+        mHls->setChan (mHls->mHlsChan, mHls->mHlsBitrate);
 
-      if (!mHls->load())
+      if (!mHls->loadAtPlayFrame())
         Sleep (1000);
 
       WaitForSingleObject (mHlsSem, 20 * 1000);
