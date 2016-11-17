@@ -14,7 +14,7 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
-#include "../common/cHttp.h"
+#include "../../shared/net/cHttpWin32.h"
 
 #define pvPortMalloc malloc
 #define vPortFree    free
