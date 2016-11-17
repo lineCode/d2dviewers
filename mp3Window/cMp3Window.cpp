@@ -2,9 +2,6 @@
 //{{{  includes
 #include "pch.h"
 
-#define pvPortMalloc malloc
-#define vPortFree    free
-
 #include <vector>
 
 #include "../common/timer.h"
