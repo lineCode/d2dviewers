@@ -17,6 +17,8 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
+
+#include "../../shared/utils.h"
 #include "../../shared/net/cHttp.h"
 
 #include "../../shared/widgets/cRootContainer.h"
@@ -214,7 +216,7 @@ protected:
       case 0x35:
       case 0x36: mHls->mHlsChan = key - '0'; mHls->mChanChanged = true; break;
 
-      default: printf ("key %x\n", key);
+      default: debug ("key " + hex(key));
       }
     return false;
     }
@@ -362,7 +364,7 @@ private:
     // correct maxFrame to counted frame
     mMaxFrame = mLoadedFrame;
 
-    printf ("wave frames:%d fileSize:%d tag:%d max:%d took:%f\n", mLoadedFrame, mFileSize, tagBytes, *mWave, getTimer() - time);
+    debug ("wave frames " + dec(mLoadedFrame) + " " + dec(mFileSize));
     }
   //}}}
   //{{{
@@ -473,7 +475,7 @@ int main (int argc, char* argv[]) {
   WSADATA wsaData;
   if (WSAStartup (MAKEWORD(2,2), &wsaData)) {
     //{{{  error exit
-    printf ("WSAStartup failed\n");
+    debug ("WSAStartup failed");
     exit (0);
     }
     //}}}

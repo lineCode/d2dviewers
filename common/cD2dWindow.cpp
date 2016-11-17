@@ -76,7 +76,7 @@ IDWriteTextFormat* cD2dWindow::getTextFormatSize (int fontSize) {
                                       DWRITE_FONT_STYLE_NORMAL,
                                       DWRITE_FONT_STRETCH_NORMAL,
                                       float(fontSize), L"en-us", &textFormatSize);
-    textFormatSize->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
+    textFormatSize->SetWordWrapping (DWRITE_WORD_WRAPPING_WRAP);
     mFontSize = fontSize;
     }
 
@@ -408,7 +408,7 @@ void cD2dWindow::createDirect2d() {
                                     DWRITE_FONT_STYLE_NORMAL,
                                     DWRITE_FONT_STRETCH_NORMAL,
                                     16.0f, L"en-us", &textFormat);
-  textFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_NO_WRAP);
+  textFormat->SetWordWrapping (DWRITE_WORD_WRAPPING_WRAP);
 
   // create some solid brushes
   mDeviceContext->CreateSolidColorBrush (ColorF (ColorF::CornflowerBlue), &blueBrush);
