@@ -2,6 +2,9 @@
 //{{{  includes
 #include "pch.h"
 
+#define pvPortMalloc malloc
+#define vPortFree    free
+
 #include <vector>
 
 #include "../common/timer.h"
@@ -14,10 +17,7 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
-#include "../../shared/net/cHttpWin32.h"
-
-#define pvPortMalloc malloc
-#define vPortFree    free
+#include "../../shared/net/cHttp.h"
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
