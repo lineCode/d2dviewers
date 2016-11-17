@@ -14,7 +14,7 @@
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
-#include "../../shared/net/cHttpWin32.h"
+#include "../common/cHttp.h"
 
 #define pvPortMalloc malloc
 #define vPortFree    free
@@ -32,8 +32,12 @@
 #include "../../shared/widgets/cBmpWidget.h"
 
 #include "../../shared/hls/hls.h"
+
+#include "../../shared/decoders/cTinyJpeg.h"
+#include "../../shared/decoders/cFileMapTinyJpeg.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
+static const bool kJpeg = false;
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -48,7 +52,13 @@ public:
     mRoot = new cRootContainer (width, height);
     setChangeRate (1);
 
-    if (fileName.empty()) {
+    if (kJpeg) {
+      //{{{  jpeg viewer
+      listDirectory (std::string(), fileName.empty() ? "C:/Users/colin/Desktop/lamorna" : fileName, "*.jpg");
+      std::thread([=]() { loadJpegThread(); }).detach();
+      }
+      //}}}
+    else if (fileName.empty()) {
       //{{{  hls player
       mHls = new cHls();
       mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
@@ -235,7 +245,7 @@ private:
       if (mHls->mChanChanged)
         mHls->setChan (mHls->mHlsChan, mHls->mHlsBitrate);
 
-      if (!mHls->loadAtPlayFrame())
+      if (!mHls->load())
         Sleep (1000);
 
       WaitForSingleObject (mHlsSem, 20 * 1000);
@@ -296,27 +306,6 @@ private:
     }
   //}}}
 
-  //{{{
-  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
-
-    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
-
-    std::string searchStr (mFullDirName +  "/*");
-    WIN32_FIND_DATAA findFileData;
-    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
-                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
-    if (file != INVALID_HANDLE_VALUE) {
-      do {
-        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
-          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
-        } while (FindNextFileA (file, &findFileData));
-
-      FindClose (file);
-      }
-    }
-  //}}}
   //{{{
   void initMp3Menu() {
     mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
@@ -430,12 +419,98 @@ private:
     }
   //}}}
 
+  //{{{
+  void initJpegMenu() {
+    mRoot->addTopRight (new cNumBox ("list ", mCount, mCountChanged, 6.0f));
+    mRoot->addBelow (new cNumBox ("show ", mNumWidget, mNumChanged, 6.0f));
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), 10));
+
+    for (auto i = 0; i < 18; i++) {
+      auto picWidget = new cPicWidget (8.0f, 6.0f, i, mFileIndex, mFileIndexChanged);
+      mRoot->add (picWidget);
+      mPicWidgets.push_back(picWidget);
+      }
+    }
+  //}}}
+  //{{{
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
+
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
+
+    std::string searchStr (mFullDirName +  "/*");
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName)) {
+          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
+          mCount++;
+          }
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
+    }
+  //}}}
+  //{{{
+  void jpegDecode (int fileIndex, uint16_t& picWidth, uint16_t& picHeight) {
+
+    cFileMapTinyJpeg jpegDecoder (4);
+    if (jpegDecoder.readHeader (mFileList[fileIndex].c_str())) {
+      // scale to fit
+      auto scale = 1;
+      auto scaleShift = 0;
+      while ((scaleShift < 3) &&
+             ((jpegDecoder.getWidth() / scale > getLcdWidthPix()) || (jpegDecoder.getHeight() /scale > getLcdHeightPix()))) {
+        scale *= 2;
+        scaleShift++;
+        }
+
+      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setPic (
+        jpegDecoder.decodeBody (scaleShift), jpegDecoder.getWidth() >> scaleShift, jpegDecoder.getHeight() >> scaleShift, 4);
+      mPicWidgets [int(mNumWidget) % mPicWidgets.size()]->setSelectValue (fileIndex);
+      mNumWidget++;
+      }
+    }
+  //}}}
+  //{{{
+  void listThread (std::string fileName) {
+
+    auto time = getTimer();
+
+    if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+      listDirectory (std::string(), fileName, "*.mp3");
+
+    printf ("files listed %s %d took %f\n", fileName.c_str(), (int)mFileList.size(), getTimer() - time);
+    }
+  //}}}
+  //{{{
+  void loadJpegThread() {
+
+    uint16_t picWidth = 0;
+    uint16_t picHeight = 0;
+
+    initJpegMenu();
+
+    mFileIndexChanged = true;
+    while (true) {
+      if (mFileIndexChanged) {
+        jpegDecode (mFileIndex, picWidth, picHeight);
+        mFileIndexChanged = false;
+        }
+      else
+        Sleep (100);
+      }
+    }
+  //}}}
+
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
-  // d2dwindow
   ID2D1SolidColorBrush* mBrush;
-  std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   // audio
   int16_t* mSamples = nullptr;
@@ -444,16 +519,26 @@ private:
   bool mReady = false;
   bool mPlaying = true;
 
-  // mp3
   bool mVolumeChanged = false;
   float mVolume = 0.7f;
 
+  // jpeg
   int mFileIndex = 0;
   bool mFileIndexChanged = false;
+  bool mPicValueChanged = false;
   std::vector <std::string> mFileList;
+  std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
+
+  bool mCountChanged = false;
+  float mCount = 0;
+  bool mNumChanged = false;
+  float mNumWidget = 0;
+  std::vector <cPicWidget*> mPicWidgets;
+
   uint8_t* mFileBuffer = nullptr;
   int mFileSize = 0;
 
+  // mp3
   int mPlayFrame = 0;
   int mLoadedFrame = 0;
   int mMaxFrame = 0;
