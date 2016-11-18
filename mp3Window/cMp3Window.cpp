@@ -34,10 +34,52 @@
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 
-//void* operator new(size_t num) { printf ("new %d\n", int(num)); return malloc (num); }
-//void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
-//void operator delete(void *ptr) { free (ptr); }
-//void operator delete[](void *ptr) { free (ptr); }
+int* allocs = nullptr;
+int newc = 0;
+int freec = 0;
+int allocated = 0;
+int highwater = 0;
+
+void* operator new(size_t num) {
+  newc++;
+  void* alloc = malloc (num);
+
+  allocated += (int)num;
+  for (int i = 0; i < 2000; i += 2) {
+    if (!allocs[i]) {
+      allocs[i] = (int)alloc;
+      allocs[i+1] = (int)num;
+      break;
+      }
+    if (i >= 1999)
+      printf ("new cockup\n");
+    }
+
+  if (allocated > highwater) {
+    highwater = allocated;
+    printf ("new high - news:%d outst:%d tot:%d this:%d \n", newc, newc - freec, allocated, int(num));
+    }
+
+  return alloc;
+  }
+
+void operator delete(void *ptr) {
+  freec++;
+
+  for (int i = 0; i < 2000; i += 2) {
+    if (allocs[i] && allocs[i] == (int)ptr) {
+      allocs[i] = 0;
+      allocated -= allocs[i+1];
+      break;
+      }
+    if (i >= 1999)
+      printf ("delete cockup\n");
+    }
+  free (ptr);
+  }
+
+void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
+void operator delete[](void *ptr) { printf ("delete[]\n"); free (ptr); }
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -481,6 +523,9 @@ int main (int argc, char* argv[]) {
     exit (0);
     }
     //}}}
+
+  allocs = (int*)malloc (2000 * 8);
+  memset (allocs, 0, 2000 * 8);
 
   startTimer();
   cMp3Window mp3Window;
