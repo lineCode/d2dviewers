@@ -34,20 +34,10 @@
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 
-void* operator new(size_t num) {
-  printf ("new %d\n", int(num));
-  return malloc (num);
-  }
-void* operator new[](size_t num) {
-  printf ("new[] %d\n", int(num));
-  return malloc (num);
-  }
-void operator delete(void *ptr) {
-  free (ptr);
-  }
-void operator delete[](void *ptr) {
-  free (ptr);
-  }
+//void* operator new(size_t num) { printf ("new %d\n", int(num)); return malloc (num); }
+//void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
+//void operator delete(void *ptr) { free (ptr); }
+//void operator delete[](void *ptr) { free (ptr); }
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
