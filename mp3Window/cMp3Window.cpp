@@ -34,49 +34,75 @@
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 
+//{{{  heap debug
+#define MAX_HEAP_DEBUG 2000
 int* allocs = nullptr;
-int newc = 0;
-int freec = 0;
 int allocated = 0;
 int highwater = 0;
+int newc = 0;
+int freec = 0;
 
-void* operator new(size_t num) {
+//{{{
+void* myMalloc (size_t size) {
+
   newc++;
-  void* alloc = malloc (num);
+  void* alloc = malloc (size);
 
-  allocated += (int)num;
-  for (int i = 0; i < 2000; i += 2) {
+  allocated += (int)size;
+  for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
     if (!allocs[i]) {
       allocs[i] = (int)alloc;
-      allocs[i+1] = (int)num;
+      allocs[i+1] = (int)size;
       break;
       }
-    if (i >= 1999)
+    if (i >= MAX_HEAP_DEBUG-1)
       printf ("new cockup\n");
     }
 
   if (allocated > highwater) {
     highwater = allocated;
-    printf ("new high - news:%d outst:%d tot:%d this:%d \n", newc, newc - freec, allocated, int(num));
+    printf ("heap allocs:%d tot:%d size:%d \n", newc - freec, allocated, int(size));
     }
 
   return alloc;
   }
+//}}}
+//{{{
+void myFree (void* ptr) {
 
-void operator delete(void *ptr) {
   freec++;
-
-  for (int i = 0; i < 2000; i += 2) {
+  for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
     if (allocs[i] && allocs[i] == (int)ptr) {
       allocs[i] = 0;
       allocated -= allocs[i+1];
       break;
       }
-    if (i >= 1999)
+    if (i >= MAX_HEAP_DEBUG-1)
       printf ("delete cockup\n");
     }
+
   free (ptr);
   }
+//}}}
+
+//{{{
+void* operator new (size_t size) {
+  return myMalloc (size);
+  }
+//}}}
+//{{{
+void operator delete (void* ptr) {
+  myFree (ptr);
+  }
+//}}}
+
+//{{{
+void initHeapDebug() {
+  allocs = (int*)malloc (2000 * 8);
+  memset (allocs, 0, 2000 * 8);
+  }
+//}}}
+//}}}
 
 void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); free (ptr); }
