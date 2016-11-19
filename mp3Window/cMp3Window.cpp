@@ -34,76 +34,65 @@
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
 
-//{{{  heap debug
-#define MAX_HEAP_DEBUG 2000
-uint32_t* allocs = nullptr;
-uint32_t allocated = 0;
-uint32_t highwater = 0;
-uint32_t newc = 0;
-uint32_t freec = 0;
+#define MAX_HEAP_DEBUG 1000
+//{{{
+class cHeapAlloc {
+public:
+  void* mPtr = nullptr;
+  size_t mSize = 0;
+  };
+//}}}
+cHeapAlloc mHeapDebugAllocs [MAX_HEAP_DEBUG];
+size_t mHeapDebugAllocated = 0;
+size_t mHeapDebugHighwater = 0;
+uint32_t mHeapDebugOutstandingAllocs = 0;
 
 //{{{
 void* myMalloc (size_t size) {
 
-  newc++;
-  void* alloc = malloc (size);
+  mHeapDebugOutstandingAllocs++;
+  auto ptr = malloc (size);
 
-  allocated += (int)size;
-  for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
-    if (!allocs[i]) {
-      allocs[i] = (uint32_t)alloc;
-      allocs[i+1] = (uint32_t)size;
+  mHeapDebugAllocated += size;
+  for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
+    if (!mHeapDebugAllocs[i].mPtr) {
+      mHeapDebugAllocs[i].mPtr = ptr;
+      mHeapDebugAllocs[i].mSize = size;
       break;
       }
     if (i >= MAX_HEAP_DEBUG-1)
       printf ("new cockup\n");
     }
 
-  if (allocated > highwater) {
-    highwater = allocated;
-    printf ("heap allocs:%d tot:%d size:%d \n", newc - freec, allocated, int(size));
+  if (mHeapDebugAllocated > mHeapDebugHighwater) {
+    mHeapDebugHighwater = mHeapDebugAllocated;
+    printf ("heap allocs:%d allocated:%zd size:%zd \n", mHeapDebugOutstandingAllocs, mHeapDebugAllocated, size);
     }
 
-  return alloc;
+  return ptr;
   }
 //}}}
 //{{{
 void myFree (void* ptr) {
 
-  freec++;
-  for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
-    if (allocs[i] && allocs[i] == (uint32_t)ptr) {
-      allocs[i] = 0;
-      allocated -= allocs[i+1];
-      break;
+  if (ptr) {
+    mHeapDebugOutstandingAllocs--;
+    for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
+      if (mHeapDebugAllocs[i].mPtr && mHeapDebugAllocs[i].mPtr == ptr) {
+        mHeapDebugAllocs[i].mPtr = nullptr;
+        mHeapDebugAllocated -= mHeapDebugAllocs[i].mSize;
+        break;
+        }
+      if (i >= MAX_HEAP_DEBUG-1)
+        printf ("delete cockup\n");
       }
-    if (i >= MAX_HEAP_DEBUG-1)
-      printf ("delete cockup\n");
     }
 
   free (ptr);
   }
 //}}}
-
-//{{{
-void* operator new (size_t size) {
-  return myMalloc (size);
-  }
-//}}}
-//{{{
-void operator delete (void* ptr) {
-  myFree (ptr);
-  }
-//}}}
-
-//{{{
-void initHeapDebug() {
-  allocs = (uint32_t*)malloc (2000 * 8);
-  memset (allocs, 0, 2000 * 8);
-  }
-//}}}
-//}}}
-
+void* operator new (size_t size) { return myMalloc (size); }
+void operator delete (void* ptr) { myFree (ptr); }
 void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); free (ptr); }
 
@@ -549,9 +538,6 @@ int main (int argc, char* argv[]) {
     exit (0);
     }
     //}}}
-
-  allocs = (uint32_t*)malloc (2000 * 8);
-  memset (allocs, 0, 2000 * 8);
 
   startTimer();
   cMp3Window mp3Window;
