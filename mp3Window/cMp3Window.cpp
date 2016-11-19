@@ -48,7 +48,7 @@ size_t mHeapDebugHighwater = 0;
 uint32_t mHeapDebugOutstandingAllocs = 0;
 
 //{{{
-void* myMalloc (size_t size) {
+void* debugMalloc (size_t size, const char* tag, const char ch) {
 
   mHeapDebugOutstandingAllocs++;
   auto ptr = malloc (size);
@@ -66,14 +66,15 @@ void* myMalloc (size_t size) {
 
   if (mHeapDebugAllocated > mHeapDebugHighwater) {
     mHeapDebugHighwater = mHeapDebugAllocated;
-    printf ("heap allocs:%d allocated:%zd size:%zd \n", mHeapDebugOutstandingAllocs, mHeapDebugAllocated, size);
+    printf ("heapallocs:%d allocated:%zdsize:%5zd %c %s\n",
+           mHeapDebugOutstandingAllocs, mHeapDebugAllocated, size, ch, tag?tag:"");
     }
 
   return ptr;
   }
 //}}}
 //{{{
-void myFree (void* ptr) {
+void debugFree (void* ptr) {
 
   if (ptr) {
     mHeapDebugOutstandingAllocs--;
@@ -91,10 +92,10 @@ void myFree (void* ptr) {
   free (ptr);
   }
 //}}}
-void* operator new (size_t size) { return myMalloc (size); }
-void operator delete (void* ptr) { myFree (ptr); }
-void* operator new[](size_t num) { printf ("new[] %d\n", int(num)); return malloc (num); }
-void operator delete[](void *ptr) { printf ("delete[]\n"); free (ptr); }
+void* operator new (size_t size) { return debugMalloc (size, "", 'n'); }
+void operator delete (void* ptr) { debugFree (ptr); }
+void* operator new[](size_t num) { printf("new[] %d\n", int(num)); return debugMalloc(num, "", '['); }
+void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
