@@ -8,8 +8,8 @@
 #include "../common/cD2dWindow.h"
 #include "../common/cAudio.h"
 
-#include "../libfaad/include/neaacdec.h"
-#pragma comment (lib,"libfaad.lib")
+#include "../../shared/libfaad/neaacdec.h"
+//#pragma comment (lib,"libfaad.lib")
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
@@ -36,11 +36,11 @@
 
 //{{{  heap debug
 #define MAX_HEAP_DEBUG 2000
-int* allocs = nullptr;
-int allocated = 0;
-int highwater = 0;
-int newc = 0;
-int freec = 0;
+uint32_t* allocs = nullptr;
+uint32_t allocated = 0;
+uint32_t highwater = 0;
+uint32_t newc = 0;
+uint32_t freec = 0;
 
 //{{{
 void* myMalloc (size_t size) {
@@ -51,8 +51,8 @@ void* myMalloc (size_t size) {
   allocated += (int)size;
   for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
     if (!allocs[i]) {
-      allocs[i] = (int)alloc;
-      allocs[i+1] = (int)size;
+      allocs[i] = (uint32_t)alloc;
+      allocs[i+1] = (uint32_t)size;
       break;
       }
     if (i >= MAX_HEAP_DEBUG-1)
@@ -72,7 +72,7 @@ void myFree (void* ptr) {
 
   freec++;
   for (int i = 0; i < MAX_HEAP_DEBUG; i += 2) {
-    if (allocs[i] && allocs[i] == (int)ptr) {
+    if (allocs[i] && allocs[i] == (uint32_t)ptr) {
       allocs[i] = 0;
       allocated -= allocs[i+1];
       break;
@@ -98,7 +98,7 @@ void operator delete (void* ptr) {
 
 //{{{
 void initHeapDebug() {
-  allocs = (int*)malloc (2000 * 8);
+  allocs = (uint32_t*)malloc (2000 * 8);
   memset (allocs, 0, 2000 * 8);
   }
 //}}}
@@ -550,7 +550,7 @@ int main (int argc, char* argv[]) {
     }
     //}}}
 
-  allocs = (int*)malloc (2000 * 8);
+  allocs = (uint32_t*)malloc (2000 * 8);
   memset (allocs, 0, 2000 * 8);
 
   startTimer();
