@@ -40,34 +40,36 @@ class cHeapAlloc {
 public:
   void* mPtr = nullptr;
   size_t mSize = 0;
+  uint8_t mHeap = 0;
   };
 //}}}
 cHeapAlloc mHeapDebugAllocs [MAX_HEAP_DEBUG];
-size_t mHeapDebugAllocated = 0;
-size_t mHeapDebugHighwater = 0;
-uint32_t mHeapDebugOutstandingAllocs = 0;
-
+const char* kDebugHeapLabels[3] = { "big", "sml", "new" };
+size_t mHeapDebugAllocated[3] = { 0,0,0 };
+size_t mHeapDebugHighwater[3] = { 0, 0, 0 };
+uint32_t mHeapDebugOutAllocs[3] = { 0, 0, 0 };
 //{{{
-void* debugMalloc (size_t size, const char* tag, const char ch) {
+void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
 
-  mHeapDebugOutstandingAllocs++;
   auto ptr = malloc (size);
 
-  mHeapDebugAllocated += size;
+  mHeapDebugOutAllocs[heap]++;
+  mHeapDebugAllocated[heap] += size;
   for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
     if (!mHeapDebugAllocs[i].mPtr) {
       mHeapDebugAllocs[i].mPtr = ptr;
       mHeapDebugAllocs[i].mSize = size;
+      mHeapDebugAllocs[i].mHeap = heap;
       break;
       }
     if (i >= MAX_HEAP_DEBUG-1)
       printf ("new cockup\n");
     }
 
-  if (mHeapDebugAllocated > mHeapDebugHighwater) {
-    mHeapDebugHighwater = mHeapDebugAllocated;
-    printf ("heapallocs:%d allocated:%zdsize:%5zd %c %s\n",
-           mHeapDebugOutstandingAllocs, mHeapDebugAllocated, size, ch, tag?tag:"");
+  if (mHeapDebugAllocated[heap] > mHeapDebugHighwater[heap]) {
+    mHeapDebugHighwater[heap] = mHeapDebugAllocated[heap];
+    printf ("%s %3d %7zd %7zd %s\n", kDebugHeapLabels[heap],
+            mHeapDebugOutAllocs[heap], mHeapDebugAllocated[heap], size, tag ? tag : "");
     }
 
   return ptr;
@@ -77,11 +79,11 @@ void* debugMalloc (size_t size, const char* tag, const char ch) {
 void debugFree (void* ptr) {
 
   if (ptr) {
-    mHeapDebugOutstandingAllocs--;
     for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
       if (mHeapDebugAllocs[i].mPtr && mHeapDebugAllocs[i].mPtr == ptr) {
         mHeapDebugAllocs[i].mPtr = nullptr;
-        mHeapDebugAllocated -= mHeapDebugAllocs[i].mSize;
+        mHeapDebugOutAllocs[mHeapDebugAllocs[i].mHeap]--;
+        mHeapDebugAllocated[mHeapDebugAllocs[i].mHeap] -= mHeapDebugAllocs[i].mSize;
         break;
         }
       if (i >= MAX_HEAP_DEBUG-1)
@@ -92,9 +94,9 @@ void debugFree (void* ptr) {
   free (ptr);
   }
 //}}}
-void* operator new (size_t size) { return debugMalloc (size, "", 'n'); }
+void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
-void* operator new[](size_t num) { printf("new[] %d\n", int(num)); return debugMalloc(num, "", '['); }
+void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
