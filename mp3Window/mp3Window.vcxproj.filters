@@ -118,6 +118,7 @@
     <ClCompile Include="..\..\shared\libfaad\sbr_huff.c">
       <Filter>libfaad</Filter>
     </ClCompile>
+    <ClCompile Include="upng.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h">
@@ -172,6 +173,9 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\widgets\cWidget.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="upng.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
