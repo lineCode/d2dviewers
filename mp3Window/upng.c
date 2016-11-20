@@ -46,7 +46,7 @@ typedef enum upng_state {
   UPNG_DECODED  = 0,
   UPNG_HEADER   = 1,
   UPNG_NEW    = 2
-} upng_state;
+  } upng_state;
 /*}}}*/
 /*{{{*/
 typedef enum upng_color {
@@ -54,22 +54,20 @@ typedef enum upng_color {
   UPNG_RGB    = 2,
   UPNG_LUMA   = 4,
   UPNG_RGBA   = 6
-} upng_color;
-
+  } upng_color;
 /*}}}*/
 /*{{{*/
 typedef struct upng_source {
   const unsigned char*  buffer;
   unsigned long     size;
-  char          owning;
-} upng_source;
+  } upng_source;
 /*}}}*/
 /*{{{*/
 typedef struct huffman_tree {
   unsigned* tree2d;
   unsigned maxbitlen; /*maximum number of bits a single code can get */
   unsigned numcodes;  /*number of symbols in the alphabet = number of codes */
-} huffman_tree;
+  } huffman_tree;
 /*}}}*/
 /*{{{*/
 struct upng_t {
@@ -88,7 +86,7 @@ struct upng_t {
 
   upng_state    state;
   upng_source   source;
-};
+  };
 /*}}}*/
 
 /*{{{*/
@@ -270,7 +268,7 @@ static void huffman_tree_create_lengths (upng_t* upng, huffman_tree* tree, const
   }
 /*}}}*/
 /*{{{*/
-static unsigned huffman_decode_symbol (upng_t *upng, const unsigned char *in, unsigned long *bp, 
+static unsigned huffman_decode_symbol (upng_t *upng, const unsigned char *in, unsigned long *bp,
                                        const huffman_tree* codetree, unsigned long inlength) {
 
   unsigned treepos = 0, ct;
@@ -326,7 +324,7 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
   for (i = 0; i < NUM_CODE_LENGTH_CODES; i++) {
     if (i < hclen) {
       codelengthcode[CLCL[i]] = read_bits(bp, in, 3);
-      } 
+      }
     else {
       codelengthcode[CLCL[i]] = 0;  /*if not, it must stay 0 */
       }
@@ -350,12 +348,12 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
     if (code <= 15) { /*a length code */
       if (i < hlit) {
         bitlen[i] = code;
-        } 
+        }
       else {
         bitlenD[i - hlit] = code;
         }
       i++;
-      } 
+      }
     else if (code == 16) {  /*repeat previous */
       unsigned replength = 3; /*read in the 2 bits that indicate repeat length (3-6) */
       unsigned value; /*set value to the previous code */
@@ -369,7 +367,7 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
 
       if ((i - 1) < hlit) {
         value = bitlen[i - 1];
-        } 
+        }
       else {
         value = bitlenD[i - hlit - 1];
         }
@@ -384,13 +382,13 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
 
         if (i < hlit) {
           bitlen[i] = value;
-          } 
+          }
         else {
           bitlenD[i - hlit] = value;
           }
         i++;
         }
-      } 
+      }
     else if (code == 17) {  /*repeat "0" 3-10 times */
       unsigned replength = 3; /*read in the bits that indicate repeat length */
       if ((*bp) >> 3 >= inlength) {
@@ -411,13 +409,13 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
 
         if (i < hlit) {
           bitlen[i] = 0;
-          } 
+          }
         else {
           bitlenD[i - hlit] = 0;
           }
         i++;
         }
-      } 
+      }
     else if (code == 18) {  /*repeat "0" 11-138 times */
       unsigned replength = 11;  /*read in the bits that indicate repeat length */
       /* error, bit pointer jumps past memory */
@@ -441,7 +439,7 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
           bitlenD[i - hlit] = 0;
         i++;
         }
-      } 
+      }
     else {
       /* somehow an unexisting code appeared. This can never happen. */
       SET_ERROR(upng, UPNG_EMALFORMED);
@@ -466,8 +464,8 @@ static void get_tree_inflate_dynamic (upng_t* upng, huffman_tree* codetree, huff
 /*}}}*/
 /*{{{*/
 /*inflate a block with dynamic of fixed Huffman tree*/
-static void inflate_huffman (upng_t* upng, unsigned char* out, unsigned long outsize, 
-                            const unsigned char *in, unsigned long *bp, unsigned long *pos, 
+static void inflate_huffman (upng_t* upng, unsigned char* out, unsigned long outsize,
+                            const unsigned char *in, unsigned long *bp, unsigned long *pos,
                             unsigned long inlength, unsigned btype) {
 
   unsigned codetree_buffer[DEFLATE_CODE_BUFFER_SIZE];
@@ -501,7 +499,7 @@ static void inflate_huffman (upng_t* upng, unsigned char* out, unsigned long out
     if (code == 256) {
       /* end code */
       done = 1;
-      } 
+      }
     else if (code <= 255) {
       /* literal symbol */
       if ((*pos) >= outsize) {
@@ -511,7 +509,7 @@ static void inflate_huffman (upng_t* upng, unsigned char* out, unsigned long out
 
       /* store output */
       out[(*pos)++] = (unsigned char)(code);
-      } 
+      }
     else if (code >= FIRST_LENGTH_CODE_INDEX && code <= LAST_LENGTH_CODE_INDEX) { /*length code */
       /* part 1: get length base */
       unsigned long length = LENGTH_BASE[code - FIRST_LENGTH_CODE_INDEX];
@@ -575,7 +573,7 @@ static void inflate_huffman (upng_t* upng, unsigned char* out, unsigned long out
   }
 /*}}}*/
 /*{{{*/
-static void inflate_uncompressed (upng_t* upng, unsigned char* out, unsigned long outsize, 
+static void inflate_uncompressed (upng_t* upng, unsigned char* out, unsigned long outsize,
                                   const unsigned char *in, unsigned long *bp, unsigned long *pos, unsigned long inlength) {
 
   unsigned long p;
@@ -624,7 +622,7 @@ static void inflate_uncompressed (upng_t* upng, unsigned char* out, unsigned lon
 /*}}}*/
 /*{{{*/
 /*inflate the deflated data (cfr. deflate spec); return value is the error*/
-static upng_error uz_inflate_data (upng_t* upng, unsigned char* out, unsigned long outsize, 
+static upng_error uz_inflate_data (upng_t* upng, unsigned char* out, unsigned long outsize,
                                    const unsigned char *in, unsigned long insize, unsigned long inpos) {
 
   unsigned long bp = 0; /*bit pointer in the "in" data, current byte is bp >> 3, current bit is bp & 0x7 (from lsb to msb of the byte) */
@@ -922,48 +920,6 @@ static upng_format determine_format (upng_t* upng) {
     }
   }
 /*}}}*/
-/*{{{*/
-static void upng_free_source (upng_t* upng) {
-
-  if (upng->source.owning != 0)
-    free((void*)upng->source.buffer);
-
-  upng->source.buffer = NULL;
-  upng->source.size = 0;
-  upng->source.owning = 0;
-  }
-/*}}}*/
-
-/*{{{*/
-static upng_t* upng_new() {
-  upng_t* upng;
-
-  upng = (upng_t*)malloc(sizeof(upng_t));
-  if (upng == NULL) {
-    return NULL;
-  }
-
-  upng->buffer = NULL;
-  upng->size = 0;
-
-  upng->width = upng->height = 0;
-
-  upng->color_type = UPNG_RGBA;
-  upng->color_depth = 8;
-  upng->format = UPNG_RGBA8;
-
-  upng->state = UPNG_NEW;
-
-  upng->error = UPNG_EOK;
-  upng->error_line = 0;
-
-  upng->source.buffer = NULL;
-  upng->source.size = 0;
-  upng->source.owning = 0;
-
-  return upng;
-  }
-/*}}}*/
 
 /*{{{*/
 upng_error upng_header (upng_t* upng) {
@@ -1182,23 +1138,31 @@ upng_error upng_decode (upng_t* upng) {
     upng->state = UPNG_DECODED;
   }
 
-  /* we are done with our input buffer; free it if we own it */
-  upng_free_source(upng);
-
   return upng->error;
   }
 /*}}}*/
 
 /*{{{*/
-upng_t* upng_new_from_bytes (const unsigned char* buffer, unsigned long size) {
+upng_t* upngOpen (const unsigned char* buffer, unsigned long size) {
 
-  upng_t* upng = upng_new();
-  if (upng == NULL)
-    return NULL;
+  upng_t* upng = (upng_t*)malloc(sizeof(upng_t));
+
+  upng->buffer = NULL;
+  upng->size = 0;
+
+  upng->width = upng->height = 0;
+
+  upng->color_type = UPNG_RGBA;
+  upng->color_depth = 8;
+  upng->format = UPNG_RGBA8;
+
+  upng->state = UPNG_NEW;
+
+  upng->error = UPNG_EOK;
+  upng->error_line = 0;
 
   upng->source.buffer = buffer;
   upng->source.size = size;
-  upng->source.owning = 0;
 
   return upng;
   }
@@ -1209,9 +1173,6 @@ void upng_free (upng_t* upng) {
   /* deallocate image buffer */
   if (upng->buffer != NULL)
     free (upng->buffer);
-
-  /* deallocate source buffer, if necessary */
-  upng_free_source (upng);
 
   /* deallocate struct itself */
   free (upng);

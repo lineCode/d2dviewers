@@ -27,6 +27,10 @@ freely, subject to the following restrictions:
 		distribution.
 */
 //}}}
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //{{{
 typedef enum upng_error {
 	UPNG_EOK      = 0, /* success (no error) */
@@ -60,7 +64,7 @@ typedef enum upng_format {
 
 typedef struct upng_t upng_t;
 
-upng_t* upng_new_from_bytes (const unsigned char* buffer, unsigned long size);
+upng_t* upngOpen (const unsigned char* buffer, unsigned long size);
 void upng_free (upng_t* upng);
 
 upng_error upng_header (upng_t* upng);
@@ -79,3 +83,7 @@ upng_format upng_get_format (const upng_t* upng);
 
 const unsigned char* upng_get_buffer (const upng_t* upng);
 unsigned upng_get_size (const upng_t* upng);
+
+#ifdef __cplusplus
+}
+#endif

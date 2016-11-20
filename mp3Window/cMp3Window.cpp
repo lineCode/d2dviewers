@@ -33,7 +33,11 @@
 #include "../../shared/hls/hls.h"
 #include "../../shared/decoders/cMp3Decoder.h"
 //}}}
+#include "upng.h"
+#include "radar.h"
+#include "ukColour.h"
 
+//{{{  heap debug
 #define MAX_HEAP_DEBUG 1000
 //{{{
 class cHeapAlloc {
@@ -98,6 +102,7 @@ void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
+//}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -154,6 +159,17 @@ public:
       std::thread([=]() { playThread(); }).detach();
       }
       //}}}
+
+    int picvalue;
+    bool picchanged;
+    auto picWidget = new cPicWidget (5,5,0, picvalue, picchanged);
+
+    upng_t* png = upngOpen (radar, sizeof(radar));
+    upng_header (png);
+    upng_decode (png);
+    picWidget->setPic ((uint8_t*)upng_get_buffer (png), upng_get_width (png), upng_get_height (png), 4);
+
+    mRoot->addBottomLeft (picWidget);
 
     messagePump();
     };
