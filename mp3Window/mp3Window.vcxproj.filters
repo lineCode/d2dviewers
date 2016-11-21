@@ -117,7 +117,7 @@
     <ClCompile Include="..\..\shared\libfaad\sbr_huff.c">
       <Filter>libfaad</Filter>
     </ClCompile>
-    <ClCompile Include="cWebWindow.cpp" />
+    <ClCompile Include="cMp3Window.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h">

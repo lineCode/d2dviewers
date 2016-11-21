@@ -31,14 +31,9 @@
 #include "../../shared/widgets/cBmpWidget.h"
 
 #include "../../shared/hls/hls.h"
-#include "../../shared/decoders/cMp3Decoder.h"
+#include "../../shared/decoders/cMp3.h"
 //}}}
-#include "../../shared/decoders/cPng.h"
 
-#include "radar.h"
-#include "ukColour.h"
-
-//{{{  heap debug
 #define MAX_HEAP_DEBUG 1000
 //{{{
 class cHeapAlloc {
@@ -103,7 +98,6 @@ void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
-//}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -118,14 +112,48 @@ public:
     mRoot = new cRootContainer (width, height);
     setChangeRate (1);
 
-    int picvalue;
-    bool picchanged;
-    auto picWidget = new cPicWidget (20,20,0, picvalue, picchanged);
+    if (fileName.empty()) {
+      //{{{  hls player
+      mHls = new cHls();
+      mHlsSem = CreateSemaphore (NULL, 0, 1, L"hlsSem");  // initial 0, max 1
 
-    cPng png (radar, sizeof(radar));
-    if (png.readHeader())
-      picWidget->setPic (png.decodeBody(), png.getWidth(), png.getHeight(), 4);
-    mRoot->addTopLeft (picWidget);
+      mReSamples = (int16_t*)malloc (4096);
+      memset (mReSamples, 0, 4096);
+
+      hlsMenu (mRoot, mHls);
+
+      // launch loaderThread
+      std::thread ([=]() { hlsLoaderThread(); } ).detach();
+
+      // launch playerThread, higher priority
+      auto playerThread = std::thread ([=]() { hlsPlayerThread(); });
+      SetThreadPriority (playerThread.native_handle(), THREAD_PRIORITY_HIGHEST);
+      playerThread.detach();
+      }
+      //}}}
+    else {
+      //{{{  mp3 player
+      bool mFrameChanged = false;;
+      mPlayFrame = 0;
+      mFramePosition = (int*)malloc (60*60*60*2*sizeof(int));
+      mWave = (uint8_t*)malloc (60*60*60*2*sizeof(uint8_t));
+      mSamples = (int16_t*)malloc (1152*2*2);
+      memset (mSamples, 0, 1152*2*2);
+
+      initMp3Menu();
+
+      if (fileName.empty())
+        mFileList.push_back ("C:/Users/colin/Desktop/Bread.mp3");
+      else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY)
+        listDirectory (std::string(), fileName, "*.mp3");
+        //std::thread ([=]() { listThread (fileName ? fileName : "D:/music"); } ).detach();
+      else
+        mFileList.push_back (fileName);
+
+      std::thread([=]() { audioThread(); }).detach();
+      std::thread([=]() { playThread(); }).detach();
+      }
+      //}}}
 
     messagePump();
     };
@@ -261,6 +289,211 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
 
 private:
+  //{{{
+  void hlsLoaderThread() {
+
+    CoInitialize (NULL);
+
+    mHls->mChanChanged = true;
+    while (true) {
+      if (mHls->mChanChanged)
+        mHls->setChan (mHls->mHlsChan, mHls->mHlsBitrate);
+
+      if (!mHls->loadAtPlayFrame())
+        Sleep (1000);
+
+      WaitForSingleObject (mHlsSem, 20 * 1000);
+      }
+
+    CoUninitialize();
+    }
+  //}}}
+  //{{{
+  void hlsPlayerThread() {
+
+    CoInitialize (NULL);
+    audOpen (48000, 16, 2);
+
+    uint32_t seqNum = 0;
+    uint32_t numSamples = 0;
+    uint32_t lastSeqNum = 0;
+    uint16_t scrubCount = 0;
+    double scrubSample = 0;
+    while (true) {
+      if (mHls->getScrubbing()) {
+        if (scrubCount == 0)
+          scrubSample = mHls->getPlaySample();
+        if (scrubCount < 3) {
+          auto sample = mHls->getPlaySamples (scrubSample + (scrubCount * kSamplesPerFrame), seqNum, numSamples);
+          audPlay (sample, 4096, 1.0f);
+          }
+        else
+          audPlay (nullptr, 4096, 1.0f);
+        if (scrubCount++ > 3)
+          scrubCount = 0;
+        //int srcSamplesConsumed = mHls->getReSamples (mHls->getPlaySample(), seqNum, numSamples, mReSamples, mHls->mSpeed);
+        //audPlay (mReSamples, 4096, 1.0f);
+        //mHls->incPlaySample (srcSamplesConsumed);
+        }
+      else if (mHls->getPlaying()) {
+        auto sample = mHls->getPlaySamples (mHls->getPlaySample(), seqNum, numSamples);
+        audPlay (sample, 4096, 1.0f);
+        if (sample)
+          mHls->incPlayFrame (1);
+        }
+      else
+        audPlay (nullptr, 4096, 1.0f);
+
+      if (mHls->mChanChanged || !seqNum || (seqNum != lastSeqNum)) {
+        lastSeqNum = seqNum;
+        ReleaseSemaphore (mHlsSem, 1, NULL);
+        }
+
+      if (mHls->mVolumeChanged) {
+        setVolume (mHls->mVolume);
+        mHls->mVolumeChanged = false;
+        }
+      }
+
+    audClose();
+    CoUninitialize();
+    }
+  //}}}
+
+  //{{{
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
+
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
+
+    std::string searchStr (mFullDirName +  "/*");
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
+    }
+  //}}}
+  //{{{
+  void initMp3Menu() {
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
+    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
+    }
+  //}}}
+  //{{{
+  void waveThread() {
+
+    auto time = getTimer();
+
+    cMp3 mMp3;
+    auto tagBytes = mMp3.findId3tag (mFileBuffer, mFileSize);
+    auto filePosition = tagBytes;
+
+    // use mWave[0] as max
+    *mWave = 0;
+    auto wavePtr = mWave + 1;
+
+    mLoadedFrame = 0;
+    int bytesUsed = 0;
+    do {
+      mFramePosition [mLoadedFrame] = filePosition;
+
+      bytesUsed = mMp3.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, wavePtr, nullptr);
+      if (*wavePtr > *mWave)
+        *mWave = *wavePtr;
+      wavePtr++;
+      if (*wavePtr > *mWave)
+        *mWave = *wavePtr;
+      wavePtr++;
+      mLoadedFrame++;
+
+      // predict maxFrame from running totals
+      filePosition += bytesUsed;
+      mMaxFrame = int(float(mFileSize - tagBytes) * float(mLoadedFrame) / float(filePosition - tagBytes));
+      } while ((bytesUsed > 0) && (filePosition < mFileSize));
+
+    // correct maxFrame to counted frame
+    mMaxFrame = mLoadedFrame;
+
+    debug ("wave frames " + dec(mLoadedFrame) + " " + dec(mFileSize));
+    }
+  //}}}
+  //{{{
+  void playThread() {
+
+    cMp3 mMp3;
+    while (true) {
+      //{{{  open and load file into fileBuffer
+      auto fileHandle = CreateFileA (mFileList[mFileIndex].c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+      mFileSize = (int)GetFileSize (fileHandle, NULL);
+
+      auto fileBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (fileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+
+      mFileBuffer = (uint8_t*)malloc (mFileSize);
+      memcpy (mFileBuffer, fileBuffer, mFileSize);
+      //}}}
+      std::thread ([=](){waveThread();}).detach();
+
+      int bytesUsed;
+      mPlayFrame = 0;
+      auto filePosition = mMp3.findId3tag (mFileBuffer, mFileSize);
+      do {
+        mWait = true;
+        mReady = false;
+        bytesUsed = mMp3.decodeNextFrame (mFileBuffer + filePosition, mFileSize - filePosition, nullptr, mSamples);
+        mReady = true;
+        if (bytesUsed > 0) {
+          filePosition += bytesUsed;
+          while (mWait && !mFileIndexChanged)
+            Sleep (2);
+          mPlayFrame++;
+          }
+
+        if (mWaveChanged) {
+          filePosition = mFramePosition [mPlayFrame];
+          mWaveChanged = false;
+          }
+        } while (!mFileIndexChanged && (bytesUsed > 0) && (filePosition < mFileSize));
+
+      if (!mFileIndexChanged)
+        mFileIndex = (mFileIndex + 1) % mFileList.size();
+      mFileIndexChanged = false;
+      mPlaying = true;
+
+      //{{{  close file and fileBuffer
+      free (mFileBuffer);
+      UnmapViewOfFile (fileBuffer);
+      CloseHandle (fileHandle);
+      //}}}
+      }
+    }
+  //}}}
+  //{{{
+  void audioThread() {
+
+    CoInitialize (NULL);
+    audOpen (44100, 16, 2);
+
+    while (true) {
+      mReady && mPlaying ? audPlay (mSamples, 1152*2*2, 1.0f) : audSilence();
+      mWait = !mPlaying;
+      }
+
+    CoUninitialize();
+    }
+  //}}}
+
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
@@ -312,6 +545,6 @@ int main (int argc, char* argv[]) {
   startTimer();
   cMp3Window mp3Window;
   //mp3Window.run (L"mp3window", 800, 480, argv[1] ? std::string(argv[1]) : std::string());
-  mp3Window.run (L"mp3window", 600, 600, argv[1] ? std::string(argv[1]) : std::string());
+  mp3Window.run (L"mp3window", 480, 272, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}

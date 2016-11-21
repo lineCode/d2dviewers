@@ -248,7 +248,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="cWebWindow.cpp" />
+    <ClCompile Include="cMp3Window.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
@@ -278,7 +278,7 @@
     <ClInclude Include="upng.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{CEA7C040-DE49-4415-8226-14C64D206C47}</ProjectGuid>
+    <ProjectGuid>{DDBFE948-49B8-4764-A948-8F102A9DBF7A}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>simpleCurl</RootNamespace>
     <TargetPlatformVersion>8.1</TargetPlatformVersion>
