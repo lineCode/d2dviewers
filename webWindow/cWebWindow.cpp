@@ -91,8 +91,7 @@ void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
 
 int mIndex = 0;
-cPngWidget* mPngWidget;
-cGifWidget* mGifWidget;
+cPicWidget* mPicWidget;
 std::vector<std::string> mFileList;
 
 class cMp3Window : public iDraw, public cD2dWindow {
@@ -177,20 +176,23 @@ public:
     setChangeRate (1);
 
     mRoot = new cRootContainer (width, height);
-    mPngWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
-    mRoot->addTopLeft (mPngWidget);
-    mGifWidget = new cGifWidget (mRoot->getWidth(), mRoot->getHeight());
-    mRoot->addTopLeft (mGifWidget);
 
-    if (fileName.empty())
+    if (fileName.empty()) {
+      mPicWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
+      mRoot->addTopLeft (mPicWidget);
       metApp();
-    else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-      listDirectory (std::string(), fileName, "*.png");
-      mPngWidget->setFileName (mFileList[0]);
       }
-    else
-      mGifWidget->setFileName (fileName);
-
+    else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+      mPicWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
+      mRoot->addTopLeft (mPicWidget);
+      listDirectory (std::string(), fileName, "*.png");
+      mPicWidget->setFileName (mFileList[0]);
+      }
+    else {
+      mPicWidget = new cGifWidget (mRoot->getWidth(), mRoot->getHeight());
+      mRoot->addTopLeft (mPicWidget);
+      mPicWidget->setFileName (fileName);
+      }
     messagePump();
     };
   //}}}
@@ -207,8 +209,8 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x25: if (mIndex > 0) mIndex--;                  mPngWidget->setFileName (mFileList[mIndex]); break; // left arrow
-      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; mPngWidget->setFileName (mFileList[mIndex]); break; // right arrow
+      case 0x25: if (mIndex > 0) mIndex--;                  mPicWidget->setFileName (mFileList[mIndex]); break; // left arrow
+      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; mPicWidget->setFileName (mFileList[mIndex]); break; // right arrow
 
       default: debug ("key " + hex(key));
       }
@@ -297,7 +299,7 @@ private:
               //}}}
 
             mFileList.push_back (fileName);
-            mPngWidget->setFileName (fileName);
+            mPicWidget->setFileName (fileName);
             }
           }
         }
