@@ -16,7 +16,10 @@
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cPngWidget.h"
+#include "../../shared/widgets/cGifWidget.h"
 #include "../../shared/widgets/cTextBox.h"
+
+#include "../../shared/decoders/cGif.h"
 
 #include "../../shared/rapidjson/document.h"
 //}}}
@@ -89,6 +92,7 @@ void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 
 int mIndex = 0;
 cPngWidget* mPngWidget;
+cGifWidget* mGifWidget;
 std::vector<std::string> mFileList;
 
 class cMp3Window : public iDraw, public cD2dWindow {
@@ -175,6 +179,8 @@ public:
     mRoot = new cRootContainer (width, height);
     mPngWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
     mRoot->addTopLeft (mPngWidget);
+    mGifWidget = new cGifWidget (mRoot->getWidth(), mRoot->getHeight());
+    mRoot->addTopLeft (mGifWidget);
 
     if (fileName.empty())
       metApp();
@@ -183,7 +189,7 @@ public:
       mPngWidget->setFileName (mFileList[0]);
       }
     else
-      mPngWidget->setFileName(fileName);
+      mGifWidget->setFileName (fileName);
 
     messagePump();
     };
@@ -201,8 +207,8 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x25: if (mIndex > 0) mIndex--;                  mPngWidget->setFileName(mFileList[mIndex]); break; // left arrow
-      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; mPngWidget->setFileName(mFileList[mIndex]); break; // right arrow
+      case 0x25: if (mIndex > 0) mIndex--;                  mPngWidget->setFileName (mFileList[mIndex]); break; // left arrow
+      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; mPngWidget->setFileName (mFileList[mIndex]); break; // right arrow
 
       default: debug ("key " + hex(key));
       }
@@ -272,12 +278,11 @@ private:
                 time[i] = ' ';
               else if (time[i] == ':')
                 time[i] = '-';
+
             std::string fileName = "c:/metOffice/wxobs/" + layerName + "/" + time + ".png";
 
-            FILE* file = fopen (fileName.c_str(), "rb");
-            if (file)
-              fclose (file);
-            else {
+            struct stat st;
+            if (stat (fileName.c_str(), &st)) {
               //{{{  load from net
               mHttp.get ("datapoint.metoffice.gov.uk", netPath);
 
@@ -290,6 +295,7 @@ private:
               mHttp.freeContent();
               }
               //}}}
+
             mFileList.push_back (fileName);
             mPngWidget->setFileName (fileName);
             }
