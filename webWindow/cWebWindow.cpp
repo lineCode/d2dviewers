@@ -16,6 +16,7 @@
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cPicWidget.h"
+#include "../../shared/widgets/cTextBox.h"
 
 #include "../../shared/rapidjson/document.h"
 #include "../../shared/decoders/cPng.h"
@@ -86,6 +87,12 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
+
+int mIndex = 0;
+std::string mText;
+cPicWidget* mPicWidget;
+cTextBox* mTextBox;
+std::vector<std::string> mFileList;
 
 class cMp3Window : public iDraw, public cD2dWindow {
 public:
@@ -170,10 +177,21 @@ public:
 
     mRoot = new cRootContainer (width, height);
 
+    int picvalue;
+    bool picchanged;
+    mPicWidget = new cPicWidget (mRoot->getWidth(),mRoot->getHeight(), 1, picvalue, picchanged);
+    mRoot->addTopLeft (mPicWidget);
+    mTextBox = new cTextBox (mText, mRoot->getWidth());
+    mRoot->addTopLeft (mTextBox);
+
     if (fileName.empty())
       metApp();
+    else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+      listDirectory (std::string(), fileName, "*.png");
+      showPicFileMap (mFileList[0]);
+      }
     else
-      show (fileName);
+      showPicFileMap (fileName);
 
     messagePump();
     };
@@ -191,6 +209,9 @@ protected:
       case 0x1B: // escape
         return true;
 
+      case 0x25: if (mIndex > 0) mIndex--; showPicFileMap (mFileList[mIndex]); break;                 // left arrow
+      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; showPicFileMap (mFileList[mIndex]); break; // right arrow
+
       default: debug ("key " + hex(key));
       }
     return false;
@@ -203,84 +224,142 @@ protected:
 
 private:
   //{{{
+  void listDirectory (std::string parentName, std::string directoryName, char* pathMatchName) {
+
+    std::string mFullDirName = parentName.empty() ? directoryName : parentName + "/" + directoryName;
+
+    std::string searchStr (mFullDirName +  "/*");
+    WIN32_FIND_DATAA findFileData;
+    auto file = FindFirstFileExA (searchStr.c_str(), FindExInfoBasic, &findFileData,
+                                  FindExSearchNameMatch, NULL, FIND_FIRST_EX_LARGE_FETCH);
+    if (file != INVALID_HANDLE_VALUE) {
+      do {
+        if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
+          listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
+        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
+        } while (FindNextFileA (file, &findFileData));
+
+      FindClose (file);
+      }
+    }
+  //}}}
+  //{{{
+  void showPic (std::string fileName) {
+
+    mText = fileName;
+
+    FILE* file = fopen (fileName.c_str(), "rb");
+    if (file) {
+      //printf ("loading %s %d\n", fileName.c_str(), size);
+
+      fseek (file, 0, SEEK_END);
+      int size = ftell (file);
+      rewind (file);
+      uint8_t* buffer = (uint8_t*)bigMalloc (size, "fileBuf");
+      fread (buffer, 1, (unsigned long)size, file);
+      fclose (file);
+
+      cPng png (buffer, size);
+      if (png.readHeader()) {
+        auto picBuf = png.decodeBody();
+        if (picBuf) {
+          auto rgbaBuf = (uint32_t*)picBuf;
+          for (int i = 0; i < png.getWidth() * png.getHeight(); i++)
+            rgbaBuf[i] = (rgbaBuf[i] & 0xFF00FF00) | ((rgbaBuf[i] & 0x000000FF) << 16) | ((rgbaBuf[i] & 0x00FF0000) >> 16);
+          mPicWidget->setPic (picBuf, png.getWidth(), png.getHeight(), 4);
+          }
+        }
+      bigFree (buffer);
+      }
+    }
+  //}}}
+  //{{{
+  void showPicFileMap (std::string fileName) {
+
+    mText = fileName;
+
+    HANDLE mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    int size = (int)GetFileSize (mFileHandle, NULL);
+    uint8_t* buffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
+
+    cPng png (buffer, size);
+    if (png.readHeader()) {
+      auto picBuf = png.decodeBody();
+      if (picBuf) {
+        auto rgbaBuf = (uint32_t*)picBuf;
+        for (int i = 0; i < png.getWidth() * png.getHeight(); i++)
+          rgbaBuf[i] = (rgbaBuf[i] & 0xFF00FF00) | ((rgbaBuf[i] & 0x000000FF) << 16) | ((rgbaBuf[i] & 0x00FF0000) >> 16);
+        mPicWidget->setPic (picBuf, png.getWidth(), png.getHeight(), 4);
+        }
+      }
+
+    UnmapViewOfFile (buffer);
+    CloseHandle (mFileHandle);
+    }
+  //}}}
+  //{{{
   void metApp() {
 
-    int picvalue;
-    bool picchanged;
-    auto picWidget = new cPicWidget (mRoot->getWidth(),mRoot->getHeight(), 1, picvalue, picchanged);
-    mRoot->addTopLeft (picWidget);
-
+    //  get capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
     mHttp.get ("datapoint.metoffice.gov.uk", "public/data/layer/wxobs/all/json/capabilities?" + key);
+
+    // save it
+    FILE* file = fopen ("c:/metOffice/wxobs/capabilities.json", "wb");
+    fwrite (mHttp.getContent(), 1, (unsigned long)mHttp.getContentSize(), file);
+    fclose (file);
+
     if (mHttp.getContent()) {
+      //{{{  parse capabilities json
       rapidjson::Document layers;
       if (layers.Parse ((const char*)mHttp.getContent(), mHttp.getContentSize()).HasParseError()) {
         debug ("layers load error " + dec(layers.GetParseError()));
         return;
         }
       mHttp.freeContent();
+      //}}}
 
       for (auto& element : layers["Layers"]["Layer"].GetArray()) {
         auto layer = element.GetObject();
         std::string displayName = layer["@displayName"].GetString();
-        //if (displayName == "Lightning") {
-        //if (displayName == "SatelliteIR") {
-        //if (displayName == "SatelliteVis") {
-        //if (displayName == "Rainfall") {
+        if (displayName == "Rainfall") { //"SatelliteIR" "SatelliteVis" "Rainfall"  "Lightning"
           std::string layerName = layer["Service"]["LayerName"].GetString();
           std::string imageFormat = layer["Service"]["ImageFormat"].GetString();
-          for (auto& timeItem : layer["Service"]["Times"]["Time"].GetArray()) {
-            std::string time = timeItem.GetString();
-            mHttp.get ("datapoint.metoffice.gov.uk",
-                       "public/data/layer/wxobs/" + layerName + "/" + imageFormat + "?TIME=" + time + "Z&" + key);
-            printf ("%ds\n", mHttp.getContentSize());
-            cPng png (mHttp.getContent(), mHttp.getContentSize());
-            if (png.readHeader()) {
-              auto picBuf = png.decodeBody();
-              if (picBuf) {
-                auto rgbaBuf = (uint32_t*)picBuf;
-                for (int i = 0; i < png.getWidth() * png.getHeight(); i++)
-                  rgbaBuf[i] = (rgbaBuf[i] & 0xFF00FF00) | ((rgbaBuf[i] & 0x000000FF) << 16) | ((rgbaBuf[i] & 0x00FF0000) >> 16);
-                picWidget->setPic (picBuf, png.getWidth(), png.getHeight(), 4);
-                }
+          for (auto& item : layer["Service"]["Times"]["Time"].GetArray()) {
+            std::string time = item.GetString();
+            std::string net = "public/data/layer/wxobs/" + layerName + "/" + imageFormat + "?TIME=" + time + "Z&" + key;
+            for (int i = 0; i < time.size(); i++)
+              if (time[i] == 'T')
+                time[i] = ' ';
+              else if (time[i] == ':')
+                time[i] = '-';
+            std::string filename = "c:/metOffice/wxobs/" + layerName + "/" + time + ".png";
+
+            FILE* file = fopen (filename.c_str(), "rb");
+            if (file)
+              fclose (file);
+            else {
+              //{{{  load from net
+              mHttp.get ("datapoint.metoffice.gov.uk", net);
+
+              printf ("saving %s %d\n", filename.c_str(), mHttp.getContentSize());
+
+              FILE* file = fopen (filename.c_str(), "wb");
+              fwrite (mHttp.getContent(), 1, (unsigned long)mHttp.getContentSize(), file);
+              fclose (file);
+
+              mHttp.freeContent();
               }
-            mHttp.freeContent();
+              //}}}
+            mFileList.push_back (filename);
+            showPicFileMap (filename);
             }
-          //}
-        }
-      }
-    }
-  //}}}
-  //{{{
-  void show (std::string fileName) {
-
-    int picvalue;
-    bool picchanged;
-    auto picWidget = new cPicWidget (mRoot->getWidth(),mRoot->getHeight(), 1, picvalue, picchanged);
-    mRoot->addTopLeft (picWidget);
-
-    HANDLE mFileHandle = CreateFileA (fileName.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    int mFileSize = (int)GetFileSize (mFileHandle, NULL);
-
-    uint8_t* mBuffer = (uint8_t*)MapViewOfFile (CreateFileMapping (mFileHandle, NULL, PAGE_READONLY, 0, 0, NULL), FILE_MAP_READ, 0, 0, 0);
-
-    cPng png (mBuffer, mFileSize);
-    if (png.readHeader()) {
-      auto picBuf = png.decodeBody();
-      printf ("w:%d h:%d dep:%d format:%d comp:%d pixSiz:%d bpp:%d erro:%d\n",
-              png.getWidth(), png.getHeight(), png.getBitDepth(),png. getFormat(),
-              png.getComponents(), png.getPixelSize(), png.getBpp(), png.getError());
-
-      if (picBuf) {
-        auto rgbaBuf = (uint32_t*)picBuf;
-        for (int i = 0; i < png.getWidth() * png.getHeight(); i++)
-          rgbaBuf[i] = (rgbaBuf[i] & 0xFF00FF00) | ((rgbaBuf[i] & 0x000000FF) << 16) | ((rgbaBuf[i] & 0x00FF0000) >> 16);
-        picWidget->setPic (picBuf, png.getWidth(), png.getHeight(), 4);
+          }
         }
       }
 
-    UnmapViewOfFile (mBuffer);
-    CloseHandle (mFileHandle);
+    mHttp.freeContent();
     }
   //}}}
   //{{{  vars
@@ -308,6 +387,6 @@ int main (int argc, char* argv[]) {
   startTimer();
   cMp3Window mp3Window;
   //mp3Window.run (L"mp3window", 800, 480, argv[1] ? std::string(argv[1]) : std::string());
-  mp3Window.run (L"mp3window", 500+4, 500+34, argv[1] ? std::string(argv[1]) : std::string());
+  mp3Window.run (L"mp3window", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}
