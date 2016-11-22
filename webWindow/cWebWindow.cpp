@@ -15,9 +15,7 @@
 #include "../../shared/net/cHttp.h"
 
 #include "../../shared/widgets/cRootContainer.h"
-#include "../../shared/widgets/cPngWidget.h"
-#include "../../shared/widgets/cGifWidget.h"
-#include "../../shared/widgets/cFilePicWidget.h"
+#include "../../shared/widgets/cMultiPicWidget.h"
 
 #include "../../shared/rapidjson/document.h"
 //}}}
@@ -174,8 +172,7 @@ public:
     setChangeRate (1);
 
     mRoot = new cRootContainer (width, height);
-    mPicWidget = new cFilePicWidget();
-    mRoot->addTopLeft (mPicWidget);
+    mRoot->addTopLeft (mPicWidget = new cMultiPicWidget());
 
     if (fileName.empty())
       metApp();
