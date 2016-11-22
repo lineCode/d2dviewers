@@ -159,8 +159,8 @@ public:
     };
   //}}}
   //{{{  iDraw
-  uint16_t getLcdWidthPix() { return mRoot->getWidthPix(); }
-  uint16_t getLcdHeightPix() { return mRoot->getHeightPix(); }
+  uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
+  uint16_t getLcdHeightPix() { return mRoot->getPixHeight(); }
 
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
@@ -384,10 +384,10 @@ private:
   //}}}
   //{{{
   void initMp3Menu() {
-    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, mRoot->getWidth(), mRoot->getHeight() - 9));
-    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
-    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, mRoot->getWidth(), 3));
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, mRoot->getHeight() - 9));
+    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
+    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
+    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
 
     mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
     }

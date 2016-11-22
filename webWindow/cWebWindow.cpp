@@ -95,8 +95,8 @@ std::vector<std::string> mFileList;
 class cMp3Window : public iDraw, public cD2dWindow {
 public:
   //{{{  iDraw
-  uint16_t getLcdWidthPix() { return mRoot->getWidthPix(); }
-  uint16_t getLcdHeightPix() { return mRoot->getHeightPix(); }
+  uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
+  uint16_t getLcdHeightPix() { return mRoot->getPixHeight(); }
 
   //{{{
   void pixel (uint32_t colour, int16_t x, int16_t y) {
@@ -174,8 +174,7 @@ public:
     setChangeRate (1);
 
     mRoot = new cRootContainer (width, height);
-
-    mPicWidget = new cFilePicWidget (mRoot->getWidth(), mRoot->getHeight());
+    mPicWidget = new cFilePicWidget();
     mRoot->addTopLeft (mPicWidget);
 
     if (fileName.empty())
@@ -214,7 +213,7 @@ protected:
   void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
+  void onDraw (ID2D1DeviceContext* dc) { if (mRoot) mRoot->render (this); }
 
 private:
   //{{{
