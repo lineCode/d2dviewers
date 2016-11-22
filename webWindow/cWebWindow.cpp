@@ -24,7 +24,7 @@
 #include "../../shared/rapidjson/document.h"
 //}}}
 //{{{  heap debug
-#define MAX_HEAP_DEBUG 1000
+#define MAX_HEAP_DEBUG 2000
 //{{{
 class cHeapAlloc {
 public:
@@ -193,6 +193,7 @@ public:
       mRoot->addTopLeft (mPicWidget);
       mPicWidget->setFileName (fileName);
       }
+
     messagePump();
     };
   //}}}
@@ -266,8 +267,8 @@ private:
       mHttp.freeContent();
       //}}}
 
-      for (auto& element : layers["Layers"]["Layer"].GetArray()) {
-        auto layer = element.GetObject();
+      for (auto& item : layers["Layers"]["Layer"].GetArray()) {
+        auto layer = item.GetObject();
         std::string displayName = layer["@displayName"].GetString();
         if (displayName == "Rainfall") { //"SatelliteIR" "SatelliteVis" "Rainfall"  "Lightning"
           std::string layerName = layer["Service"]["LayerName"].GetString();
@@ -285,10 +286,8 @@ private:
 
             struct stat st;
             if (stat (fileName.c_str(), &st)) {
-              //{{{  load from net
+              //{{{  no file, load from net
               mHttp.get ("datapoint.metoffice.gov.uk", netPath);
-
-              printf ("saving %s %d\n", fileName.c_str(), mHttp.getContentSize());
 
               FILE* file = fopen (fileName.c_str(), "wb");
               fwrite (mHttp.getContent(), 1, (unsigned long)mHttp.getContentSize(), file);
