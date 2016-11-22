@@ -286,7 +286,7 @@ protected:
   void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { mRoot->render (this); }
+  void onDraw (ID2D1DeviceContext* dc) { if (mRoot) mRoot->render (this); }
 
 private:
   //{{{
@@ -384,12 +384,12 @@ private:
   //}}}
   //{{{
   void initMp3Menu() {
-    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, mRoot->getHeight() - 9));
-    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
-    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
-    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 3));
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, -6));
+    mRoot->add (new cWaveCentreWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 2));
+    mRoot->add (new cWaveWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 2));
+    mRoot->add (new cWaveLensWidget (mWave, mPlayFrame, mLoadedFrame, mMaxFrame, mWaveChanged, 0, 2));
 
-    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, mRoot->getHeight()-6));
+    mRoot->addTopRight (new cValueBox (mVolume, mVolumeChanged, COL_YELLOW, 1, -6));
     }
   //}}}
   //{{{
