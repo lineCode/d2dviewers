@@ -374,7 +374,8 @@ private:
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
           listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
         else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
-          mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
+          if ((findFileData.cFileName[0] != '.') && (findFileData.cFileName[0] != '..'))
+            mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
         } while (FindNextFileA (file, &findFileData));
 
       FindClose (file);

@@ -17,9 +17,7 @@
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cPngWidget.h"
 #include "../../shared/widgets/cGifWidget.h"
-#include "../../shared/widgets/cTextBox.h"
-
-#include "../../shared/decoders/cGif.h"
+#include "../../shared/widgets/cFilePicWidget.h"
 
 #include "../../shared/rapidjson/document.h"
 //}}}
@@ -177,22 +175,17 @@ public:
 
     mRoot = new cRootContainer (width, height);
 
-    if (fileName.empty()) {
-      mPicWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
-      mRoot->addTopLeft (mPicWidget);
+    mPicWidget = new cFilePicWidget (mRoot->getWidth(), mRoot->getHeight());
+    mRoot->addTopLeft (mPicWidget);
+
+    if (fileName.empty())
       metApp();
-      }
     else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
-      mPicWidget = new cPngWidget (mRoot->getWidth(), mRoot->getHeight());
-      mRoot->addTopLeft (mPicWidget);
-      listDirectory (std::string(), fileName, "*.png");
+      listDirectory (std::string(), fileName, "*.png;*.gif;*.jpg;*.bmp");
       mPicWidget->setFileName (mFileList[0]);
       }
-    else {
-      mPicWidget = new cGifWidget (mRoot->getWidth(), mRoot->getHeight());
-      mRoot->addTopLeft (mPicWidget);
+    else
       mPicWidget->setFileName (fileName);
-      }
 
     messagePump();
     };
@@ -237,7 +230,7 @@ private:
       do {
         if ((findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (findFileData.cFileName[0] != '.'))
           listDirectory (mFullDirName, findFileData.cFileName, pathMatchName);
-        else if (PathMatchSpecA (findFileData.cFileName, pathMatchName))
+        else if (!PathMatchSpecExA (findFileData.cFileName, pathMatchName, PMSF_MULTIPLE))
           mFileList.push_back (mFullDirName + "/" + findFileData.cFileName);
         } while (FindNextFileA (file, &findFileData));
 

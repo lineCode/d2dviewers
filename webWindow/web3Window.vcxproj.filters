@@ -24,6 +24,9 @@
     <ClInclude Include="..\..\shared\widgets\iDraw.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\shared\decoders\cFilePic.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="headers">
