@@ -175,7 +175,8 @@ public:
     mRoot->addTopLeft (mPicWidget = new cDecodePicWidget());
 
     if (fileName.empty())
-      metApp();
+      //shares();
+      metObs();
     else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
       listDirectory (std::string(), fileName, "*.png;*.gif;*.jpg;*.bmp");
       mPicWidget->setFileName (mFileList[0]);
@@ -235,7 +236,7 @@ private:
     }
   //}}}
   //{{{
-  void metApp() {
+  void metObs() {
 
     // get json capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
@@ -294,6 +295,56 @@ private:
       }
 
     mHttp.freeContent();
+    }
+  //}}}
+
+  //{{{
+  void share (std::string symbol, bool full = false) {
+    mHttp.get("finance.google.com", "finance/info?client=ig&q="+symbol);
+    rapidjson::Document prices;
+    if (prices.Parse ((const char*)(mHttp.getContent()+6), mHttp.getContentSize()-8).HasParseError()) {
+      debug ("prices load error " + dec(prices.GetParseError()));
+      return;
+      }
+    mHttp.freeContent();
+
+    printf ("%s %s %s %s\n",
+            prices["t"].GetString(), prices["e"].GetString(), prices["l_fix"].GetString(), prices["ltt"].GetString());
+
+    if (full) {
+      printf ("id      :%s\n", prices["id"].GetString());
+      printf ("t       :%s\n", prices["t"].GetString());
+      printf ("e       :%s\n", prices["e"].GetString());
+      printf ("l       :%s\n", prices["l"].GetString());
+      printf ("lfix    :%s\n", prices["l_fix"].GetString());
+      printf ("lcur    :%s\n", prices["l_cur"].GetString());
+      printf ("ltt     :%s\n", prices["ltt"].GetString());
+      printf ("lt      :%s\n", prices["lt"].GetString());
+      printf ("lt_dts  :%s\n", prices["lt_dts"].GetString());
+      printf ("c       :%s\n", prices["c"].GetString());
+      printf ("c_fix   :%s\n", prices["c_fix"].GetString());
+      printf ("cp      :%s\n", prices["cp"].GetString());
+      printf ("cp_fix  :%s\n", prices["cp_fix"].GetString());
+      printf ("ccol    :%s\n", prices["ccol"].GetString());
+      printf ("pcls_fix:%s\n", prices["pcls_fix"].GetString());
+      }
+    }
+  //}}}
+  //{{{
+  void shares() {
+    share ("VOD");
+    share ("SSE");
+    share ("BARC");
+    share ("CPG");
+    share ("AV.");
+    share ("NG.");
+    share ("SBRY");
+    share ("MRW");
+    share ("HSBA");
+    share ("CNA");
+    share ("GSK");
+    share ("RBS");
+    share ("RMG");
     }
   //}}}
   //{{{  vars
