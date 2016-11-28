@@ -34,7 +34,9 @@
 #include "../../shared/decoders/cMp3.h"
 //}}}
 
-#define MAX_HEAP_DEBUG 1000
+//{{{  eap debug
+#define MAX_HEAP_DEBUG 2000
+
 //{{{
 class cHeapAlloc {
 public:
@@ -43,11 +45,13 @@ public:
   uint8_t mHeap = 0;
   };
 //}}}
+
 cHeapAlloc mHeapDebugAllocs [MAX_HEAP_DEBUG];
 const char* kDebugHeapLabels[3] = { "big", "sml", "new" };
 size_t mHeapDebugAllocated[3] = { 0,0,0 };
 size_t mHeapDebugHighwater[3] = { 0, 0, 0 };
 uint32_t mHeapDebugOutAllocs[3] = { 0, 0, 0 };
+
 //{{{
 void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
 
@@ -63,7 +67,7 @@ void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
       break;
       }
     if (i >= MAX_HEAP_DEBUG-1)
-      printf ("new cockup\n");
+      printf ("debugMAlloc::not enough heapDebugAllocs\n");
     }
 
   if (mHeapDebugAllocated[heap] > mHeapDebugHighwater[heap]) {
@@ -87,17 +91,19 @@ void debugFree (void* ptr) {
         break;
         }
       if (i >= MAX_HEAP_DEBUG-1)
-        printf ("delete cockup\n");
+        printf ("debugFree::ptr not found %llx\n", (int64_t)ptr);
       }
     }
 
   free (ptr);
   }
 //}}}
+
 void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
+//}}}
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
@@ -293,14 +299,17 @@ private:
   void hlsLoaderThread() {
 
     CoInitialize (NULL);
+    cHttp http;
 
     mHls->mChanChanged = true;
     while (true) {
       if (mHls->mChanChanged)
-        mHls->setChan (mHls->mHlsChan, mHls->mHlsBitrate);
+        mHls->setChan (http, mHls->mHlsChan, mHls->mHlsBitrate);
 
-      if (!mHls->loadAtPlayFrame())
+      if (!mHls->loadAtPlayFrame (http))
         Sleep (1000);
+
+      mHls->loadPicAtPlayFrame (http);
 
       WaitForSingleObject (mHlsSem, 20 * 1000);
       }
