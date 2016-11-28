@@ -16,7 +16,7 @@
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
-#include "../../shared/net/cHttp.h"
+#include "../../shared/net/cHttpEsp8266.h"
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
@@ -34,7 +34,7 @@
 #include "../../shared/decoders/cMp3.h"
 //}}}
 
-//{{{  eap debug
+//{{{  debugHeap
 #define MAX_HEAP_DEBUG 2000
 
 //{{{
