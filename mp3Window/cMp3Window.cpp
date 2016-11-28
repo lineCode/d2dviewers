@@ -16,7 +16,7 @@
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
-#include "../../shared/net/cHttpEsp8266.h"
+#include "../../shared/net/cHttp.h"
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
@@ -306,10 +306,9 @@ private:
       if (mHls->mChanChanged)
         mHls->setChan (http, mHls->mHlsChan, mHls->mHlsBitrate);
 
+      mHls->loadPicAtPlayFrame (http);
       if (!mHls->loadAtPlayFrame (http))
         Sleep (1000);
-
-      mHls->loadPicAtPlayFrame (http);
 
       WaitForSingleObject (mHlsSem, 20 * 1000);
       }
