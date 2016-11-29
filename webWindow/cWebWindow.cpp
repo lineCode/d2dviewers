@@ -20,8 +20,9 @@
 
 #include "../../shared/rapidjson/document.h"
 //}}}
-//{{{  heap debug
+//{{{  debugHeap
 #define MAX_HEAP_DEBUG 2000
+
 //{{{
 class cHeapAlloc {
 public:
@@ -30,11 +31,13 @@ public:
   uint8_t mHeap = 0;
   };
 //}}}
+
 cHeapAlloc mHeapDebugAllocs [MAX_HEAP_DEBUG];
 const char* kDebugHeapLabels[3] = { "big", "sml", "new" };
 size_t mHeapDebugAllocated[3] = { 0,0,0 };
 size_t mHeapDebugHighwater[3] = { 0, 0, 0 };
 uint32_t mHeapDebugOutAllocs[3] = { 0, 0, 0 };
+
 //{{{
 void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
 
@@ -50,7 +53,7 @@ void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
       break;
       }
     if (i >= MAX_HEAP_DEBUG-1)
-      printf ("new cockup\n");
+      printf ("debugMAlloc::not enough heapDebugAllocs\n");
     }
 
   if (mHeapDebugAllocated[heap] > mHeapDebugHighwater[heap]) {
@@ -74,13 +77,14 @@ void debugFree (void* ptr) {
         break;
         }
       if (i >= MAX_HEAP_DEBUG-1)
-        printf ("delete cockup\n");
+        printf ("debugFree::ptr not found %llx\n", (int64_t)ptr);
       }
     }
 
   free (ptr);
   }
 //}}}
+
 void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
@@ -171,8 +175,10 @@ public:
     mRoot = new cRootContainer (width, height);
     mRoot->addTopLeft (mPicWidget = new cDecodePicWidget());
 
-    if (fileName.empty())
-      shares();
+    if (fileName.empty()) {
+      mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, 0));
+      std::thread ([=]() { sharesThread(); } ).detach();
+      }
       //metObs();
     else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
       listDirectory (std::string(), fileName, "*.png;*.gif;*.jpg;*.bmp");
@@ -185,8 +191,9 @@ public:
     };
   //}}}
 
-  std::vector<std::string> mShares =
-  { "VOD", "SSE", "BARC", "CPG", "AV.", "NG.", "SBRY","MRW","HSBA","CNA","GSK","RBS","RMG" };
+  const std::vector<std::string> kShares =
+    { "VOD", "SSE", "BARC", "CPG", "AV.", "NG.", "SBRY","MRW","HSBA","CNA","GSK","RBS","RMG" };
+  const std::vector<std::string> kItems = { "t", "e", "l_fix", "ltt" };
 
 protected:
   //{{{
@@ -302,57 +309,55 @@ private:
   std::string share (std::string symbol, bool full = false) {
 
     mHttp.get("finance.google.com", "finance/info?client=ig&q="+symbol);
+
     rapidjson::Document prices;
-    if (prices.Parse ((const char*)(mHttp.getContent()+6), mHttp.getContentSize()-8).HasParseError()) {
+    auto parseError = prices.Parse ((const char*)(mHttp.getContent()+6), mHttp.getContentSize()-8).HasParseError();
+    mHttp.freeContent();
+
+    if (parseError) {
       debug ("prices load error " + dec(prices.GetParseError()));
       return "";
       }
-    mHttp.freeContent();
 
-    std::string ret = prices["t"].GetString();
-    ret += " ";
-    ret += prices["e"].GetString();
-    ret += " ";
-    ret += prices["l_fix"].GetString();
-    ret += " ";
-    ret += prices["ltt"].GetString();
-
-    if (full) {
-      printf ("id      :%s\n", prices["id"].GetString());
-      printf ("t       :%s\n", prices["t"].GetString());
-      printf ("e       :%s\n", prices["e"].GetString());
-      printf ("l       :%s\n", prices["l"].GetString());
-      printf ("lfix    :%s\n", prices["l_fix"].GetString());
-      printf ("lcur    :%s\n", prices["l_cur"].GetString());
-      printf ("ltt     :%s\n", prices["ltt"].GetString());
-      printf ("lt      :%s\n", prices["lt"].GetString());
-      printf ("lt_dts  :%s\n", prices["lt_dts"].GetString());
-      printf ("c       :%s\n", prices["c"].GetString());
-      printf ("c_fix   :%s\n", prices["c_fix"].GetString());
-      printf ("cp      :%s\n", prices["cp"].GetString());
-      printf ("cp_fix  :%s\n", prices["cp_fix"].GetString());
-      printf ("ccol    :%s\n", prices["ccol"].GetString());
-      printf ("pcls_fix:%s\n", prices["pcls_fix"].GetString());
+    std::string str;
+    for (auto item : kItems) {
+      str += prices[item.c_str()].GetString();
+      str += " ";
       }
 
-    return ret;
+    //printf ("id      :%s\n", prices["id"].GetString());
+    //printf ("t       :%s\n", prices["t"].GetString());
+    //printf ("e       :%s\n", prices["e"].GetString());
+    //printf ("l       :%s\n", prices["l"].GetString());
+    //printf ("lfix    :%s\n", prices["l_fix"].GetString());
+    //printf ("lcur    :%s\n", prices["l_cur"].GetString());
+    //printf ("ltt     :%s\n", prices["ltt"].GetString());
+    //printf ("lt      :%s\n", prices["lt"].GetString());
+    //printf ("lt_dts  :%s\n", prices["lt_dts"].GetString());
+    //printf ("c       :%s\n", prices["c"].GetString());
+    //printf ("c_fix   :%s\n", prices["c_fix"].GetString());
+    //printf ("cp      :%s\n", prices["cp"].GetString());
+    //printf ("cp_fix  :%s\n", prices["cp_fix"].GetString());
+    //printf ("ccol    :%s\n", prices["ccol"].GetString());
+    //printf ("pcls_fix:%s\n", prices["pcls_fix"].GetString());
+
+    return str;
     }
   //}}}
   //{{{
-  void shares() {
-    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, 0));
-
-    for (auto ticker : mShares)
+  void sharesThread() {
+    for (auto ticker : kShares)
       mFileList.push_back (ticker);
 
     while (true) {
       mFileIndex = 0;
-      for (auto ticker : mShares)
+      for (auto ticker : kShares)
         mFileList[mFileIndex++] = share (ticker);
-      Sleep (2000);
+      Sleep (5000);
       }
     }
   //}}}
+
   //{{{  vars
   cRootContainer* mRoot = nullptr;
 
