@@ -16,6 +16,7 @@
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cDecodePicWidget.h"
+#include "../../shared/widgets/cListWidget.h"
 
 #include "../../shared/rapidjson/document.h"
 //}}}
@@ -85,10 +86,6 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
-
-int mIndex = 0;
-cPicWidget* mPicWidget;
-std::vector<std::string> mFileList;
 
 class cMp3Window : public iDraw, public cD2dWindow {
 public:
@@ -175,8 +172,8 @@ public:
     mRoot->addTopLeft (mPicWidget = new cDecodePicWidget());
 
     if (fileName.empty())
-      //shares();
-      metObs();
+      shares();
+      //metObs();
     else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
       listDirectory (std::string(), fileName, "*.png;*.gif;*.jpg;*.bmp");
       mPicWidget->setFileName (mFileList[0]);
@@ -187,6 +184,9 @@ public:
     messagePump();
     };
   //}}}
+
+  std::vector<std::string> mShares =
+  { "VOD", "SSE", "BARC", "CPG", "AV.", "NG.", "SBRY","MRW","HSBA","CNA","GSK","RBS","RMG" };
 
 protected:
   //{{{
@@ -200,8 +200,8 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x25: if (mIndex > 0) mIndex--;                  mPicWidget->setFileName (mFileList[mIndex]); break; // left arrow
-      case 0x27: if (mIndex < mFileList.size()-1) mIndex++; mPicWidget->setFileName (mFileList[mIndex]); break; // right arrow
+      case 0x25: if (mFileIndex > 0) mFileIndex--;                  mPicWidget->setFileName (mFileList[mFileIndex]); break; // left arrow
+      case 0x27: if (mFileIndex < mFileList.size()-1) mFileIndex++; mPicWidget->setFileName (mFileList[mFileIndex]); break; // right arrow
 
       default: debug ("key " + hex(key));
       }
@@ -299,17 +299,23 @@ private:
   //}}}
 
   //{{{
-  void share (std::string symbol, bool full = false) {
+  std::string share (std::string symbol, bool full = false) {
+
     mHttp.get("finance.google.com", "finance/info?client=ig&q="+symbol);
     rapidjson::Document prices;
     if (prices.Parse ((const char*)(mHttp.getContent()+6), mHttp.getContentSize()-8).HasParseError()) {
       debug ("prices load error " + dec(prices.GetParseError()));
-      return;
+      return "";
       }
     mHttp.freeContent();
 
-    printf ("%s %s %s %s\n",
-            prices["t"].GetString(), prices["e"].GetString(), prices["l_fix"].GetString(), prices["ltt"].GetString());
+    std::string ret = prices["t"].GetString();
+    ret += " ";
+    ret += prices["e"].GetString();
+    ret += " ";
+    ret += prices["l_fix"].GetString();
+    ret += " ";
+    ret += prices["ltt"].GetString();
 
     if (full) {
       printf ("id      :%s\n", prices["id"].GetString());
@@ -328,23 +334,23 @@ private:
       printf ("ccol    :%s\n", prices["ccol"].GetString());
       printf ("pcls_fix:%s\n", prices["pcls_fix"].GetString());
       }
+
+    return ret;
     }
   //}}}
   //{{{
   void shares() {
-    share ("VOD");
-    share ("SSE");
-    share ("BARC");
-    share ("CPG");
-    share ("AV.");
-    share ("NG.");
-    share ("SBRY");
-    share ("MRW");
-    share ("HSBA");
-    share ("CNA");
-    share ("GSK");
-    share ("RBS");
-    share ("RMG");
+    mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, 0));
+
+    for (auto ticker : mShares)
+      mFileList.push_back (ticker);
+
+    while (true) {
+      mFileIndex = 0;
+      for (auto ticker : mShares)
+        mFileList[mFileIndex++] = share (ticker);
+      Sleep (2000);
+      }
     }
   //}}}
   //{{{  vars
@@ -353,6 +359,12 @@ private:
   // d2dwindow
   ID2D1SolidColorBrush* mBrush;
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
+
+  cPicWidget* mPicWidget;
+  int mFileIndex = 0;
+  bool mFileIndexChanged = false;
+
+  std::vector <std::string> mFileList;
 
   cHttp mHttp;
   //}}}
