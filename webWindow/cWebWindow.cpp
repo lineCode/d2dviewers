@@ -245,23 +245,25 @@ private:
   //{{{
   void metObs() {
 
-    // get json capabilities
+    cHttp http;
+
+    / get json capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
-    mHttp.get ("datapoint.metoffice.gov.uk", "public/data/layer/wxobs/all/json/capabilities?" + key);
+    http.get ("datapoint.metoffice.gov.uk", "public/data/layer/wxobs/all/json/capabilities?" + key);
 
     // save them
     FILE* file = fopen ("c:/metOffice/wxobs/capabilities.json", "wb");
-    fwrite (mHttp.getContent(), 1, (unsigned long)mHttp.getContentSize(), file);
+    fwrite (http.getContent(), 1, (unsigned long)http.getContentSize(), file);
     fclose (file);
 
-    if (mHttp.getContent()) {
+    if (http.getContent()) {
       //{{{  parse json capabilities
       rapidjson::Document layers;
-      if (layers.Parse ((const char*)mHttp.getContent(), mHttp.getContentSize()).HasParseError()) {
+      if (layers.Parse ((const char*)http.getContent(), http.getContentSize()).HasParseError()) {
         debug ("layers load error " + dec(layers.GetParseError()));
         return;
         }
-      mHttp.freeContent();
+      http.freeContent();
       //}}}
 
       for (auto& item : layers["Layers"]["Layer"].GetArray()) {
@@ -284,13 +286,13 @@ private:
             struct stat st;
             if (stat (fileName.c_str(), &st)) {
               //{{{  no file, load from net
-              mHttp.get ("datapoint.metoffice.gov.uk", netPath);
+              http.get ("datapoint.metoffice.gov.uk", netPath);
 
               FILE* file = fopen (fileName.c_str(), "wb");
-              fwrite (mHttp.getContent(), 1, (unsigned long)mHttp.getContentSize(), file);
+              fwrite (http.getContent(), 1, (unsigned long)http.getContentSize(), file);
               fclose (file);
 
-              mHttp.freeContent();
+              http.freeContent();
               }
               //}}}
 
@@ -301,18 +303,18 @@ private:
         }
       }
 
-    mHttp.freeContent();
+    http.freeContent();
     }
   //}}}
 
   //{{{
-  std::string share (std::string symbol, bool full = false) {
+  std::string share (cHttp& http, std::string symbol, bool full = false) {
 
-    mHttp.get("finance.google.com", "finance/info?client=ig&q="+symbol);
+    http.get("finance.google.com", "finance/info?client=ig&q="+symbol);
 
     rapidjson::Document prices;
-    auto parseError = prices.Parse ((const char*)(mHttp.getContent()+6), mHttp.getContentSize()-8).HasParseError();
-    mHttp.freeContent();
+    auto parseError = prices.Parse ((const char*)(http.getContent()+6), http.getContentSize()-8).HasParseError();
+    http.freeContent();
 
     if (parseError) {
       debug ("prices load error " + dec(prices.GetParseError()));
@@ -346,13 +348,16 @@ private:
   //}}}
   //{{{
   void sharesThread() {
+
+    cHttp http;
+
     for (auto ticker : kShares)
       mFileList.push_back (ticker);
 
     while (true) {
       mFileIndex = 0;
       for (auto ticker : kShares)
-        mFileList[mFileIndex++] = share (ticker);
+        mFileList[mFileIndex++] = share (http, ticker);
       Sleep (5000);
       }
     }
@@ -370,8 +375,6 @@ private:
   bool mFileIndexChanged = false;
 
   std::vector <std::string> mFileList;
-
-  cHttp mHttp;
   //}}}
   };
 
