@@ -247,7 +247,7 @@ private:
 
     cHttp http;
 
-    / get json capabilities
+    // get json capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
     http.get ("datapoint.metoffice.gov.uk", "public/data/layer/wxobs/all/json/capabilities?" + key);
 
