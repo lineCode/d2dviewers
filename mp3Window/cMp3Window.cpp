@@ -16,7 +16,7 @@
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
-//#include "../../shared/net/cWinSockHttp.h"
+#include "../../shared/net/cWinSockHttp.h"
 #include "../../shared/net/cWinEsp8266Http.h"
 
 #include "../../shared/widgets/cRootContainer.h"
@@ -301,8 +301,12 @@ private:
   void hlsLoaderThread() {
 
     CoInitialize (NULL);
+  #ifdef ESP8266
     cWinEsp8266Http http;
-    http.init();
+  #else
+    cWinSockHttp http;
+  #endif
+    http.initialise();
 
     mHls->mChanChanged = true;
     while (true) {

@@ -91,6 +91,7 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
+//#define ESP8266
 
 class cMp3Window : public iDraw, public cD2dWindow {
 public:
@@ -246,8 +247,12 @@ private:
   //{{{
   void metObs() {
 
-    //cWinSockHttp http;
+  #ifdef ESP8266
     cWinEsp8266Http http;
+  #else
+    cWinSockHttp http;
+  #endif
+    http.initialise();
 
     // get json capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
