@@ -12,7 +12,8 @@
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
-#include "../../shared/net/cHttp.h"
+#include "../../shared/net/cWinSockHttp.h"
+#include "../../shared/net/cWinEsp8266Http.h"
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cDecodePicWidget.h"
@@ -245,7 +246,8 @@ private:
   //{{{
   void metObs() {
 
-    cHttp http;
+    //cWinSockHttp http;
+    cWinEsp8266Http http;
 
     // get json capabilities
     std::string key = "key=bb26678b-81e2-497b-be31-f8d136a300c6";
@@ -349,7 +351,7 @@ private:
   //{{{
   void sharesThread() {
 
-    cHttp http;
+    cWinSockHttp http;
 
     for (auto ticker : kShares)
       mFileList.push_back (ticker);

@@ -16,7 +16,8 @@
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
-#include "../../shared/net/cHttp.h"
+//#include "../../shared/net/cWinSockHttp.h"
+#include "../../shared/net/cWinEsp8266Http.h"
 
 #include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cListWidget.h"
@@ -33,6 +34,7 @@
 #include "../../shared/hls/hls.h"
 #include "../../shared/decoders/cMp3.h"
 //}}}
+//#define ESP8266
 
 //{{{  debugHeap
 #define MAX_HEAP_DEBUG 2000
@@ -299,7 +301,8 @@ private:
   void hlsLoaderThread() {
 
     CoInitialize (NULL);
-    cHttp http;
+    cWinEsp8266Http http;
+    http.init();
 
     mHls->mChanChanged = true;
     while (true) {
