@@ -91,7 +91,7 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
-//#define ESP8266
+#define ESP8266
 
 class cMp3Window : public iDraw, public cD2dWindow {
 public:
@@ -356,7 +356,12 @@ private:
   //{{{
   void sharesThread() {
 
+  #ifdef ESP8266
+    cWinEsp8266Http http;
+  #else
     cWinSockHttp http;
+  #endif
+    http.initialise();
 
     for (auto ticker : kShares)
       mFileList.push_back (ticker);

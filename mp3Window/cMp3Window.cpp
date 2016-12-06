@@ -34,7 +34,7 @@
 #include "../../shared/hls/hls.h"
 #include "../../shared/decoders/cMp3.h"
 //}}}
-//#define ESP8266
+#define ESP8266
 
 //{{{  debugHeap
 #define MAX_HEAP_DEBUG 2000
