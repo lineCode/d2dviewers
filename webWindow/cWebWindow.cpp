@@ -91,9 +91,9 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
-#define ESP8266
+//#define ESP8266
 
-class cMp3Window : public iDraw, public cD2dWindow {
+class cWebWindow : public iDraw, public cD2dWindow {
 public:
   //{{{  iDraw
   uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
@@ -402,8 +402,8 @@ int main (int argc, char* argv[]) {
     //}}}
 
   startTimer();
-  cMp3Window mp3Window;
+  cWebWindow webWindow;
   //mp3Window.run (L"mp3window", 800, 480, argv[1] ? std::string(argv[1]) : std::string());
-  mp3Window.run (L"mp3window", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
+  webWindow.run (L"webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
   }
 //}}}

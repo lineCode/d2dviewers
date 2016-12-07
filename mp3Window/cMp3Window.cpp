@@ -34,8 +34,6 @@
 #include "../../shared/hls/hls.h"
 #include "../../shared/decoders/cMp3.h"
 //}}}
-#define ESP8266
-
 //{{{  debugHeap
 #define MAX_HEAP_DEBUG 2000
 
@@ -106,6 +104,7 @@ void operator delete (void* ptr) { debugFree (ptr); }
 void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
 void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
+//#define ESP8266
 
 class cMp3Window : public iDraw, public cAudio, public cD2dWindow {
 public:
