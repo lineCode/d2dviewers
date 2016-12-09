@@ -3,25 +3,10 @@
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="..\..\shared\libfaad\sbr_qmf.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_syntax.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_tf_grid.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\specrec.c">
       <Filter>libfaad</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\ssr.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ssr_fb.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ssr_ipqf.c">
       <Filter>libfaad</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\syntax.c">
@@ -43,12 +28,6 @@
       <Filter>libfaad</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\drc.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\drm_dec.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\error.c">
       <Filter>libfaad</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\filtbank.c">
@@ -96,28 +75,13 @@
     <ClCompile Include="..\..\shared\libfaad\rvlc.c">
       <Filter>libfaad</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_dct.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\libfaad\sbr_dec.c">
       <Filter>libfaad</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_e_nf.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_fbt.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_hfadj.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_hfgen.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_huff.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
     <ClCompile Include="cMp3Window.cpp" />
+    <ClCompile Include="..\..\shared\libfaad\sbr_sig.c">
+      <Filter>libfaad</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cD2dWindow.h">
