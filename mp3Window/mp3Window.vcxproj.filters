@@ -3,84 +3,57 @@
   <ItemGroup>
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="..\..\shared\libfaad\specrec.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ssr.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\syntax.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\tns.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\bits.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\cfft.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\common.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\decoder.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\drc.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\filtbank.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\hcr.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\huffman.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ic_predict.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\is.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\lt_predict.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\mdct.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\mp4.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ms.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\output.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\pns.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ps_dec.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\ps_syntax.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\pulse.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\rvlc.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\libfaad\sbr_dec.c">
-      <Filter>libfaad</Filter>
-    </ClCompile>
     <ClCompile Include="cMp3Window.cpp" />
-    <ClCompile Include="..\..\shared\libfaad\sbr_sig.c">
-      <Filter>libfaad</Filter>
+    <ClCompile Include="..\..\shared\teensy\aac\aacdec.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\bitstream.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\dequant.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\huffman.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\pns.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbr.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrfreq.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrhfadj.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrhfgen.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrhuff.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrmath.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrqmf.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\sbrside.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\stproc.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\tns.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\dct.c">
+      <Filter>teensy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensy\aac\tables.c">
+      <Filter>teensy</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -147,8 +120,8 @@
       <UniqueIdentifier>{7234d2f0-7b58-4dac-9284-ec8e3256c524}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
-    <Filter Include="libfaad">
-      <UniqueIdentifier>{a342bef6-2f00-4a8d-8c6c-8aa6683511e4}</UniqueIdentifier>
+    <Filter Include="teensy">
+      <UniqueIdentifier>{497e810b-804d-4187-806e-2e40ce8d6217}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
