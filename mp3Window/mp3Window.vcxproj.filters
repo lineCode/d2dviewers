@@ -4,46 +4,40 @@
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cMp3Window.cpp" />
-    <ClCompile Include="..\..\shared\teensyAac\sbrmath.c">
+    <ClCompile Include="..\..\shared\teensyAac\dct.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrqmf.c">
+    <ClCompile Include="..\..\shared\teensyAac\huffman.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrside.c">
+    <ClCompile Include="..\..\shared\teensyAac\other.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\tables.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbr.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\aacdec.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrfreq.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\bitstream.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrhfadj.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\dct.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrhfgen.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\huffman.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrhuff.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbr.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrmath.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrfreq.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrqmf.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrhfadj.c">
+    <ClCompile Include="..\..\shared\teensyAac\sbrside.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrhfgen.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbrhuff.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\other.c">
+    <ClCompile Include="..\..\shared\teensyAac\cAacDecoder.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
   </ItemGroup>
