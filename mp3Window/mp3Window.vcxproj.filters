@@ -10,9 +10,6 @@
     <ClCompile Include="..\..\shared\teensyAac\huffman.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\sbr.cpp">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\sbrfreq.cpp">
       <Filter>teensyAac</Filter>
     </ClCompile>
