@@ -13,13 +13,7 @@
     <ClCompile Include="..\..\shared\teensyAac\sbrside.c">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\stproc.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\tables.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\tns.c">
       <Filter>teensyAac</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\aacdec.c">
@@ -31,13 +25,7 @@
     <ClCompile Include="..\..\shared\teensyAac\dct.c">
       <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\dequant.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\huffman.c">
-      <Filter>teensyAac</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\shared\teensyAac\pns.c">
       <Filter>teensyAac</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\sbr.c">
@@ -53,6 +41,9 @@
       <Filter>teensyAac</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\sbrhuff.c">
+      <Filter>teensyAac</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensyAac\other.c">
       <Filter>teensyAac</Filter>
     </ClCompile>
   </ItemGroup>
