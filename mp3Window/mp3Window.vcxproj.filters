@@ -4,56 +4,56 @@
     <ClCompile Include="..\common\cD2dWindow.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="cMp3Window.cpp" />
-    <ClCompile Include="..\..\shared\teensy\aac\aacdec.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrmath.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\bitstream.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrqmf.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\dequant.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrside.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\huffman.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\stproc.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\pns.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\tables.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbr.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\tns.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrfreq.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\aacdec.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrhfadj.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\bitstream.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrhfgen.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\dct.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrhuff.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\dequant.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrmath.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\huffman.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrqmf.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\pns.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\sbrside.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbr.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\stproc.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrfreq.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\tns.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrhfadj.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\dct.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrhfgen.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\teensy\aac\tables.c">
-      <Filter>teensy</Filter>
+    <ClCompile Include="..\..\shared\teensyAac\sbrhuff.c">
+      <Filter>teensyAac</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -120,7 +120,7 @@
       <UniqueIdentifier>{7234d2f0-7b58-4dac-9284-ec8e3256c524}</UniqueIdentifier>
       <Extensions>.h</Extensions>
     </Filter>
-    <Filter Include="teensy">
+    <Filter Include="teensyAac">
       <UniqueIdentifier>{497e810b-804d-4187-806e-2e40ce8d6217}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
