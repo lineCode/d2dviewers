@@ -148,7 +148,7 @@ public:
       }
     }
   //}}}
-  void copy (uint8_t* src, int16_t srcx, int16_t srcy, uint16_t srcWidth, int16_t srcHeight,
+  void copy (uint8_t* src, int16_t srcx, int16_t srcy, uint16_t srcWidth, uint16_t srcHeight,
              int16_t dstx, int16_t dsty, uint16_t dstWidth, uint16_t dstHeight) {};
 
   //{{{
