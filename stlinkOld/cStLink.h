@@ -138,8 +138,9 @@ private:
   unsigned int is_core_halted();
 
   int cStLink::submit_wait (struct libusb_transfer* trans);
-  int cStLink::sendRecv (int terminate, unsigned char* txbuf, int txsize, unsigned char* rxbuf, int rxsize);
-  int cStLink::sendOnly (int terminate, unsigned char* txbuf, int txsize);
+  int cStLink::sendRecv (int txsize, int rxsize);
+  int cStLink::sendOnly (int txsize);
+  int cStLink::sendOnlyData (int txsize);
   void cStLink::print_data();
   int cStLink::load_device_params();
 

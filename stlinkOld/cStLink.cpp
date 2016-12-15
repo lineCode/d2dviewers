@@ -321,19 +321,16 @@ int cStLink::open_usb() {
   reset();
   load_device_params();
   getVersion();
+  return 1;
   }
 //}}}
+
 //{{{
 void cStLink::getVersion() {
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
-  uint32_t rep_len = 6;
   int i = 0;
-  cmd[i++] = STLINK_GET_VERSION;
-
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_GET_VERSION;
+  ssize_t size = sendRecv (cmd_len, 6);
   if (size == -1) {
     printf("[!] send_recv\n");
     }
@@ -348,35 +345,29 @@ void cStLink::getVersion() {
   // b0 b1                       || b2 b3  | b4 b5
   // 4b        | 6b     | 6b     || 2B     | 2B
   // stlink_v  | jtag_v | swim_v || st_vid | stlink_pid
-  version.stlink_v = (b0 & 0xf0) >> 4;
-  version.jtag_v = ((b0 & 0x0f) << 2) | ((b1 & 0xc0) >> 6);
-  version.swim_v = b1 & 0x3f;
-  version.st_vid = (b3 << 8) | b2;
+  version.stlink_v =   (b0 & 0xf0) >> 4;
+  version.jtag_v =    ((b0 & 0x0f) << 2) | ((b1 & 0xc0) >> 6);
+  version.swim_v =      b1 & 0x3f;
+  version.st_vid =     (b3 << 8) | b2;
   version.stlink_pid = (b5 << 8) | b4;
 
-  printf ("stLink vid:pid 0x%04x:0x%04x stLink version:%5d jtag version:%d\n",
+  printf ("StLink vid:pid 0x%04x:0x%04x version:%d jtag version:%d\n",
           version.st_vid, version.stlink_pid, version.stlink_v, version.jtag_v);
   }
 //}}}
-
 //{{{
 uint32_t cStLink::get_core_id() {
 
-  unsigned char* const cmd  = c_buf;
-  unsigned char* const data = q_buf;
-  ssize_t size;
-  int rep_len = 4;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_READCOREID;
-
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_READCOREID;
+  ssize_t size = sendRecv (cmd_len, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
     }
 
-  core_id = read_uint32(data, 0);
+  core_id = read_uint32(q_buf, 0);
 
   printf ("core_id = 0x%08x\n", core_id);
 
@@ -402,19 +393,46 @@ void cStLink::get_cpu_id (cortex_m3_cpuid_t *cpuid) {
   return;
 }
   //}}}
+//{{{
+void cStLink::getStatus() {
+
+  int i = 0;
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_GETSTATUS;
+
+  ssize_t size = sendRecv (cmd_len, 2);
+  if (size == -1) {
+    printf("[!] send_recv\n");
+    return;
+    }
+
+  if (q_len <= 0)
+     return;
+
+  switch (q_buf[0]) {
+    case STLINK_CORE_RUNNING:
+      core_stat = STLINK_CORE_RUNNING;
+      printf ("status: running\n");
+      return;
+    case STLINK_CORE_HALTED:
+      core_stat = STLINK_CORE_HALTED;
+      printf ("status: halted\n");
+      return;
+    default:
+      core_stat = STLINK_CORE_STAT_UNKNOWN;
+      printf ("status: unknown\n");
+    }
+  }
+//}}}
 
 //{{{
 void cStLink::reset() {
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd = c_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_RESETSYS;
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_RESETSYS;
 
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -424,16 +442,12 @@ void cStLink::reset() {
 //{{{
 void cStLink::jtag_reset (int value) {
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd = c_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_JTAG_DRIVE_NRST;
-  cmd[i++] = (value)?0:1;
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_JTAG_DRIVE_NRST;
+  c_buf[i++] = (value)?0:1;
 
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -444,13 +458,9 @@ void cStLink::jtag_reset (int value) {
 //{{{
 int cStLink::current_mode (int report) {
 
-  unsigned char* const cmd  = c_buf;
-  unsigned char* const data = q_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_GET_CURRENT_MODE;
-  size = sendRecv (1, cmd,  cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_GET_CURRENT_MODE;
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
       printf("[!] send_recv\n");
       return -1;
@@ -486,10 +496,10 @@ void cStLink::enter_swd_mode() {
   ssize_t size;
   const int rep_len = 0;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_ENTER;
-  cmd[i++] = STLINK_DEBUG_ENTER_SWD;
-  size = sendOnly (1, cmd, cmd_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_ENTER;
+  c_buf[i++] = STLINK_DEBUG_ENTER_SWD;
+  size = sendOnly (cmd_len);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -500,14 +510,10 @@ void cStLink::enter_swd_mode() {
 // Force the core into the debug mode -> halted state.
 void cStLink::force_debug() {
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_FORCEDEBUG;
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_FORCEDEBUG;
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -522,10 +528,10 @@ void cStLink::exit_debug_mode() {
   unsigned char* const cmd = c_buf;
   ssize_t size;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_EXIT;
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_EXIT;
 
-  size = sendOnly (1, cmd, cmd_len);
+  size = sendOnly (cmd_len);
   if (size == -1) {
     printf("[!] send_only\n");
     return;
@@ -538,49 +544,13 @@ void cStLink::exit_dfu_mode() {
   unsigned char* const cmd = c_buf;
   ssize_t size;
   int i = 0;
-  cmd[i++] = STLINK_DFU_COMMAND;
-  cmd[i++] = STLINK_DFU_EXIT;
+  c_buf[i++] = STLINK_DFU_COMMAND;
+  c_buf[i++] = STLINK_DFU_EXIT;
 
-  size = sendOnly(1, cmd, cmd_len);
+  size = sendOnly(cmd_len);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
-    }
-  }
-//}}}
-
-//{{{
-void cStLink::getStatus() {
-
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
-  int rep_len = 2;
-  int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_GETSTATUS;
-
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
-  if (size == -1) {
-    printf("[!] send_recv\n");
-    return;
-    }
-
-  if (q_len <= 0)
-     return;
-
-  switch (q_buf[0]) {
-    case STLINK_CORE_RUNNING:
-      core_stat = STLINK_CORE_RUNNING;
-      printf ("status: running\n");
-      return;
-    case STLINK_CORE_HALTED:
-      core_stat = STLINK_CORE_HALTED;
-      printf ("status: halted\n");
-      return;
-    default:
-      core_stat = STLINK_CORE_STAT_UNKNOWN;
-      printf ("status: unknown\n");
     }
   }
 //}}}
@@ -588,22 +558,17 @@ void cStLink::getStatus() {
 //{{{
 uint32_t cStLink::read_debug32 (uint32_t addr) {
 
-  unsigned char* const rdata = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
-  const int rep_len = 8;
-
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_JTAG_READDEBUG_32BIT;
-  write_uint32(&cmd[i], addr);
-  size = sendRecv (1, cmd, cmd_len, rdata, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_JTAG_READDEBUG_32BIT;
+  write_uint32(&c_buf[i], addr);
+  ssize_t size = sendRecv (cmd_len, 8);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
     }
 
-  uint32_t data = read_uint32 (rdata, 4);
+  uint32_t data = read_uint32 (q_buf, 4);
   //printf ("*** stlink_read_debug32 %x is %#x\n", data, addr);
   return data;
   }
@@ -617,16 +582,13 @@ void cStLink::read_mem32 (uint32_t addr, uint16_t len) {
     abort();
     }
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd = c_buf;
-  ssize_t size;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_READMEM_32BIT;
-  write_uint32 (&cmd[i], addr);
-  write_uint16 (&cmd[i + 4], len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_READMEM_32BIT;
+  write_uint32 (&c_buf[i], addr);
+  write_uint16 (&c_buf[i + 4], len);
 
-  size = sendRecv (1, cmd, cmd_len, data, len);
+  ssize_t size = sendRecv (cmd_len, len);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -641,18 +603,12 @@ void cStLink::read_mem32 (uint32_t addr, uint16_t len) {
 //{{{
 void cStLink::write_debug32 (uint32_t addr, uint32_t data) {
 
-  printf ("*** write_debug32 %x to %#x\n", data, addr);
-  unsigned char* const rdata = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
-  const int rep_len = 2;
-
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_JTAG_WRITEDEBUG_32BIT;
-  write_uint32 (&cmd[i], addr);
-  write_uint32 (&cmd[i + 4], data);
-  size = sendRecv (1, cmd, cmd_len, rdata, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_JTAG_WRITEDEBUG_32BIT;
+  write_uint32 (&c_buf[i], addr);
+  write_uint32 (&c_buf[i + 4], data);
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -667,16 +623,13 @@ void cStLink::write_mem32 (uint32_t addr, uint16_t len) {
         abort();
         }
 
-    unsigned char* const data = q_buf;
-    unsigned char* const cmd  = c_buf;
-
     int i = 0;
-    cmd[i++] = STLINK_DEBUG_COMMAND;
-    cmd[i++] = STLINK_DEBUG_WRITEMEM_32BIT;
-    write_uint32(&cmd[i], addr);
-    write_uint16(&cmd[i + 4], len);
-    sendOnly (0, cmd, cmd_len);
-    sendOnly (1, data, len);
+    c_buf[i++] = STLINK_DEBUG_COMMAND;
+    c_buf[i++] = STLINK_DEBUG_WRITEMEM_32BIT;
+    write_uint32(&c_buf[i], addr);
+    write_uint16(&c_buf[i + 4], len);
+    sendOnly (cmd_len);
+    sendOnlyData (len);
   }
 //}}}
 //{{{
@@ -688,16 +641,14 @@ void cStLink::write_mem8 (uint32_t addr, uint16_t len) {
     abort();
     }
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd  = c_buf;
-
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_WRITEMEM_8BIT;
-  write_uint32 (&cmd[i], addr);
-  write_uint16 (&cmd[i + 4], len);
-  sendOnly (0, cmd, cmd_len);
-  sendOnly (1, data, len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_WRITEMEM_8BIT;
+  write_uint32 (&c_buf[i], addr);
+  write_uint16 (&c_buf[i + 4], len);
+  sendOnly (cmd_len);
+  sendOnly (len);
+
   }
 //}}}
 
@@ -710,16 +661,12 @@ void cStLink::read_reg (int r_idx, reg *regp) {
     return;
     }
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd  = c_buf;
-  ssize_t size;
   uint32_t r;
-  uint32_t rep_len = 4;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_READREG;
-  cmd[i++] = (uint8_t) r_idx;
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_READREG;
+  c_buf[i++] = (uint8_t) r_idx;
+  ssize_t size = sendRecv (cmd_len, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -727,7 +674,7 @@ void cStLink::read_reg (int r_idx, reg *regp) {
 
   q_len = (size_t) size;
   print_data();
-  r = read_uint32(q_buf, 0);
+  r = read_uint32 (q_buf, 0);
   printf ("r_idx (%2d) = 0x%08x\n", r_idx, r);
 
   switch (r_idx) {
@@ -756,14 +703,10 @@ void cStLink::read_all_regs (reg *regp) {
 
   printf ("*** read_all_regs ***\n");
 
-  unsigned char* const cmd = c_buf;
-  unsigned char* const data = q_buf;
-  ssize_t size;
-  uint32_t rep_len = 84;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_READALLREGS;
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_READALLREGS;
+  ssize_t size = sendRecv (cmd_len, 84);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -852,16 +795,12 @@ void cStLink::read_all_unsupported_regs (reg *regp) {
 void cStLink::write_reg (uint32_t reg, int idx) {
 
     printf ("*** write_reg\n");
-    unsigned char* const data = q_buf;
-    unsigned char* const cmd  = c_buf;
-    ssize_t size;
-    uint32_t rep_len = 2;
     int i = 0;
-    cmd[i++] = STLINK_DEBUG_COMMAND;
-    cmd[i++] = STLINK_DEBUG_WRITEREG;
-    cmd[i++] = idx;
-    write_uint32(&cmd[i], reg);
-    size = sendRecv (1, cmd, cmd_len, data, rep_len);
+    c_buf[i++] = STLINK_DEBUG_COMMAND;
+    c_buf[i++] = STLINK_DEBUG_WRITEREG;
+    c_buf[i++] = idx;
+    write_uint32(&c_buf[i], reg);
+    ssize_t size = sendRecv (cmd_len, 2);
     if (size == -1) {
       printf("[!] send_recv\n");
       return;
@@ -926,17 +865,10 @@ void cStLink::write_unsupported_reg (uint32_t val, int r_idx, reg *regp) {
 //{{{
 void cStLink::step() {
 
-  printf ("*** step ***\n");
-
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd = c_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_STEPCORE;
-
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_STEPCORE;
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -945,17 +877,12 @@ void cStLink::step() {
 //}}}
 //{{{
 void cStLink::run() {
-  printf ("*** run ***\n");
 
-  unsigned char* const data = q_buf;
-  unsigned char* const cmd = c_buf;
-  ssize_t size;
-  int rep_len = 2;
   int i = 0;
-  cmd[i++] = STLINK_DEBUG_COMMAND;
-  cmd[i++] = STLINK_DEBUG_RUNCORE;
+  c_buf[i++] = STLINK_DEBUG_COMMAND;
+  c_buf[i++] = STLINK_DEBUG_RUNCORE;
 
-  size = sendRecv (1, cmd, cmd_len, data, rep_len);
+  ssize_t size = sendRecv (cmd_len, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -965,7 +892,7 @@ void cStLink::run() {
 //{{{
 void cStLink::run_at (stm32_addr_t addr) {
 
-  write_reg(addr, 15); /* pc register */
+  write_reg (addr, 15); /* pc register */
   run();
   while (is_core_halted() == 0)
         Sleep(3000000);
@@ -1009,19 +936,19 @@ int cStLink::submit_wait (struct libusb_transfer* trans) {
   }
 //}}}
 //{{{
-int cStLink::sendRecv (int terminate, unsigned char* txbuf, int txsize, unsigned char* rxbuf, int rxsize) {
+int cStLink::sendRecv (int txsize, int rxsize) {
 
   /* note: txbuf and rxbuf can point to the same area */
   int res = 0;
 
-  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, txbuf, txsize, NULL, NULL, 0);
+  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, c_buf, txsize, NULL, NULL, 0);
   if (submit_wait (req_trans))
     return -1;
 
   /* send_only */
   if (rxsize != 0) {
     /* read the response */
-    libusb_fill_bulk_transfer (rep_trans, usb_handle, ep_rep, rxbuf, rxsize, NULL, NULL, 0);
+    libusb_fill_bulk_transfer (rep_trans, usb_handle, ep_rep, q_buf, rxsize, NULL, NULL, 0);
     if (submit_wait (rep_trans))
       return -1;
     res = rep_trans->actual_length;
@@ -1031,8 +958,20 @@ int cStLink::sendRecv (int terminate, unsigned char* txbuf, int txsize, unsigned
   }
 //}}}
 //{{{
-int cStLink::sendOnly (int terminate, unsigned char* txbuf, int txsize) {
-  return sendRecv (terminate, txbuf, txsize, NULL, 0);
+int cStLink::sendOnly (int txsize) {
+
+  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, c_buf, txsize, NULL, NULL, 0);
+  if (submit_wait (req_trans))
+    return -1;
+  return rep_trans->actual_length;
+  }
+//}}}
+//{{{
+int cStLink::sendOnlyData (int txsize) {
+  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, q_buf, txsize, NULL, NULL, 0);
+  if (submit_wait (req_trans))
+    return -1;
+  return rep_trans->actual_length;
   }
 //}}}
 //{{{

@@ -1,7 +1,5 @@
-//{{{
 #include <stdio.h>
 #include "cStLink.h"
-//}}}
 
 int main (int ac, char** av) {
 
