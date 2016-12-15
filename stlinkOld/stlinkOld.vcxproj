@@ -22,8 +22,8 @@
     <Library Include="libusb-1.0.lib" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stlink-common.c" />
-    <ClCompile Include="test_usb.c" />
+    <ClCompile Include="cStLink.cpp" />
+    <ClCompile Include="test_usb.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stlink-common.h" />

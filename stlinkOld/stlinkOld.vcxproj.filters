@@ -18,10 +18,10 @@
     <Library Include="libusb-1.0.lib" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stlink-common.c">
+    <ClCompile Include="cStLink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="test_usb.c">
+    <ClCompile Include="test_usb.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
