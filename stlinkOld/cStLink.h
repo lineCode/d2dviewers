@@ -13,8 +13,8 @@
 #define STLINK_DEV_DEBUG_MODE   0x02
 #define STLINK_DEV_UNKNOWN_MODE -1
 //}}}
-#define C_BUF_LEN 32           // Enough space to hold both a V2 command or a V1 command packaged as generic scsi*/
-#define Q_BUF_LEN (1024 * 100) // Max data transfer size 6kB = max mem32_read block
+#define CMD_BUF_LEN 16           // Enough space to hold both a V2 command
+#define DATA_BUF_LEN (1024 * 100) // Max data transfer size 6kB = max mem32_read block
 
 //{{{
 typedef struct chip_params_ {
@@ -67,45 +67,41 @@ class cStLink {
 public:
   cStLink();
   ~cStLink();
-  int open_usb();
+  int openUsb();
 
   void reset();
-  void jtag_reset (int value);
-
-  int current_mode  (int report);
-  void enter_swd_mode();
-  void enter_jtag_mode();
-  void exit_debug_mode();
-  void exit_dfu_mode();
-  uint32_t get_core_id();
+  void jtagReset (int value);
 
   void getStatus();
   void getVersion();
+  uint32_t getCoreId();
+  uint32_t getChipId();
+  void getCpuId  (cortex_m3_cpuid_t *cpuid);
+  void getCoreStat();
+  int getCurrentMode (int report);
 
-  uint32_t read_debug32 (uint32_t addr);
-  void read_mem32 (uint32_t addr, uint16_t len);
+  void enterSwdMode();
+  void enterJtagMode();
+  void exitDebugMode();
+  void exitDfuMode();
 
-  void write_debug32 (uint32_t addr, uint32_t data);
-  void write_mem32 (uint32_t addr, uint16_t len);
-  void write_mem8 (uint32_t addr, uint16_t len);
+  uint32_t readDebug32 (uint32_t addr);
+  void readMem32 (uint32_t addr, uint16_t len);
+  void readReg (int r_idx, reg *regp);
+  void readAllRegs (reg *regp);
+  void readUnsupportedReg (int r_idx, reg *regp);
+  void readAllUnsupportedRegs (reg *regp);
 
-  void read_reg (int r_idx, reg *regp);
-  void read_all_regs (reg *regp);
-  void read_unsupported_reg (int r_idx, reg *regp);
-  void read_all_unsupported_regs (reg *regp);
+  void writeDebug32 (uint32_t addr, uint32_t data);
+  void writeMem32 (uint32_t addr, uint16_t len);
+  void writeMem8 (uint32_t addr, uint16_t len);
+  void writeUnsupportedReg (uint32_t value, int r_idx, reg *regp);
+  void writeReg (uint32_t reg, int idx);
 
-  void write_unsupported_reg (uint32_t value, int r_idx, reg *regp);
-  void write_reg (uint32_t reg, int idx);
-
+  void forceDebug();
   void run();
-  void run_at (stm32_addr_t addr);
+  void runAt (stm32_addr_t addr);
   void step();
-  void force_debug();
-
-  uint32_t get_chip_id();
-  void get_cpu_id  (cortex_m3_cpuid_t *cpuid);
-
-  void get_core_stat();
 
   // vars
   uint32_t core_id;
@@ -141,7 +137,6 @@ private:
   int cStLink::sendRecv (int txsize, int rxsize);
   int cStLink::sendOnly (int txsize);
   int cStLink::sendOnlyData (int txsize);
-  void cStLink::print_data();
   int cStLink::load_device_params();
 
   libusb_device_handle* usb_handle;
@@ -150,11 +145,9 @@ private:
   struct libusb_transfer* rep_trans;
   unsigned int ep_req;
   unsigned int ep_rep;
-  unsigned int cmd_len;
 
-  // Room for the command header
-  unsigned char c_buf[C_BUF_LEN];
-  // Data transferred from or to device
-  unsigned char q_buf[Q_BUF_LEN];
-  int q_len;
+  unsigned int mCmdLen;
+  unsigned char mCmdBuf[CMD_BUF_LEN];
+  int mDataLen;
+  unsigned char mDataBuf[DATA_BUF_LEN];
   };
