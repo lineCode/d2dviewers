@@ -13,20 +13,15 @@
 #define STLINK_DEV_DEBUG_MODE   0x02
 #define STLINK_DEV_UNKNOWN_MODE -1
 //}}}
+#define STM32_FLASH_PGSZ 1024
+#define STM32L_FLASH_PGSZ 256
+#define STM32F4_FLASH_PGSZ 16384
+#define STM32F4_FLASH_SIZE (128 * 1024 * 8)
+#define STM32_SRAM_SIZE (8 * 1024)
+#define STM32L_SRAM_SIZE (16 * 1024)
+
 #define CMD_BUF_LEN 16           // Enough space to hold both a V2 command
 #define DATA_BUF_LEN (1024 * 100) // Max data transfer size 6kB = max mem32_read block
-
-//{{{
-typedef struct chip_params_ {
-  uint32_t chip_id;
-  char* description;
-  uint32_t flash_size_reg;
-  uint32_t flash_pagesize;
-  uint32_t sram_size;
-  uint32_t bootrom_base, bootrom_size;
-  } chip_params_t;
-//}}}
-const chip_params_t devices[] = { 0x413, "F4 device", 0x1FFF7A10, 0x4000, 0x30000, 0x1fff0000, 0x7800 };
 
 //{{{  struct reg
 typedef struct {
@@ -86,16 +81,16 @@ public:
   void exitDfuMode();
 
   uint32_t readDebug32 (uint32_t addr);
-  void readMem32 (uint32_t addr, uint16_t len);
-  void readReg (int r_idx, reg *regp);
+  uint32_t readMem32 (uint32_t addr, uint16_t len);
+  uint32_t readReg (int r_idx, reg* regp);
   void readAllRegs (reg *regp);
-  void readUnsupportedReg (int r_idx, reg *regp);
-  void readAllUnsupportedRegs (reg *regp);
+  void readUnsupportedReg (int r_idx, reg* regp);
+  void readAllUnsupportedRegs (reg* regp);
 
   void writeDebug32 (uint32_t addr, uint32_t data);
   void writeMem32 (uint32_t addr, uint16_t len);
   void writeMem8 (uint32_t addr, uint16_t len);
-  void writeUnsupportedReg (uint32_t value, int r_idx, reg *regp);
+  void writeUnsupportedReg (uint32_t value, int r_idx, reg* regp);
   void writeReg (uint32_t reg, int idx);
 
   void forceDebug();
@@ -103,24 +98,17 @@ public:
   void runAt (stm32_addr_t addr);
   void step();
 
-  // vars
-  uint32_t core_id;
-  uint32_t chip_id;
-  int core_stat;
+  // public vars
+  struct stlink_version_ version;
 
-  #define STM32_FLASH_PGSZ 1024
-  #define STM32L_FLASH_PGSZ 256
-
-  #define STM32F4_FLASH_PGSZ 16384
-  #define STM32F4_FLASH_SIZE (128 * 1024 * 8)
+  uint32_t mCoreId;
+  uint32_t mChipId;
+  int mCoreStatus;
 
   stm32_addr_t flash_base;
   size_t flash_size;
   size_t flash_pgsz;
 
-  /* sram settings */
-  #define STM32_SRAM_SIZE (8 * 1024)
-  #define STM32L_SRAM_SIZE (16 * 1024)
   stm32_addr_t sram_base;
   size_t sram_size;
 
@@ -128,23 +116,21 @@ public:
   stm32_addr_t sys_base;
   size_t sys_size;
 
-  struct stlink_version_ version;
-
 private:
   unsigned int is_core_halted();
+  int loadDeviceParams();
 
-  int cStLink::submit_wait (struct libusb_transfer* trans);
-  int cStLink::sendRecv (int txsize, int rxsize);
-  int cStLink::sendOnly (int txsize);
-  int cStLink::sendOnlyData (int txsize);
-  int cStLink::load_device_params();
+  int sendRecv (int txSize, int rxSize);
+  int send (unsigned char* txBuf, int txSize);
 
-  libusb_device_handle* usb_handle;
-  libusb_context* libusb_ctx;
+  libusb_device_handle* mUsbHandle;
+  libusb_context* mUsbContext;
+  bool mV2;
   struct libusb_transfer* req_trans;
   struct libusb_transfer* rep_trans;
   unsigned int ep_req;
   unsigned int ep_rep;
+  unsigned int ep_trace;
 
   unsigned int mCmdLen;
   unsigned char mCmdBuf[CMD_BUF_LEN];

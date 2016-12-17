@@ -15,6 +15,12 @@
 #define USB_STLINK_32L_PID  0x3748
 #define USB_STLINK_V21_PID  0x374B
 
+#define STLINK_V2_RX_EP       (1 | LIBUSB_ENDPOINT_IN)
+#define STLINK_V2_0_TX_EP     (2 | LIBUSB_ENDPOINT_OUT)
+#define STLINK_V2_0_TRACE_EP  (3 | LIBUSB_ENDPOINT_IN)
+#define STLINK_V2_1_TX_EP     (1 | LIBUSB_ENDPOINT_OUT)
+#define STLINK_V2_1_TRACE_EP  (2 | LIBUSB_ENDPOINT_IN)
+
 //{{{  STLINK_DEBUG_RESETSYS, etc:
 #define STLINK_OK             0x80
 #define STLINK_FALSE          0x81
@@ -24,41 +30,41 @@
 #define STLINK_CORE_STAT_UNKNOWN  -1
 //}}}
 
-#define STLINK_DEBUG_ENTER_JTAG 0x00
-#define STLINK_DEBUG_GETSTATUS    0x01
-#define STLINK_DEBUG_FORCEDEBUG 0x02
-#define STLINK_DEBUG_RESETSYS   0x03
-#define STLINK_DEBUG_READALLREGS  0x04
-#define STLINK_DEBUG_READREG    0x05
-#define STLINK_DEBUG_WRITEREG   0x06
-#define STLINK_DEBUG_READMEM_32BIT  0x07
-#define STLINK_DEBUG_WRITEMEM_32BIT 0x08
-#define STLINK_DEBUG_RUNCORE    0x09
-#define STLINK_DEBUG_STEPCORE   0x0a
-#define STLINK_DEBUG_SETFP    0x0b
-#define STLINK_DEBUG_WRITEMEM_8BIT  0x0d
-#define STLINK_DEBUG_CLEARFP    0x0e
-#define STLINK_DEBUG_WRITEDEBUGREG  0x0f
+#define STLINK_SWD_ENTER            0x30
+#define STLINK_SWD_READCOREID       0x32
 
-#define STLINK_DEBUG_ENTER    0x20
-#define STLINK_DEBUG_EXIT   0x21
-#define STLINK_DEBUG_READCOREID 0x22
+#define STLINK_GET_VERSION          0xf1
 
-#define STLINK_SWD_ENTER 0x30
-#define STLINK_SWD_READCOREID 0x32
+#define STLINK_DEBUG_COMMAND        0xF2
+  #define STLINK_DEBUG_ENTER_JTAG     0x00
+  #define STLINK_DEBUG_GETSTATUS      0x01
+  #define STLINK_DEBUG_FORCEDEBUG     0x02
+  #define STLINK_DEBUG_RESETSYS       0x03
+  #define STLINK_DEBUG_READALLREGS    0x04
+  #define STLINK_DEBUG_READREG        0x05
+  #define STLINK_DEBUG_WRITEREG       0x06
+  #define STLINK_DEBUG_READMEM_32BIT  0x07
+  #define STLINK_DEBUG_WRITEMEM_32BIT 0x08
+  #define STLINK_DEBUG_RUNCORE        0x09
+  #define STLINK_DEBUG_STEPCORE       0x0a
+  #define STLINK_DEBUG_SETFP          0x0b
+  #define STLINK_DEBUG_WRITEMEM_8BIT  0x0d
+  #define STLINK_DEBUG_CLEARFP        0x0e
+  #define STLINK_DEBUG_WRITEDEBUGREG  0x0f
 
-#define STLINK_JTAG_WRITEDEBUG_32BIT 0x35
-#define STLINK_JTAG_READDEBUG_32BIT 0x36
-#define STLINK_JTAG_DRIVE_NRST 0x3c
+  #define STLINK_DEBUG_ENTER          0x20
+    #define STLINK_DEBUG_ENTER_SWD      0xa3
+  #define STLINK_DEBUG_EXIT           0x21
+  #define STLINK_DEBUG_READCOREID     0x22
 
-#define STLINK_DEBUG_ENTER_SWD    0xa3
-#define STLINK_DEBUG_COMMAND    0xF2
+  #define STLINK_JTAG_WRITEDEBUG_32BIT 0x35
+  #define STLINK_JTAG_READDEBUG_32BIT  0x36
+  #define STLINK_JTAG_DRIVE_NRST       0x3c
 
-#define STLINK_DFU_EXIT   0x07
-#define STLINK_DFU_COMMAND    0xF3
+#define STLINK_DFU_COMMAND           0xF3
+  #define STLINK_DFU_EXIT              0x07
 
-#define STLINK_GET_VERSION    0xf1
-#define STLINK_GET_CURRENT_MODE 0xf5
+#define STLINK_GET_CURRENT_MODE      0xf5
 
 //{{{  stm32f FPEC flash controller interface, pm0063 manual
 // TODO - all of this needs to be abstracted out....
@@ -158,24 +164,23 @@
 //}}}
 
 //{{{
-
-struct trans_ctx {
-  #define TRANS_FLAGS_IS_DONE (1 << 0)
-  #define TRANS_FLAGS_HAS_ERROR (1 << 1)
-    volatile unsigned long flags;
-  };
+typedef struct tChipParams_ {
+  uint32_t chip_id;
+  char* description;
+  uint32_t flash_size_reg;
+  uint32_t flash_pagesize;
+  uint32_t sram_size;
+  uint32_t bootrom_base, bootrom_size;
+  } chip_params_t;
 //}}}
 //{{{
-static void on_trans_done (struct libusb_transfer* trans) {
-
-  struct trans_ctx* const ctx = (struct trans_ctx*)(trans->user_data);
-  if (trans->status != LIBUSB_TRANSFER_COMPLETED)
-    ctx->flags |= TRANS_FLAGS_HAS_ERROR;
-  ctx->flags |= TRANS_FLAGS_IS_DONE;
-  }
+const tChipParams_ devices[] = {
+  { 0x413, "F4 device", 0x1FFF7A10, 0x4000, 0x30000, 0x1fff0000, 0x7800 },
+  { 0x449, "F7 device", 0x1ff0f442, 0x4000, 0x50000, 0x00100000, 0xEDC0 }
+  };
 //}}}
 
-cStLink::cStLink() {}
+cStLink::cStLink() : mCoreStatus (STLINK_CORE_STAT_UNKNOWN) {}
 //{{{
 cStLink::~cStLink() {
 
@@ -183,91 +188,78 @@ cStLink::~cStLink() {
     libusb_free_transfer (req_trans);
   if (rep_trans != NULL)
     libusb_free_transfer (rep_trans);
-  if (usb_handle != NULL)
-    libusb_close (usb_handle);
-  libusb_exit (libusb_ctx);
+  if (mUsbHandle != NULL)
+    libusb_close (mUsbHandle);
+  libusb_exit (mUsbContext);
   }
 //}}}
 
 //{{{
 int cStLink::openUsb() {
 
-  core_stat = STLINK_CORE_STAT_UNKNOWN;
-
-  if (libusb_init (&(libusb_ctx))) {
+  if (libusb_init (&mUsbContext)) {
     printf ("failed to init libusb context\n");
     return 0;
     }
 
-  usb_handle = libusb_open_device_with_vid_pid (libusb_ctx, USB_ST_VID, USB_STLINK_V21_PID);
-  if (usb_handle == NULL) {
-    usb_handle = libusb_open_device_with_vid_pid (libusb_ctx, USB_ST_VID, USB_STLINK_32L_PID);
-    if (usb_handle == NULL) {
-      printf ("Couldn't find any ST-Link/V2 devices\n");
-      return 0;
+  libusb_device** devs;
+  int numDevices = libusb_get_device_list (mUsbContext, &devs);
+  for (int i = 0; i < numDevices; i++) {
+    struct libusb_device_descriptor dev_desc;
+    if (libusb_get_device_descriptor (devs[i], &dev_desc) != 0) {
+      printf ("%d Usb device - libusb_get_device_descriptor failed\n", i);
+      continue;
       }
+
+    printf ("%d Usb device %x %x\n", i, dev_desc.idVendor, dev_desc.idProduct);
+    mV2 = false;
+    if (dev_desc.idVendor != USB_ST_VID)
+      continue;
+    if (dev_desc.idProduct == USB_STLINK_32L_PID)
+      mV2 = true;
+    else if (dev_desc.idProduct == USB_STLINK_V21_PID)
+      mV2 = false;
     else
-      printf ("st link v2 found\n");
-    }
-  else
-    printf ("st link v21 found\n");
-
-  if (libusb_kernel_driver_active (usb_handle, 0) == 1) {
-    int r = libusb_detach_kernel_driver (usb_handle, 0);
-    if (r < 0) {
-      printf  ("libusb_detach_kernel_driver(() error %s\n", strerror(-r));
-      return 0;
+      continue;
+    if (libusb_open (devs[i], &mUsbHandle) != 0) {
+      printf ("- libusb_open failed\n");
+      continue;
       }
+    break;
     }
 
-  int config;
-  if (libusb_get_configuration (usb_handle, &config)) {
-    /* this may fail for a previous configured device */
-    printf ("libusb_get_configuration()\n");
+  if (!mUsbHandle)
+    return 0;
+
+  int current_config = -1;
+  libusb_get_configuration (mUsbHandle, &current_config);
+
+  struct libusb_device* udev = libusb_get_device (mUsbHandle);
+  struct libusb_config_descriptor* config = NULL;
+  libusb_get_config_descriptor (udev, 0, &config);
+  if (current_config != config->bConfigurationValue)
+    libusb_set_configuration (mUsbHandle, config->bConfigurationValue);
+  libusb_free_config_descriptor(config);
+
+  if (libusb_claim_interface (mUsbHandle, 0) != 0) {
+    printf ("- libusb_claim_interface interface failed");
     return 0;
     }
 
-  if (config != 1) {
-    printf ("setting new configuration (%d -> 1)\n", config);
-    if (libusb_set_configuration(usb_handle, 1)) {
-      /* this may fail for a previous configured device */
-      printf ("libusb_set_configuration() failed\n");
-      return 0;
-      }
-    }
-
-  if (libusb_claim_interface (usb_handle, 0)) {
-    printf ("libusb_claim_interface() failed\n");
-    return 0;
-    }
-
-  req_trans = libusb_alloc_transfer(0);
-  if (req_trans == NULL) {
-    printf ("libusb_alloc_transfer failed\n");
-    return 0;
-    }
-
-  rep_trans = libusb_alloc_transfer(0);
-  if (rep_trans == NULL) {
-    printf ("libusb_alloc_transfer failed\n");
-    return 0;
-    }
-
-  ep_rep = 1 | LIBUSB_ENDPOINT_IN;
-  ep_req = 2 | LIBUSB_ENDPOINT_OUT;
-  mCmdLen = 16;
+  ep_rep = STLINK_V2_RX_EP;
+  ep_req = mV2 ? STLINK_V2_0_TX_EP : STLINK_V2_1_TX_EP;
+  ep_trace = mV2 ? STLINK_V2_0_TRACE_EP : STLINK_V2_1_TRACE_EP;
 
   if (getCurrentMode(0) == STLINK_DEV_DFU_MODE) {
     printf ("-- exit_dfu_mode\n");
     exitDfuMode();
     }
-
   if (getCurrentMode(0) != STLINK_DEV_DEBUG_MODE)
     enterSwdMode();
 
   reset();
-  load_device_params();
-  getVersion();
+
+  loadDeviceParams();
   return 1;
   }
 //}}}
@@ -276,7 +268,7 @@ int cStLink::openUsb() {
 void cStLink::getVersion() {
 
   mCmdBuf[0] = STLINK_GET_VERSION;
-  ssize_t size = sendRecv (mCmdLen, 6);
+  ssize_t size = sendRecv (1, 6);
   if (size == -1) {
     printf("[!] send_recv\n");
     }
@@ -306,35 +298,43 @@ uint32_t cStLink::getCoreId() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_READCOREID;
-  ssize_t size = sendRecv (mCmdLen, 4);
+  ssize_t size = sendRecv (2, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
     }
 
-  memcpy (&core_id, mDataBuf, 4);
-  return core_id;
+  memcpy (&mCoreId, mDataBuf, 4);
+  return mCoreId;
   }
 //}}}
 //{{{
 uint32_t cStLink::getChipId() {
 
-  uint32_t chip_id = readDebug32 (0xE0042000);
-  if (chip_id == 0)
+  mChipId = readDebug32 (0xE0042000) &0xFFF;
+  if (mChipId == 0)
     // Try Corex M0 DBGMCU_IDCODE register address
-    chip_id = readDebug32(0x40015800);
-  return chip_id;
+    mChipId = readDebug32 (0x40015800);
+
+  /* Fix mChipId for F4 rev A errata , Read CPU ID, as CoreID is the same for F2/F4*/
+  if (mChipId == 0x411) {
+    uint32_t cpuid = readDebug32 (0xE000ED00);
+    if ((cpuid  & 0xfff0) == 0xc240)
+        mChipId = 0x413;
+    }
+
+  return mChipId;
   }
 //}}}
 //{{{
 void cStLink::getCpuId (cortex_m3_cpuid_t *cpuid) {
 
-  uint32_t raw = readDebug32 (CM3_REG_CPUID);
+  uint32_t cpuIdReg = readDebug32 (CM3_REG_CPUID);
 
-  cpuid->implementer_id = (raw >> 24) & 0x7f;
-  cpuid->variant = (raw >> 20) & 0xf;
-  cpuid->part = (raw >> 4) & 0xfff;
-  cpuid->revision = raw & 0xf;
+  cpuid->implementer_id = (cpuIdReg >> 24) &  0x7f;
+  cpuid->variant =        (cpuIdReg >> 20) &   0xf;
+  cpuid->part =           (cpuIdReg >> 4)  & 0xfff;
+  cpuid->revision =        cpuIdReg & 0xf;
   return;
   }
 //}}}
@@ -343,8 +343,7 @@ void cStLink::getStatus() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_GETSTATUS;
-
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -355,16 +354,16 @@ void cStLink::getStatus() {
 
   switch (mDataBuf[0]) {
     case STLINK_CORE_RUNNING:
-      core_stat = STLINK_CORE_RUNNING;
-      printf ("status: running\n");
+      mCoreStatus = STLINK_CORE_RUNNING;
+      printf ("getStatus: running\n");
       return;
     case STLINK_CORE_HALTED:
-      core_stat = STLINK_CORE_HALTED;
-      printf ("status: halted\n");
+      mCoreStatus = STLINK_CORE_HALTED;
+      printf ("getStatus: halted\n");
       return;
     default:
-      core_stat = STLINK_CORE_STAT_UNKNOWN;
-      printf ("status: unknown\n");
+      mCoreStatus = STLINK_CORE_STAT_UNKNOWN;
+      printf ("getStatus: unknown\n");
     }
   }
 //}}}
@@ -372,7 +371,7 @@ void cStLink::getStatus() {
 int cStLink::getCurrentMode (int report) {
 
   mCmdBuf[0] = STLINK_GET_CURRENT_MODE;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (1, 2);
   if (size == -1) {
       printf("[!] send_recv\n");
       return -1;
@@ -409,11 +408,7 @@ void cStLink::enterSwdMode() {
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_ENTER;
   mCmdBuf[2] = STLINK_DEBUG_ENTER_SWD;
-  ssize_t size = sendOnly (mCmdLen);
-  if (size == -1) {
-    printf("[!] send_recv\n");
-    return;
-    }
+  send (mCmdBuf, 3);
   }
 //}}}
 //{{{
@@ -423,11 +418,7 @@ void cStLink::exitDebugMode() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_EXIT;
-  ssize_t size = sendOnly (mCmdLen);
-  if (size == -1) {
-    printf("[!] send_only\n");
-    return;
-    }
+  send (mCmdBuf, 2);
   }
 //}}}
 //{{{
@@ -435,11 +426,7 @@ void cStLink::exitDfuMode() {
 
   mCmdBuf[0] = STLINK_DFU_COMMAND;
   mCmdBuf[1] = STLINK_DFU_EXIT;
-  ssize_t size = sendOnly(mCmdLen);
-  if (size == -1) {
-    printf("[!] send_recv\n");
-    return;
-    }
+  send (mCmdBuf, 2);
   }
 //}}}
 
@@ -449,19 +436,19 @@ uint32_t cStLink::readDebug32 (uint32_t addr) {
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_JTAG_READDEBUG_32BIT;
   memcpy (&mCmdBuf[2], &addr, 4);
-  ssize_t size = sendRecv (mCmdLen, 8);
+  ssize_t size = sendRecv (6, 8);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
     }
 
   uint32_t data;
-  memcpy (&data, mDataBuf, 4);
+  memcpy (&data, mDataBuf+4, 4);
   return data;
   }
 //}}}
 //{{{
-void cStLink::readMem32 (uint32_t addr, uint16_t len) {
+uint32_t cStLink::readMem32 (uint32_t addr, uint16_t len) {
 
   if (len % 4 != 0) {
     // !!! never ever: fw gives just wrong values
@@ -473,29 +460,33 @@ void cStLink::readMem32 (uint32_t addr, uint16_t len) {
   mCmdBuf[1] = STLINK_DEBUG_READMEM_32BIT;
   memcpy (&mCmdBuf[2], &addr, 4);
   memcpy (&mCmdBuf[6], &len, 2);
-  ssize_t size = sendRecv (mCmdLen, len);
+  ssize_t size = sendRecv (8, len);
   if (size == -1) {
     printf("[!] send_recv\n");
-    return;
+    return 0;
     }
   mDataLen = (size_t) size;
+
+  uint32_t data;
+  memcpy (&data, mDataBuf, 4);
+  return data;
   }
 //}}}
 //{{{
-void cStLink::readReg (int r_idx, reg *regp) {
+uint32_t cStLink::readReg (int r_idx, reg* regp) {
 
   if (r_idx > 20 || r_idx < 0) {
     printf ("Error: register index must be in [0..20]\n");
-    return;
+    return 0;
     }
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_READREG;
   mCmdBuf[2] = (uint8_t) r_idx;
-  ssize_t size = sendRecv (mCmdLen, 4);
+  ssize_t size = sendRecv (3, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
-    return;
+    return 0;
     }
   mDataLen = (size_t) size;
 
@@ -520,14 +511,15 @@ void cStLink::readReg (int r_idx, reg *regp) {
     default:
       regp->r[r_idx] = r;
     }
+  return r;
   }
 //}}}
 //{{{
-void cStLink::readAllRegs (reg *regp) {
+void cStLink::readAllRegs (reg* regp) {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_READALLREGS;
-  ssize_t size = sendRecv (mCmdLen, 84);
+  ssize_t size = sendRecv (2, 84);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -550,7 +542,7 @@ void cStLink::readAllRegs (reg *regp) {
   }
 //}}}
 //{{{
-void cStLink::readUnsupportedReg (int r_idx, reg *regp) {
+void cStLink::readUnsupportedReg (int r_idx, reg* regp) {
 
   int r_convert;
 
@@ -597,7 +589,7 @@ void cStLink::readUnsupportedReg (int r_idx, reg *regp) {
   }
 //}}}
 //{{{
-void cStLink::readAllUnsupportedRegs (reg *regp) {
+void cStLink::readAllUnsupportedRegs (reg* regp) {
 
   readUnsupportedReg (0x14, regp);
   readUnsupportedReg (0x21, regp);
@@ -613,7 +605,7 @@ void cStLink::writeDebug32 (uint32_t addr, uint32_t data) {
   mCmdBuf[1] = STLINK_JTAG_WRITEDEBUG_32BIT;
   memcpy (&mCmdBuf[2], &addr, 4);
   memcpy (&mCmdBuf[6], &data, 4);
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (10, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -632,8 +624,8 @@ void cStLink::writeMem32 (uint32_t addr, uint16_t len) {
   mCmdBuf[i++] = STLINK_DEBUG_WRITEMEM_32BIT;
   memcpy (&mCmdBuf[i], &addr, 4);
   memcpy (&mCmdBuf[i+4], &len, 2);
-  sendOnly (mCmdLen);
-  sendOnlyData (len);
+  send (mCmdBuf, 10);
+  send (mDataBuf, len);
   }
 //}}}
 //{{{
@@ -649,9 +641,8 @@ void cStLink::writeMem8 (uint32_t addr, uint16_t len) {
   mCmdBuf[i++] = STLINK_DEBUG_WRITEMEM_8BIT;
   memcpy (&mCmdBuf[i], &addr, 4);
   memcpy (&mCmdBuf[i+4], &len, 2);
-  sendOnly (mCmdLen);
-  sendOnly (len);
-
+  send (mCmdBuf, 8);
+  send (mDataBuf, len);
   }
 //}}}
 //{{{
@@ -661,7 +652,7 @@ void cStLink::writeReg (uint32_t reg, int idx) {
     mCmdBuf[1] = STLINK_DEBUG_WRITEREG;
     mCmdBuf[2] = idx;
     memcpy (&mCmdBuf[3], &reg, 4);
-    ssize_t size = sendRecv (mCmdLen, 2);
+    ssize_t size = sendRecv (7, 2);
     if (size == -1) {
       printf("[!] send_recv\n");
       return;
@@ -670,7 +661,7 @@ void cStLink::writeReg (uint32_t reg, int idx) {
   }
 //}}}
 //{{{
-void cStLink::writeUnsupportedReg (uint32_t val, int r_idx, reg *regp) {
+void cStLink::writeUnsupportedReg (uint32_t val, int r_idx, reg* regp) {
   int r_convert;
 
   /* Convert to values used by DCRSR */
@@ -723,7 +714,7 @@ void cStLink::reset() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_RESETSYS;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -736,7 +727,7 @@ void cStLink::jtagReset (int value) {
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_JTAG_DRIVE_NRST;
   mCmdBuf[2] = (value) ? 0 : 1;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (3, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -749,7 +740,7 @@ void cStLink::forceDebug() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_FORCEDEBUG;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -761,7 +752,7 @@ void cStLink::step() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_STEPCORE;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -773,7 +764,7 @@ void cStLink::run() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_RUNCORE;
-  ssize_t size = sendRecv (mCmdLen, 2);
+  ssize_t size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -792,138 +783,69 @@ void cStLink::runAt (stm32_addr_t addr) {
 
 // private
 //{{{
-int cStLink::submit_wait (struct libusb_transfer* trans) {
-
-  struct trans_ctx trans_ctx;
-
-  trans_ctx.flags = 0;
-
-  /* brief intrusion inside the libusb interface */
-  trans->callback = on_trans_done;
-  trans->user_data = &trans_ctx;
-
-  int error = libusb_submit_transfer (trans);
-  if (error) {
-    printf ("libusb_submit_transfer(%d)\n", error);
-    return -1;
-    }
-
-  while (trans_ctx.flags == 0) {
-    struct timeval timeout;
-    timeout.tv_sec = 3;
-    timeout.tv_usec = 0;
-    if (libusb_handle_events_timeout (libusb_ctx, &timeout)) {
-      printf ("libusb_handle_events()\n");
-      return -1;
-      }
-    }
-
-  if (trans_ctx.flags & TRANS_FLAGS_HAS_ERROR) {
-    printf ("libusb_handle_events() | has_error\n");
-    return -1;
-    }
-
-  return 0;
-  }
-//}}}
-//{{{
-int cStLink::sendRecv (int txsize, int rxsize) {
-
-  /* note: txbuf and rxbuf can point to the same area */
-  int res = 0;
-  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, mCmdBuf, txsize, NULL, NULL, 0);
-  if (submit_wait (req_trans))
-    return -1;
-
-  /* send_only */
-  if (rxsize != 0) {
-    /* read the response */
-    libusb_fill_bulk_transfer (rep_trans, usb_handle, ep_rep, mDataBuf, rxsize, NULL, NULL, 0);
-    if (submit_wait (rep_trans))
-      return -1;
-    res = rep_trans->actual_length;
-    }
-
-  return rep_trans->actual_length;
-  }
-//}}}
-//{{{
-int cStLink::sendOnly (int txsize) {
-  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, mCmdBuf, txsize, NULL, NULL, 0);
-  if (submit_wait (req_trans))
-    return -1;
-  return rep_trans->actual_length;
-  }
-//}}}
-//{{{
-int cStLink::sendOnlyData (int txsize) {
-  libusb_fill_bulk_transfer (req_trans, usb_handle, ep_req, mDataBuf, txsize, NULL, NULL, 0);
-  if (submit_wait (req_trans))
-    return -1;
-  return rep_trans->actual_length;
-  }
-//}}}
-//{{{
-int cStLink::load_device_params() {
-
-  printf ("Loading device parameters....\n");
-  const chip_params_t *params = NULL;
-  core_id = getCoreId();
-  uint32_t chip_id = getChipId();
-
-  chip_id = chip_id & 0xfff;
-  /* Fix chip_id for F4 rev A errata , Read CPU ID, as CoreID is the same for F2/F4*/
-  if (chip_id == 0x411) {
-    uint32_t cpuid = readDebug32(0xE000ED00);
-    if ((cpuid  & 0xfff0) == 0xc240)
-        chip_id = 0x413;
-    }
-
-  for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
-    if(devices[i].chip_id == chip_id) {
-      params = &devices[i];
-      break;
-      }
-    }
-  if (params == NULL) {
-    printf ("unknown chip id! %#x\n", chip_id);
-    return -1;
-    }
-
-  // These are fixed...
-  flash_base = STM32_FLASH_BASE;
-  sram_base = STM32_SRAM_BASE;
-
-  // read flash size from hardware, if possible...
-  if (chip_id == STM32_CHIPID_F2) {
-    flash_size = 0x100000; /* Use maximum, User must care!*/
-    }
-  else if (chip_id == STM32_CHIPID_F4) {
-    flash_size = 0x100000;      //todo: RM0090 error; size register same address as unique ID
-    }
-  else {
-    uint32_t flash_size = readDebug32(params->flash_size_reg) & 0xffff;
-    flash_size = flash_size * 1024;
-    }
-
-  flash_pgsz = params->flash_pagesize;
-  sram_size = params->sram_size;
-  sys_base = params->bootrom_base;
-  sys_size = params->bootrom_size;
-
-  printf ("Device connected is: %s, id %#x\n", params->description, chip_id);
-  // TODO make note of variable page size here.....
-  printf ("SRAM size: %#x bytes (%d KiB), Flash: %#x bytes (%d KiB) in pages of %zd bytes\n",
-          sram_size, sram_size / 1024, flash_size, flash_size / 1024,
-          flash_pgsz);
-  return 0;
-}
-//}}}
-//{{{
 unsigned int cStLink::is_core_halted() {
 
   /* return non zero if core is halted */
   getStatus();
   return mDataBuf[0] == STLINK_CORE_HALTED;
+  }
+//}}}
+//{{{
+int cStLink::loadDeviceParams() {
+
+  printf ("CoreId %x\n", getCoreId());
+  printf ("ChipId %x\n", getChipId());
+
+  const chip_params_t* params = NULL;
+  for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
+    if (devices[i].chip_id == mChipId) {
+      params = &devices[i];
+      break;
+      }
+    }
+  if (params == NULL) {
+    printf ("Unknown chip id %#x\n", mChipId);
+    return -1;
+    }
+
+  flash_base = STM32_FLASH_BASE;
+  if (mChipId == STM32_CHIPID_F2)
+    flash_size = 0x100000;
+  else if (mChipId == STM32_CHIPID_F4)
+    flash_size = 0x100000;
+  else {
+    uint32_t flash_size = readDebug32(params->flash_size_reg) & 0xffff;
+    flash_size = flash_size * 1024;
+    }
+  flash_pgsz = params->flash_pagesize;
+
+  sram_base = STM32_SRAM_BASE;
+  sram_size = params->sram_size;
+
+  sys_base = params->bootrom_base;
+  sys_size = params->bootrom_size;
+
+  printf ("%s %dK flash %zd pages %dk sram\n",
+          params->description, flash_size / 1024, flash_pgsz,sram_size / 1024);
+
+  getVersion();
+  return 0;
+  }
+//}}}
+
+//{{{
+int cStLink::sendRecv (int txSize, int rxSize) {
+
+  int transferred = 0;
+  libusb_bulk_transfer (mUsbHandle, ep_req, mCmdBuf, txSize, &transferred, 1000);
+  libusb_bulk_transfer (mUsbHandle, ep_rep, mDataBuf, rxSize, &transferred, 1000);
+  return transferred;
+  }
+//}}}
+//{{{
+int cStLink::send (unsigned char* txBuf, int txSize) {
+  int transferred = 0;
+  libusb_bulk_transfer (mUsbHandle, ep_req, txBuf, txSize, &transferred, 1000);
+  return transferred;
   }
 //}}}
