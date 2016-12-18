@@ -26,13 +26,15 @@
     <ClCompile Include="test_usb.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="stlink-common.h" />
+    <ClInclude Include="cStLink.h" />
+    <ClInclude Include="libusb.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{CB412C0F-A06E-40A1-BF72-424775269BE3}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>stlinkOld</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
+    <ProjectName>stlink</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

@@ -4,7 +4,11 @@
 int main (int ac, char** av) {
 
   cStLink stlink;
-  stlink.openUsb();
+  if (!stlink.openUsb()) {
+    printf ("no stLink found\n");
+    Sleep (2000);
+    return 0;
+    }
 
   cortex_m3_cpuid_t cpuid;
   stlink.getCpuId (&cpuid);
@@ -30,8 +34,15 @@ int main (int ac, char** av) {
   stlink.getStatus ();
   stlink.readAllRegs (&regs);
 
-  printf ("-- exit_debug_mode\n");
-  stlink.exitDebugMode ();
+  //stlink.exitDebugMode ();
+
+  stlink.traceEnable();
+  uint8_t traceBuf[1024];
+  while (true) {
+    auto size = stlink.readTrace (traceBuf, 1024);
+    if (size > 0)
+      printf ("trace %d %s\n", size, traceBuf);
+    }
 
   Sleep (100000);
   return 0;

@@ -57,14 +57,33 @@
   #define STLINK_DEBUG_EXIT           0x21
   #define STLINK_DEBUG_READCOREID     0x22
 
-  #define STLINK_JTAG_WRITEDEBUG_32BIT 0x35
-  #define STLINK_JTAG_READDEBUG_32BIT  0x36
-  #define STLINK_JTAG_DRIVE_NRST       0x3c
+  #define STLINK_DEBUG_APIV2_ENTER           0x30
+  #define STLINK_DEBUG_APIV2_READ_IDCODES    0x31
+  #define STLINK_DEBUG_APIV2_RESETSYS        0x32
+  #define STLINK_DEBUG_APIV2_READREG         0x33
+  #define STLINK_DEBUG_APIV2_WRITEREG        0x34
+  #define STLINK_DEBUG_APIV2_WRITEDEBUGREG   0x35
+  #define STLINK_DEBUG_APIV2_READDEBUGREG    0x36
+
+  #define STLINK_DEBUG_APIV2_READALLREGS     0x3A
+  #define STLINK_DEBUG_APIV2_GETLASTRWSTATUS 0x3B
+  #define STLINK_DEBUG_APIV2_DRIVE_NRST      0x3C
+    #define STLINK_DEBUG_APIV2_DRIVE_NRST_LOW   0x00
+    #define STLINK_DEBUG_APIV2_DRIVE_NRST_HIGH  0x01
+    #define STLINK_DEBUG_APIV2_DRIVE_NRST_PULSE 0x02
+
+  #define STLINK_DEBUG_APIV2_START_TRACE_RX  0x40
+  #define STLINK_DEBUG_APIV2_STOP_TRACE_RX   0x41
+  #define STLINK_DEBUG_APIV2_GET_TRACE_NB    0x42
+  #define STLINK_DEBUG_APIV2_SWD_SET_FREQ    0x43
+    #define STLINK_TRACE_SIZE                  1024
+    #define STLINK_TRACE_MAX_HZ                2000000
 
 #define STLINK_DFU_COMMAND           0xF3
   #define STLINK_DFU_EXIT              0x07
 
-#define STLINK_GET_CURRENT_MODE      0xf5
+#define STLINK_GET_CURRENT_MODE      0xF5
+#define STLINK_GET_TARGET_VOLTAGE    0xF7
 
 //{{{  stm32f FPEC flash controller interface, pm0063 manual
 // TODO - all of this needs to be abstracted out....
@@ -159,8 +178,82 @@
 #define DHCSR 0xe000edf0
 #define DCRSR 0xe000edf4
 #define DCRDR 0xe000edf8
-#define DBGKEY 0xa05f0000
+//#define DBGKEY 0xa05f0000
 //}}}
+//}}}
+//{{{  cortex m defines
+#define CORTEX_M_COMMON_MAGIC 0x1A451A45
+
+#define SYSTEM_CONTROL_BASE 0x400FE000
+
+#define ITM_TER0  0xE0000E00
+#define ITM_TPR   0xE0000E40
+#define ITM_TCR   0xE0000E80
+#define ITM_LAR   0xE0000FB0
+#define ITM_LAR_KEY 0xC5ACCE55
+
+#define CPUID   0xE000ED00
+/* Debug Control Block */
+#define DCB_DHCSR 0xE000EDF0
+#define DCB_DCRSR 0xE000EDF4
+#define DCB_DCRDR 0xE000EDF8
+#define DCB_DEMCR 0xE000EDFC
+
+#define DCRSR_WnR (1 << 16)
+
+#define DWT_CTRL  0xE0001000
+#define DWT_CYCCNT  0xE0001004
+#define DWT_COMP0 0xE0001020
+#define DWT_MASK0 0xE0001024
+#define DWT_FUNCTION0 0xE0001028
+
+#define FP_CTRL   0xE0002000
+#define FP_REMAP  0xE0002004
+#define FP_COMP0  0xE0002008
+#define FP_COMP1  0xE000200C
+#define FP_COMP2  0xE0002010
+#define FP_COMP3  0xE0002014
+#define FP_COMP4  0xE0002018
+#define FP_COMP5  0xE000201C
+#define FP_COMP6  0xE0002020
+#define FP_COMP7  0xE0002024
+
+#define FPU_CPACR 0xE000ED88
+#define FPU_FPCCR 0xE000EF34
+#define FPU_FPCAR 0xE000EF38
+#define FPU_FPDSCR  0xE000EF3C
+
+#define TPIU_SSPSR  0xE0040000
+#define TPIU_CSPSR  0xE0040004
+#define TPIU_ACPR 0xE0040010
+#define TPIU_SPPR 0xE00400F0
+#define TPIU_FFSR 0xE0040300
+#define TPIU_FFCR 0xE0040304
+#define TPIU_FSCR 0xE0040308
+
+/* DCB_DHCSR bit and field definitions */
+#define DBGKEY    (0xA05F << 16)
+#define C_DEBUGEN (1 << 0)
+#define C_HALT    (1 << 1)
+#define C_STEP    (1 << 2)
+#define C_MASKINTS  (1 << 3)
+#define S_REGRDY  (1 << 16)
+#define S_HALT    (1 << 17)
+#define S_SLEEP   (1 << 18)
+#define S_LOCKUP  (1 << 19)
+#define S_RETIRE_ST (1 << 24)
+#define S_RESET_ST  (1 << 25)
+
+/* DCB_DEMCR bit and field definitions */
+#define TRCENA      (1 << 24)
+#define VC_HARDERR    (1 << 10)
+#define VC_INTERR   (1 << 9)
+#define VC_BUSERR   (1 << 8)
+#define VC_STATERR    (1 << 7)
+#define VC_CHKERR   (1 << 6)
+#define VC_NOCPERR    (1 << 5)
+#define VC_MMERR    (1 << 4)
+#define VC_CORERESET  (1 << 0)
 //}}}
 
 //{{{
@@ -178,6 +271,104 @@ const tChipParams_ devices[] = {
   { 0x413, "F4 device", 0x1FFF7A10, 0x4000, 0x30000, 0x1fff0000, 0x7800 },
   { 0x449, "F7 device", 0x1ff0f442, 0x4000, 0x50000, 0x00100000, 0xEDC0 }
   };
+//}}}
+
+//{{{
+//int armv7m_trace_tpiu_config(struct target *target)
+  //retval = target_write_u32(target, TPIU_CSPSR, 1 << trace_config->port_size);
+  //retval = target_write_u32(target, TPIU_ACPR, prescaler - 1);
+  //retval = target_write_u32(target, TPIU_SPPR, trace_config->pin_protocol);
+
+  //uint32_t ffcr;
+  //retval = target_read_u32(target, TPIU_FFCR, &ffcr);
+  //if (trace_config->formatter)
+    //ffcr |= (1 << 1);
+  //else
+    //ffcr &= ~(1 << 1);
+  //retval = target_write_u32(target, TPIU_FFCR, ffcr);
+
+//int armv7m_trace_itm_config(struct target *target)
+//  target_write_u32 (target, ITM_LAR, ITM_LAR_KEY);
+
+  /* Enable ITM, TXENA, set TraceBusID and other parameters */
+//  target_write_u32(target, ITM_TCR, (1 << 0) | (1 << 3) |
+//                                    (trace_config->itm_diff_timestamps << 1) |
+//                                    (trace_config->itm_synchro_packets << 2) |
+//                                    (trace_config->itm_async_timestamps << 4) |
+//                                    (trace_config->itm_ts_prescale << 8) |
+//                                    (trace_config->trace_bus_id << 16));
+
+//  for (unsigned int i = 0; i < 8; i++) {
+//    target_write_u32(target, ITM_TER0 + i * 4, trace_config->itm_ter[i]);
+
+//void SWO_Init(uint32_t portBits, uint32_t cpuCoreFreqHz) {
+  //uint32_t SWOSpeed = 64000; /* default 64k baud rate */
+  /* SWOSpeed in Hz, note that cpuCoreFreqHz is expected to be match the CPU core clock */
+  //uint32_t SWOPrescaler = (cpuCoreFreqHz / SWOSpeed) - 1;
+
+  /* enable trace in core debug */
+  //CoreDebug->DEMCR = CoreDebug_DEMCR_TRCENA_Msk;
+
+  /* "Selected PIN Protocol Register": Select which protocol to use for trace output (2: SWO NRZ, 1: SWO Manchester encoding) */
+  //*((volatile unsigned *)(ITM_BASE + 0x400F0)) = 0x00000002;
+
+  /* "Async Clock Prescaler Register". Scale the baud rate of the asynchronous output */
+  /*((volatile unsigned *)(ITM_BASE + 0x40010)) = SWOPrescaler;
+
+  //* ITM Lock Access Register, C5ACCE55 enables more write access to Control Register 0xE00 :: 0xFFC */
+  //*((volatile unsigned *)(ITM_BASE + 0x00FB0)) = 0xC5ACCE55;
+
+  /* ITM Trace Control Register */
+  //ITM->TCR = ITM_TCR_TraceBusID_Msk | ITM_TCR_SWOENA_Msk | ITM_TCR_SYNCENA_Msk | ITM_TCR_ITMENA_Msk;
+
+  /* ITM Trace Privilege Register */
+  //ITM->TPR = ITM_TPR_PRIVMASK_Msk;
+
+  /* ITM Trace Enable Register. Enabled tracing on stimulus ports. One bit per stimulus port. */
+  //ITM->TER = portBits;
+
+  //*((volatile unsigned *)(ITM_BASE + 0x01000)) = 0x400003FE; /* DWT_CTRL */
+  //}
+//}}}
+//{{{
+//void SWO_Init() {
+
+  //// default 64k baud rate
+  //// SWOSpeed in Hz, note that cpuCoreFreqHz is expected to be match the CPU core clock
+  //uint32_t SWOSpeed = 64000;
+  ////uint32_t SWOSpeed = 200000;
+  //uint32_t cpuCoreFreqHz = 168000000;
+  //uint32_t SWOPrescaler = (cpuCoreFreqHz / SWOSpeed) - 1;
+
+  //// enable trace in core debug
+  //CoreDebug->DEMCR = CoreDebug_DEMCR_TRCENA_Msk;
+
+  //// TPI SPPR - Selected PIN Protocol Register =  protocol for trace output 2: SWO NRZ, 1: SWO Manchester encoding
+  //TPI->SPPR = 0x00000002;
+
+  //// TPI Async Clock Prescaler Register =  Scale the baud rate of the asynchronous output
+  //TPI->ACPR = SWOPrescaler;
+
+  //// ITM Lock Access Register = ITM_LAR_KEY = C5ACCE55 enables write access to Control Register 0xE00 :: 0xFFC
+  //ITM->LAR = ITM_LAR_KEY;
+
+  //// ITM Trace Control Register
+  //ITM->TCR = ITM_TCR_TraceBusID_Msk | ITM_TCR_SWOENA_Msk | ITM_TCR_SYNCENA_Msk | ITM_TCR_ITMENA_Msk;
+
+  //// ITM Trace Privilege Register =
+  //ITM->TPR = ITM_TPR_PRIVMASK_Msk;
+
+  //// ITM Trace Enable Register =  Enabled tracing on stimulus ports. One bit per stimulus port
+  //ITM->TER = 0x1F;
+
+  //// DWT Control Register =
+  ////*((volatile unsigned*)(ITM_BASE + 0x01000)) = 0x400003FE;
+  //DWT->CTRL = 0x400003FE;
+
+  //// TPI Formatter and Flush Control Register =
+  ////*((volatile unsigned*)(ITM_BASE + 0x40304)) = 0x00000100;
+  //TPI->FFCR = 0x00000100;
+//}
 //}}}
 
 cStLink::cStLink() : mCoreStatus (STLINK_CORE_STAT_UNKNOWN) {}
@@ -203,7 +394,7 @@ int cStLink::openUsb() {
     }
 
   libusb_device** devs;
-  int numDevices = libusb_get_device_list (mUsbContext, &devs);
+  auto numDevices = libusb_get_device_list (mUsbContext, &devs);
   for (int i = 0; i < numDevices; i++) {
     struct libusb_device_descriptor dev_desc;
     if (libusb_get_device_descriptor (devs[i], &dev_desc) != 0) {
@@ -211,14 +402,14 @@ int cStLink::openUsb() {
       continue;
       }
 
-    printf ("%d Usb device %x %x\n", i, dev_desc.idVendor, dev_desc.idProduct);
-    mV2 = false;
+    printf ("%d Usb device %4x:%4x\n", i, dev_desc.idVendor, dev_desc.idProduct);
+    mV21 = false;
     if (dev_desc.idVendor != USB_ST_VID)
       continue;
     if (dev_desc.idProduct == USB_STLINK_32L_PID)
-      mV2 = true;
+      mV21 = false;
     else if (dev_desc.idProduct == USB_STLINK_V21_PID)
-      mV2 = false;
+      mV21 = true;
     else
       continue;
     if (libusb_open (devs[i], &mUsbHandle) != 0) {
@@ -247,18 +438,15 @@ int cStLink::openUsb() {
     }
 
   ep_rep = STLINK_V2_RX_EP;
-  ep_req = mV2 ? STLINK_V2_0_TX_EP : STLINK_V2_1_TX_EP;
-  ep_trace = mV2 ? STLINK_V2_0_TRACE_EP : STLINK_V2_1_TRACE_EP;
+  ep_req = mV21 ? STLINK_V2_1_TX_EP : STLINK_V2_0_TX_EP;
+  ep_trace = mV21 ? STLINK_V2_1_TRACE_EP : STLINK_V2_0_TRACE_EP;
 
-  if (getCurrentMode(0) == STLINK_DEV_DFU_MODE) {
-    printf ("-- exit_dfu_mode\n");
+  if (getCurrentMode(0) == STLINK_DEV_DFU_MODE)
     exitDfuMode();
-    }
   if (getCurrentMode(0) != STLINK_DEV_DEBUG_MODE)
     enterSwdMode();
 
-  reset();
-
+  //reset();
   loadDeviceParams();
   return 1;
   }
@@ -268,7 +456,7 @@ int cStLink::openUsb() {
 void cStLink::getVersion() {
 
   mCmdBuf[0] = STLINK_GET_VERSION;
-  ssize_t size = sendRecv (1, 6);
+  auto size = sendRecv (1, 6);
   if (size == -1) {
     printf("[!] send_recv\n");
     }
@@ -298,7 +486,7 @@ uint32_t cStLink::getCoreId() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_READCOREID;
-  ssize_t size = sendRecv (2, 4);
+  auto size = sendRecv (2, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
@@ -311,16 +499,21 @@ uint32_t cStLink::getCoreId() {
 //{{{
 uint32_t cStLink::getChipId() {
 
-  mChipId = readDebug32 (0xE0042000) &0xFFF;
+  mIdCode = readDebug32 (0xE0042000);
+  mChipId = mIdCode & 0xFFF;
+  mRevId = mIdCode >> 16;
+
   if (mChipId == 0)
     // Try Corex M0 DBGMCU_IDCODE register address
     mChipId = readDebug32 (0x40015800);
 
-  /* Fix mChipId for F4 rev A errata , Read CPU ID, as CoreID is the same for F2/F4*/
+  // Fix mChipId for F4 rev A errata , Read cpuId, as CoreId is the same for F2/F4
   if (mChipId == 0x411) {
     uint32_t cpuid = readDebug32 (0xE000ED00);
-    if ((cpuid  & 0xfff0) == 0xc240)
-        mChipId = 0x413;
+    if ((cpuid  & 0xfff0) == 0xC240) {
+      printf ("fixing cpuiD FO Rf4 REV a\n");
+      mChipId = 0x413;
+      }
     }
 
   return mChipId;
@@ -343,12 +536,11 @@ void cStLink::getStatus() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_GETSTATUS;
-  ssize_t size = sendRecv (2, 2);
+  auto size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
     }
-
   if (mDataLen <= 0)
      return;
 
@@ -371,7 +563,7 @@ void cStLink::getStatus() {
 int cStLink::getCurrentMode (int report) {
 
   mCmdBuf[0] = STLINK_GET_CURRENT_MODE;
-  ssize_t size = sendRecv (1, 2);
+  auto size = sendRecv (1, 2);
   if (size == -1) {
       printf("[!] send_recv\n");
       return -1;
@@ -400,11 +592,33 @@ int cStLink::getCurrentMode (int report) {
   return mode;
   }
 //}}}
+//{{{
+float cStLink::getTargetVoltage() {
+
+  mCmdBuf[0] = STLINK_GET_TARGET_VOLTAGE;
+  auto size = sendRecv (1, 8);
+  if (size == -1) {
+    printf("[!] send_recv\n");
+    return 0;
+    }
+
+  uint32_t adc_results[2];
+  memcpy (&adc_results[0], mDataBuf, 4);
+  memcpy(&adc_results[1], mDataBuf + 4, 4);
+
+  float targetVoltage = 0;
+
+  if (adc_results[0])
+    targetVoltage = 2 * ((float)adc_results[1]) * (float)(1.2 / adc_results[0]);
+
+  return targetVoltage;
+  }
+//}}}
 
 //{{{
 void cStLink::enterSwdMode() {
 
-  unsigned char* const cmd  = mCmdBuf;
+  printf ("enterSwdMode\n");
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_ENTER;
   mCmdBuf[2] = STLINK_DEBUG_ENTER_SWD;
@@ -414,8 +628,8 @@ void cStLink::enterSwdMode() {
 //{{{
 void cStLink::exitDebugMode() {
 
+  printf ("exitDebugMode\n");
   writeDebug32 (DHCSR, DBGKEY);
-
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_EXIT;
   send (mCmdBuf, 2);
@@ -424,9 +638,48 @@ void cStLink::exitDebugMode() {
 //{{{
 void cStLink::exitDfuMode() {
 
+  printf ("exitDfuMode\n");
   mCmdBuf[0] = STLINK_DFU_COMMAND;
   mCmdBuf[1] = STLINK_DFU_EXIT;
   send (mCmdBuf, 2);
+  }
+//}}}
+//{{{
+// Force the core into the debug mode -> halted state.
+void cStLink::forceDebug() {
+
+  printf ("forceDebug\n");
+  mCmdBuf[0] = STLINK_DEBUG_COMMAND;
+  mCmdBuf[1] = STLINK_DEBUG_FORCEDEBUG;
+  auto size = sendRecv (2, 2);
+  if (size == -1) {
+    printf("[!] send_recv\n");
+    return;
+    }
+  }
+//}}}
+
+//{{{
+void cStLink::traceEnable() {
+
+  printf ("traceEnable\n");
+  mCmdBuf[0] = STLINK_DEBUG_COMMAND;
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_START_TRACE_RX;
+
+  trace.enabled = true;
+  trace.source_hz = STLINK_TRACE_MAX_HZ;
+  uint16_t traceSize = STLINK_TRACE_SIZE;
+  memcpy (&mCmdBuf[2], &traceSize, 2);
+  memcpy (&mCmdBuf[4], &trace.source_hz, 4);
+  send (mCmdBuf, 8);
+  }
+//}}}
+//{{{
+int cStLink::readTrace (uint8_t* buf, int size) {
+
+  int transferred = 0;
+  libusb_bulk_transfer (mUsbHandle, ep_trace, buf, size, &transferred, 1000);
+  return transferred;
   }
 //}}}
 
@@ -434,9 +687,9 @@ void cStLink::exitDfuMode() {
 uint32_t cStLink::readDebug32 (uint32_t addr) {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_JTAG_READDEBUG_32BIT;
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_READDEBUGREG;
   memcpy (&mCmdBuf[2], &addr, 4);
-  ssize_t size = sendRecv (6, 8);
+  auto size = sendRecv (6, 8);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
@@ -460,7 +713,7 @@ uint32_t cStLink::readMem32 (uint32_t addr, uint16_t len) {
   mCmdBuf[1] = STLINK_DEBUG_READMEM_32BIT;
   memcpy (&mCmdBuf[2], &addr, 4);
   memcpy (&mCmdBuf[6], &len, 2);
-  ssize_t size = sendRecv (8, len);
+  auto size = sendRecv (8, len);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
@@ -481,9 +734,9 @@ uint32_t cStLink::readReg (int r_idx, reg* regp) {
     }
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_DEBUG_READREG;
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_READREG;
   mCmdBuf[2] = (uint8_t) r_idx;
-  ssize_t size = sendRecv (3, 4);
+  auto size = sendRecv (3, 4);
   if (size == -1) {
     printf("[!] send_recv\n");
     return 0;
@@ -519,7 +772,7 @@ void cStLink::readAllRegs (reg* regp) {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_READALLREGS;
-  ssize_t size = sendRecv (2, 84);
+  auto size = sendRecv (2, 84);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -602,10 +855,10 @@ void cStLink::readAllUnsupportedRegs (reg* regp) {
 void cStLink::writeDebug32 (uint32_t addr, uint32_t data) {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_JTAG_WRITEDEBUG_32BIT;
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_WRITEDEBUGREG;
   memcpy (&mCmdBuf[2], &addr, 4);
   memcpy (&mCmdBuf[6], &data, 4);
-  ssize_t size = sendRecv (10, 2);
+  auto size = sendRecv (10, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -648,16 +901,16 @@ void cStLink::writeMem8 (uint32_t addr, uint16_t len) {
 //{{{
 void cStLink::writeReg (uint32_t reg, int idx) {
 
-    mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-    mCmdBuf[1] = STLINK_DEBUG_WRITEREG;
-    mCmdBuf[2] = idx;
-    memcpy (&mCmdBuf[3], &reg, 4);
-    ssize_t size = sendRecv (7, 2);
-    if (size == -1) {
-      printf("[!] send_recv\n");
-      return;
-      }
-    mDataLen = (size_t) size;
+  mCmdBuf[0] = STLINK_DEBUG_COMMAND;
+  mCmdBuf[1] = STLINK_DEBUG_WRITEREG;
+  mCmdBuf[2] = idx;
+  memcpy (&mCmdBuf[3], &reg, 4);
+  auto size = sendRecv (7, 2);
+  if (size == -1) {
+    printf("[!] send_recv\n");
+    return;
+    }
+  mDataLen = (size_t) size;
   }
 //}}}
 //{{{
@@ -682,26 +935,29 @@ void cStLink::writeUnsupportedReg (uint32_t val, int r_idx, reg* regp) {
     val = (uint8_t) (val>>24);
     switch (r_idx) {
       case 0x1C:  /* control */
-        val = (((uint32_t) val) << 24) | (((uint32_t) regp->faultmask) << 16) | (((uint32_t) regp->basepri) << 8) | ((uint32_t) regp->primask);
+        val = (((uint32_t) val) << 24) | (((uint32_t) regp->faultmask) << 16) |
+              (((uint32_t) regp->basepri) << 8) | ((uint32_t) regp->primask);
         break;
       case 0x1D:  /* faultmask */
-        val = (((uint32_t) regp->control) << 24) | (((uint32_t) val) << 16) | (((uint32_t) regp->basepri) << 8) | ((uint32_t) regp->primask);
+        val = (((uint32_t) regp->control) << 24) | (((uint32_t) val) << 16) |
+              (((uint32_t) regp->basepri) << 8) | ((uint32_t) regp->primask);
         break;
       case 0x1E:  /* basepri */
-        val = (((uint32_t) regp->control) << 24) | (((uint32_t) regp->faultmask) << 16) | (((uint32_t) val) << 8) | ((uint32_t) regp->primask);
+        val = (((uint32_t) regp->control) << 24) | (((uint32_t) regp->faultmask) << 16) |
+              (((uint32_t) val) << 8) | ((uint32_t) regp->primask);
         break;
       case 0x1F:  /* primask */
-        val = (((uint32_t) regp->control) << 24) | (((uint32_t) regp->faultmask) << 16) | (((uint32_t) regp->basepri) << 8) | ((uint32_t) val);
+        val = (((uint32_t) regp->control) << 24) | (((uint32_t) regp->faultmask) << 16) |
+              (((uint32_t) regp->basepri) << 8) | ((uint32_t) val);
         break;
       }
-
     r_idx = 0x14;
     }
 
   memcpy (mDataBuf, &val, 4);
   writeMem32 (DCRDR, 4);
 
-  mDataBuf[0] = (unsigned char) r_idx;
+  mDataBuf[0] = (unsigned char)r_idx;
   mDataBuf[1] = 0;
   mDataBuf[2] = 0x01;
   mDataBuf[3] = 0;
@@ -712,9 +968,10 @@ void cStLink::writeUnsupportedReg (uint32_t val, int r_idx, reg* regp) {
 //{{{
 void cStLink::reset() {
 
+  printf ("reset\n");
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_DEBUG_RESETSYS;
-  ssize_t size = sendRecv (2, 2);
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_RESETSYS;
+  auto size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -724,23 +981,11 @@ void cStLink::reset() {
 //{{{
 void cStLink::jtagReset (int value) {
 
+  printf ("jtagReset\n");
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_JTAG_DRIVE_NRST;
+  mCmdBuf[1] = STLINK_DEBUG_APIV2_DRIVE_NRST;
   mCmdBuf[2] = (value) ? 0 : 1;
-  ssize_t size = sendRecv (3, 2);
-  if (size == -1) {
-    printf("[!] send_recv\n");
-    return;
-    }
-  }
-//}}}
-//{{{
-// Force the core into the debug mode -> halted state.
-void cStLink::forceDebug() {
-
-  mCmdBuf[0] = STLINK_DEBUG_COMMAND;
-  mCmdBuf[1] = STLINK_DEBUG_FORCEDEBUG;
-  ssize_t size = sendRecv (2, 2);
+  auto size = sendRecv (3, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -752,7 +997,7 @@ void cStLink::step() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_STEPCORE;
-  ssize_t size = sendRecv (2, 2);
+  auto size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -764,7 +1009,7 @@ void cStLink::run() {
 
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_RUNCORE;
-  ssize_t size = sendRecv (2, 2);
+  auto size = sendRecv (2, 2);
   if (size == -1) {
     printf("[!] send_recv\n");
     return;
@@ -777,7 +1022,7 @@ void cStLink::runAt (stm32_addr_t addr) {
   writeReg (addr, 15); /* pc register */
   run();
   while (is_core_halted() == 0)
-        Sleep(3000000);
+    Sleep(3000000);
   }
 //}}}
 
@@ -793,8 +1038,7 @@ unsigned int cStLink::is_core_halted() {
 //{{{
 int cStLink::loadDeviceParams() {
 
-  printf ("CoreId %x\n", getCoreId());
-  printf ("ChipId %x\n", getChipId());
+  printf ("CoreId:%x ChipId:%x IdCode:%x RevId:%x\n",  getCoreId(), getChipId(), mIdCode, mRevId);
 
   const chip_params_t* params = NULL;
   for (size_t i = 0; i < sizeof(devices) / sizeof(devices[0]); i++) {
@@ -825,10 +1069,12 @@ int cStLink::loadDeviceParams() {
   sys_base = params->bootrom_base;
   sys_size = params->bootrom_size;
 
-  printf ("%s %dK flash %zd pages %dk sram\n",
+  printf ("%s %zdK flash %zd pages %zdk sram\n",
           params->description, flash_size / 1024, flash_pgsz,sram_size / 1024);
 
   getVersion();
+
+  printf ("Target voltage %4.3f\n", getTargetVoltage());
   return 0;
   }
 //}}}
