@@ -10,7 +10,7 @@
 #include "libusb.h"
 
 //}}}
-//{{{  defines
+//{{{  stlink defines
 #define USB_ST_VID          0x0483
 #define USB_STLINK_32L_PID  0x3748
 #define USB_STLINK_V21_PID  0x374B
@@ -181,79 +181,97 @@
 //#define DBGKEY 0xa05f0000
 //}}}
 //}}}
-//{{{  cortex m defines
+//{{{  cortexM defines
 #define CORTEX_M_COMMON_MAGIC 0x1A451A45
 
-#define SYSTEM_CONTROL_BASE 0x400FE000
+//{{{  flash page size
+#define STM32_FLASH_PGSZ 1024
+#define STM32L_FLASH_PGSZ 256
+#define STM32F4_FLASH_PGSZ 16384
+#define STM32F4_FLASH_SIZE (128 * 1024 * 8)
+//}}}
+//{{{  sram size
+#define STM32_SRAM_SIZE (8 * 1024)
+#define STM32L_SRAM_SIZE (16 * 1024)
+//}}}
 
-#define ITM_TER0  0xE0000E00
-#define ITM_TPR   0xE0000E40
-#define ITM_TCR   0xE0000E80
-#define ITM_LAR   0xE0000FB0
-#define ITM_LAR_KEY 0xC5ACCE55
+#define ITM_TER0   0xE0000E00
+#define ITM_TPR    0xE0000E40
+#define ITM_TCR    0xE0000E80
+#define ITM_LAR    0xE0000FB0
+  #define ITM_LAR_KEY 0xC5ACCE55
 
-#define CPUID   0xE000ED00
-/* Debug Control Block */
-#define DCB_DHCSR 0xE000EDF0
-#define DCB_DCRSR 0xE000EDF4
-#define DCB_DCRDR 0xE000EDF8
-#define DCB_DEMCR 0xE000EDFC
+// SCB - System Control Block - CPUID
+#define SCB_CPUID  0xE000ED00
 
-#define DCRSR_WnR (1 << 16)
+// Debug Control Block
+#define DCB_DHCSR  0xE000EDF0
+  //{{{  DCB_DHCSR bit and field definitions
+  #define DBGKEY      (0xA05F << 16)
+  #define C_DEBUGEN   (1 << 0)
+  #define C_HALT      (1 << 1)
+  #define C_STEP      (1 << 2)
+  #define C_MASKINTS  (1 << 3)
+  #define S_REGRDY    (1 << 16)
+  #define S_HALT      (1 << 17)
+  #define S_SLEEP     (1 << 18)
+  #define S_LOCKUP    (1 << 19)
+  #define S_RETIRE_ST (1 << 24)
+  #define S_RESET_ST  (1 << 25)
+  //}}}
+#define DCB_DCRSR  0xE000EDF4
+  #define DCRSR_WnR (1 << 16)
+#define DCB_DCRDR  0xE000EDF8
+#define DCB_DEMCR  0xE000EDFC
+  //{{{  DCB_DEMCR bit and field definitions
+  #define TRCENA       (1 << 24)
+  #define VC_HARDERR   (1 << 10)
+  #define VC_INTERR    (1 << 9)
+  #define VC_BUSERR    (1 << 8)
+  #define VC_STATERR   (1 << 7)
+  #define VC_CHKERR    (1 << 6)
+  #define VC_NOCPERR   (1 << 5)
+  #define VC_MMERR     (1 << 4)
+  #define VC_CORERESET (1 << 0)
+  //}}}
 
-#define DWT_CTRL  0xE0001000
-#define DWT_CYCCNT  0xE0001004
-#define DWT_COMP0 0xE0001020
-#define DWT_MASK0 0xE0001024
+#define DWT_CTRL   0xE0001000
+#define DWT_CYCCNT 0xE0001004
+#define DWT_COMP0  0xE0001020
+#define DWT_MASK0  0xE0001024
 #define DWT_FUNCTION0 0xE0001028
 
-#define FP_CTRL   0xE0002000
-#define FP_REMAP  0xE0002004
-#define FP_COMP0  0xE0002008
-#define FP_COMP1  0xE000200C
-#define FP_COMP2  0xE0002010
-#define FP_COMP3  0xE0002014
-#define FP_COMP4  0xE0002018
-#define FP_COMP5  0xE000201C
-#define FP_COMP6  0xE0002020
-#define FP_COMP7  0xE0002024
+// FP
+#define FP_CTRL    0xE0002000
+#define FP_REMAP   0xE0002004
+#define FP_COMP0   0xE0002008
+#define FP_COMP1   0xE000200C
+#define FP_COMP2   0xE0002010
+#define FP_COMP3   0xE0002014
+#define FP_COMP4   0xE0002018
+#define FP_COMP5   0xE000201C
+#define FP_COMP6   0xE0002020
+#define FP_COMP7   0xE0002024
 
-#define FPU_CPACR 0xE000ED88
-#define FPU_FPCCR 0xE000EF34
-#define FPU_FPCAR 0xE000EF38
-#define FPU_FPDSCR  0xE000EF3C
+#define FPU_CPACR  0xE000ED88
+#define FPU_FPCCR  0xE000EF34
+#define FPU_FPCAR  0xE000EF38
+#define FPU_FPDSCR 0xE000EF3C
 
-#define TPIU_SSPSR  0xE0040000
-#define TPIU_CSPSR  0xE0040004
-#define TPIU_ACPR 0xE0040010
-#define TPIU_SPPR 0xE00400F0
-#define TPIU_FFSR 0xE0040300
-#define TPIU_FFCR 0xE0040304
-#define TPIU_FSCR 0xE0040308
+// TPIU
+#define TPIU_SSPSR 0xE0040000
+#define TPIU_CSPSR 0xE0040004
+#define TPIU_ACPR  0xE0040010
+#define TPIU_SPPR  0xE00400F0
+#define TPIU_FFSR  0xE0040300
+#define TPIU_FFCR  0xE0040304
+#define TPIU_FSCR  0xE0040308
 
-/* DCB_DHCSR bit and field definitions */
-#define DBGKEY    (0xA05F << 16)
-#define C_DEBUGEN (1 << 0)
-#define C_HALT    (1 << 1)
-#define C_STEP    (1 << 2)
-#define C_MASKINTS  (1 << 3)
-#define S_REGRDY  (1 << 16)
-#define S_HALT    (1 << 17)
-#define S_SLEEP   (1 << 18)
-#define S_LOCKUP  (1 << 19)
-#define S_RETIRE_ST (1 << 24)
-#define S_RESET_ST  (1 << 25)
+// DEBUGMCU
+#define DEBUGMCU_IDCODE 0xE0042000
+#define DEBUGMCU_CR     0xE0042004
+  #define DBGMCU_CR_TRACE_IOEN 0x00000020
 
-/* DCB_DEMCR bit and field definitions */
-#define TRCENA      (1 << 24)
-#define VC_HARDERR    (1 << 10)
-#define VC_INTERR   (1 << 9)
-#define VC_BUSERR   (1 << 8)
-#define VC_STATERR    (1 << 7)
-#define VC_CHKERR   (1 << 6)
-#define VC_NOCPERR    (1 << 5)
-#define VC_MMERR    (1 << 4)
-#define VC_CORERESET  (1 << 0)
 //}}}
 
 //{{{
@@ -499,19 +517,16 @@ uint32_t cStLink::getCoreId() {
 //{{{
 uint32_t cStLink::getChipId() {
 
-  mIdCode = readDebug32 (0xE0042000);
+  mIdCode = readDebug32 (DEBUGMCU_IDCODE);
   mChipId = mIdCode & 0xFFF;
   mRevId = mIdCode >> 16;
 
-  if (mChipId == 0)
-    // Try Corex M0 DBGMCU_IDCODE register address
-    mChipId = readDebug32 (0x40015800);
-
   // Fix mChipId for F4 rev A errata , Read cpuId, as CoreId is the same for F2/F4
   if (mChipId == 0x411) {
-    uint32_t cpuid = readDebug32 (0xE000ED00);
+    // SCB - System Control Block - CPUID
+    uint32_t cpuid = readDebug32 (SCB_CPUID);
     if ((cpuid  & 0xfff0) == 0xC240) {
-      printf ("fixing cpuiD FO Rf4 REV a\n");
+      printf ("fixing cpuId for f4 rev A\n");
       mChipId = 0x413;
       }
     }
@@ -522,7 +537,7 @@ uint32_t cStLink::getChipId() {
 //{{{
 void cStLink::getCpuId (cortex_m3_cpuid_t *cpuid) {
 
-  uint32_t cpuIdReg = readDebug32 (CM3_REG_CPUID);
+  uint32_t cpuIdReg = readDebug32 (SCB_CPUID);
 
   cpuid->implementer_id = (cpuIdReg >> 24) &  0x7f;
   cpuid->variant =        (cpuIdReg >> 20) &   0xf;
@@ -736,15 +751,14 @@ uint32_t cStLink::readReg (int r_idx, reg* regp) {
   mCmdBuf[0] = STLINK_DEBUG_COMMAND;
   mCmdBuf[1] = STLINK_DEBUG_APIV2_READREG;
   mCmdBuf[2] = (uint8_t) r_idx;
-  auto size = sendRecv (3, 4);
-  if (size == -1) {
+  mDataLen = sendRecv (3, 8);
+  if (mDataLen != 8) {
     printf("[!] send_recv\n");
     return 0;
     }
-  mDataLen = (size_t) size;
 
   uint32_t r;
-  memcpy (&r, mDataBuf, 4);
+  memcpy (&r, mDataBuf+4, 4);
   switch (r_idx) {
     case 16:
       regp->xpsr = r;

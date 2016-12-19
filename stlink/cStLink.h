@@ -2,26 +2,14 @@
 #include <stdint.h>
 #include "libusb.h"
 
-//{{{  cortex m3 defines
-#define CM3_REG_CPUID 0xE000ED00
-#define CM3_REG_FP_CTRL 0xE0002000
-#define CM3_REG_FP_COMP0 0xE0002008
-//}}}
+#define CMD_BUF_LEN 16           // Enough space to hold both a V2 command
+#define DATA_BUF_LEN (1024 * 100) // Max data transfer size 6kB = max mem32_read block
 //{{{  stlink mode defines
 #define STLINK_DEV_DFU_MODE   0x00
 #define STLINK_DEV_MASS_MODE    0x01
 #define STLINK_DEV_DEBUG_MODE   0x02
 #define STLINK_DEV_UNKNOWN_MODE -1
 //}}}
-#define STM32_FLASH_PGSZ 1024
-#define STM32L_FLASH_PGSZ 256
-#define STM32F4_FLASH_PGSZ 16384
-#define STM32F4_FLASH_SIZE (128 * 1024 * 8)
-#define STM32_SRAM_SIZE (8 * 1024)
-#define STM32L_SRAM_SIZE (16 * 1024)
-
-#define CMD_BUF_LEN 16           // Enough space to hold both a V2 command
-#define DATA_BUF_LEN (1024 * 100) // Max data transfer size 6kB = max mem32_read block
 
 //{{{  struct reg
 typedef struct {

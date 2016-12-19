@@ -24,8 +24,6 @@ int main (int ac, char** av) {
     printf ("\n");
     }
 
-  printf ("FP_CTRL %x\n", stlink.readMem32 (CM3_REG_FP_CTRL, 4));
-
   reg regs;
   stlink.readAllRegs (&regs);
   stlink.getStatus ();
@@ -34,7 +32,9 @@ int main (int ac, char** av) {
   stlink.getStatus ();
   stlink.readAllRegs (&regs);
 
-  //stlink.exitDebugMode ();
+  stlink.exitDebugMode ();
+  Sleep (100000);
+  return 0;
 
   stlink.traceEnable();
   uint8_t traceBuf[1024];
