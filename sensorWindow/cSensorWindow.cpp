@@ -11,6 +11,7 @@
 #include "../inc/jpeglib/jpeglib.h"
 #pragma comment (lib,"turbojpeg-static")
 //}}}
+#define QUEUESIZE 64
 
 class cSensorWindow : public cD2dWindow {
 public:
@@ -44,7 +45,7 @@ public:
     else
       setPreview();
 
-    auto loaderThread = thread([=]() { loader(); });
+    auto loaderThread = thread([=]() { loaderThreadFunc(); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
     loaderThread.detach();
 
@@ -925,9 +926,8 @@ private:
     }
   //}}}
   //{{{
-  void loader() {
+  void loaderThreadFunc() {
 
-    #define QUEUESIZE 64
     uint8_t* bufferPtr[QUEUESIZE];
     uint8_t* contexts[QUEUESIZE];
     OVERLAPPED overLapped[QUEUESIZE];
