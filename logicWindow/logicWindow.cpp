@@ -7,7 +7,24 @@
 //}}}
 //#define mt9d111
 #define mt9d112
-#define QUEUESIZE 32
+#define QUEUESIZE 64
+#define SAMPLE_BYTE
+//#define SAMPLE_WORD
+//{{{
+#ifdef SAMPLE_BYTE
+  #define kNumDq 8
+  #define SAMPLE_TYPE uint8_t
+  #define BYTES_PER_SAMPLE 1
+#elif SAMPLEWORD
+  #define kNumDq 16
+  #define SAMPLE_TYPE uint16_t
+  #define BYTES_PER_SAMPLE 2
+#else
+  #define kNumDq 32
+  #define SAMPLE_TYPE uint32_t
+  #define BYTES_PER_SAMPLE 4
+#endif
+//}}}
 
 class cLogicWindow : public cD2dWindow {
 public:
@@ -18,7 +35,7 @@ public:
 
     initialise (title, width, height);
 
-    samples = (ULONG*)malloc (maxSamples*4);
+    samples = (SAMPLE_TYPE*)malloc (maxSampleBytes);
     midSample = maxSamples / 2.0;
     setSamplesPerPixel (maxSamplesPerPixel);
 
@@ -32,11 +49,11 @@ public:
     preview();
     readReg (0x00);
 
-    auto loaderThread = thread([=]() { loader(); });
+    auto loaderThread = thread([=]() { loaderThreadFunc(); });
     SetThreadPriority (loaderThread.native_handle(), THREAD_PRIORITY_ABOVE_NORMAL);
     loaderThread.detach();
 
-    thread ([=]() { analysis(); } ).detach();
+    thread ([=]() { analysisThreadFunc(); } ).detach();
 
     messagePump();
     }
@@ -151,11 +168,11 @@ protected:
   void onDraw (ID2D1DeviceContext* dc) {
 
     clearBackground (dc);
-    drawGraticule (dc, 16);
-    drawMidLine (dc, 16);
     drawSamplesTitle (dc);
-    drawLeftLabels (dc, 16);
-    drawSamples (dc, 0x10000);
+    drawGraticule (dc, kNumDq);
+    drawMidLine (dc, kNumDq);
+    drawLeftLabels (dc, kNumDq);
+    drawSamples (dc, 1 << kNumDq);
     drawMeasure (dc);
     }
   //}}}
@@ -168,10 +185,22 @@ private:
     }
   //}}}
   //{{{
+  void drawSamplesTitle (ID2D1DeviceContext* dc) {
+
+    std::wstringstream stringStream;
+    stringStream << L"samples"
+                 << midSample / samplesPerSecond
+                 << L" of " << samplesLoaded / samplesPerSecond
+                 << L" samples:" << samplesLoaded;
+    dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
+                  RectF(leftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
+    }
+  //}}}
+  //{{{
   void drawGraticule (ID2D1DeviceContext* dc,int rows) {
 
     dc->DrawText (graticuleStr.c_str(), (UINT32)graticuleStr.size(), getTextFormat(),
-                             RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
+                  RectF (0, 0, leftPixels, rowPixels), getWhiteBrush());
 
     auto rg = RectF (0, rowPixels, 0, (rows+1)*rowPixels);
 
@@ -199,6 +228,14 @@ private:
     }
   //}}}
   //{{{
+  void drawMidLine (ID2D1DeviceContext* dc,int rows) {
+
+    dc->FillRectangle (
+      RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
+      getWhiteBrush());
+    }
+  //}}}
+  //{{{
   void drawLeftLabels (ID2D1DeviceContext* dc, int rows) {
 
     auto rl = RectF(0.0f, rowPixels, getClientF().width, getClientF().height);
@@ -212,7 +249,7 @@ private:
     }
   //}}}
   //{{{
-  void drawSamples (ID2D1DeviceContext* dc,ULONG maxMask) {
+  void drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
 
     auto r = RectF (leftPixels, rowPixels, 0, 0);
     int lastSampleIndex = 0;
@@ -268,24 +305,6 @@ private:
     }
   //}}}
   //{{{
-  void drawMidLine (ID2D1DeviceContext* dc,int rows) {
-
-    dc->FillRectangle (
-      RectF(getClientF().width/2.0f, rowPixels, getClientF().width/2.0f + 1.0f, (rows+1)*rowPixels),
-      getWhiteBrush());
-    }
-  //}}}
-  //{{{
-  void drawSamplesTitle (ID2D1DeviceContext* dc) {
-
-    std::wstringstream stringStream;
-    stringStream << L"samples" << midSample / samplesPerSecond << L" of " << samplesLoaded / samplesPerSecond;
-    dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
-                             RectF(leftPixels, 0, getClientF().width, getClientF().height),
-                             getWhiteBrush());
-    }
-  //}}}
-  //{{{
   void drawMeasure (ID2D1DeviceContext* dc) {
 
     dc->DrawText (measureStr.c_str(), (UINT32)measureStr.size(), getTextFormat(),
@@ -336,132 +355,6 @@ private:
       stringStream << int (samplesPerGraticule / 6000000000) << L"m";
     graticuleStr = stringStream.str();
     changed();
-    }
-  //}}}
-  //{{{
-  void loader() {
-
-    if (getBulkEndPoint() == NULL)
-      return;
-
-    int len = getBulkEndPoint()->MaxPktSize;
-
-    bool first = true;
-    UCHAR* buffers[QUEUESIZE];
-    UCHAR* contexts[QUEUESIZE];
-    OVERLAPPED overLapped[QUEUESIZE];
-    for (int i = 0; i < QUEUESIZE; i++)
-      overLapped[i].hEvent = CreateEvent (NULL, false, false, NULL);
-
-    while (true) {
-      int done = 0;
-
-      auto samplePtr = (UCHAR*)samples;
-      auto maxSamplePtr = (UCHAR*)samples + 4*maxSamples;
-
-      // Allocate all the buffers for the queues
-      for (auto i = 0; i < QUEUESIZE; i++) {
-        buffers[i] = samplePtr;
-        samplePtr += len;
-        contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i] , len, &overLapped[i]);
-        if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
-          printf ("BeginDataXfer init failed:%d\n", getBulkEndPoint()->NtStatus);
-          return;
-          }
-        }
-
-      if (first)
-        startStreaming();
-      first = false;
-
-      int i = 0;
-      int count = 0;
-      while (done < QUEUESIZE) {
-        long rxLen = len;
-        if (!getBulkEndPoint()->WaitForXfer (&overLapped[i], timeout)) {
-          printf ("timeOut %d\n", getBulkEndPoint()->LastError);
-          getBulkEndPoint()->Abort();
-          if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
-            WaitForSingleObject (overLapped[i].hEvent, 2000);
-          }
-
-        if (getBulkEndPoint()->FinishDataXfer (buffers[i], rxLen, &overLapped[i], contexts[i])) {
-          samplesLoaded += len/4;
-          changed();
-          }
-        else {
-          printf ("FinishDataXfer failed\n");
-          return;
-          }
-
-        // Re-submit this queue element to keep the queue full
-        if (!restart && ((samplePtr + len) < maxSamplePtr)) {
-          buffers[i] = samplePtr;
-          samplePtr += len;
-          contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i], len, &overLapped[i]);
-          if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
-            printf ("BeginDataXfer requeue failed:%d\n", getBulkEndPoint()->NtStatus);
-            return;
-            }
-          }
-        else
-          done++;
-
-        i = (i + 1) & (QUEUESIZE-1);
-        }
-
-      while (!restart)
-        Sleep (100);
-      restart = false;
-      }
-
-    for (int i = 0; i < QUEUESIZE; i++)
-      CloseHandle (overLapped[i].hEvent);
-
-    closeUSB();
-    }
-  //}}}
-  //{{{
-  void analysis() {
-
-    for (int i = 0; i < 32; i++) {
-      hiCount [i] = 0;
-      loCount [i] = 0;
-      transitionCount [i] = 0;
-      }
-
-    int curSamplesAnaled = 0;
-    int lastSamplesLoaded = 0;
-    while (samplesLoaded < maxSamples-1) {
-      curSamplesAnaled = samplesLoaded;
-      if (curSamplesAnaled > lastSamplesLoaded) {
-        for (int index = lastSamplesLoaded; index < curSamplesAnaled; index++)
-          active |= samples[index] ^ samples[index+1];
-
-        int dq = 0;
-        ULONG mask = 0x00000001;
-        while (mask != 0x10000) {
-          for (auto index = lastSamplesLoaded; index < curSamplesAnaled; index++) {
-            ULONG transition = samples[index] ^ samples[index+1];
-            if (transition & mask) {
-              transitionCount[dq]++;
-              }
-            else if (samples[index] & mask) {
-              hiCount[dq]++;
-              }
-            else {
-              loCount[dq]++;
-              }
-            }
-
-          dq++;
-          mask <<= 1;
-          }
-
-        lastSamplesLoaded = curSamplesAnaled;
-        }
-      Sleep (100);
-      }
     }
   //}}}
 
@@ -712,6 +605,133 @@ private:
     }
   //}}}
 
+  //{{{
+  void loaderThreadFunc() {
+
+    if (getBulkEndPoint() == NULL)
+      return;
+    int len = getBulkEndPoint()->MaxPktSize;
+    printf ("loaderThread bufferLen:%d numBuffers:%d total:%d\n", len, QUEUESIZE,  len * QUEUESIZE);
+
+    bool first = true;
+    uint8_t* buffers[QUEUESIZE];
+    uint8_t* contexts[QUEUESIZE];
+    OVERLAPPED overLapped[QUEUESIZE];
+    for (int i = 0; i < QUEUESIZE; i++)
+      overLapped[i].hEvent = CreateEvent (NULL, false, false, NULL);
+
+    while (true) {
+      int done = 0;
+
+      auto samplePtr = (uint8_t*)samples;
+      auto maxSamplePtr = (uint8_t*)samples + maxSampleBytes;
+
+      // Allocate buffers and queue them
+      for (auto i = 0; i < QUEUESIZE; i++) {
+        buffers[i] = samplePtr;
+        samplePtr += len;
+        contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i] , len, &overLapped[i]);
+        if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
+          printf ("BeginDataXfer init failed:%d\n", getBulkEndPoint()->NtStatus);
+          return;
+          }
+        }
+
+      if (first)
+        startStreaming();
+      first = false;
+
+      int i = 0;
+      int count = 0;
+      while (done < QUEUESIZE) {
+        long rxLen = len;
+        if (!getBulkEndPoint()->WaitForXfer (&overLapped[i], timeout)) {
+          printf ("timeOut buffer:%d error:%d\n", i, getBulkEndPoint()->LastError);
+          getBulkEndPoint()->Abort();
+          if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
+            WaitForSingleObject (overLapped[i].hEvent, 2000);
+          }
+
+        if (getBulkEndPoint()->FinishDataXfer (buffers[i], rxLen, &overLapped[i], contexts[i])) {
+          samplesLoaded += len / BYTES_PER_SAMPLE;
+          changed();
+          }
+        else {
+          printf ("FinishDataXfer failed\n");
+          return;
+          }
+
+        // Re-submit this queue element to keep the queue full
+        if (!restart && ((samplePtr + len) < maxSamplePtr)) {
+          buffers[i] = samplePtr;
+          samplePtr += len;
+          contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i], len, &overLapped[i]);
+          if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
+            printf ("BeginDataXfer requeue failed:%d\n", getBulkEndPoint()->NtStatus);
+            return;
+            }
+          }
+        else
+          done++;
+
+        i = (i + 1) & (QUEUESIZE-1);
+        }
+
+      while (!restart)
+        Sleep (100);
+      restart = false;
+      }
+
+    for (int i = 0; i < QUEUESIZE; i++)
+      CloseHandle (overLapped[i].hEvent);
+
+    closeUSB();
+    }
+  //}}}
+  //{{{
+  void analysisThreadFunc() {
+
+    for (int i = 0; i < 32; i++) {
+      hiCount [i] = 0;
+      loCount [i] = 0;
+      transitionCount [i] = 0;
+      }
+
+    int curSamplesAnaled = 0;
+    int lastSamplesLoaded = 0;
+    while (samplesLoaded < maxSamples-1) {
+      curSamplesAnaled = samplesLoaded;
+      if (curSamplesAnaled > lastSamplesLoaded) {
+        for (int index = lastSamplesLoaded; index < curSamplesAnaled; index++)
+          active |= samples[index] ^ samples[index+1];
+
+        int dq = 0;
+        ULONG mask = 0x00000001;
+        while (mask != 0x10000) {
+          for (auto index = lastSamplesLoaded; index < curSamplesAnaled; index++) {
+            ULONG transition = samples[index] ^ samples[index+1];
+            if (transition & mask) {
+              transitionCount[dq]++;
+              }
+            else if (samples[index] & mask) {
+              hiCount[dq]++;
+              }
+            else {
+              loCount[dq]++;
+              }
+            }
+
+          dq++;
+          mask <<= 1;
+          }
+
+        lastSamplesLoaded = curSamplesAnaled;
+        }
+      Sleep (100);
+      }
+    }
+  //}}}
+
   //{{{  vars
   // display
   float xWindow = 1600.0f;
@@ -734,13 +754,16 @@ private:
   int timeout = 2000;
   bool restart = false;
 
-  ULONG* samples = NULL;
-  ULONG* maxSamplePtr = NULL;
+  SAMPLE_TYPE* samples = NULL;
+  SAMPLE_TYPE* maxSamplePtr = NULL;
+
   int samplesLoaded = 0;
   #ifdef _WIN64
     size_t maxSamples = 0x40000000;
+    size_t maxSampleBytes= maxSamples * BYTES_PER_SAMPLE;
   #else
     size_t maxSamples = 0x10000000;
+    size_t maxSampleBytes= maxSamples * BYTES_PER_SAMPLE;
   #endif
 
   double midSample = 0;
