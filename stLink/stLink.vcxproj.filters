@@ -15,9 +15,17 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libusb-1.0.lib" />
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cStLink.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="cStLink.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -26,11 +34,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="cStLink.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="libusb.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
+    <Library Include="libusb-1.0.lib" />
   </ItemGroup>
 </Project>

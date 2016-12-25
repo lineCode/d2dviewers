@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include "stdafx.h"
 #include "cStLink.h"
 
 int main (int ac, char** av) {
