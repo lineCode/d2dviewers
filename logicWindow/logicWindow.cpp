@@ -9,12 +9,12 @@
 #define mt9d112
 #define QUEUESIZE 64
 //{{{
-//#define kNumDq 8
-//#define SAMPLE_TYPE uint8_t
-//#define BYTES_PER_SAMPLE 1
-#define kNumDq 16
-#define SAMPLE_TYPE uint16_t
-#define BYTES_PER_SAMPLE 2
+#define kNumDq 8
+#define SAMPLE_TYPE uint8_t
+#define BYTES_PER_SAMPLE 1
+//#define kNumDq 16
+//#define SAMPLE_TYPE uint16_t
+//#define BYTES_PER_SAMPLE 2
 //#define kNumDq 32
 //#define SAMPLE_TYPE uint32_t
 //#define BYTES_PER_SAMPLE 4
