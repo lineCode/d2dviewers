@@ -24,6 +24,7 @@ int main (int ac, char** av) {
     printf ("\n");
     }
 
+
   reg regs;
   stlink.readAllRegs (&regs);
   stlink.getStatus ();
@@ -32,18 +33,15 @@ int main (int ac, char** av) {
   stlink.getStatus ();
   stlink.readAllRegs (&regs);
 
-  stlink.exitDebugMode ();
-  Sleep (100000);
-  return 0;
-
   stlink.traceEnable();
   uint8_t traceBuf[1024];
-  while (true) {
+  for (int i = 0; i < 100; i++) {
     auto size = stlink.readTrace (traceBuf, 1024);
     if (size > 0)
       printf ("trace %d %s\n", size, traceBuf);
     }
 
-  Sleep (100000);
+  Sleep (10000);
+  stlink.exitDebugMode ();
   return 0;
   }

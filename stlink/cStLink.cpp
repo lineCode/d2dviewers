@@ -728,12 +728,12 @@ uint32_t cStLink::readMem32 (uint32_t addr, uint16_t len) {
   mCmdBuf[1] = STLINK_DEBUG_READMEM_32BIT;
   memcpy (&mCmdBuf[2], &addr, 4);
   memcpy (&mCmdBuf[6], &len, 2);
-  auto size = sendRecv (8, len);
-  if (size == -1) {
+  mDataLen = sendRecv (8, len);
+  if (mDataLen == -1) {
     printf("[!] send_recv\n");
     return 0;
     }
-  mDataLen = (size_t) size;
+  //printf ("readMem32 %d\n", mDataLen);
 
   uint32_t data;
   memcpy (&data, mDataBuf, 4);
