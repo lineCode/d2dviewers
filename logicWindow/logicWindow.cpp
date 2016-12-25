@@ -1,6 +1,6 @@
 // logicWindow.cpp
 //{{{  includes
-#include "pch.h"
+#include "stdafx.h"
 
 #include "../common/cD2DWindow.h"
 #include "../common/usbUtils.h"

@@ -1,3 +1,5 @@
+#pragma once
+
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
 
@@ -18,6 +20,7 @@
 #include <DXGI1_2.h>
 #include <d2d1helper.h>
 #include <dwrite.h>
+#include <Wincodec.h>
 
 using namespace Microsoft::WRL;
 using namespace D2D1;

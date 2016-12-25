@@ -1,85 +1,72 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\common\cD2dWindow.cpp" />
-    <ClCompile Include="pch.cpp" />
-    <ClCompile Include="cMp3Window.cpp" />
-    <ClCompile Include="..\..\shared\teensyAac\huffman.cpp">
-      <Filter>teensyAac</Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="aac">
+      <UniqueIdentifier>{773ae16a-96d3-4c2b-b334-860b68441e59}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\aaccommon.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\assembly.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\cAacDecoder.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\cBitStream.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\huffman.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\sbr.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\teensyAac\tables.h">
+      <Filter>aac</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\common\cD2dWindow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="cMp3Window.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\cAacDecoder.cpp">
-      <Filter>teensyAac</Filter>
+      <Filter>aac</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\teensyAac\huffman.cpp">
+      <Filter>aac</Filter>
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\sbr.cpp">
-      <Filter>teensyAac</Filter>
+      <Filter>aac</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\common\cD2dWindow.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="pch.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\iDraw.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\cMp3decoder.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\cTinyJpeg.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cBitmapWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cContainer.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cListWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cNumBox.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cPicWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cRootContainer.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cTextBox.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cValueBox.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWaveCentredWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWaveLensWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWaveOverviewWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWaveWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\shared\widgets\cWidget.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="upng.h">
-      <Filter>header</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="header">
-      <UniqueIdentifier>{7234d2f0-7b58-4dac-9284-ec8e3256c524}</UniqueIdentifier>
-      <Extensions>.h</Extensions>
-    </Filter>
-    <Filter Include="teensyAac">
-      <UniqueIdentifier>{497e810b-804d-4187-806e-2e40ce8d6217}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
 </Project>

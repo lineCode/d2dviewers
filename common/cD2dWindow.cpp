@@ -1,6 +1,6 @@
 // cD2dWindow.cpp
 //{{{  includes
-#include "pch.h"
+#include "stdafx.h"
 
 #include "cD2dWindow.h"
 
