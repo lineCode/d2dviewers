@@ -1,6 +1,6 @@
 // cMp3Window.cpp
 //{{{  includes
-#include "pch.h"
+#include "stdafx.h"
 
 #include <vector>
 

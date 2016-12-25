@@ -1,6 +1,6 @@
 // cJpegWindow.cpp
 //{{{  includes
-#include "pch.h"
+#include "stdafx.h"
 
 #include "../common/timer.h"
 #include "../common/cD2DWindow.h"
