@@ -292,7 +292,14 @@ private:
           stringStream << hex << setfill (L'0') << setw (2) << samples[sampleIndex % maxSamples];
           dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormatSize (12),
                         RectF (r.left + 2.0f, r.top-12.0f , r.left + 24.0f, r.top + 12.0f), getWhiteBrush());
+          r.top += 12.0f;
           }
+
+        uint8_t val = samples[sampleIndex % maxSamples] & 0xFF;
+        r.top += val;
+        r.bottom = r.top + 1.0f;
+        dc->FillRectangle (r, getBlueBrush());
+
         lastSampleIndex = sampleIndex;
         }
 
@@ -780,6 +787,6 @@ private:
 int wmain (int argc, wchar_t* argv[]) {
 
   cLogicWindow logicWindow;
-  logicWindow.run (L"logicWindow", 1600, 18 * 22);
+  logicWindow.run (L"logicWindow", 1600, (((sizeof(SAMPLE_TYPE)*8)+2)*22) + 256);
   }
 //}}}
