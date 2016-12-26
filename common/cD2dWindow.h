@@ -96,7 +96,7 @@ private:
   bool mMouseTracking= false;
   //{{{  deviceIndependentResources
   ComPtr<ID2D1Factory1> mD2D1Factory;
-  IDWriteFactory* mDWriteFactory;
+  IDWriteFactory* mDWriteFactory = nullptr;
   //}}}
   //{{{  deviceResources
   ComPtr<ID3D11Device1> mD3dDevice1;
@@ -112,14 +112,14 @@ private:
 
   ComPtr<ID2D1DeviceContext> mDeviceContext;
 
-  IDWriteTextFormat* textFormat;
-  IDWriteTextFormat* textFormatSize;
-  ID2D1SolidColorBrush* blueBrush;
-  ID2D1SolidColorBrush* blackBrush;
-  ID2D1SolidColorBrush* dimGreyBrush;
-  ID2D1SolidColorBrush* greyBrush;
-  ID2D1SolidColorBrush* whiteBrush;
-  ID2D1SolidColorBrush* yellowBrush;
+  IDWriteTextFormat* textFormat = nullptr;
+  IDWriteTextFormat* textFormatSize = nullptr;
+  ID2D1SolidColorBrush* blueBrush = nullptr;
+  ID2D1SolidColorBrush* blackBrush = nullptr;
+  ID2D1SolidColorBrush* dimGreyBrush = nullptr;
+  ID2D1SolidColorBrush* greyBrush = nullptr;
+  ID2D1SolidColorBrush* whiteBrush = nullptr;
+  ID2D1SolidColorBrush* yellowBrush = nullptr;
   //}}}
   std::thread mRenderThread;
   };

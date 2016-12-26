@@ -6,9 +6,10 @@
 #include <wrl.h>
 
 #include <stdio.h>
-#include <iostream>
 #include <string>
+#include <iostream>
 #include <sstream>
+#include <iomanip>
 #include <thread>
 
 // direct2d

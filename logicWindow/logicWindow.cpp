@@ -8,17 +8,7 @@
 //#define mt9d111
 #define mt9d112
 #define QUEUESIZE 64
-//{{{
-#define kNumDq 8
-#define SAMPLE_TYPE uint8_t
-#define BYTES_PER_SAMPLE 1
-//#define kNumDq 16
-//#define SAMPLE_TYPE uint16_t
-//#define BYTES_PER_SAMPLE 2
-//#define kNumDq 32
-//#define SAMPLE_TYPE uint32_t
-//#define BYTES_PER_SAMPLE 4
-//}}}
+#define SAMPLE_TYPE uint8_t // uint16_t uint32_t
 
 class cLogicWindow : public cD2dWindow {
 public:
@@ -127,7 +117,7 @@ protected:
   //{{{
   void onMouseProx (bool inClient, int x, int y) {
 
-    ULONG mask;
+    uint32_t mask;
     if (getMask (x, y, mask))
       measure (mask, int(midSample + (x - getClientF().width/2.0f) * samplesPerPixel));
     }
@@ -140,7 +130,7 @@ protected:
   void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
     if (right) {
-      ULONG mask = 0;
+      uint32_t mask = 0;
       if (getMask (mDownMousex, mDownMousey, mask))
         count (mask,
                int(midSample + (mDownMousex - getClientF().width/2.0f) * samplesPerPixel),
@@ -163,10 +153,10 @@ protected:
 
     clearBackground (dc);
     drawSamplesTitle (dc);
-    drawGraticule (dc, kNumDq);
-    drawMidLine (dc, kNumDq);
-    drawLeftLabels (dc, kNumDq);
-    drawSamples (dc, 1 << kNumDq);
+    drawGraticule (dc, sizeof(SAMPLE_TYPE) * 8);
+    drawMidLine (dc, sizeof(SAMPLE_TYPE) * 8);
+    drawLeftLabels (dc, sizeof(SAMPLE_TYPE) * 8);
+    drawSamples (dc, sizeof(SAMPLE_TYPE) * 8);
     drawMeasure (dc);
     }
   //}}}
@@ -243,17 +233,18 @@ private:
     }
   //}}}
   //{{{
-  void drawSamples (ID2D1DeviceContext* dc, ULONG maxMask) {
+  void drawSamples (ID2D1DeviceContext* dc, int channels) {
 
-    auto r = RectF (leftPixels, rowPixels, 0, 0);
+    auto r = RectF (leftPixels, rowPixels, leftPixels+1.0f, 0);
     int lastSampleIndex = 0;
-    for (auto j = int(leftPixels - getClientF().width/2.0f); j < int(getClientF().width/2.0f); j++) {
-      r.right = r.left + 1.0f;
+    for (auto pix = leftPixels - int(getClientF().width/2.0f); pix < int(getClientF().width/2.0f); pix++) {
+      int sampleIndex = int(midSample + (pix * samplesPerPixel));
+      if (sampleIndex >= samplesLoaded)
+        break;
 
-      int sampleIndex = int(midSample + (j * samplesPerPixel));
-      if ((sampleIndex >= 0) && (sampleIndex < samplesLoaded)) {
-        ULONG transition = 0;
-        //{{{  set transition bitMask for samples spanned by this pixel
+      if (sampleIndex >= 0) {
+        uint32_t transition = 0;
+        // set transition bitMask for samples spanned by this pixel column
         if (lastSampleIndex && (lastSampleIndex != sampleIndex)) {
           // look for transition from lastSampleIndex to sampleIndex+1
           if (sampleIndex - lastSampleIndex <= 32) {
@@ -268,33 +259,40 @@ private:
               transition |= samples[index % maxSamples] ^ samples[(index+indexInc) % maxSamples];
             }
           }
-        lastSampleIndex = sampleIndex;
-        //}}}
 
         r.top = rowPixels;
-        ULONG mask = 1;
-        while ((mask != maxMask) && (r.top < getClientF().height)) {
-          //{{{  draw rows for sample at this pixel
-          float nextTop = r.top + ((mask & 0x80808080) ? groupRowPixels : rowPixels);
+        uint32_t bitMask = 1;
+        for (int i = 1; i <= channels; i++) {
+          //{{{  draw sample at this pixel column
+          float nextTop = r.top + ((bitMask & 0x80808080) ? groupRowPixels : rowPixels);
 
-          if (transition & mask)
+          if (transition & bitMask)  // bit hi
             r.bottom = r.top + barPixels;
           else {
-            if (!(samples[sampleIndex % maxSamples] & mask)) // lo
+            if (!(samples[sampleIndex % maxSamples] & bitMask)) // bit lo
               r.top += barPixels - 1.0f;
             r.bottom = r.top + 1.0f;
             }
 
           dc->FillRectangle (r, getBlueBrush());
-
-          r.top = nextTop;
-
-          mask <<= 1;
-          }
           //}}}
+          bitMask <<= 1;
+          r.top = nextTop;
+          if (r.top >= getClientF().height)
+            break;
+          }
+
+        if ((sampleIndex != lastSampleIndex) && (samplesPerPixel < 0.1)) {
+          std::wstringstream stringStream;
+          stringStream << hex << setfill (L'0') << setw (2) << samples[sampleIndex % maxSamples];
+          dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormatSize (12),
+                        RectF (r.left + 2.0f, r.top-12.0f , r.left + 24.0f, r.top + 12.0f), getWhiteBrush());
+          }
+        lastSampleIndex = sampleIndex;
         }
 
-      r.left = r.right;
+      r.left++;
+      r.right++;
       }
     }
   //}}}
@@ -528,7 +526,7 @@ private:
   //}}}
 
   //{{{
-  bool getMask (int x, int y, ULONG& mask) {
+  bool getMask (int x, int y, uint32_t& mask) {
 
     float row = rowPixels;
 
@@ -545,7 +543,7 @@ private:
     }
   //}}}
   //{{{
-  void measure (ULONG mask, int sample) {
+  void measure (uint32_t mask, int sample) {
 
     std::wstringstream stringStream;
 
@@ -578,7 +576,7 @@ private:
     }
   //}}}
   //{{{
-  void count (ULONG mask, int firstSample, int lastSample) {
+  void count (uint32_t mask, int firstSample, int lastSample) {
 
     int count = 0;
     int sample = firstSample;
@@ -647,7 +645,7 @@ private:
           }
 
         if (getBulkEndPoint()->FinishDataXfer (buffers[i], rxLen, &overLapped[i], contexts[i])) {
-          samplesLoaded += len / BYTES_PER_SAMPLE;
+          samplesLoaded += len / sizeof(SAMPLE_TYPE);
           changed();
           }
         else {
@@ -700,10 +698,10 @@ private:
           active |= samples[index] ^ samples[index+1];
 
         int dq = 0;
-        ULONG mask = 0x00000001;
+        uint32_t mask = 0x00000001;
         while (mask != 0x10000) {
           for (auto index = lastSamplesLoaded; index < curSamplesAnaled; index++) {
-            ULONG transition = samples[index] ^ samples[index+1];
+            uint32_t transition = samples[index] ^ samples[index+1];
             if (transition & mask) {
               transitionCount[dq]++;
               }
@@ -739,7 +737,7 @@ private:
   std::wstring graticuleStr;
   std::wstring measureStr;
 
-  ULONG active = 0;
+  uint32_t active = 0;
   int transitionCount [32];
   int hiCount [32];
   int loCount [32];
@@ -754,11 +752,10 @@ private:
   int samplesLoaded = 0;
   #ifdef _WIN64
     size_t maxSamples = 0x40000000;
-    size_t maxSampleBytes= maxSamples * BYTES_PER_SAMPLE;
   #else
     size_t maxSamples = 0x10000000;
-    size_t maxSampleBytes= maxSamples * BYTES_PER_SAMPLE;
   #endif
+  size_t maxSampleBytes= maxSamples * sizeof(SAMPLE_TYPE);
 
   double midSample = 0;
   double samplesPerSecond = 100000000;
