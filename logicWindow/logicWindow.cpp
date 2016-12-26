@@ -8,6 +8,7 @@
 //#define mt9d111
 #define mt9d112
 #define QUEUESIZE 64
+#define SYNC_SAMPLES
 #define SAMPLE_TYPE uint8_t // uint16_t uint32_t
 
 class cLogicWindow : public cD2dWindow {
@@ -172,10 +173,14 @@ private:
   void drawSamplesTitle (ID2D1DeviceContext* dc) {
 
     std::wstringstream stringStream;
-    stringStream << L"samples"
+  #ifdef SYNC_SAMPLES
+    stringStream << L"SYNC sample " << (int)midSample << L" of " << samplesLoaded;
+  #else
+    stringStream << L"sample"
                  << midSample / samplesPerSecond
                  << L" of " << samplesLoaded / samplesPerSecond
                  << L" samples:" << samplesLoaded;
+  #endif
     dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormat(),
                   RectF(leftPixels, 0, getClientF().width, getClientF().height), getWhiteBrush());
     }
