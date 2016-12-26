@@ -19,6 +19,7 @@ public:
   void run (wchar_t* title, int width, int height) {
 
     initialise (title, width, height);
+    getDeviceContext()->CreateSolidColorBrush (ColorF(ColorF::CornflowerBlue), &mBrush);
 
     samples = (SAMPLE_TYPE*)malloc (maxSampleBytes);
     midSample = maxSamples / 2.0;
@@ -296,7 +297,11 @@ private:
           }
 
         uint8_t val = samples[sampleIndex % maxSamples] & 0xFF;
-        r.top += val;
+        mBrush->SetColor (ColorF ((val << 16) | (val << 8) | (val), 1.0f));
+        r.bottom = r.top + 12.0f;
+        dc->FillRectangle (r, mBrush);
+
+        r.top += 255 - val;
         r.bottom = r.top + 1.0f;
         dc->FillRectangle (r, getBlueBrush());
 
@@ -737,6 +742,8 @@ private:
   //}}}
 
   //{{{  vars
+  ID2D1SolidColorBrush* mBrush = nullptr;
+
   // display
   float xWindow = 1600.0f;
   float leftPixels = 50.0f;
