@@ -617,89 +617,6 @@ private:
   //}}}
 
   //{{{
-  void loaderThreadFunc() {
-
-    if (getBulkEndPoint() == NULL)
-      return;
-    int len = getBulkEndPoint()->MaxPktSize;
-    printf ("loaderThread bufferLen:%d numBuffers:%d total:%d\n", len, QUEUESIZE,  len * QUEUESIZE);
-
-    bool first = true;
-    uint8_t* buffers[QUEUESIZE];
-    uint8_t* contexts[QUEUESIZE];
-    OVERLAPPED overLapped[QUEUESIZE];
-    for (int i = 0; i < QUEUESIZE; i++)
-      overLapped[i].hEvent = CreateEvent (NULL, false, false, NULL);
-
-    while (true) {
-      int done = 0;
-
-      auto samplePtr = (uint8_t*)samples;
-      auto maxSamplePtr = (uint8_t*)samples + maxSampleBytes;
-
-      // Allocate buffers and queue them
-      for (auto i = 0; i < QUEUESIZE; i++) {
-        buffers[i] = samplePtr;
-        samplePtr += len;
-        contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i] , len, &overLapped[i]);
-        if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
-          printf ("BeginDataXfer init failed:%d\n", getBulkEndPoint()->NtStatus);
-          return;
-          }
-        }
-
-      if (first)
-        startStreaming();
-      first = false;
-
-      int i = 0;
-      int count = 0;
-      while (done < QUEUESIZE) {
-        long rxLen = len;
-        if (!getBulkEndPoint()->WaitForXfer (&overLapped[i], timeout)) {
-          printf ("timeOut buffer:%d error:%d\n", i, getBulkEndPoint()->LastError);
-          getBulkEndPoint()->Abort();
-          if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
-            WaitForSingleObject (overLapped[i].hEvent, 2000);
-          }
-
-        if (getBulkEndPoint()->FinishDataXfer (buffers[i], rxLen, &overLapped[i], contexts[i])) {
-          samplesLoaded += len / sizeof(SAMPLE_TYPE);
-          changed();
-          }
-        else {
-          printf ("FinishDataXfer failed\n");
-          return;
-          }
-
-        // Re-submit this queue element to keep the queue full
-        if (!restart && ((samplePtr + len) < maxSamplePtr)) {
-          buffers[i] = samplePtr;
-          samplePtr += len;
-          contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i], len, &overLapped[i]);
-          if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
-            printf ("BeginDataXfer requeue failed:%d\n", getBulkEndPoint()->NtStatus);
-            return;
-            }
-          }
-        else
-          done++;
-
-        i = (i + 1) & (QUEUESIZE-1);
-        }
-
-      while (!restart)
-        Sleep (100);
-      restart = false;
-      }
-
-    for (int i = 0; i < QUEUESIZE; i++)
-      CloseHandle (overLapped[i].hEvent);
-
-    closeUSB();
-    }
-  //}}}
-  //{{{
   void analysisThreadFunc() {
 
     for (int i = 0; i < 32; i++) {
@@ -740,6 +657,90 @@ private:
         }
       Sleep (100);
       }
+    }
+  //}}}
+  //{{{
+  void loaderThreadFunc() {
+
+    if (getBulkEndPoint() == NULL)
+      return;
+    int packetLen = getBulkEndPoint()->MaxPktSize;
+    printf ("loaderThread bufferLen:%d numBuffers:%d total:%d\n", packetLen, QUEUESIZE,  packetLen * QUEUESIZE);
+
+    bool first = true;
+    uint8_t* buffers[QUEUESIZE];
+    uint8_t* contexts[QUEUESIZE];
+    OVERLAPPED overLapped[QUEUESIZE];
+    for (int i = 0; i < QUEUESIZE; i++)
+      overLapped[i].hEvent = CreateEvent (NULL, false, false, NULL);
+
+    while (true) {
+      int done = 0;
+
+      auto samplePtr = (uint8_t*)samples;
+      auto maxSamplePtr = (uint8_t*)samples + maxSampleBytes;
+
+      // Allocate buffers and queue them
+      for (auto i = 0; i < QUEUESIZE; i++) {
+        buffers[i] = samplePtr;
+        samplePtr += packetLen;
+        contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i] , packetLen, &overLapped[i]);
+        if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
+          printf ("BeginDataXfer init failed:%d\n", getBulkEndPoint()->NtStatus);
+          return;
+          }
+        }
+
+      if (first)
+        startStreaming();
+      first = false;
+
+      int i = 0;
+      int count = 0;
+      while (done < QUEUESIZE) {
+        if (!getBulkEndPoint()->WaitForXfer (&overLapped[i], timeout)) {
+          printf ("timeOut buffer:%d error:%d\n", i, getBulkEndPoint()->LastError);
+          getBulkEndPoint()->Abort();
+          if (getBulkEndPoint()->LastError == ERROR_IO_PENDING)
+            WaitForSingleObject (overLapped[i].hEvent, 2000);
+          }
+        long rxLen = packetLen;
+        if (getBulkEndPoint()->FinishDataXfer (buffers[i], rxLen, &overLapped[i], contexts[i])) {
+          if (rxLen != packetLen)
+            printf ("FinishDataXfer rxLen %d %d\n", rxLen, packetLen);
+          samplesLoaded += packetLen / sizeof(SAMPLE_TYPE);
+          changed();
+          }
+        else {
+          printf ("FinishDataXfer failed\n");
+          return;
+          }
+
+        // Re-submit this queue element to keep the queue full
+        if (!restart && ((samplePtr + packetLen) < maxSamplePtr)) {
+          buffers[i] = samplePtr;
+          samplePtr += packetLen;
+          contexts[i] = getBulkEndPoint()->BeginDataXfer (buffers[i], packetLen, &overLapped[i]);
+          if (getBulkEndPoint()->NtStatus || getBulkEndPoint()->UsbdStatus) {
+            printf ("BeginDataXfer requeue failed:%d\n", getBulkEndPoint()->NtStatus);
+            return;
+            }
+          }
+        else
+          done++;
+
+        i = (i + 1) & (QUEUESIZE-1);
+        }
+
+      while (!restart)
+        Sleep (100);
+      restart = false;
+      }
+
+    for (int i = 0; i < QUEUESIZE; i++)
+      CloseHandle (overLapped[i].hEvent);
+
+    closeUSB();
     }
   //}}}
 
