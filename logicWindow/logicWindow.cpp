@@ -288,11 +288,13 @@ private:
             break;
           }
 
-        if ((sampleIndex != lastSampleIndex) && (samplesPerPixel < 0.1)) {
-          std::wstringstream stringStream;
-          stringStream << hex << setfill (L'0') << setw (2) << samples[sampleIndex % maxSamples];
-          dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormatSize (12),
-                        RectF (r.left + 2.0f, r.top-12.0f , r.left + 24.0f, r.top + 12.0f), getWhiteBrush());
+        if (samplesPerPixel < 0.1) {
+          if (sampleIndex != lastSampleIndex) {
+            std::wstringstream stringStream;
+            stringStream << hex << setfill (L'0') << setw (2) << samples[sampleIndex % maxSamples];
+            dc->DrawText (stringStream.str().c_str(), (UINT32)stringStream.str().size(), getTextFormatSize (12),
+                          RectF (r.left + 2.0f, r.top-12.0f , r.left + 24.0f, r.top + 12.0f), getWhiteBrush());
+            }
           r.top += 12.0f;
           }
 
