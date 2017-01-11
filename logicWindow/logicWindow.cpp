@@ -8,8 +8,8 @@
 //#define mt9d111
 #define mt9d112
 #define QUEUESIZE 64
-#define SYNC_SAMPLES
-#define SAMPLE_TYPE uint8_t // uint16_t uint32_t
+//#define SYNC_SAMPLES
+#define SAMPLE_TYPE uint16_t // uint16_t uint32_t
 
 class cLogicWindow : public cD2dWindow {
 public:
