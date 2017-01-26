@@ -153,86 +153,83 @@ int Init ( ESContext *esContext )
 }
 /*}}}*/
 /*{{{*/
-void Update ( ESContext *esContext, float deltaTime )
-{
-   UserData *userData = esContext->userData;
+void Update ( ESContext *esContext, float deltaTime ) {
 
-   userData->time += deltaTime;
+  UserData* userData = esContext->userData;
+  userData->time += deltaTime;
 
-   glUseProgram ( userData->programObject );
+  glUseProgram (userData->programObject);
 
-   if ( userData->time >= 1.0f )
-   {
-      float centerPos[3];
-      float color[4];
+  if (userData->time >= 1.0f) {
+    float centerPos[3];
+    float color[4];
 
-      userData->time = 0.0f;
+    userData->time = 0.0f;
 
-      // Pick a new start location and color
-      centerPos[0] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
-      centerPos[1] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
-      centerPos[2] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
+    // Pick a new start location and color
+    centerPos[0] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
+    centerPos[1] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
+    centerPos[2] = ( ( float ) ( rand() % 10000 ) / 10000.0f ) - 0.5f;
 
-      glUniform3fv ( userData->centerPositionLoc, 1, &centerPos[0] );
+    glUniform3fv ( userData->centerPositionLoc, 1, &centerPos[0] );
 
-      // Random color
-      color[0] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
-      color[1] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
-      color[2] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
-      color[3] = 0.5;
+    // Random color
+    color[0] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
+    color[1] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
+    color[2] = ( ( float ) ( rand() % 10000 ) / 20000.0f ) + 0.5f;
+    color[3] = 0.5;
 
-      glUniform4fv ( userData->colorLoc, 1, &color[0] );
-   }
+    glUniform4fv ( userData->colorLoc, 1, &color[0] );
+    }
 
-   // Load uniform time variable
-   glUniform1f ( userData->timeLoc, userData->time );
-}
+  // Load uniform time variable
+  glUniform1f ( userData->timeLoc, userData->time );
+  }
 /*}}}*/
 /*{{{*/
-void Draw ( ESContext *esContext )
-{
-   UserData *userData = esContext->userData;
+void Draw ( ESContext *esContext ) {
 
-   // Set the viewport
-   glViewport ( 0, 0, esContext->width, esContext->height );
+  // Set the viewport
+  glViewport ( 0, 0, esContext->width, esContext->height );
 
-   // Clear the color buffer
-   glClear ( GL_COLOR_BUFFER_BIT );
+  // Clear the color buffer
+  glClear ( GL_COLOR_BUFFER_BIT );
 
-   // Use the program object
-   glUseProgram ( userData->programObject );
+  // Use the program object
+  UserData* userData = esContext->userData;
+  glUseProgram ( userData->programObject );
 
-   // Load the vertex attributes
-   glVertexAttribPointer ( ATTRIBUTE_LIFETIME_LOCATION, 1, GL_FLOAT,
-                           GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
-                           userData->particleData );
+  // Load the vertex attributes
+  glVertexAttribPointer ( ATTRIBUTE_LIFETIME_LOCATION, 1, GL_FLOAT,
+                          GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
+                          userData->particleData );
 
-   glVertexAttribPointer ( ATTRIBUTE_ENDPOSITION_LOCATION, 3, GL_FLOAT,
-                           GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
-                           &userData->particleData[1] );
+  glVertexAttribPointer ( ATTRIBUTE_ENDPOSITION_LOCATION, 3, GL_FLOAT,
+                          GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
+                          &userData->particleData[1] );
 
-   glVertexAttribPointer ( ATTRIBUTE_STARTPOSITION_LOCATION, 3, GL_FLOAT,
-                           GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
-                           &userData->particleData[4] );
+  glVertexAttribPointer ( ATTRIBUTE_STARTPOSITION_LOCATION, 3, GL_FLOAT,
+                          GL_FALSE, PARTICLE_SIZE * sizeof ( GLfloat ),
+                          &userData->particleData[4] );
 
 
-   glEnableVertexAttribArray ( ATTRIBUTE_LIFETIME_LOCATION );
-   glEnableVertexAttribArray ( ATTRIBUTE_ENDPOSITION_LOCATION );
-   glEnableVertexAttribArray ( ATTRIBUTE_STARTPOSITION_LOCATION );
+  glEnableVertexAttribArray ( ATTRIBUTE_LIFETIME_LOCATION );
+  glEnableVertexAttribArray ( ATTRIBUTE_ENDPOSITION_LOCATION );
+  glEnableVertexAttribArray ( ATTRIBUTE_STARTPOSITION_LOCATION );
 
-   // Blend particles
-   glEnable ( GL_BLEND );
-   glBlendFunc ( GL_SRC_ALPHA, GL_ONE );
+  // Blend particles
+  glEnable ( GL_BLEND );
+  glBlendFunc ( GL_SRC_ALPHA, GL_ONE );
 
-   // Bind the texture
-   glActiveTexture ( GL_TEXTURE0 );
-   glBindTexture ( GL_TEXTURE_2D, userData->textureId );
+  // Bind the texture
+  glActiveTexture ( GL_TEXTURE0 );
+  glBindTexture ( GL_TEXTURE_2D, userData->textureId );
 
-   // Set the sampler texture unit to 0
-   glUniform1i ( userData->samplerLoc, 0 );
+  // Set the sampler texture unit to 0
+  glUniform1i ( userData->samplerLoc, 0 );
 
-   glDrawArrays ( GL_POINTS, 0, NUM_PARTICLES );
-}
+  glDrawArrays ( GL_POINTS, 0, NUM_PARTICLES );
+  }
 /*}}}*/
 /*{{{*/
 void ShutDown ( ESContext *esContext )

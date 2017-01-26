@@ -1,6 +1,7 @@
-/*{{{*/
+/*{{{  includes*/
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+
 #include <stdlib.h>
 #include "esUtil.h"
 /*}}}*/
@@ -12,7 +13,7 @@ extern int esMain (ESContext* esContext);
 ESContext* myEsContext;
 
 /*{{{*/
-LRESULT WINAPI ESWindowProc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam ) {
+LRESULT WINAPI ESWindowProc (HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
   LRESULT lRet = 1;
 
@@ -37,9 +38,9 @@ LRESULT WINAPI ESWindowProc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
     case WM_CHAR: {
       POINT point;
-      ESContext *esContext = myEsContext;
+      ESContext* esContext = myEsContext;
       //ESContext* esContext = (ESContext*)(LONG_PTR)GetWindowLongPtr (hWnd, GWL_USERDATA);
-      GetCursorPos ( &point );
+      GetCursorPos (&point);
       if (esContext && esContext->keyFunc)
         esContext->keyFunc (esContext, (unsigned char)wParam, (int) point.x, (int) point.y );
       }
@@ -54,7 +55,7 @@ LRESULT WINAPI ESWindowProc ( HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
   }
 /*}}}*/
 /*{{{*/
-void WinLoop ( ESContext *esContext ) {
+void WinLoop (ESContext* esContext) {
 
   MSG msg = { 0 };
   int done = 0;
@@ -85,7 +86,7 @@ void WinLoop ( ESContext *esContext ) {
 /*}}}*/
 
 /*{{{*/
-GLboolean WinCreate ( ESContext *esContext, const char *title ) {
+GLboolean WinCreate (ESContext* esContext, const char*title ) {
 
   HINSTANCE hInstance = GetModuleHandle (NULL);
 
@@ -99,26 +100,17 @@ GLboolean WinCreate ( ESContext *esContext, const char *title ) {
     return FALSE;
 
   // Adjust the window rectangle so that the client area has the correct number of pixels
-  DWORD  wStyle = WS_VISIBLE | WS_POPUP | WS_BORDER | WS_SYSMENU | WS_CAPTION;
-  RECT windowRect;
-  windowRect.left = 0;
-  windowRect.top = 0;
-  windowRect.right = esContext->width;
-  windowRect.bottom = esContext->height;
-  AdjustWindowRect ( &windowRect, wStyle, FALSE );
+  RECT r;
+  r.left = 0;
+  r.top = 0;
+  r.right = esContext->width;
+  r.bottom = esContext->height;
+  DWORD wStyle = WS_VISIBLE | WS_POPUP | WS_BORDER | WS_SYSMENU | WS_CAPTION;
+  AdjustWindowRect (&r, wStyle, FALSE);
 
-  esContext->eglNativeWindow = CreateWindow (
-                                  "opengles3.0",
-                                  title,
-                                  wStyle,
-                                  0,
-                                  0,
-                                  windowRect.right - windowRect.left,
-                                  windowRect.bottom - windowRect.top,
-                                  NULL,
-                                  NULL,
-                                  hInstance,
-                                  NULL );
+  esContext->eglNativeWindow = CreateWindow ("opengles3.0", title, wStyle,
+                                             0, 0, r.right - r.left, r.bottom - r.top,
+                                             NULL, NULL, hInstance, NULL );
 
   // Set the ESContext* to the GWL_USERDATA so that it is available to the ESWindowProc
   SetWindowLongPtr (esContext->eglNativeWindow, GWL_USERDATA, ( LONG ) ( LONG_PTR ) esContext );
