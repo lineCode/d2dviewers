@@ -1,11 +1,10 @@
 // cMp3Window.cpp
 //{{{  includes
 #include "stdafx.h"
-
 #include <vector>
 
+#include "../../shared/d2dWindow/cD2dWindow.h"
 #include "../common/timer.h"
-#include "../common/cD2dWindow.h"
 
 #include <winsock2.h>
 #include <WS2tcpip.h>

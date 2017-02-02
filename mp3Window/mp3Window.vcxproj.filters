@@ -47,9 +47,6 @@
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\cD2dWindow.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="cMp3Window.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -61,6 +58,9 @@
     </ClCompile>
     <ClCompile Include="..\..\shared\teensyAac\sbr.cpp">
       <Filter>aac</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\shared\d2dWindow\cD2dWindow.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
