@@ -6,16 +6,15 @@
 
 #include "../common/timer.h"
 #include "../common/cD2dWindow.h"
-#include "../common/cAudio.h"
-
-#include "../../shared/libfaad/neaacdec.h"
-//#pragma comment (lib,"libfaad.lib")
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
 #include "../../shared/utils.h"
+
+#include "../../shared/audio/cAudio.h"
+
 #include "../../shared/net/cWinSockHttp.h"
 #include "../../shared/net/cWinEsp8266Http.h"
 
@@ -101,8 +100,8 @@ void debugFree (void* ptr) {
 
 void* operator new (size_t size) { return debugMalloc (size, "", 2); }
 void operator delete (void* ptr) { debugFree (ptr); }
-void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
-void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
+void* operator new[] (size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
+void operator delete[] (void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
 //#define ESP8266
 

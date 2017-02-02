@@ -134,9 +134,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="..\..\shared\teensyAac\aaccommon.h" />
     <ClInclude Include="..\..\shared\teensyAac\assembly.h" />
     <ClInclude Include="..\..\shared\teensyAac\cAacDecoder.h" />
@@ -145,7 +142,6 @@
     <ClInclude Include="..\..\shared\teensyAac\sbr.h" />
     <ClInclude Include="..\..\shared\teensyAac\tables.h" />
     <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\shared\teensyAac\cAacDecoder.cpp">
