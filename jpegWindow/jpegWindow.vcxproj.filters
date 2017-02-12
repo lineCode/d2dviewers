@@ -29,7 +29,7 @@
     <ClCompile Include="cJpegWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\common\cD2dWindow.cpp">
+    <ClCompile Include="..\..\shared\d2dWindow\cD2dWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

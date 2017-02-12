@@ -2,8 +2,8 @@
 //{{{  includes
 #include "stdafx.h"
 
-#include "../common/timer.h"
-#include "../common/cD2DWindow.h"
+#include "../../shared//timer.h"
+#include "../../shared/d2dWindow/cD2DWindow.h"
 
 #include "../common/cView2d.h"
 #include "../common/cJpegImage.h"
