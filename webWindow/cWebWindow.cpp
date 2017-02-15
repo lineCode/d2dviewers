@@ -4,8 +4,8 @@
 
 #include <vector>
 
-#include "../common/timer.h"
-#include "../common/cD2dWindow.h"
+#include "../../shared/timer.h"
+#include "../../shared/d2dwindow/cD2dWindow.h"
 
 #include <winsock2.h>
 #include <WS2tcpip.h>
@@ -217,8 +217,8 @@ protected:
     return false;
     }
   //}}}
-  void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0); }
-  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc); }
+  void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0, false); }
+  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc, false); }
   void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
   void onDraw (ID2D1DeviceContext* dc) { if (mRoot) mRoot->render (this); }
 
