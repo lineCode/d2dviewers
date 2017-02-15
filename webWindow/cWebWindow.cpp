@@ -93,7 +93,7 @@ void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
 //#define ESP8266
 
-class cWebWindow : public iDraw, public cD2dWindow {
+class cWebWindow : public cD2dWindow, public iDraw  {
 public:
   //{{{  iDraw
   uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
@@ -209,11 +209,19 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x25: if (mFileIndex > 0) mFileIndex--;                  mPicWidget->setFileName (mFileList[mFileIndex]); break; // left arrow
-      case 0x27: if (mFileIndex < mFileList.size()-1) mFileIndex++; mPicWidget->setFileName (mFileList[mFileIndex]); break; // right arrow
+      case 0x25: 
+        if (mFileIndex > 0) mFileIndex--;
+        mPicWidget->setFileName (mFileList[mFileIndex]); 
+        break; // left arrow
+
+      case 0x27: 
+        if (mFileIndex < mFileList.size()-1) mFileIndex++; 
+        mPicWidget->setFileName (mFileList[mFileIndex]); 
+        break; // right arrow
 
       default: debug ("key " + hex(key));
       }
+
     return false;
     }
   //}}}
