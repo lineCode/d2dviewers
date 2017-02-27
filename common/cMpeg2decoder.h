@@ -6,7 +6,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <io.h>
-#include "cYuvFrame.h"
+#include "../../shared/video/cYuvFrame.h"
 //}}}
 //{{{  const
 #define SLICE_START_CODE_MIN     0x101

@@ -4,7 +4,7 @@
 
 #include <vector>
 
-#include "../../shared/timer.h"
+#include "../../shared/utils.h"
 #include "../../shared/d2dwindow/cD2dWindow.h"
 
 #include <winsock2.h>
@@ -209,14 +209,14 @@ protected:
       case 0x1B: // escape
         return true;
 
-      case 0x25: 
+      case 0x25:
         if (mFileIndex > 0) mFileIndex--;
-        mPicWidget->setFileName (mFileList[mFileIndex]); 
+        mPicWidget->setFileName (mFileList[mFileIndex]);
         break; // left arrow
 
-      case 0x27: 
-        if (mFileIndex < mFileList.size()-1) mFileIndex++; 
-        mPicWidget->setFileName (mFileList[mFileIndex]); 
+      case 0x27:
+        if (mFileIndex < mFileList.size()-1) mFileIndex++;
+        mPicWidget->setFileName (mFileList[mFileIndex]);
         break; // right arrow
 
       default: debug ("key " + hex(key));

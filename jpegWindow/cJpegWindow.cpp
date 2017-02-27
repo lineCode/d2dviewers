@@ -2,7 +2,7 @@
 //{{{  includes
 #include "stdafx.h"
 
-#include "../../shared//timer.h"
+#include "../../shared/utils.h"
 #include "../../shared/d2dWindow/cD2DWindow.h"
 
 #include "../common/cView2d.h"

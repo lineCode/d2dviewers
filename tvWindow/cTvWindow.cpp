@@ -2,20 +2,18 @@
 //{{{  includes
 #include "pch.h"
 
-#include "../common/timer.h"
-#include "../common/cD2dWindow.h"
+#include "../../shared/utils.h"
+#include "../../shared/d2dwindow/cD2dWindow.h"
 
-#include "../common/cTransportStream.h"
+#include "../../shared/decoders/cTransportStream.h"
+#include "../common/cAudFrame.h"
+#include "../../shared/audio/cWinAudio.h"
 
-#include "../common/cYuvFrame.h"
+#include "../../shared/video/cYuvFrame.h"
 //#include "../common/yuvrgb_sse2.h"
 #include "../common/cMpeg2decoder.h"
 
-#include "../common/cAudFrame.h"
-#include "../common/cAudio.h"
-#include "../libfaad/include/neaacdec.h"
-#pragma comment (lib,"libfaad.lib")
-
+#include "../../shared/libfaad/neaacdec.h"
 #pragma comment (lib,"avutil.lib")
 #pragma comment (lib,"avcodec.lib")
 #pragma comment (lib,"avformat.lib")
@@ -442,7 +440,7 @@ private:
   };
 //}}}
 
-class cTvWindow : public cD2dWindow, public cAudio {
+class cTvWindow : public cD2dWindow, public cWinAudio {
 public:
   //{{{
   cTvWindow() {
