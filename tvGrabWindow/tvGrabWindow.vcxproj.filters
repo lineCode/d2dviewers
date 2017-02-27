@@ -3,7 +3,7 @@
   <ItemGroup>
     <ClCompile Include="tvGrabWindow.cpp" />
     <ClCompile Include="pch.cpp" />
-    <ClCompile Include="..\common\cD2dWindow.cpp" />
+    <ClCompile Include="..\..\shared\d2dWindow\cD2dWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\common\cBda.h">

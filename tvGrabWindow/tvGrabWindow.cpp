@@ -2,11 +2,54 @@
 //{{{  includes
 #include "pch.h"
 
-#include "../common/timer.h"
-#include "../common/cD2dWindow.h"
+#include "../../shared/utils.h"
+#include "../../shared/d2dwindow/cD2dWindow.h"
 
 #include "../common/cBda.h"
-#include "../common/cTransportStream.h"
+#include "../../shared/decoders/cTransportStream.h"
+//}}}
+
+//{{{
+class cDecodeTransportStream : public cTransportStream {
+public:
+  cDecodeTransportStream() {}
+  virtual ~cDecodeTransportStream() {}
+
+  //{{{
+  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                 ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                 ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
+
+    if (!mPidInfoMap.empty()) {
+      std::string str = timeStr;
+      str += " services:" + to_string (mServiceMap.size());
+      auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
+
+      auto top = 40.0f;
+      for (auto pidInfo : mPidInfoMap) {
+        auto total = (float)pidInfo.second.mTotal;
+        if (total > mLargest)
+          mLargest = total;
+        auto len = (total / mLargest) * (client.width-50.0f);
+        dc->FillRectangle (RectF(40.0f, top+3.0f, 40.0f + len, top+17.0f), blueBrush);
+
+        textr.top = top;
+        str = to_string (pidInfo.first) +
+              ' ' + to_string (pidInfo.second.mStreamType) +
+              ' ' + pidInfo.second.mInfo +
+              ' ' + to_string (pidInfo.second.mTotal);
+        dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
+
+        top += 16.0f;
+        }
+      }
+    }
+  //}}}
+
+private:
+  float mLargest = 10000.0f;
+  };
 //}}}
 
 class cTvGrabWindow : public cD2dWindow {
@@ -173,7 +216,8 @@ private:
   bool mShowChannel = false;
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
-  cTransportStream mTs;
+
+  cDecodeTransportStream mTs;
   //}}}
   };
 
