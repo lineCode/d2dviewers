@@ -14,6 +14,7 @@ class cDecodeTransportStream : public cTransportStream {
 public:
   cDecodeTransportStream() {}
   virtual ~cDecodeTransportStream() {}
+
   //{{{
   void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                  ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
@@ -44,6 +45,11 @@ public:
         lineY += 20.0f;
         }
       }
+    }
+  //}}}
+  //{{{
+  void startProgram (int vpid, int apid, std::string name, std::string startTime) {
+    printf ("now changed %d %d %s %s\n", vpid, apid, name.c_str(), startTime.c_str());
     }
   //}}}
 
@@ -231,6 +237,6 @@ int wmain (int argc, wchar_t* argv[]) {
   #endif
 
   cTvGrabWindow tvGrabWindow;
-  tvGrabWindow.run (L"tvGrabWindow", 896, 504, argv[1]);
+  tvGrabWindow.run (L"tvGrabWindow", 800, 960, argv[1]);
   }
 //}}}
