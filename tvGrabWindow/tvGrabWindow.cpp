@@ -14,7 +14,6 @@ class cDecodeTransportStream : public cTransportStream {
 public:
   cDecodeTransportStream() {}
   virtual ~cDecodeTransportStream() {}
-
   //{{{
   void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                  ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
@@ -22,7 +21,7 @@ public:
 
     if (!mPidInfoMap.empty()) {
       float lineY = 20.0f;
-      std::string str = timeStr + " services:" + to_string (mServiceMap.size());
+      std::string str = mTimeStr + " services:" + to_string (mServiceMap.size());
       auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
       dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
       lineY+= 20.0f;
@@ -38,7 +37,8 @@ public:
         str = to_string (pidInfo.first) +
               ' ' + to_string (pidInfo.second.mStreamType) +
               ' ' + pidInfo.second.mInfo +
-              ' ' + to_string (pidInfo.second.mTotal);
+              ' ' + to_string (pidInfo.second.mTotal) +
+              ':' + to_string (pidInfo.second.mDisContinuity);
         dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
                       textFormat, textr, whiteBrush);
         lineY += 20.0f;
