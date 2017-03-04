@@ -25,24 +25,25 @@ public:
       std::string str = mTimeStr + " services:" + to_string (mServiceMap.size());
       auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
       dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
-      lineY+= 20.0f;
+      lineY+= 16.0f;
 
       for (auto pidInfo : mPidInfoMap) {
         float total = (float)pidInfo.second.mTotal;
         if (total > mLargest)
           mLargest = total;
         auto len = (total / mLargest) * (client.width - 50.0f);
-        dc->FillRectangle (RectF(40.0f, lineY+6.0f, 40.0f + len, lineY+22.0f), blueBrush);
+        dc->FillRectangle (RectF(40.0f, lineY+2.0f, 40.0f + len, lineY+14.0f), blueBrush);
 
         textr.top = lineY;
         str = to_string (pidInfo.first) +
-              ' ' + to_string (pidInfo.second.mStreamType) +
-              ' ' + pidInfo.second.mInfo +
-              ' ' + to_string (pidInfo.second.mTotal) +
-              ':' + to_string (pidInfo.second.mDisContinuity);
+              " " + to_string (pidInfo.second.mStreamType) +
+              " " + pidInfo.second.mInfo +
+              " " + to_string (pidInfo.second.mTotal) +
+              " d:" + to_string (pidInfo.second.mDisContinuity) +
+              " r:" + to_string (pidInfo.second.mRepeatContinuity);
         dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
                       textFormat, textr, whiteBrush);
-        lineY += 20.0f;
+        lineY += 14.0f;
         }
       }
     }
@@ -66,6 +67,12 @@ public:
   void run (wchar_t* title, int width, int height, wchar_t* arg) {
 
     initialise (title, width, height);
+
+    getDwriteFactory()->CreateTextFormat (L"Consolas", NULL,
+                                          DWRITE_FONT_WEIGHT_REGULAR,
+                                          DWRITE_FONT_STYLE_NORMAL,
+                                          DWRITE_FONT_STRETCH_NORMAL,
+                                          12.0f, L"en-us", &mSmallTextFormat);
 
     auto freq = arg ? _wtoi (arg) : 650000; // default 650000 674000 706000
 
@@ -151,7 +158,7 @@ protected:
     dc->DrawText (wStr, (UINT32)wcslen(wStr), getTextFormat(),
                   RectF(0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
-    mTs.drawPids (dc, getClientF(), getTextFormat(),
+    mTs.drawPids (dc, getClientF(), mSmallTextFormat,
                   getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
     }
   //}}}
@@ -221,6 +228,8 @@ private:
     }
   //}}}
   //{{{  vars
+  IDWriteTextFormat* mSmallTextFormat = nullptr;
+
   bool mShowChannel = false;
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
