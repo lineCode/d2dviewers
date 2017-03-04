@@ -509,7 +509,6 @@ public:
                                           DWRITE_FONT_STYLE_NORMAL,
                                           DWRITE_FONT_STRETCH_NORMAL,
                                           12.0f, L"en-us", &mSmallTextFormat);
-
     mSmallTextFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
 
     if (arg) {
