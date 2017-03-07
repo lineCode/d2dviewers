@@ -11,7 +11,7 @@
 
 #include "../../shared/video/cYuvFrame.h"
 //#include "../common/yuvrgb_sse2.h"
-#include "../common/cMpeg2decoder.h"
+#include "../../shared/decoders/cMpeg2decoder.h"
 
 #include "../../shared/libfaad/neaacdec.h"
 #pragma comment (lib,"avutil.lib")
@@ -41,17 +41,19 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getNearestVidFrame (int64_t pts) {
+  cYuvFrame* getNearestVidFrame (uint64_t pts) {
   // find nearestVidFrame to pts
   // - can return nullPtr if no frame loaded yet
 
     cYuvFrame* yuvFrame = nullptr;
+
     int64_t nearest = 0;
     for (int i = 0; i < maxVidFrames; i++) {
       if (mYuvFrames[i].mPts) {
-        if (!yuvFrame || (abs(mYuvFrames[i].mPts - pts) < nearest)) {
+        int64_t absDiff = mYuvFrames[i].mPts < pts ? pts - mYuvFrames[i].mPts : mYuvFrames[i].mPts - pts;
+        if (!yuvFrame || (absDiff < nearest)) {
           yuvFrame = &mYuvFrames[i];
-          nearest = abs(mYuvFrames[i].mPts - pts);
+          nearest = absDiff;
           }
         }
       }
@@ -80,7 +82,7 @@ public:
   cYuvFrame mYuvFrames[maxVidFrames];
   int mLoadVidFrame = 0;
 
-  int64_t mFakePts = 0;
+  uint64_t mFakePts = 0;
   };
 //}}}
 //{{{
@@ -98,9 +100,9 @@ public:
   //}}}
 
   int getLoadAudFrame() { return mLoadAudFrame; }
-  int64_t getBasePts() { return mBasePts; }
+  uint64_t getBasePts() { return mBasePts; }
   //{{{
-  void getAudSamples (int playFrame, int16_t*& samples, int& numSampleBytes, int64_t& pts) {
+  void getAudSamples (int playFrame, int16_t*& samples, int& numSampleBytes, uint64_t& pts) {
 
     if (playFrame < mLoadAudFrame) {
       auto audFrame = playFrame % maxAudFrames;
@@ -118,7 +120,7 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getSelectedVid (int64_t pts) {
+  cYuvFrame* getSelectedVid (uint64_t pts) {
 
     if (mDecodeContexts[0])
       return mDecodeContexts[0]->getNearestVidFrame (pts);
@@ -176,7 +178,7 @@ public:
   void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                   ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
                   ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush, ID2D1SolidColorBrush* yellowBrush,
-                  int64_t playAudPts) {
+                  uint64_t playAudPts) {
 
     float y = 40.0f;
     float h = 13.0f;
@@ -471,9 +473,9 @@ protected:
 private:
 
   // vars
-  int64_t mAudPts = 0;
-  int64_t mVidPts = 0;
-  int64_t mBasePts = 0;
+  uint64_t mAudPts = 0;
+  uint64_t mVidPts = 0;
+  uint64_t mBasePts = 0;
 
   int mSelectedAudPid = 0;
 
@@ -913,7 +915,7 @@ private:
 
   int mChannelSelector = 0;
 
-  int64_t mAudPts = 0;
+  uint64_t mAudPts = 0;
   bool mPlaying = true;
 
   int mPlayAudFrame = 0;
@@ -927,7 +929,7 @@ private:
 
   IDWriteTextFormat* mSmallTextFormat = nullptr;
 
-  int64_t mBitmapPts[maxVidDecodes];
+  uint64_t mBitmapPts[maxVidDecodes];
   ID2D1Bitmap* mBitmaps[maxVidDecodes];
   //}}}
   };

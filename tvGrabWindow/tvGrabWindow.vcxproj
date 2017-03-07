@@ -34,9 +34,9 @@
     <ClCompile Include="tvGrabWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\decoders\cTransportStream.h" />
+    <ClInclude Include="..\..\shared\decoders\huffDecoder.h" />
     <ClInclude Include="..\common\cBda.h" />
-    <ClInclude Include="..\common\cD2dWindow.h" />
-    <ClInclude Include="..\common\cTransportStream.h" />
     <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
