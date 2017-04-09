@@ -105,18 +105,18 @@ public:
     }
   //}}}
   //{{{
-  void rect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void drawRect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
     mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
     getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x + width), float(y + height)), mBrush);
     }
   //}}}
   //{{{
   void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
+    drawRect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
     }
   //}}}
   //{{{
-  int text (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  int drawText (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
 
     // create layout
     std::wstring wstr = converter.from_bytes (str.data());
