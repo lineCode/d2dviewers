@@ -1,16 +1,30 @@
-// cWebWindow.cpp
+// cGlWebWindow.cpp
 //{{{  includes
-#include "stdafx.h"
+#define _CRT_SECURE_NO_WARNINGS
+#define WIN32_LEAN_AND_MEAN
 
-#include <vector>
-
-#include "../../shared/utils.h"
-#include "../../shared/d2dwindow/cD2dWindow.h"
-
+#include <windows.h>
+#include <wrl.h>
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
+#define _USE_MATH_DEFINES
+#include <locale>
+#include <codecvt>
+
+#include <vector>
+#include <thread>
+
+#include "Shlwapi.h" // for shell path functions
+#pragma comment(lib,"shlwapi.lib")
+
+#include "../../shared/nanoVg/cGlWindow.h"
+#include "../../shared/fonts/FreeSansBold.h"
+#include "../../shared/nanoVg/cPerfGraph.h"
+#include "../../shared/nanoVg/cGpuGraph.h"
+
+#define USE_NANOVG
 #include "../../shared/utils.h"
 #include "../../shared/net/cWinSockHttp.h"
 #include "../../shared/net/cWinEsp8266Http.h"
@@ -93,86 +107,14 @@ void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
 //#define ESP8266
 
-class cWebWindow : public cD2dWindow, public iDraw  {
+class cGlWebWindow : public cGlWindow, public iDraw  {
 public:
-  //{{{  iDraw
-  uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
-  uint16_t getLcdHeightPix() { return mRoot->getPixHeight(); }
-
   //{{{
-  void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rectClipped (colour, x, y, 1, 1);
-    }
-  //}}}
-  //{{{
-  void drawRect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
-    getDeviceContext()->FillRectangle (RectF (float(x), float(y), float(x + width), float(y + height)), mBrush);
-    }
-  //}}}
-  //{{{
-  void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    drawRect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
-    }
-  //}}}
-  //{{{
-  int drawText (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+  void run (std::string title, int width, int height, std::string fileName) {
 
-    // create layout
-    std::wstring wstr = converter.from_bytes (str.data());
-    IDWriteTextLayout* textLayout;
-    getDwriteFactory()->CreateTextLayout (wstr.data(), (uint32_t)wstr.size(),
-                                          fontHeight <= cWidget::getFontHeight() ? getTextFormat() : getTextFormatSize (fontHeight),
-                                          width, height, &textLayout);
-
-    // draw it
-    mBrush->SetColor (ColorF (colour, ((colour & 0xFF000000) >> 24) / 255.0f));
-    getDeviceContext()->DrawTextLayout (Point2F(float(x), float(y)), textLayout, mBrush);
-
-    // return measure
-    DWRITE_TEXT_METRICS metrics;
-    textLayout->GetMetrics (&metrics);
-    return (int)metrics.width;
-    }
-  //}}}
-
-  //{{{
-  void copy (uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    if (src && width && height) {
-      ID2D1Bitmap* bitmap;
-      getDeviceContext()->CreateBitmap (SizeU (width, height), getBitmapProperties(), &bitmap);
-      bitmap->CopyFromMemory (&RectU (0, 0, width, height), src, width*4);
-      getDeviceContext()->DrawBitmap (bitmap, RectF ((float)x, (float)y, (float)x+width,(float)y+height));
-      bitmap->Release();
-      }
-    }
-  //}}}
-  void copy (uint8_t* src, int16_t srcx, int16_t srcy, uint16_t srcWidth, uint16_t srcHeight,
-             int16_t dstx, int16_t dsty, uint16_t dstWidth, uint16_t dstHeight) {};
-
-  //{{{
-  ID2D1Bitmap* allocBitmap (uint16_t width, uint16_t height) {
-
-    ID2D1Bitmap* bitmap;
-    getDeviceContext()->CreateBitmap (SizeU (width, height), getBitmapProperties(), &bitmap);
-    return bitmap;
-    }
-  //}}}
-  //{{{
-  void copy (ID2D1Bitmap* bitMap, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    getDeviceContext()->DrawBitmap (bitMap, RectF ((float)x, (float)y, (float)x+width,(float)y+height));
-    }
-  //}}}
-  //}}}
-  //{{{
-  void run (wchar_t* title, int width, int height, std::string fileName) {
-
-    initialise (title, width+10, height+6);
-
-    getDeviceContext()->CreateSolidColorBrush (ColorF(ColorF::CornflowerBlue), &mBrush);
-    setChangeRate (1);
+    create (title, width, height);
+    createFontMem ("sans", (unsigned char*)freeSansBold, sizeof(freeSansBold), 0);
+    fontFace ("sans");
 
     mRoot = new cRootContainer (width, height);
     mRoot->addTopLeft (mPicWidget = new cDecodePicWidget());
@@ -189,8 +131,109 @@ public:
     else
       mPicWidget->setFileName (fileName);
 
-    messagePump();
+    // init timers
+    glfwSetTime (0);
+    float cpuTime = 0.0f;
+    float frameTime = 0.0f;
+    double prevt = glfwGetTime();
+
+    mFpsGraph = new cPerfGraph (cPerfGraph::GRAPH_RENDER_FPS, "frame");
+    mCpuGraph = new cPerfGraph (cPerfGraph::GRAPH_RENDER_MS, "cpu");
+    mGpuGraph = new cGpuGraph (cPerfGraph::GRAPH_RENDER_MS, "gpu");
+
+    glClearColor (0, 0, 0, 1.0f);
+    while (!glfwWindowShouldClose (mWindow)) {
+      mGpuGraph->start();
+      mCpuGraph->start ((float)glfwGetTime());
+
+      // Update and render
+      int winWidth, winHeight;
+      glfwGetWindowSize (mWindow, &winWidth, &winHeight);
+      int frameBufferWidth, frameBufferHeight;
+      glfwGetFramebufferSize (mWindow, &frameBufferWidth, &frameBufferHeight);
+
+      glViewport (0, 0, frameBufferWidth, frameBufferHeight);
+      glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+      beginFrame (winWidth, winHeight, (float)frameBufferWidth / (float)winWidth);
+      if (mRoot)
+        mRoot->render (this);
+      if (mDrawTests) {
+        //{{{  draw
+        drawEyes (winWidth*3.0f/4.0f, winHeight/2.0f, winWidth/4.0f, winHeight/2.0f,
+                  0, 0, (float)glfwGetTime());
+        drawLines (0.0f, 50.0f, (float)winWidth, (float)winHeight, (float)glfwGetTime());
+        drawSpinner (winWidth/2.0f, winHeight/2.0f, 20.0f, (float)glfwGetTime());
+        }
+        //}}}
+      if (mDrawStats)
+        drawStats ((float)winWidth, (float)winHeight, getFrameStats() + (mVsync ? " vsync" : " free"));
+      if (mDrawPerf) {
+        //{{{  render perf stats
+        mFpsGraph->render (this, 0.0f, winHeight-35.0f, winWidth/3.0f -2.0f, 35.0f);
+        mCpuGraph->render (this, winWidth/3.0f, winHeight-35.0f, winWidth/3.0f - 2.0f, 35.0f);
+        mGpuGraph->render (this, winWidth*2.0f/3.0f, winHeight-35.0f, winWidth/3.0f, 35.0f);
+        }
+        //}}}
+      endFrame();
+      glfwSwapBuffers (mWindow);
+
+      mCpuGraph->updateTime ((float)glfwGetTime());
+      mFpsGraph->updateTime ((float)glfwGetTime());
+
+      float gpuTimes[3];
+      int n = mGpuGraph->stop (gpuTimes, 3);
+      for (int i = 0; i < n; i++)
+        mGpuGraph->updateValue (gpuTimes[i]);
+
+      glfwPollEvents();
+      }
+
     };
+  //}}}
+  //{{{  iDraw
+  uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
+  uint16_t getLcdHeightPix() { return mRoot->getPixHeight(); }
+
+  cVg* getContext() { return this; }
+
+  //{{{
+  virtual void pixel (uint32_t colour, int16_t x, int16_t y) {
+    rectClipped (colour, x, y, 1, 1);
+    }
+  //}}}
+  //{{{
+  virtual void drawRect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    beginPath();
+    rect (x, y, width, height);
+    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
+    triangleFill();
+    }
+  //}}}
+  //{{{
+  virtual void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+    //rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
+    }
+  //}}}
+  //{{{
+  virtual int drawText (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
+
+    fontSize ((float)fontHeight);
+    textAlign (cVg::ALIGN_LEFT | cVg::ALIGN_TOP);
+    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
+    text ((float)x+3, (float)y+1, str);
+    //return (int)metrics.width;
+    return 0;
+    }
+  //}}}
+  //{{{
+  virtual void ellipseSolid (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
+    beginPath();
+    ellipse (x, y, xradius, yradius);
+    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
+    fill();
+    }
+  //}}}
   //}}}
 
   const std::vector<std::string> kShares =
@@ -199,36 +242,67 @@ public:
 
 protected:
   //{{{
-  bool onKey (int key) {
+  void onKey (int key, int scancode, int action, int mods) {
 
-    switch (key) {
-      case 0x00:
-      case 0x10: // shift
-      case 0x11: // control
-        return false;
-      case 0x1B: // escape
-        return true;
+    //mods == GLFW_MOD_SHIFT
+    //mods == GLFW_MOD_CONTROL
 
-      case 0x25:
-        if (mFileIndex > 0) mFileIndex--;
-        mPicWidget->setFileName (mFileList[mFileIndex]);
-        break; // left arrow
+    if ((action == GLFW_PRESS) || (action == GLFW_REPEAT)) {
+      switch (key) {
+        case GLFW_KEY_ESCAPE : glfwSetWindowShouldClose (mWindow, GL_TRUE); break;
+        default: debug ("key " + hex(key));
+        }
 
-      case 0x27:
-        if (mFileIndex < mFileList.size()-1) mFileIndex++;
-        mPicWidget->setFileName (mFileList[mFileIndex]);
-        break; // right arrow
+      //case 0x00:
+      //case 0x10: // shift
+      //case 0x11: // control
+        //return false;
+      //case 0x1B: // escape
+        //return true;
 
-      default: debug ("key " + hex(key));
+      //case 0x25:
+        //if (mFileIndex > 0) mFileIndex--;
+        //mPicWidget->setFileName (mFileList[mFileIndex]);
+        //break; // left arrow
+
+      //case 0x27:
+        //if (mFileIndex < mFileList.size()-1) mFileIndex++;
+        //mPicWidget->setFileName (mFileList[mFileIndex]);
+        //break; // right arrow
       }
-
-    return false;
     }
   //}}}
-  void onMouseDown (bool right, int x, int y) { mRoot->press (0, x, y, 0,  0, 0, false); }
-  void onMouseMove (bool right, int x, int y, int xInc, int yInc) { mRoot->press (1, x, y, 0, xInc, yInc, false); }
-  void onMouseUp (bool right, bool mouseMoved, int x, int y) { mRoot->release(); }
-  void onDraw (ID2D1DeviceContext* dc) { if (mRoot) mRoot->render (this); }
+  //{{{
+  void onChar (char ch, int mods) {
+    }
+  //}}}
+  //{{{
+  void onMouseDown (bool right, int x, int y, bool controlled) {
+    mRoot->press (0, x, y, 0,  0, 0, controlled);
+    }
+  //}}}
+  //{{{
+  void onMouseUp (bool right, bool mouseMoved, int x, int y, bool controlled) {
+    mRoot->release();
+    }
+  //}}}
+  //{{{
+  void onMouseProx (bool inClient, int x, int y, bool controlled) {
+    mMouseX = (float)x;
+    mMouseY = (float)y;
+    }
+  //}}}
+  //{{{
+  void onMouseMove (bool right, int x, int y, int xInc, int yInc, bool controlled) {
+    mMouseX = (float)x;
+    mMouseY = (float)y;
+    mRoot->press (1, x, y, 0, xInc, yInc, controlled);
+    }
+  //}}}
+  //{{{
+  void onMouseWheel (int delta, bool controlled) {
+    }
+  //}}}
 
 private:
   //{{{
@@ -384,10 +458,16 @@ private:
   //}}}
 
   //{{{  vars
+  bool mDrawPerf = false;
+  bool mDrawStats = true;
+  bool mDrawTests = true;
+
+  cPerfGraph* mFpsGraph = nullptr;
+  cPerfGraph* mCpuGraph = nullptr;
+  cGpuGraph* mGpuGraph = nullptr;
+
   cRootContainer* mRoot = nullptr;
 
-  // d2dwindow
-  ID2D1SolidColorBrush* mBrush;
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   cPicWidget* mPicWidget;
@@ -395,10 +475,12 @@ private:
   bool mFileIndexChanged = false;
 
   std::vector <std::string> mFileList;
+
+  float mMouseX = 0;
+  float mMouseY = 0;
   //}}}
   };
 
-//{{{
 int main (int argc, char* argv[]) {
 
   WSADATA wsaData;
@@ -409,7 +491,6 @@ int main (int argc, char* argv[]) {
     }
     //}}}
 
-  cWebWindow webWindow;
-  webWindow.run (L"webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
+  cGlWebWindow webWindow;
+  webWindow.run ("webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
   }
-//}}}
