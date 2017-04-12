@@ -21,15 +21,10 @@
 
 #include "../../shared/nanoVg/cGlWindow.h"
 #include "../../shared/fonts/FreeSansBold.h"
-#include "../../shared/nanoVg/cPerfGraph.h"
-#include "../../shared/nanoVg/cGpuGraph.h"
 
-#define USE_NANOVG
 #include "../../shared/utils.h"
 #include "../../shared/net/cWinSockHttp.h"
 #include "../../shared/net/cWinEsp8266Http.h"
-
-#include "../../shared/widgets/cRootContainer.h"
 #include "../../shared/widgets/cDecodePicWidget.h"
 #include "../../shared/widgets/cListWidget.h"
 
@@ -107,17 +102,12 @@ void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
 //}}}
 //#define ESP8266
 
-class cGlWebWindow : public cGlWindow, public iDraw  {
+class cGlWebWindow : public cGlWindow  {
 public:
   //{{{
   void run (std::string title, int width, int height, std::string fileName) {
 
-    create (title, width, height);
-    createFontMem ("sans", (unsigned char*)freeSansBold, sizeof(freeSansBold), 0);
-    fontFace ("sans");
-
-    mRoot = new cRootContainer (width, height);
-    mRoot->addTopLeft (mPicWidget = new cDecodePicWidget());
+    cGlWindow::initialise (title, width, height, (unsigned char*)freeSansBold);
 
     if (fileName.empty()) {
       mRoot->addTopLeft (new cListWidget (mFileList, mFileIndex, mFileIndexChanged, 0, 0));
@@ -131,109 +121,8 @@ public:
     else
       mPicWidget->setFileName (fileName);
 
-    // init timers
-    glfwSetTime (0);
-    float cpuTime = 0.0f;
-    float frameTime = 0.0f;
-    double prevt = glfwGetTime();
-
-    mFpsGraph = new cPerfGraph (cPerfGraph::GRAPH_RENDER_FPS, "frame");
-    mCpuGraph = new cPerfGraph (cPerfGraph::GRAPH_RENDER_MS, "cpu");
-    mGpuGraph = new cGpuGraph (cPerfGraph::GRAPH_RENDER_MS, "gpu");
-
-    glClearColor (0, 0, 0, 1.0f);
-    while (!glfwWindowShouldClose (mWindow)) {
-      mGpuGraph->start();
-      mCpuGraph->start ((float)glfwGetTime());
-
-      // Update and render
-      int winWidth, winHeight;
-      glfwGetWindowSize (mWindow, &winWidth, &winHeight);
-      int frameBufferWidth, frameBufferHeight;
-      glfwGetFramebufferSize (mWindow, &frameBufferWidth, &frameBufferHeight);
-
-      glViewport (0, 0, frameBufferWidth, frameBufferHeight);
-      glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-      beginFrame (winWidth, winHeight, (float)frameBufferWidth / (float)winWidth);
-      if (mRoot)
-        mRoot->render (this);
-      if (mDrawTests) {
-        //{{{  draw
-        drawEyes (winWidth*3.0f/4.0f, winHeight/2.0f, winWidth/4.0f, winHeight/2.0f,
-                  0, 0, (float)glfwGetTime());
-        drawLines (0.0f, 50.0f, (float)winWidth, (float)winHeight, (float)glfwGetTime());
-        drawSpinner (winWidth/2.0f, winHeight/2.0f, 20.0f, (float)glfwGetTime());
-        }
-        //}}}
-      if (mDrawStats)
-        drawStats ((float)winWidth, (float)winHeight, getFrameStats() + (mVsync ? " vsync" : " free"));
-      if (mDrawPerf) {
-        //{{{  render perf stats
-        mFpsGraph->render (this, 0.0f, winHeight-35.0f, winWidth/3.0f -2.0f, 35.0f);
-        mCpuGraph->render (this, winWidth/3.0f, winHeight-35.0f, winWidth/3.0f - 2.0f, 35.0f);
-        mGpuGraph->render (this, winWidth*2.0f/3.0f, winHeight-35.0f, winWidth/3.0f, 35.0f);
-        }
-        //}}}
-      endFrame();
-      glfwSwapBuffers (mWindow);
-
-      mCpuGraph->updateTime ((float)glfwGetTime());
-      mFpsGraph->updateTime ((float)glfwGetTime());
-
-      float gpuTimes[3];
-      int n = mGpuGraph->stop (gpuTimes, 3);
-      for (int i = 0; i < n; i++)
-        mGpuGraph->updateValue (gpuTimes[i]);
-
-      glfwPollEvents();
-      }
-
+    cGlWindow::run();
     };
-  //}}}
-  //{{{  iDraw
-  uint16_t getLcdWidthPix() { return mRoot->getPixWidth(); }
-  uint16_t getLcdHeightPix() { return mRoot->getPixHeight(); }
-
-  cVg* getContext() { return this; }
-
-  //{{{
-  virtual void pixel (uint32_t colour, int16_t x, int16_t y) {
-    rectClipped (colour, x, y, 1, 1);
-    }
-  //}}}
-  //{{{
-  virtual void drawRect (uint32_t colour, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    beginPath();
-    rect (x, y, width, height);
-    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
-    triangleFill();
-    }
-  //}}}
-  //{{{
-  virtual void stamp (uint32_t colour, uint8_t* src, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-    //rect (0xC0000000 | (colour & 0xFFFFFF), x,y, width, height);
-    }
-  //}}}
-  //{{{
-  virtual int drawText (uint32_t colour, uint16_t fontHeight, std::string str, int16_t x, int16_t y, uint16_t width, uint16_t height) {
-
-    fontSize ((float)fontHeight);
-    textAlign (cVg::ALIGN_LEFT | cVg::ALIGN_TOP);
-    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
-    text ((float)x+3, (float)y+1, str);
-    //return (int)metrics.width;
-    return 0;
-    }
-  //}}}
-  //{{{
-  virtual void ellipseSolid (uint32_t colour, int16_t x, int16_t y, uint16_t xradius, uint16_t yradius) {
-    beginPath();
-    ellipse (x, y, xradius, yradius);
-    fillColor (nvgRGBA ((colour & 0xFF0000) >> 16, (colour & 0xFF00) >> 8, colour & 0xFF,255));
-    fill();
-    }
-  //}}}
   //}}}
 
   const std::vector<std::string> kShares =
@@ -274,33 +163,6 @@ protected:
   //}}}
   //{{{
   void onChar (char ch, int mods) {
-    }
-  //}}}
-  //{{{
-  void onMouseDown (bool right, int x, int y, bool controlled) {
-    mRoot->press (0, x, y, 0,  0, 0, controlled);
-    }
-  //}}}
-  //{{{
-  void onMouseUp (bool right, bool mouseMoved, int x, int y, bool controlled) {
-    mRoot->release();
-    }
-  //}}}
-  //{{{
-  void onMouseProx (bool inClient, int x, int y, bool controlled) {
-    mMouseX = (float)x;
-    mMouseY = (float)y;
-    }
-  //}}}
-  //{{{
-  void onMouseMove (bool right, int x, int y, int xInc, int yInc, bool controlled) {
-    mMouseX = (float)x;
-    mMouseY = (float)y;
-    mRoot->press (1, x, y, 0, xInc, yInc, controlled);
-    }
-  //}}}
-  //{{{
-  void onMouseWheel (int delta, bool controlled) {
     }
   //}}}
 
@@ -458,16 +320,6 @@ private:
   //}}}
 
   //{{{  vars
-  bool mDrawPerf = false;
-  bool mDrawStats = true;
-  bool mDrawTests = true;
-
-  cPerfGraph* mFpsGraph = nullptr;
-  cPerfGraph* mCpuGraph = nullptr;
-  cGpuGraph* mGpuGraph = nullptr;
-
-  cRootContainer* mRoot = nullptr;
-
   std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
 
   cPicWidget* mPicWidget;
@@ -475,9 +327,6 @@ private:
   bool mFileIndexChanged = false;
 
   std::vector <std::string> mFileList;
-
-  float mMouseX = 0;
-  float mMouseY = 0;
   //}}}
   };
 
