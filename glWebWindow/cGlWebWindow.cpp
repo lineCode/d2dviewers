@@ -4,20 +4,18 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
-#include <wrl.h>
+
 #include <winsock2.h>
 #include <WS2tcpip.h>
 #pragma comment (lib,"ws2_32.lib")
 
-#define _USE_MATH_DEFINES
-#include <locale>
-#include <codecvt>
-
-#include <vector>
-#include <thread>
-
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
+
+#include <locale>
+#include <codecvt>
+#include <vector>
+#include <thread>
 
 #include "../../shared/nanoVg/cGlWindow.h"
 #include "../../shared/fonts/FreeSansBold.h"
@@ -349,6 +347,6 @@ int main (int argc, char* argv[]) {
     }
     //}}}
 
-  cGlWebWindow webWindow;
-  webWindow.run ("webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
+  cGlWebWindow glWebWindow;
+  glWebWindow.run ("webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
   }
