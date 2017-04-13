@@ -2,7 +2,6 @@
 //{{{  includes
 #define _CRT_SECURE_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
-
 #include <windows.h>
 
 #include <winsock2.h>
@@ -131,40 +130,33 @@ protected:
   //{{{
   void onKey (int key, int scancode, int action, int mods) {
 
-    //mods == GLFW_MOD_SHIFT
-    //mods == GLFW_MOD_CONTROL
-
     if ((action == GLFW_PRESS) || (action == GLFW_REPEAT)) {
       switch (key) {
-        case GLFW_KEY_ESCAPE : glfwSetWindowShouldClose (mWindow, GL_TRUE); break;
-        case GLFW_KEY_V : toggleVsync(); break;
-        case GLFW_KEY_P : togglePerf(); break;
-        case GLFW_KEY_S : toggleStats(); break;
-        case GLFW_KEY_T : toggleTests(); break;
+        case GLFW_KEY_ESCAPE: glfwSetWindowShouldClose (mWindow, GL_TRUE); break;
+        case GLFW_KEY_V: toggleVsync(); break;
+        case GLFW_KEY_P: togglePerf(); break;
+        case GLFW_KEY_S: toggleStats(); break;
+        case GLFW_KEY_T: toggleTests(); break;
 
-        case GLFW_KEY_I : toggleSolid(); break;
-        case GLFW_KEY_A : toggleEdges(); break;
-        case GLFW_KEY_Q : fringeWidth (getFringeWidth() - 0.25f); break;
-        case GLFW_KEY_W : fringeWidth (getFringeWidth() + 0.25f); break;
+        case GLFW_KEY_I: toggleSolid(); break;
+        case GLFW_KEY_A: toggleEdges(); break;
+        case GLFW_KEY_Q: fringeWidth (getFringeWidth() - 0.25f); break;
+        case GLFW_KEY_W: fringeWidth (getFringeWidth() + 0.25f); break;
+
+        case GLFW_KEY_DOWN:
+          if (mFileIndex > 0) 
+            mFileIndex--;
+          mPicWidget->setFileName (mFileList[mFileIndex]);
+          break; 
+
+        case GLFW_KEY_UP:
+          if (mFileIndex < mFileList.size()-1) 
+            mFileIndex++;
+          mPicWidget->setFileName (mFileList[mFileIndex]);
+          break; 
+
         default: debug ("key " + hex(key));
         }
-
-      //case 0x00:
-      //case 0x10: // shift
-      //case 0x11: // control
-        //return false;
-      //case 0x1B: // escape
-        //return true;
-
-      //case 0x25:
-        //if (mFileIndex > 0) mFileIndex--;
-        //mPicWidget->setFileName (mFileList[mFileIndex]);
-        //break; // left arrow
-
-      //case 0x27:
-        //if (mFileIndex < mFileList.size()-1) mFileIndex++;
-        //mPicWidget->setFileName (mFileList[mFileIndex]);
-        //break; // right arrow
       }
     }
   //}}}
