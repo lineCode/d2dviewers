@@ -11,8 +11,6 @@
 #include "Shlwapi.h" // for shell path functions
 #pragma comment(lib,"shlwapi.lib")
 
-#include <locale>
-#include <codecvt>
 #include <vector>
 #include <thread>
 
@@ -112,11 +110,16 @@ public:
       }
       //metObs();
     else if (GetFileAttributesA (fileName.c_str()) & FILE_ATTRIBUTE_DIRECTORY) {
+      mPicWidget = new cDecodePicWidget();
+      mRoot->addTopLeft (mPicWidget);
       listDirectory (std::string(), fileName, "*.png;*.gif;*.jpg;*.bmp");
       mPicWidget->setFileName (mFileList[0]);
       }
-    else
+    else {
+      mPicWidget = new cDecodePicWidget();
+      mRoot->addTopLeft (mPicWidget);
       mPicWidget->setFileName (fileName);
+      }
 
     cGlWindow::run();
     };
@@ -144,16 +147,16 @@ protected:
         case GLFW_KEY_W: fringeWidth (getFringeWidth() + 0.25f); break;
 
         case GLFW_KEY_DOWN:
-          if (mFileIndex > 0) 
+          if (mFileIndex > 0)
             mFileIndex--;
           mPicWidget->setFileName (mFileList[mFileIndex]);
-          break; 
+          break;
 
         case GLFW_KEY_UP:
-          if (mFileIndex < mFileList.size()-1) 
+          if (mFileIndex < mFileList.size()-1)
             mFileIndex++;
           mPicWidget->setFileName (mFileList[mFileIndex]);
-          break; 
+          break;
 
         default: debug ("key " + hex(key));
         }
@@ -260,7 +263,7 @@ private:
   //{{{
   std::string share (cHttp& http, std::string symbol, bool full = false) {
 
-    http.get("finance.google.com", "finance/info?client=ig&q="+symbol);
+    http.get ("finance.google.com", "finance/info?client=ig&q="+symbol);
 
     rapidjson::Document prices;
     auto parseError = prices.Parse ((const char*)(http.getContent()+6), http.getContentSize()-8).HasParseError();
@@ -319,8 +322,6 @@ private:
   //}}}
 
   //{{{  vars
-  std::wstring_convert <std::codecvt_utf8_utf16 <wchar_t> > converter;
-
   cPicWidget* mPicWidget;
   int mFileIndex = 0;
   bool mFileIndexChanged = false;
