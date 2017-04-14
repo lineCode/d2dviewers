@@ -158,7 +158,13 @@ protected:
           mPicWidget->setFileName (mFileList[mFileIndex]);
           break;
 
-        default: debug ("key " + hex(key));
+        case GLFW_KEY_L:
+          mLogInfo = ! mLogInfo;
+          cLog::SetLogLevel (mLogInfo ? LOGINFO3 : LOGNOTICE);
+          break;
+
+        default: cLog::Log (LOGNOTICE, "Keyboard %d", event); break;
+          default: debug ("key " + hex(key));
         }
       }
     }
@@ -339,6 +345,9 @@ int main (int argc, char* argv[]) {
     exit (0);
     }
     //}}}
+
+  cLog::Init ("", mLogInfo ? LOGINFO3 : LOGNOTICE);
+  cLog::Log (LOGNOTICE, "glHlsPlayer");
 
   cGlWebWindow glWebWindow;
   glWebWindow.run ("webWindow", 800, 800, argv[1] ? std::string(argv[1]) : std::string());
