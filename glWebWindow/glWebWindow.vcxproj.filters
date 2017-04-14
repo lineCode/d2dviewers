@@ -33,7 +33,7 @@
     <ClInclude Include="..\..\shared\nanoVg\stb_truetype.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\cLog.h">
+    <ClInclude Include="..\..\shared\utils\cLog.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -47,7 +47,7 @@
     <ClCompile Include="cGlWebWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\shared\cLog.cpp">
+    <ClCompile Include="..\..\shared\utils\cLog.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

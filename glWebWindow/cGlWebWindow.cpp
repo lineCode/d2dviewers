@@ -17,8 +17,8 @@
 #include "../../shared/nanoVg/cGlWindow.h"
 #include "../../shared/fonts/FreeSansBold.h"
 
-#include "../../shared/cLog.h"
-#include "../../shared/utils.h"
+#include "../../shared/utils/cLog.h"
+#include "../../shared/utils/utils.h"
 #include "../../shared/net/cWinSockHttp.h"
 //#include "../../shared/net/cWinEsp8266Http.h"
 #include "../../shared/widgets/cDecodePicWidget.h"
