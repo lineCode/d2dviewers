@@ -17,85 +17,18 @@
 #include "../../shared/nanoVg/cGlWindow.h"
 #include "../../shared/fonts/FreeSansBold.h"
 
+#include "../../shared/cLog.h"
 #include "../../shared/utils.h"
 #include "../../shared/net/cWinSockHttp.h"
-#include "../../shared/net/cWinEsp8266Http.h"
+//#include "../../shared/net/cWinEsp8266Http.h"
 #include "../../shared/widgets/cDecodePicWidget.h"
 #include "../../shared/widgets/cListWidget.h"
 
 #include "../../shared/rapidjson/document.h"
 //}}}
-//{{{  debugHeap
-#define MAX_HEAP_DEBUG 2000
-
-//{{{
-class cHeapAlloc {
-public:
-  void* mPtr = nullptr;
-  size_t mSize = 0;
-  uint8_t mHeap = 0;
-  };
-//}}}
-
-cHeapAlloc mHeapDebugAllocs [MAX_HEAP_DEBUG];
-const char* kDebugHeapLabels[3] = { "big", "sml", "new" };
-size_t mHeapDebugAllocated[3] = { 0,0,0 };
-size_t mHeapDebugHighwater[3] = { 0, 0, 0 };
-uint32_t mHeapDebugOutAllocs[3] = { 0, 0, 0 };
-
-//{{{
-void* debugMalloc (size_t size, const char* tag, uint8_t heap) {
-
-  auto ptr = malloc (size);
-
-  mHeapDebugOutAllocs[heap]++;
-  mHeapDebugAllocated[heap] += size;
-  for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
-    if (!mHeapDebugAllocs[i].mPtr) {
-      mHeapDebugAllocs[i].mPtr = ptr;
-      mHeapDebugAllocs[i].mSize = size;
-      mHeapDebugAllocs[i].mHeap = heap;
-      break;
-      }
-    if (i >= MAX_HEAP_DEBUG-1)
-      printf ("debugMAlloc::not enough heapDebugAllocs\n");
-    }
-
-  if (mHeapDebugAllocated[heap] > mHeapDebugHighwater[heap]) {
-    mHeapDebugHighwater[heap] = mHeapDebugAllocated[heap];
-    printf ("%s %3d %7zd %7zd %s\n", kDebugHeapLabels[heap],
-            mHeapDebugOutAllocs[heap], mHeapDebugAllocated[heap], size, tag ? tag : "");
-    }
-
-  return ptr;
-  }
-//}}}
-//{{{
-void debugFree (void* ptr) {
-
-  if (ptr) {
-    for (auto i = 0; i < MAX_HEAP_DEBUG; i++) {
-      if (mHeapDebugAllocs[i].mPtr && mHeapDebugAllocs[i].mPtr == ptr) {
-        mHeapDebugAllocs[i].mPtr = nullptr;
-        mHeapDebugOutAllocs[mHeapDebugAllocs[i].mHeap]--;
-        mHeapDebugAllocated[mHeapDebugAllocs[i].mHeap] -= mHeapDebugAllocs[i].mSize;
-        break;
-        }
-      if (i >= MAX_HEAP_DEBUG-1)
-        printf ("debugFree::ptr not found %llx\n", (int64_t)ptr);
-      }
-    }
-
-  free (ptr);
-  }
-//}}}
-
-void* operator new (size_t size) { return debugMalloc (size, "", 2); }
-void operator delete (void* ptr) { debugFree (ptr); }
-void* operator new[](size_t size) { printf("new[] %d\n", int(size)); return debugMalloc (size, "", '['); }
-void operator delete[](void *ptr) { printf ("delete[]\n"); debugFree (ptr); }
-//}}}
 //#define ESP8266
+
+bool mLogInfo = false;
 
 class cGlWebWindow : public cGlWindow  {
 public:
@@ -163,8 +96,7 @@ protected:
           cLog::SetLogLevel (mLogInfo ? LOGINFO3 : LOGNOTICE);
           break;
 
-        default: cLog::Log (LOGNOTICE, "Keyboard %d", event); break;
-          default: debug ("key " + hex(key));
+        default: cLog::Log (LOGNOTICE, "Keyboard %x", key); break;
         }
       }
     }
