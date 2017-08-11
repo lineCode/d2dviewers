@@ -10,10 +10,7 @@
 #include "../../shared/audio/cWinAudio.h"
 
 #include "../../shared/video/cYuvFrame.h"
-//#include "../common/yuvrgb_sse2.h"
-#include "../../shared/decoders/cMpeg2decoder.h"
 
-#include "../../shared/libfaad/neaacdec.h"
 #pragma comment (lib,"avutil.lib")
 #pragma comment (lib,"avcodec.lib")
 #pragma comment (lib,"avformat.lib")
@@ -76,8 +73,6 @@ public:
   AVCodecParserContext* mVidParser = nullptr;
   AVCodec* mVidCodec = nullptr;
   AVCodecContext* mVidContext = nullptr;
-
-  //cMpeg2decoder* mMpeg2decoder = nullptr;
 
   cYuvFrame mYuvFrames[maxVidFrames];
   int mLoadVidFrame = 0;
@@ -466,11 +461,6 @@ protected:
           }
         break;
         }
-      //{{{  mpeg2decoder
-      //decodeContext->mMpeg2decoder = new cMpeg2decoder();
-      //uint8_t* pesPtr;
-      //pidInfo->mDecoder->decodePes (pidInfo->mBuffer, pidInfo->mBufPtr, decodeContext->mFakePts, pesPtr);
-      //}}}
       default:
         //printf ("**** unrecognised vid stream type pid:%d type:%d\n", pidInfo->mPid, pidInfo->mStreamType);
         break;
@@ -637,8 +627,6 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //}}}
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
-
-  //dc->Clear (ColorF (ColorF::Black));
 
   int i = 0;
   int pip = 0;
