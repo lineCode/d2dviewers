@@ -175,6 +175,51 @@ public:
   //}}}
 
   //{{{
+  void drawServices (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                     ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                     ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
+
+    auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+    for (auto service : mServiceMap) {
+      std::string str = service.second.getName() + " " + service.second.getNow()->mTitle;
+      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
+      textr.top += 20.0f;
+      }
+    }
+  //}}}
+  //{{{
+  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
+                 ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
+                 ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
+
+    if (!mPidInfoMap.empty()) {
+      float lineY = 20.0f;
+      std::string str = mTimeStr + " services:" + to_string (mServiceMap.size());
+      auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
+      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
+      lineY+= 20.0f;
+
+      for (auto pidInfo : mPidInfoMap) {
+        float total = (float)pidInfo.second.mTotal;
+        if (total > mLargest)
+          mLargest = total;
+        auto len = (total / mLargest) * (client.width - 50.0f);
+        dc->FillRectangle (RectF(40.0f, lineY+6.0f, 40.0f + len, lineY+22.0f), blueBrush);
+
+        textr.top = lineY;
+        str = to_string (pidInfo.first) +
+              ' ' + to_string (pidInfo.second.mStreamType) +
+              ' ' + pidInfo.second.mInfo +
+              ' ' + to_string (pidInfo.second.mTotal) +
+              ':' + to_string (pidInfo.second.mDisContinuity);
+        dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
+                      textFormat, textr, whiteBrush);
+        lineY += 20.0f;
+        }
+      }
+    }
+  //}}}
+  //{{{
   void drawDebug (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
                   ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
                   ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush, ID2D1SolidColorBrush* yellowBrush,
@@ -195,7 +240,10 @@ public:
         }
 
       int channels = mAudFrames[i].mChannels;
-      float x = (client.width/2.0f) + float(mAudFrames[i].mPts - playAudPts) * pixPerPts;
+
+      // make sure we get a signed diff from unsigned pts
+      int64_t diff = mAudFrames[i].mPts - playAudPts;
+      float x = (client.width/2.0f) + float(diff) * pixPerPts;
       float w = u;
 
       for (auto j = 0; j < channels; j++) {
@@ -234,52 +282,6 @@ public:
         dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), whiteBrush);
         }
         //}}}
-    }
-  //}}}
-
-  //{{{
-  void drawPids (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
-                 ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
-                 ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
-
-    if (!mPidInfoMap.empty()) {
-      float lineY = 20.0f;
-      std::string str = mTimeStr + " services:" + to_string (mServiceMap.size());
-      auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
-      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
-      lineY+= 20.0f;
-
-      for (auto pidInfo : mPidInfoMap) {
-        float total = (float)pidInfo.second.mTotal;
-        if (total > mLargest)
-          mLargest = total;
-        auto len = (total / mLargest) * (client.width - 50.0f);
-        dc->FillRectangle (RectF(40.0f, lineY+6.0f, 40.0f + len, lineY+22.0f), blueBrush);
-
-        textr.top = lineY;
-        str = to_string (pidInfo.first) +
-              ' ' + to_string (pidInfo.second.mStreamType) +
-              ' ' + pidInfo.second.mInfo +
-              ' ' + to_string (pidInfo.second.mTotal) +
-              ':' + to_string (pidInfo.second.mDisContinuity);
-        dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
-                      textFormat, textr, whiteBrush);
-        lineY += 20.0f;
-        }
-      }
-    }
-  //}}}
-  //{{{
-  void drawServices (ID2D1DeviceContext* dc, D2D1_SIZE_F client, IDWriteTextFormat* textFormat,
-                     ID2D1SolidColorBrush* whiteBrush, ID2D1SolidColorBrush* blueBrush,
-                     ID2D1SolidColorBrush* blackBrush, ID2D1SolidColorBrush* greyBrush) {
-
-    auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
-    for (auto service : mServiceMap) {
-      std::string str = service.second.getName() + " " + service.second.getNow()->mTitle;
-      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
-      textr.top += 20.0f;
-      }
     }
   //}}}
 
