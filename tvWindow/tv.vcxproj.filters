@@ -6,19 +6,10 @@
     <ClCompile Include="..\..\shared\d2dWindow\cD2dWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="huffDecoder.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cAudFrame.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\cBda.h">
-      <Filter>header</Filter>
-    </ClInclude>
-    <ClInclude Include="..\common\timer.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cTransportStream.h">
