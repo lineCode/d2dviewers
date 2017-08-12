@@ -542,13 +542,12 @@ bool onKey (int key) {
 
     case 0x21 : incPlayFrame (-5 * 0x4000*188); break; // page up
     case 0x22 : incPlayFrame (5 * 0x4000*188); break;  // page down
+    case 0x23 : break; // home
+    case 0x24 : break; // end
     case 0x25 : incPlayFrame (-keyInc() * 0x4000*188); break; // left arrow
     case 0x27 : incPlayFrame (keyInc() * 0x4000*188); break;  // right arrow
     case 0x26 : mPlaying = false; mPlayAudFrame -= 1; changed(); break;  // up arrow
     case 0x28 : mPlaying = false;  mPlayAudFrame += 1; changed(); break; // down arrow
-
-    case 0x23 : break; // home
-    case 0x24 : break; // end
     case 0x2d : mServiceSelector++; break; // insert
     case 0x2e : mServiceSelector--; break; // delete
 
