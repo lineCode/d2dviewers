@@ -7,6 +7,8 @@
 
 #include "../common/cBda.h"
 #include "../../shared/decoders/cTransportStream.h"
+
+using namespace std;
 //}}}
 
 //{{{
@@ -22,9 +24,9 @@ public:
 
     if (!mPidInfoMap.empty()) {
       float lineY = 20.0f;
-      std::string str = mTimeStr + " services:" + to_string (mServiceMap.size());
+      string str = mTimeStr + " services:" + to_string (mServiceMap.size());
       auto textr = D2D1::RectF(0, 20.0f, client.width, client.height);
-      dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
+      dc->DrawText (wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, textr, whiteBrush);
       lineY+= 16.0f;
 
       for (auto pidInfo : mPidInfoMap) {
@@ -41,15 +43,17 @@ public:
               " " + to_string (pidInfo.second.mTotal) +
               " d:" + to_string (pidInfo.second.mDisContinuity) +
               " r:" + to_string (pidInfo.second.mRepeatContinuity);
-        dc->DrawText (std::wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
+        dc->DrawText (wstring (str.begin(), str.end()).data(), (uint32_t)str.size(),
                       textFormat, textr, whiteBrush);
         lineY += 14.0f;
         }
       }
     }
   //}}}
+
+protected:
   //{{{
-  void startProgram (int vpid, int apid, std::string name, std::string startTime) {
+  void startProgram (int vpid, int apid, string name, string startTime) {
     printf ("now changed %d %d %s %s\n", vpid, apid, name.c_str(), startTime.c_str());
     }
   //}}}
@@ -78,7 +82,7 @@ public:
 
     if (freq) {
       SetPriorityClass (GetCurrentProcess(), REALTIME_PRIORITY_CLASS);
-      auto bdaReaderThread = std::thread ([=]() { bdaReader (freq); });
+      auto bdaReaderThread = thread ([=]() { bdaReader (freq); });
       SetThreadPriority (bdaReaderThread.native_handle(), THREAD_PRIORITY_HIGHEST);
       bdaReaderThread.detach();
       }
@@ -165,30 +169,6 @@ protected:
 
 private:
   //{{{
-  void fileReader (wchar_t* wFileName) {
-
-    mFileName = wFileName;
-
-    uint8_t tsBuf[240*188];
-
-    auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-
-    mFilePtr = 0;
-    DWORD numberOfBytesRead = 0;
-    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
-      if (numberOfBytesRead) {
-        mFilePtr += numberOfBytesRead;
-        mTs.demux (tsBuf, tsBuf + (240*188), false);
-        changed();
-        }
-      else
-        break;
-      }
-
-    CloseHandle (readFile);
-    }
-  //}}}
-  //{{{
   void bdaReader (int freq) {
 
     CoInitialize (NULL);
@@ -227,15 +207,39 @@ private:
     CoUninitialize();
     }
   //}}}
-  //{{{  vars
-  IDWriteTextFormat* mSmallTextFormat = nullptr;
+  //{{{
+  void fileReader (wchar_t* wFileName) {
 
-  bool mShowChannel = false;
+    mFileName = wFileName;
+
+    uint8_t tsBuf[240*188];
+
+    auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+    mFilePtr = 0;
+    DWORD numberOfBytesRead = 0;
+    while (ReadFile (readFile, tsBuf, 240*188, &numberOfBytesRead, NULL)) {
+      if (numberOfBytesRead) {
+        mFilePtr += numberOfBytesRead;
+        mTs.demux (tsBuf, tsBuf + (240*188), false);
+        changed();
+        }
+      else
+        break;
+      }
+
+    CloseHandle (readFile);
+    }
+  //}}}
+
+  // vars
   wchar_t* mFileName = nullptr;
   int mFilePtr = 0;
 
   cDecodeTransportStream mTs;
-  //}}}
+
+  bool mShowChannel = false;
+  IDWriteTextFormat* mSmallTextFormat = nullptr;
   };
 
 //{{{

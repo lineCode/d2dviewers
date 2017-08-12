@@ -9,16 +9,16 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\timer.h">
+    <ClInclude Include="..\..\shared\decoders\cTransportStream.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\cTransportStream.h">
+    <ClInclude Include="..\..\shared\d2dWindow\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\common\cBda.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\shared\decoders\huffDecoder.h">
+    <ClInclude Include="..\..\shared\utils\utils.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>

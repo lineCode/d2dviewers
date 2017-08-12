@@ -18,6 +18,15 @@
     <ClInclude Include="..\..\shared\d2dWindow\cD2dWindow.h">
       <Filter>header</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\shared\utils\utils.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\audio\cWinAudio.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\video\cYuvFrame.h">
+      <Filter>header</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="header">

@@ -34,10 +34,10 @@
     <ClCompile Include="tvGrabWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\d2dWindow\cD2dWindow.h" />
     <ClInclude Include="..\..\shared\decoders\cTransportStream.h" />
-    <ClInclude Include="..\..\shared\decoders\huffDecoder.h" />
+    <ClInclude Include="..\..\shared\utils\utils.h" />
     <ClInclude Include="..\common\cBda.h" />
-    <ClInclude Include="..\common\timer.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

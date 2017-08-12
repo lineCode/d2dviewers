@@ -474,7 +474,6 @@ protected:
   //}}}
 
 private:
-
   // vars
   uint64_t mAudPts = 0;
   uint64_t mVidPts = 0;
