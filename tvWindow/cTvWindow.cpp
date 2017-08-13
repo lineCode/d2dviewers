@@ -45,6 +45,7 @@ public:
   uint64_t getLastAudPts() { return mLastAudPts; }
   uint64_t getLastVidPts() { return mLastVidPts; }
   int getLoadAudFrame() { return mLoadAudFrame; }
+  float getPixPerPts() { return mPixPerPts; }
   //{{{
   int16_t* getAudSamples (int playFrame, int& numSampleBytes, uint64_t& pts) {
 
@@ -194,7 +195,7 @@ public:
     float u = 18.0f;
     float vidFrameWidthPts = 90000.0f / 25.0f;
     float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
-    float pixPerPts = u / audFrameWidthPts;
+    mPixPerPts = u / audFrameWidthPts;
     float g = 1.0f;
 
     auto rMid = RectF ((client.width/2)-1, 0, (client.width/2)+1, y+y+y);
@@ -203,14 +204,14 @@ public:
     for (auto i = 0; i < kMaxAudFrames; i++) {
       if (mAudFrames[i].mNumSamples) {
         audFrameWidthPts = 90000.0f * mAudFrames[i].mNumSamples / 48000.0f;
-        pixPerPts = u / audFrameWidthPts;
+        mPixPerPts = u / audFrameWidthPts;
         }
 
       int channels = mAudFrames[i].mChannels;
 
       // make sure we get a signed diff from unsigned pts
       int64_t diff = mAudFrames[i].mPts - playAudPts;
-      float x = (client.width/2.0f) + float(diff) * pixPerPts;
+      float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u;
 
       for (auto j = 0; j < channels; j++) {
@@ -230,7 +231,7 @@ public:
 
       // make sure we get a signed diff from unsigned pts
       int64_t diff = yuvFrame->mPts - playAudPts;
-      float x = (client.width/2.0f) + float(diff) * pixPerPts;
+      float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
 
       dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellow);
@@ -429,7 +430,7 @@ private:
   cAudFrame mAudFrames[kMaxAudFrames];
   int mLoadVidFrame = 0;
   cYuvFrame mYuvFrames[kMaxVidFrames];
-
+  float mPixPerPts = 0.0f;
   };
 //}}}
 
@@ -559,7 +560,9 @@ void onMouseUp (bool right, bool mouseMoved, int x, int y) {
 //{{{
 void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 
-  //mPlayTime -= xInc*3600;
+  mPlaying = false;
+  mPlayAudPts -= (uint64_t)(xInc / mTs.getPixPerPts());
+  changed();
   }
 //}}}
 //{{{
