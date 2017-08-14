@@ -24,7 +24,12 @@ using namespace std;
 //{{{
 class cDecodeTransportStream : public cTransportStream {
 public:
-  cDecodeTransportStream() {}
+  //{{{
+  cDecodeTransportStream() {
+    mAudFrames.resize (kMaxAudFrames);
+    mVidFrames.resize (kMaxVidFrames);
+    }
+  //}}}
   //{{{
   virtual ~cDecodeTransportStream() {
 
@@ -65,7 +70,7 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getVidFrame (uint64_t pts) {
+  cYuvFrame* getVidFrameByPts (uint64_t pts) {
   // find vidFrame containing pts, else nearestVidFrame to pts
   // - returns nullPtr if no frame loaded yet
 
@@ -73,12 +78,12 @@ public:
 
     uint64_t nearest = 0;
     for (int i = 0; i < kMaxVidFrames; i++) {
-      if (mYuvFrames[i].mPts) {
-        if ((pts >= mYuvFrames[i].mPts) && (pts < mYuvFrames[i].mPts + 90000/25))
-          return &mYuvFrames[i];
-        uint64_t absDiff = pts > mYuvFrames[i].mPts ? pts - mYuvFrames[i].mPts : mYuvFrames[i].mPts - pts;
+      if (mVidFrames[i].mPts) {
+        if ((pts >= mVidFrames[i].mPts) && (pts < mVidFrames[i].mPts + 90000/25))
+          return &mVidFrames[i];
+        uint64_t absDiff = pts > mVidFrames[i].mPts ? pts - mVidFrames[i].mPts : mVidFrames[i].mPts - pts;
         if (!yuvFrame || (absDiff < nearest)) {
-          yuvFrame = &mYuvFrames[i];
+          yuvFrame = &mVidFrames[i];
           nearest = absDiff;
           }
         }
@@ -88,8 +93,26 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getYuvFrame (int i) {
-    return &mYuvFrames[i];
+  cYuvFrame* getVidFrameByPts1 (uint64_t pts) {
+  // find vidFrame containing pts, else nearestVidFrame to pts
+  // - returns nullPtr if no frame loaded yet
+
+    cYuvFrame* yuvFrame = nullptr;
+
+    uint64_t nearest = 0;
+    for (auto vidFrame : mVidFrames) {
+      if (vidFrame.mPts) {
+        if ((pts >= vidFrame.mPts) && (pts < vidFrame.mPts + 90000/25))
+          return &vidFrame;
+        uint64_t absDiff = pts > vidFrame.mPts ? pts - vidFrame.mPts : vidFrame.mPts - pts;
+        if (!yuvFrame || (absDiff < nearest)) {
+          yuvFrame = &vidFrame;
+          nearest = absDiff;
+          }
+        }
+      }
+
+    return yuvFrame;
     }
   //}}}
   //{{{
@@ -220,7 +243,7 @@ public:
 
     for (auto vidFrame = 0; vidFrame < kMaxVidFrames; vidFrame++) {
       //{{{  draw vidFrame graphic
-      cYuvFrame* yuvFrame = getYuvFrame (vidFrame);
+      cYuvFrame* yuvFrame = &mVidFrames[vidFrame];
 
       // make sure we get a signed diff from unsigned pts
       int64_t diff = yuvFrame->mPts - playPts;
@@ -381,7 +404,7 @@ protected:
               else // interpolate pts
                 mInterpolatedVidPts += 90000/25;
 
-              mYuvFrames [mLoadVidFrame % kMaxVidFrames].set (mInterpolatedVidPts,
+              mVidFrames [mLoadVidFrame % kMaxVidFrames].set (mInterpolatedVidPts,
                                                               avFrame->data, avFrame->linesize,
                                                               mVidContext->width, mVidContext->height,
                                                               pesLen, avFrame->pict_type);
@@ -402,16 +425,16 @@ private:
   void invalidateAudFrames() {
 
     mLoadAudFrame = 0;
-    for (auto audFrame = 0; audFrame < kMaxAudFrames; audFrame++)
-      mAudFrames[audFrame].invalidate();
+    for (auto audFrame : mAudFrames)
+      audFrame.invalidate();
     }
   //}}}
   //{{{
   void invalidateVidFrames() {
 
     mLoadVidFrame = 0;
-    for (auto vidFrame = 0; vidFrame < kMaxVidFrames; vidFrame++)
-      mYuvFrames[vidFrame].invalidate();
+    for (auto vidFrame : mVidFrames)
+      vidFrame.invalidate();
     }
   //}}}
 
@@ -433,9 +456,9 @@ private:
   AVCodecParserContext* mVidParser = nullptr;
 
   int mLoadAudFrame = 0;
-  cAudFrame mAudFrames[kMaxAudFrames];
   int mLoadVidFrame = 0;
-  cYuvFrame mYuvFrames[kMaxVidFrames];
+  vector<cAudFrame> mAudFrames;
+  vector<cYuvFrame> mVidFrames;
 
   float mPixPerPts = 0.0f;
   };
@@ -575,7 +598,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  if (makeBitmap (mTs.getVidFrame (mPlayPts), mBitmap, mBitmapPts))
+  if (makeBitmap (mTs.getVidFrameByPts (mPlayPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
   // draw title
