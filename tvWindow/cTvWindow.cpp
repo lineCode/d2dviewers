@@ -26,8 +26,8 @@ class cDecodeTransportStream : public cTransportStream {
 public:
   //{{{
   cDecodeTransportStream() {
-    mAudFrames.resize (kMaxAudFrames);
-
+    for (auto i = 0; i < kMaxAudFrames; i++)
+      mAudFrames.push_back (new cAudFrame());
     for (auto i = 0; i < kMaxVidFrames; i++)
       mVidFrames.push_back (new cYuvFrame());
     }
@@ -58,12 +58,12 @@ public:
     if (playFrame < mLoadAudFrame) {
       auto audFrame = playFrame % kMaxAudFrames;
 
-      numSampleBytes = mAudFrames[audFrame].mNumSampleBytes;
-      if (mAudFrames[audFrame].mChannels == 6)
+      numSampleBytes = mAudFrames[audFrame]->mNumSampleBytes;
+      if (mAudFrames[audFrame]->mChannels == 6)
         numSampleBytes /= 3;
 
-      pts = mAudFrames[audFrame].mPts;
-      return mAudFrames[audFrame].mSamples;
+      pts = mAudFrames[audFrame]->mPts;
+      return mAudFrames[audFrame]->mSamples;
       }
     else {
       numSampleBytes = 0;
@@ -186,42 +186,43 @@ public:
                   ID2D1SolidColorBrush* black, ID2D1SolidColorBrush* grey, ID2D1SolidColorBrush* yellow,
                   uint64_t playPts) {
 
-    float y = 40.0f;
-    float h = 13.0f;
-    float u = 18.0f;
-    float vidFrameWidthPts = 90000.0f / 25.0f;
-    float audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
+    auto y = 40.0f;
+    auto h = 13.0f;
+    auto u = 18.0f;
+    auto vidFrameWidthPts = 90000.0f / 25.0f;
+    auto audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
     mPixPerPts = u / audFrameWidthPts;
-    float g = 1.0f;
+    auto g = 1.0f;
 
     auto rMid = RectF ((client.width/2)-1, 0, (client.width/2)+1, y+y+y);
     dc->FillRectangle (rMid, grey);
 
-    for (auto audFrame = 0; audFrame < kMaxAudFrames; audFrame++) {
+    auto index = 0;
+    for (auto audFrame : mAudFrames) {
       //{{{  draw audFrame graphic
-      if (mAudFrames[audFrame].mNumSamples) {
-        audFrameWidthPts = 90000.0f * mAudFrames[audFrame].mNumSamples / 48000.0f;
+      if (audFrame->mNumSamples) {
+        audFrameWidthPts = 90000.0f * audFrame->mNumSamples / 48000.0f;
         mPixPerPts = u / audFrameWidthPts;
         }
 
       // make sure we get a signed diff from unsigned pts
-      int64_t diff = mAudFrames[audFrame].mPts - playPts;
+      int64_t diff = audFrame->mPts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u;
 
-      int channels = mAudFrames[audFrame].mChannels;
+      int channels = audFrame->mChannels;
       for (auto channel = 0; channel < channels; channel++) {
         // draw channel
-        float v = mAudFrames[audFrame].mPower[channel] / 2.0f;
+        float v = audFrame->mPower[channel] / 2.0f;
         dc->FillRectangle (RectF(x + channel*(w/channels), y-g-v , x+(channel+1)*(w/channels)-g, y-g), blue);
         }
 
       dc->FillRectangle (RectF(x, y, x+w-g, y+h), blue);
-      wstring wstr (to_wstring (audFrame));
+      wstring wstr (to_wstring (index++));
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), black);
       }
       //}}}
-    int index = 0;
+    index = 0;
     for (auto vidFrame : mVidFrames) {
       //{{{  draw vidFrame graphic
       // make sure we get a signed diff from unsigned pts
@@ -289,11 +290,11 @@ protected:
           avPacket.size -= bytesUsed;
 
           if (got) {
-            mAudFrames[mLoadAudFrame % kMaxAudFrames].set (mInterpolatedAudPts, avFrame->channels, 48000, avFrame->nb_samples);
+            auto audFrame = mAudFrames[mLoadAudFrame % kMaxAudFrames];
+            audFrame->set (mInterpolatedAudPts, avFrame->channels, 48000, avFrame->nb_samples);
             mInterpolatedAudPts += (avFrame->nb_samples * 90000) / 48000;
 
-            double values[6] = { 0,0,0,0,0,0 };
-            auto samplePtr = (short*)mAudFrames[mLoadAudFrame % kMaxAudFrames].mSamples;
+            auto samplePtr = (short*)audFrame->mSamples;
             if (mAudContext->sample_fmt == AV_SAMPLE_FMT_S16P) {
               //{{{  calc 16bit signed planar power
               short* chanPtr[2];
@@ -303,7 +304,7 @@ protected:
               for (auto i = 0; i < avFrame->nb_samples; i++) {
                 for (auto channel = 0; channel < avFrame->channels; channel++) {
                   auto sample = *chanPtr[channel]++;
-                  values[channel] += pow (sample, 2);
+                  audFrame->mPower[channel] += powf (sample, 2);
                   *samplePtr++ = sample;
                   }
                 }
@@ -318,7 +319,7 @@ protected:
               for (auto i = 0; i < avFrame->nb_samples; i++) {
                 for (auto channel = 0; channel < avFrame->channels; channel++) {
                   auto sample = (short)(*chanPtr[channel]++ * 0x8000);
-                  values[channel] += pow (sample, 2);
+                  audFrame->mPower[channel] += powf (sample, 2);
                   if (avFrame->channels == 6) {
                     // 5.1 channels
                     if (channel == 2) { // use centre channel
@@ -333,7 +334,7 @@ protected:
               }
               //}}}
             for (auto channel = 0; channel < avFrame->channels; channel++)
-              mAudFrames[mLoadAudFrame % kMaxAudFrames].mPower[channel] = (float)sqrt (values[channel]) / (avFrame->nb_samples * 2.0f);
+              audFrame->mPower[channel] = (float)sqrt (audFrame->mPower[channel]) / (avFrame->nb_samples * 2.0f);
             mLoadAudFrame++;
             }
           av_frame_free (&avFrame);
@@ -405,7 +406,7 @@ private:
 
     mLoadAudFrame = 0;
     for (auto audFrame : mAudFrames)
-      audFrame.invalidate();
+      audFrame->invalidate();
     }
   //}}}
   //{{{
@@ -436,7 +437,7 @@ private:
 
   int mLoadAudFrame = 0;
   int mLoadVidFrame = 0;
-  vector<cAudFrame> mAudFrames;
+  vector<cAudFrame*> mAudFrames;
   vector<cYuvFrame*> mVidFrames;
 
   float mPixPerPts = 0.0f;
