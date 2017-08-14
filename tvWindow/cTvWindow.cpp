@@ -27,7 +27,9 @@ public:
   //{{{
   cDecodeTransportStream() {
     mAudFrames.resize (kMaxAudFrames);
-    mVidFrames.resize (kMaxVidFrames);
+
+    for (auto i = 0; i < kMaxVidFrames; i++)
+      mVidFrames.push_back (new cYuvFrame());
     }
   //}}}
   //{{{
@@ -74,45 +76,22 @@ public:
   // find vidFrame containing pts, else nearestVidFrame to pts
   // - returns nullPtr if no frame loaded yet
 
-    cYuvFrame* yuvFrame = nullptr;
-
-    uint64_t nearest = 0;
-    for (int i = 0; i < kMaxVidFrames; i++) {
-      if (mVidFrames[i].mPts) {
-        if ((pts >= mVidFrames[i].mPts) && (pts < mVidFrames[i].mPts + 90000/25))
-          return &mVidFrames[i];
-        uint64_t absDiff = pts > mVidFrames[i].mPts ? pts - mVidFrames[i].mPts : mVidFrames[i].mPts - pts;
-        if (!yuvFrame || (absDiff < nearest)) {
-          yuvFrame = &mVidFrames[i];
-          nearest = absDiff;
-          }
-        }
-      }
-
-    return yuvFrame;
-    }
-  //}}}
-  //{{{
-  cYuvFrame* getVidFrameByPts1 (uint64_t pts) {
-  // find vidFrame containing pts, else nearestVidFrame to pts
-  // - returns nullPtr if no frame loaded yet
-
-    cYuvFrame* yuvFrame = nullptr;
+    cYuvFrame* nearestVidFrame = nullptr;
 
     uint64_t nearest = 0;
     for (auto vidFrame : mVidFrames) {
-      if (vidFrame.mPts) {
-        if ((pts >= vidFrame.mPts) && (pts < vidFrame.mPts + 90000/25))
-          return &vidFrame;
-        uint64_t absDiff = pts > vidFrame.mPts ? pts - vidFrame.mPts : vidFrame.mPts - pts;
-        if (!yuvFrame || (absDiff < nearest)) {
-          yuvFrame = &vidFrame;
+      if (vidFrame->mPts) {
+        if ((pts >= vidFrame->mPts) && (pts < vidFrame->mPts + 90000/25))
+          return vidFrame;
+        uint64_t absDiff = pts > vidFrame->mPts ? pts - vidFrame->mPts : vidFrame->mPts - pts;
+        if (!nearestVidFrame || (absDiff < nearest)) {
+          nearestVidFrame = vidFrame;
           nearest = absDiff;
           }
         }
       }
 
-    return yuvFrame;
+    return nearestVidFrame;
     }
   //}}}
   //{{{
@@ -218,7 +197,6 @@ public:
     auto rMid = RectF ((client.width/2)-1, 0, (client.width/2)+1, y+y+y);
     dc->FillRectangle (rMid, grey);
 
-    int index = 1;
     for (auto audFrame = 0; audFrame < kMaxAudFrames; audFrame++) {
       //{{{  draw audFrame graphic
       if (mAudFrames[audFrame].mNumSamples) {
@@ -243,10 +221,11 @@ public:
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), black);
       }
       //}}}
+    int index = 0;
     for (auto vidFrame : mVidFrames) {
       //{{{  draw vidFrame graphic
       // make sure we get a signed diff from unsigned pts
-      int64_t diff = vidFrame.mPts - playPts;
+      int64_t diff = vidFrame->mPts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
 
@@ -255,15 +234,15 @@ public:
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), black);
 
       dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), white);
-      switch (vidFrame.mPictType) {
+      switch (vidFrame->mPictType) {
         case 1: wstr = L"I"; break;
         case 2: wstr = L"P"; break;
         case 3: wstr = L"B"; break;
-        default: wstr = to_wstring (vidFrame.mPictType); break;
+        default: wstr = to_wstring (vidFrame->mPictType); break;
         }
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), black);
 
-      float l = vidFrame.mLen / 1000.0f;
+      float l = vidFrame->mLen / 1000.0f;
       dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), white);
       }
       //}}}
@@ -404,10 +383,10 @@ protected:
               else // interpolate pts
                 mInterpolatedVidPts += 90000/25;
 
-              mVidFrames [mLoadVidFrame % kMaxVidFrames].set (mInterpolatedVidPts,
-                                                              avFrame->data, avFrame->linesize,
-                                                              mVidContext->width, mVidContext->height,
-                                                              pesLen, avFrame->pict_type);
+              mVidFrames [mLoadVidFrame % kMaxVidFrames]->set (mInterpolatedVidPts,
+                                                               avFrame->data, avFrame->linesize,
+                                                               mVidContext->width, mVidContext->height,
+                                                               pesLen, avFrame->pict_type);
               mLoadVidFrame++;
               //printf ("V %4.3f %4.3f t:%d l:%d\n",
               //        pidInfo->mPts/90000.0f, pidInfo->mDts/90000.0f, avFrame->pict_type, pesLen);
@@ -434,7 +413,7 @@ private:
 
     mLoadVidFrame = 0;
     for (auto vidFrame : mVidFrames)
-      vidFrame.invalidate();
+      vidFrame->invalidate();
     }
   //}}}
 
@@ -458,7 +437,7 @@ private:
   int mLoadAudFrame = 0;
   int mLoadVidFrame = 0;
   vector<cAudFrame> mAudFrames;
-  vector<cYuvFrame> mVidFrames;
+  vector<cYuvFrame*> mVidFrames;
 
   float mPixPerPts = 0.0f;
   };
