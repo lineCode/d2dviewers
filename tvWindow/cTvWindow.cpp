@@ -17,9 +17,9 @@
 
 using namespace std;
 //}}}
-#define kMaxVidFrames 64
-#define kMaxAudFrames 32
-#define kAudLoadAhead 6
+const int kMaxVidFrames = 64;
+const int kMaxAudFrames = 32;
+const int kAudLoadAhead = 6;
 
 //{{{
 class cDecodeTransportStream : public cTransportStream {
@@ -51,7 +51,7 @@ public:
   int getLoadAudFrame() { return mLoadAudFrame; }
   float getPixPerPts() { return mPixPerPts; }
   //{{{
-  int16_t* getAudSamples (int playFrame, int& numSampleBytes, uint64_t& pts) {
+  int16_t* getAudSamplesByAudPlayFrame (int playFrame, int& numSampleBytes, uint64_t& pts) {
 
     if (playFrame < mLoadAudFrame) {
       auto audFrame = playFrame % kMaxAudFrames;
@@ -694,7 +694,7 @@ private:
     while (true) {
       if (mPlaying) {
         int numSampleBytes;
-        auto samples = mTs.getAudSamples (mPlayAudFrame, numSampleBytes, mPlayPts);
+        auto samples = mTs.getAudSamplesByAudPlayFrame(mPlayAudFrame, numSampleBytes, mPlayPts);
         if (samples) {
           audPlay (samples, numSampleBytes, 1.0f);
           mPlayAudFrame++;
