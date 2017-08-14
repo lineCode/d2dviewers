@@ -53,7 +53,7 @@ public:
   int getLoadAudFrame() { return mLoadAudFrame; }
   float getPixPerPts() { return mPixPerPts; }
   //{{{
-  int16_t* getAudSamplesByAudPlayFrame (int playFrame, int& numSampleBytes, uint64_t& pts) {
+  int16_t* getAudByPlayFrame (int playFrame, int& numSampleBytes, uint64_t& pts) {
 
     if (playFrame < mLoadAudFrame) {
       auto audFrame = playFrame % kMaxAudFrames;
@@ -72,7 +72,7 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getVidFrameByPts (uint64_t pts) {
+  cYuvFrame* getVidByPts (uint64_t pts) {
   // find vidFrame containing pts, else nearestVidFrame to pts
   // - returns nullPtr if no frame loaded yet
 
@@ -197,7 +197,7 @@ public:
     auto rMid = RectF ((client.width/2)-1, 0, (client.width/2)+1, y+y+y);
     dc->FillRectangle (rMid, grey);
 
-    auto index = 0;
+    auto index = 1;
     for (auto audFrame : mAudFrames) {
       //{{{  draw audFrame graphic
       if (audFrame->mNumSamples) {
@@ -222,7 +222,8 @@ public:
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), black);
       }
       //}}}
-    index = 0;
+
+    index = 1;
     for (auto vidFrame : mVidFrames) {
       //{{{  draw vidFrame graphic
       // make sure we get a signed diff from unsigned pts
@@ -578,7 +579,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  if (makeBitmap (mTs.getVidFrameByPts (mPlayPts), mBitmap, mBitmapPts))
+  if (makeBitmap (mTs.getVidByPts (mPlayPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
   // draw title
@@ -674,7 +675,7 @@ private:
     while (true) {
       if (mPlaying) {
         int numSampleBytes;
-        auto samples = mTs.getAudSamplesByAudPlayFrame(mPlayAudFrame, numSampleBytes, mPlayPts);
+        auto samples = mTs.getAudByPlayFrame(mPlayAudFrame, numSampleBytes, mPlayPts);
         if (samples) {
           audPlay (samples, numSampleBytes, 1.0f);
           mPlayAudFrame++;
