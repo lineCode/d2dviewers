@@ -17,6 +17,7 @@
 #include <iomanip>
 
 #include <map>
+#include <vector>
 #include <thread>
 
 // direct2d
