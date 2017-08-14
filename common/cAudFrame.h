@@ -12,7 +12,7 @@ public:
   //}}}
 
   //{{{
-  void set (int64_t pts, int channels, int sampleRate, int numSamples) {
+  void set (uint64_t pts, int channels, int sampleRate, int numSamples) {
 
     mPts = pts;
     mChannels = channels;
@@ -56,7 +56,7 @@ public:
     }
   //}}}
 
-  int64_t mPts = 0;
+  uint64_t mPts = 0;
 
   int mChannels = 0;
   int mNumSamples = 0;
