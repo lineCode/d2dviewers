@@ -485,14 +485,14 @@ bool onKey (int key) {
     case 0x1B : return true;
     case 0x20 : mPlaying = !mPlaying; break;  // space
 
-    case 0x21 : incPlayFrame (-5 * 0x4000*188); break; // page up
-    case 0x22 : incPlayFrame (5 * 0x4000*188); break;  // page down
+    case 0x21 : mPlayPts -= (5 * 90000); mTs.invalidateFrames(); changed(); break; // page up
+    case 0x22 : mPlayPts += (5 * 90000); mTs.invalidateFrames(); changed(); break;  // page down
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x25 : incPlayFrame (-keyInc() * 0x4000*188); break; // left arrow
-    case 0x27 : incPlayFrame (keyInc() * 0x4000*188); break;  // right arrow
-    //case 0x26 : mPlaying = false; mPlayAudFrame -= 1; changed(); break;  // up arrow
-    //case 0x28 : mPlaying = false;  mPlayAudFrame += 1; changed(); break; // down arrow
+    case 0x25 : mPlayPts -= (90000/25); mPlaying = false; changed(); break; // left arrow
+    case 0x27 : mPlayPts += (90000/25); mPlaying = false; changed(); break; // right arrow
+    case 0x26 : mPlayPts -= (keyInc() * 90000); changed(); break; // up arrow
+    case 0x28 : mPlayPts += (keyInc() * 90000); changed(); break;  // down arrow
     case 0x2d : mServiceSelector++; break; // insert
     case 0x2e : mServiceSelector--; break; // delete
 
@@ -614,15 +614,6 @@ void onDraw (ID2D1DeviceContext* dc) {
 //}}}
 
 private:
-  //{{{
-  void incPlayFrame (int64_t inc) {
-
-    mFilePtr += inc;
-    //mPlayAudFrame = 0;
-    mTs.invalidateFrames();
-    }
-  //}}}
-
   //{{{
   void loader (wchar_t* wFileName) {
 
