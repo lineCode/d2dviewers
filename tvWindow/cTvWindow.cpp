@@ -590,6 +590,7 @@ void onDraw (ID2D1DeviceContext* dc) {
       << L" p:" << mPlayPts / 90000.0f
       << L" a:" << mTs.getLastAudPts() / 90000.0f
       << L" v:" << mTs.getLastVidPts() / 90000.0f
+      << L" r:" << mBytesPerPts
       ;
   dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
@@ -640,14 +641,16 @@ private:
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
+        mBytesPerPts = (float)mFilePtr / (float)mPlayPts;
 
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
 
-        while (mTs.getLastAudPts() && (mTs.getLastAudPts() > mPlayPts + 90000))
-          Sleep (10);
+        if (mTs.getLastAudPts()) {
+          while (mPlayPts + 90000 < mTs.getLastAudPts())
+            Sleep (1);
+          }
         }
-
       GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
       }
 
@@ -706,6 +709,8 @@ private:
   bool mShowDebug = false;
   bool mShowChannel = false;
   bool mShowTransportStream = false;
+
+  float mBytesPerPts = 0;
 
   uint64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
