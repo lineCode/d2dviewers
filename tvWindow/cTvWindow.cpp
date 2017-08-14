@@ -49,6 +49,7 @@ public:
   uint64_t getLastAudPts() { return mLastAudPts ? mLastAudPts - mBasePts : 0; }
   uint64_t getLastVidPts() { return mLastVidPts ? mLastVidPts - mBasePts : 0; }
   float getPixPerPts() { return mPixPerPts; }
+
   //{{{
   int16_t* getAudByPts (uint64_t pts, int& numSampleBytes, uint64_t& ptsWidth) {
   // find audFrame containing pts
@@ -94,6 +95,7 @@ public:
     return nearestVidFrame;
     }
   //}}}
+
   //{{{
   void invalidateFrames() {
 
@@ -620,12 +622,12 @@ private:
 
     av_register_all();
 
-    uint8_t tsBuf[128*188];
-
     auto readFile = CreateFile (wFileName, GENERIC_READ, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+    GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
 
     mFilePtr = 0;
     int64_t lastFilePtr = 0;
+    uint8_t tsBuf[128*188];
     DWORD numberOfBytesRead = 0;
     while (true) {
       auto skip = mFilePtr != lastFilePtr;
@@ -647,10 +649,13 @@ private:
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
+          // got some valid pts
           while (mPlayPts + 90000 < mTs.getLastAudPts())
             Sleep (1);
           }
         }
+
+      // fileSize can change dynamically
       GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
       }
 
