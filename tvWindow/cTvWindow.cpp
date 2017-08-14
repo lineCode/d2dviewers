@@ -218,7 +218,9 @@ public:
     auto rMid = RectF ((client.width/2)-1, 0, (client.width/2)+1, y+y+y);
     dc->FillRectangle (rMid, grey);
 
+    int index = 1;
     for (auto audFrame = 0; audFrame < kMaxAudFrames; audFrame++) {
+      //{{{  draw audFrame graphic
       if (mAudFrames[audFrame].mNumSamples) {
         audFrameWidthPts = 90000.0f * mAudFrames[audFrame].mNumSamples / 48000.0f;
         mPixPerPts = u / audFrameWidthPts;
@@ -231,39 +233,37 @@ public:
 
       int channels = mAudFrames[audFrame].mChannels;
       for (auto channel = 0; channel < channels; channel++) {
-        //{{{  draw audFrame graphic
+        // draw channel
         float v = mAudFrames[audFrame].mPower[channel] / 2.0f;
         dc->FillRectangle (RectF(x + channel*(w/channels), y-g-v , x+(channel+1)*(w/channels)-g, y-g), blue);
         }
-        //}}}
+
       dc->FillRectangle (RectF(x, y, x+w-g, y+h), blue);
       wstring wstr (to_wstring (audFrame));
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), black);
       }
-
-    for (auto vidFrame = 0; vidFrame < kMaxVidFrames; vidFrame++) {
+      //}}}
+    for (auto vidFrame : mVidFrames) {
       //{{{  draw vidFrame graphic
-      cYuvFrame* yuvFrame = &mVidFrames[vidFrame];
-
       // make sure we get a signed diff from unsigned pts
-      int64_t diff = yuvFrame->mPts - playPts;
+      int64_t diff = vidFrame.mPts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
 
       dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellow);
-      wstring wstr (to_wstring (vidFrame));
+      wstring wstr (to_wstring (index++));
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), black);
 
       dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), white);
-      switch (yuvFrame->mPictType) {
+      switch (vidFrame.mPictType) {
         case 1: wstr = L"I"; break;
         case 2: wstr = L"P"; break;
         case 3: wstr = L"B"; break;
-        default: wstr = to_wstring (yuvFrame->mPictType); break;
+        default: wstr = to_wstring (vidFrame.mPictType); break;
         }
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), black);
 
-      float l = yuvFrame->mLen / 1000.0f;
+      float l = vidFrame.mLen / 1000.0f;
       dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), white);
       }
       //}}}
