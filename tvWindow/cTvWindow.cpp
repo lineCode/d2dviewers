@@ -17,9 +17,9 @@
 
 using namespace std;
 //}}}
+const bool kDebugPes = false;
 const int kMaxVidFrames = 64;
 const int kMaxAudFrames = 64;
-const bool kDebugPes = false;
 //{{{
 class cDecodeTransportStream : public cTransportStream {
 public:
