@@ -407,6 +407,9 @@ private:
   //{{{
   void invalidateAudFrames() {
 
+    mLastAudPts = 0;
+    mInterpolatedAudPts = 0;
+    mLoadAudFrame = 0;
     for (auto audFrame : mAudFrames)
       audFrame->invalidate();
     }
@@ -414,6 +417,9 @@ private:
   //{{{
   void invalidateVidFrames() {
 
+    mLastVidPts = 0;
+    mInterpolatedVidPts = 0;
+    mLoadVidFrame = 0;
     for (auto vidFrame : mVidFrames)
       vidFrame->invalidate();
     }
@@ -487,8 +493,8 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : bigJump (-90000*10); break; // page up
-    case 0x22 : bigJump (90000*10); break;  // page down
+    case 0x21 : bigJump (-90000*5); break; // page up
+    case 0x22 : bigJump (90000*5); break;  // page down
     case 0x26 : jump (-90000); break; // up arrow
     case 0x28 : jump (90000); break;  // down arrow
     case 0x25 : step (-90000/25); break; // left arrow
@@ -586,6 +592,7 @@ void onDraw (ID2D1DeviceContext* dc) {
       << L" v:" << mTs.getLastVidPts() / 90000.0f
       << L" r:" << mBytesPerPts
       << L" f:" << mFilePtr/188
+      << L" " << (mBlocked ? L"B " : L"  ")
       ;
   dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
@@ -620,8 +627,6 @@ private:
   //{{{
   void bigJump (int inc) {
     mPlayPts += inc;
-    mFilePtr = mFilePtr + ((int64_t)(inc * mBytesPerPts) / 188) * 188;
-
     mTs.invalidateFrames();
     changed();
     }
@@ -650,7 +655,7 @@ private:
 
     mFilePtr = 0;
     int64_t lastFilePtr = 0;
-    uint8_t tsBuf[128*188];
+    uint8_t tsBuf[256*188];
     DWORD numberOfBytesRead = 0;
     while (true) {
       auto skip = mFilePtr != lastFilePtr;
@@ -661,19 +666,37 @@ private:
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
         //}}}
-      ReadFile (readFile, tsBuf, 128 * 188, &numberOfBytesRead, NULL);
+      ReadFile (readFile, tsBuf, 256 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
-        mBytesPerPts = (float)mFilePtr / (float)mPlayPts;
 
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
-          while (mPlayPts + 90000 < mTs.getLastAudPts())
-            Sleep (1);
+          // estimate file rate
+          mBytesPerPts = (float)mFilePtr / (float)mTs.getLastAudPts();
+
+          int64_t diff = mPlayPts - mTs.getLastAudPts();
+          if (diff > 2 * 90000) {
+            printf ("diff > 2s : %4.3f %4.3f\n", diff / 90000.0f, mBytesPerPts);
+            mFilePtr += (int64_t (2*90000 * mBytesPerPts) / 188) * 188;
+            mTs.invalidateFrames();
+            }
+          else if (diff < -2 * 90000) {
+            printf ("diff < -2s : %4.3f %4.3f\n", diff/90000.0f, mBytesPerPts);
+            mFilePtr -= (int64_t (2*90000 * mBytesPerPts) / 188) * 188;
+            mTs.invalidateFrames();
+            }
+          else {
+            while (mPlayPts + 90000 < mTs.getLastAudPts()) {
+              mBlocked = true;
+              Sleep (40);
+              }
+            mBlocked = false;
+            }
           }
         }
 
@@ -694,20 +717,17 @@ private:
     mPlayPts = 0;
     while (true) {
       auto audFrame = mTs.getAudByPts (mPlayPts);
-      auto ptsWidth = uint64_t (90000 * 1024 / 48000);
-      if (audFrame) {
-        ptsWidth = uint64_t (90000 * audFrame->mNumSamples / 48000);
-        if (mMouseDown || mPlaying)
-          audPlay (audFrame->mSamples, audFrame->mNumSamples * 2 * 2, 1.0f);
-        else
-          audSilence();
-       changed();
-        }
+      auto ptsWidth = uint64_t (90000 * (audFrame ? audFrame->mNumSamples : 1024) / 48000);
+      if (audFrame && (mMouseDown || mPlaying))
+        audPlay (audFrame->mSamples, audFrame->mNumSamples * 2 * 2, 1.0f);
       else
         audSilence();
 
       if (mPlaying)
         mPlayPts += ptsWidth;
+
+      if (mMouseDown || mPlaying)
+        changed();
       }
 
     CoUninitialize();
@@ -729,6 +749,7 @@ private:
   bool mShowTransportStream = false;
 
   float mBytesPerPts = 0;
+  bool mBlocked = false;
 
   uint64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
