@@ -51,6 +51,11 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
+  bool preloaded (uint64_t playPts) {
+    return mLastAudPts && (playPts + 90000 < getLastAudPts());
+    }
+  //}}}
+  //{{{
   cAudFrame* getAudByPts (uint64_t pts) {
   // find audFrame containing pts
   // - returns nullPtr if no frame loaded yet
@@ -493,8 +498,8 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : bigJump (-90000*5); break; // page up
-    case 0x22 : bigJump (90000*5); break;  // page down
+    case 0x21 : bigJump (-90000*10); break; // page up
+    case 0x22 : bigJump (90000*10); break;  // page down
     case 0x26 : jump (-90000); break; // up arrow
     case 0x28 : jump (90000); break;  // down arrow
     case 0x25 : step (-90000/25); break; // left arrow
@@ -680,18 +685,13 @@ private:
           mBytesPerPts = (float)mFilePtr / (float)mTs.getLastAudPts();
 
           int64_t diff = mPlayPts - mTs.getLastAudPts();
-          if (diff > 2 * 90000) {
-            printf ("diff > 2s : %4.3f %4.3f\n", diff / 90000.0f, mBytesPerPts);
-            mFilePtr += (int64_t (2*90000 * mBytesPerPts) / 188) * 188;
-            mTs.invalidateFrames();
-            }
-          else if (diff < -2 * 90000) {
-            printf ("diff < -2s : %4.3f %4.3f\n", diff/90000.0f, mBytesPerPts);
-            mFilePtr -= (int64_t (2*90000 * mBytesPerPts) / 188) * 188;
+          if ((diff > 2 * 90000) || (diff < -2 * 90000)) {
+            printf ("loaderJump %4.3f pos:%4.3f rate:%4.3f\n", diff / 90000.0f, mPlayPts / 90000.0f, mBytesPerPts);
+            mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
             mTs.invalidateFrames();
             }
           else {
-            while (mPlayPts + 90000 < mTs.getLastAudPts()) {
+            while (mTs.preloaded (mPlayPts)) {
               mBlocked = true;
               Sleep (40);
               }
