@@ -544,19 +544,13 @@ void onMouseProx (bool inClient, int x, int y) {
 void onMouseDown (bool right, int x, int y) {
 
   if (y > getClientF().height - 20.0f) {
-    mFilePtr = 188 * (int64_t)((x / getClientF().width) * (mFileSize / 188));
-    mTs.invalidateFrames();
-    //mPlayAudFrame = 0;
-    changed();
+    fracJump (x / getClientF().width);
     mDownConsumed = true;
     }
 
   else if (x < 80) {
-    auto channel = (y / 20) - 1;
-    if (channel >= 0) {
-      mTs.selectService (channel);
-      //mPlayAudFrame = 0;
-      }
+    if (y > 20)
+      mTs.selectService ((y / 20) - 1);
     mDownConsumed = true;
     }
   }
@@ -617,9 +611,16 @@ void onDraw (ID2D1DeviceContext* dc) {
 
 private:
   //{{{
+  void fracJump (float frac) {
+    mFilePtr = ((int64_t)(frac * mFileSize) / 188) * 188;
+    mTs.invalidateFrames();
+    changed();
+    }
+  //}}}
+  //{{{
   void bigJump (int inc) {
     mPlayPts += inc;
-    mFilePtr = (mFilePtr + (inc * (int64_t)mBytesPerPts) / 188) * 188;
+    mFilePtr = mFilePtr + ((int64_t)(inc * mBytesPerPts) / 188) * 188;
 
     mTs.invalidateFrames();
     changed();
@@ -671,7 +672,6 @@ private:
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
-          // got some valid pts
           while (mPlayPts + 90000 < mTs.getLastAudPts())
             Sleep (1);
           }
