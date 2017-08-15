@@ -34,11 +34,12 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\shared\audio\cAudFrame.h" />
     <ClInclude Include="..\..\shared\audio\cWinAudio.h" />
+    <ClInclude Include="..\..\shared\audio\iAudio.h" />
     <ClInclude Include="..\..\shared\d2dWindow\cD2dWindow.h" />
     <ClInclude Include="..\..\shared\utils\utils.h" />
     <ClInclude Include="..\..\shared\video\cYuvFrame.h" />
-    <ClInclude Include="..\common\cAudFrame.h" />
     <ClInclude Include="..\common\cTransportStream.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>

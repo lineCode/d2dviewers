@@ -8,7 +8,7 @@
 #include "../../shared/decoders/cTransportStream.h"
 
 #include "../../shared/video/cYuvFrame.h"
-#include "../common/cAudFrame.h"
+#include "../../shared/audio/cAudFrame.h"
 #include "../../shared/audio/cWinAudio.h"
 
 #pragma comment (lib,"avutil.lib")
@@ -51,20 +51,16 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  int16_t* getAudByPts (uint64_t pts, int& numSampleBytes, uint64_t& ptsWidth) {
+  cAudFrame* getAudByPts (uint64_t pts) {
   // find audFrame containing pts
   // - returns nullPtr if no frame loaded yet
 
-    for (auto audFrame : mAudFrames) {
-      if (audFrame->mPts) {
-        auto framePts = audFrame->mPts - mBasePts;
-        ptsWidth = uint64_t ((90 * audFrame->mNumSamples) / 48);
-        if ((pts >= framePts) && (pts < framePts + ptsWidth)) {
-          numSampleBytes = audFrame->mNumSampleBytes;
-          if (audFrame->mChannels == 6)
-            numSampleBytes /= 3;
-          return audFrame->mSamples;
-          }
+    pts += mBasePts;
+    for (auto frame : mAudFrames) {
+      if (frame->mPts) {
+        auto ptsWidth = uint64_t ((90000 * frame->mNumSamples) / 48000);
+        if ((pts >= frame->mPts) && (pts < frame->mPts + ptsWidth))
+          return frame;
         }
       }
 
@@ -76,23 +72,25 @@ public:
   // find vidFrame containing pts, else nearestVidFrame to pts
   // - returns nullPtr if no frame loaded yet
 
-    cYuvFrame* nearestVidFrame = nullptr;
+    cYuvFrame* nearestFrame = nullptr;
+
+    pts += mBasePts;
 
     uint64_t nearest = 0;
-    for (auto vidFrame : mVidFrames) {
-      if (vidFrame->mPts) {
-        auto framePts = vidFrame->mPts - mBasePts;
-        if ((pts >= framePts) && (pts < framePts + 90000/25))
-          return vidFrame;
-        uint64_t absDiff = pts > vidFrame->mPts ? pts - vidFrame->mPts : vidFrame->mPts - pts;
-        if (!nearestVidFrame || (absDiff < nearest)) {
-          nearestVidFrame = vidFrame;
+    for (auto frame : mVidFrames) {
+      if (frame->mPts) {
+        auto ptsWidth = uint64_t (90000 / 25);
+        if ((pts >= frame->mPts) && (pts < frame->mPts + ptsWidth))
+          return frame;
+        uint64_t absDiff = pts > frame->mPts ? pts - frame->mPts : frame->mPts - pts;
+        if (!nearestFrame || (absDiff < nearest)) {
+          nearestFrame = frame;
           nearest = absDiff;
           }
         }
       }
 
-    return nearestVidFrame;
+    return nearestFrame;
     }
   //}}}
 
@@ -487,14 +485,14 @@ bool onKey (int key) {
     case 0x1B : return true;
     case 0x20 : mPlaying = !mPlaying; break;  // space
 
-    case 0x21 : mPlayPts -= (5 * 90000); mTs.invalidateFrames(); changed(); break; // page up
-    case 0x22 : mPlayPts += (5 * 90000); mTs.invalidateFrames(); changed(); break;  // page down
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x25 : mPlayPts -= (90000/25); mPlaying = false; changed(); break; // left arrow
-    case 0x27 : mPlayPts += (90000/25); mPlaying = false; changed(); break; // right arrow
-    case 0x26 : mPlayPts -= (keyInc() * 90000); changed(); break; // up arrow
-    case 0x28 : mPlayPts += (keyInc() * 90000); changed(); break;  // down arrow
+    case 0x21 : mPlayPts -= 90000*10; mTs.invalidateFrames(); changed(); break; // page up
+    case 0x22 : mPlayPts += 90000*10; mTs.invalidateFrames(); changed(); break;  // page down
+    case 0x26 : mPlayPts -= 90000; changed(); break; // up arrow
+    case 0x28 : mPlayPts += 90000; changed(); break;  // down arrow
+    case 0x25 : mPlayPts -= 90000/25; mPlaying = false; changed(); break; // left arrow
+    case 0x27 : mPlayPts += 90000/25; mPlaying = false; changed(); break; // right arrow
     case 0x2d : mServiceSelector++; break; // insert
     case 0x2e : mServiceSelector--; break; // delete
 
@@ -507,7 +505,7 @@ bool onKey (int key) {
     case 0x36 :
     case 0x37 :
     case 0x38 :
-    //case 0x39 : mTs.selectService (key - '0'); mPlayAudFrame = 0; break;
+    case 0x39 : mTs.selectService (key - '0'); mTs.invalidateFrames(); changed(); break;
 
     default   : printf ("key %x\n", key);
     }
@@ -671,30 +669,21 @@ private:
 
     mPlayPts = 0;
     while (true) {
-      if (mPlaying) {
-        int numSampleBytes;
-        uint64_t ptsWidth;
-        auto samples = mTs.getAudByPts (mPlayPts, numSampleBytes, ptsWidth);
-        if (samples)
-          audPlay (samples, numSampleBytes, 1.0f);
+      auto audFrame = mTs.getAudByPts (mPlayPts);
+      auto ptsWidth = uint64_t (90000 * 1024 / 48000);
+      if (audFrame) {
+        ptsWidth = uint64_t (90000 * audFrame->mNumSamples / 48000);
+        if (mMouseDown || mPlaying)
+          audPlay (audFrame->mSamples, audFrame->mNumSamples * 2 * 2, 1.0f);
         else
           audSilence();
-        changed();
-
-        mPlayPts += ptsWidth;
-        }
-      else if (mMouseDown) {
-        int numSampleBytes;
-        uint64_t ptsWidth;
-        auto samples = mTs.getAudByPts (mPlayPts, numSampleBytes, ptsWidth);
-        if (samples)
-          audPlay (samples, numSampleBytes, 1.0f);
-        else
-          audSilence();
-        changed();
+       changed();
         }
       else
         audSilence();
+
+      if (mPlaying)
+        mPlayPts += ptsWidth;
       }
 
     CoUninitialize();

@@ -9,9 +9,6 @@
     <ClInclude Include="pch.h">
       <Filter>header</Filter>
     </ClInclude>
-    <ClInclude Include="..\common\cAudFrame.h">
-      <Filter>header</Filter>
-    </ClInclude>
     <ClInclude Include="..\common\cTransportStream.h">
       <Filter>header</Filter>
     </ClInclude>
@@ -25,6 +22,12 @@
       <Filter>header</Filter>
     </ClInclude>
     <ClInclude Include="..\..\shared\video\cYuvFrame.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\audio\cAudFrame.h">
+      <Filter>header</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\shared\audio\iAudio.h">
       <Filter>header</Filter>
     </ClInclude>
   </ItemGroup>
