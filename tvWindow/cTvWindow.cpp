@@ -487,12 +487,12 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : mPlayPts -= 90000*10; mTs.invalidateFrames(); changed(); break; // page up
-    case 0x22 : mPlayPts += 90000*10; mTs.invalidateFrames(); changed(); break;  // page down
-    case 0x26 : mPlayPts -= 90000; changed(); break; // up arrow
-    case 0x28 : mPlayPts += 90000; changed(); break;  // down arrow
-    case 0x25 : mPlayPts -= 90000/25; mPlaying = false; changed(); break; // left arrow
-    case 0x27 : mPlayPts += 90000/25; mPlaying = false; changed(); break; // right arrow
+    case 0x21 : bigJump (-90000*10); break; // page up
+    case 0x22 : bigJump (90000*10); break;  // page down
+    case 0x26 : jump (-90000); break; // up arrow
+    case 0x28 : jump (90000); break;  // down arrow
+    case 0x25 : step (-90000/25); break; // left arrow
+    case 0x27 : step (90000/25); break; // right arrow
     case 0x2d : mServiceSelector++; break; // insert
     case 0x2e : mServiceSelector--; break; // delete
 
@@ -591,6 +591,7 @@ void onDraw (ID2D1DeviceContext* dc) {
       << L" a:" << mTs.getLastAudPts() / 90000.0f
       << L" v:" << mTs.getLastVidPts() / 90000.0f
       << L" r:" << mBytesPerPts
+      << L" f:" << mFilePtr/188
       ;
   dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
@@ -615,6 +616,29 @@ void onDraw (ID2D1DeviceContext* dc) {
 //}}}
 
 private:
+  //{{{
+  void bigJump (int inc) {
+    mPlayPts += inc;
+    mFilePtr = (mFilePtr + (inc * (int64_t)mBytesPerPts) / 188) * 188;
+
+    mTs.invalidateFrames();
+    changed();
+    }
+  //}}}
+  //{{{
+  void jump (int inc) {
+    mPlayPts += inc;
+    changed();
+    }
+  //}}}
+  //{{{
+  void step (int inc) {
+    mPlayPts += inc;
+    mPlaying = false;
+    changed();
+    }
+  //}}}
+
   //{{{
   void loader (wchar_t* wFileName) {
 
