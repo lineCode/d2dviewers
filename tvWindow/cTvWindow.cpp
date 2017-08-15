@@ -18,13 +18,13 @@
 using namespace std;
 //}}}
 const bool kDebugPes = false;
-const int kMaxVidFrames = 64;
-const int kMaxAudFrames = 64;
+const int kMaxVidFrames = 50;
+const int kMaxAudFrames = 100;
 //{{{
-class cDecodeTransportStream : public cTransportStream {
+class cDecodedTransportStream : public cTransportStream {
 public:
   //{{{
-  cDecodeTransportStream() {
+  cDecodedTransportStream() {
     for (auto i = 0; i < kMaxAudFrames; i++)
       mAudFrames.push_back (new cAudFrame());
     for (auto i = 0; i < kMaxVidFrames; i++)
@@ -32,7 +32,7 @@ public:
     }
   //}}}
   //{{{
-  virtual ~cDecodeTransportStream() {
+  virtual ~cDecodedTransportStream() {
 
     if (mAudContext)
       avcodec_close (mAudContext);
@@ -51,7 +51,7 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  bool preloaded (uint64_t playPts) {
+  bool loaded (uint64_t playPts) {
     return mLastAudPts && (playPts + 90000 < getLastAudPts());
     }
   //}}}
@@ -597,7 +597,6 @@ void onDraw (ID2D1DeviceContext* dc) {
       << L" v:" << mTs.getLastVidPts() / 90000.0f
       << L" r:" << mBytesPerPts
       << L" f:" << mFilePtr/188
-      << L" " << (mBlocked ? L"B " : L"  ")
       ;
   dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
@@ -690,13 +689,9 @@ private:
             mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
             mTs.invalidateFrames();
             }
-          else {
-            while (mTs.preloaded (mPlayPts)) {
-              mBlocked = true;
-              Sleep (40);
-              }
-            mBlocked = false;
-            }
+          else
+            while (mTs.loaded (mPlayPts))
+              Sleep (1);
           }
         }
 
@@ -738,18 +733,17 @@ private:
   int64_t mFilePtr = 0;
   int64_t mFileSize = 0;
 
-  cDecodeTransportStream mTs;
+  cDecodedTransportStream mTs;
   int mServiceSelector = 0;
 
   uint64_t mPlayPts = 0;
   bool mPlaying = true;
 
-  bool mShowDebug = false;
+  bool mShowDebug = true;
   bool mShowChannel = false;
   bool mShowTransportStream = false;
 
   float mBytesPerPts = 0;
-  bool mBlocked = false;
 
   uint64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
