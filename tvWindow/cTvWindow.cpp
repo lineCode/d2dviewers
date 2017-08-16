@@ -20,8 +20,7 @@ using namespace std;
 const bool kDebugPes = false;
 const int kMaxVidFrames = 50;
 const int kMaxAudFrames = 100;
-const int kAudLoadAhead = 10;
-const int kVidLoadAhead = 0;
+const int kAudFramesLoadAhead = 10;
 
 //{{{
 class cDecodedTransportStream : public cTransportStream {
@@ -54,7 +53,7 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  int loaded (uint64_t pts, uint64_t numAudFrames, uint64_t numVidFrames) {
+  int loaded (uint64_t pts, uint64_t numAudFrames) {
 
     pts += mBasePts;
 
@@ -62,20 +61,7 @@ public:
     for (uint64_t i = 0; i < numAudFrames; i++) {
       for (auto frame : mAudFrames) {
         if (frame->mPts) {
-          auto ptsWidth = uint64_t ((90000 * frame->mNumSamples) / 48000);
-          if ((pts + (i * ptsWidth) >= frame->mPts) &&
-              (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
-            foundFrames++;
-            break;
-            }
-          }
-        }
-      }
-
-    for (uint64_t i = 0; i < numVidFrames; i++) {
-      for (auto frame : mVidFrames) {
-        if (frame->mPts) {
-          auto ptsWidth = uint64_t ((90000 * 25) / 48000);
+          auto ptsWidth = uint64_t ((frame->mNumSamples * 90000) / 48000);
           if ((pts + (i * ptsWidth) >= frame->mPts) &&
               (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
             foundFrames++;
@@ -96,7 +82,7 @@ public:
     pts += mBasePts;
     for (auto frame : mAudFrames) {
       if (frame->mPts) {
-        auto ptsWidth = uint64_t ((90000 * frame->mNumSamples) / 48000);
+        auto ptsWidth = uint64_t ((frame->mNumSamples * 90000) / 48000);
         if ((pts >= frame->mPts) && (pts < frame->mPts + ptsWidth))
           return frame;
         }
@@ -228,7 +214,7 @@ public:
     auto h = 13.0f;
     auto u = 18.0f;
     auto vidFrameWidthPts = 90000.0f / 25.0f;
-    auto audFrameWidthPts = 90000.0f * 1152.0f / 48000.0f;
+    auto audFrameWidthPts = 1152.0f * 90000.0f / 48000.0f;
     mPixPerPts = u / audFrameWidthPts;
     auto g = 1.0f;
 
@@ -239,7 +225,7 @@ public:
     for (auto audFrame : mAudFrames) {
       //{{{  draw audFrame graphic
       if (audFrame->mNumSamples) {
-        audFrameWidthPts = 90000.0f * audFrame->mNumSamples / 48000.0f;
+        audFrameWidthPts = audFrame->mNumSamples * 90000.0f / 48000.0f;
         mPixPerPts = u / audFrameWidthPts;
         }
 
@@ -448,6 +434,7 @@ private:
     mLastAudPts = 0;
     mInterpolatedAudPts = 0;
     mLoadAudFrame = 0;
+
     for (auto audFrame : mAudFrames)
       audFrame->invalidate();
     }
@@ -458,6 +445,7 @@ private:
     mLastVidPts = 0;
     mInterpolatedVidPts = 0;
     mLoadVidFrame = 0;
+
     for (auto vidFrame : mVidFrames)
       vidFrame->invalidate();
     }
@@ -538,8 +526,8 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : bigJump (-90000*10); break; // page up
-    case 0x22 : bigJump (90000*10); break;  // page down
+    case 0x21 : bigJump (-90000*5); break; // page up
+    case 0x22 : bigJump (90000*5); break;  // page down
     case 0x26 : jump (-90000); break; // up arrow
     case 0x28 : jump (90000); break;  // down arrow
     case 0x25 : step (-90000/25); break; // left arrow
@@ -627,23 +615,35 @@ void onDraw (ID2D1DeviceContext* dc) {
   if (makeBitmap (mTs.getVidByPts (mPlayPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
-  // draw title
-  wstringstream str;
-  str << L"service:" << mServiceSelector
-      << L" cont:" << mTs.getDiscontinuity()
-      << L" a:" << mTs.getLastAudPts() / 90000.0f
-      << L" v:" << mTs.getLastVidPts() / 90000.0f
-      << L" " << mFilePtr/188
-      << L" of " << mFileSize / 188
-      << L" rate:" << mBytesPerPts
-      ;
-  dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
+  // title str
+  wstringstream titleStr;
+  titleStr << L"service:" << mServiceSelector
+           << L" cont:" << mTs.getDiscontinuity()
+           << L" a:" << mTs.getLastAudPts() / 90000.0f
+           << L" v:" << mTs.getLastVidPts() / 90000.0f
+           ;
+  dc->DrawText (titleStr.str().data(), (uint32_t)titleStr.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+
+  // file position yellow bar
+  auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
+  dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
+
+  // file position str
+  wstringstream fileStr;
+  fileStr << L" " << mFilePtr/188
+          << L" of " << mFileSize / 188
+          << L" rate:" << mBytesPerPts;
+  dc->DrawText (fileStr.str().data(), (uint32_t)fileStr.str().size(), getTextFormat(),
+                RectF (0, getClientF().height-20.0f, getClientF().width, getClientF().height), getWhiteBrush());
 
   wstringstream playStr;
   playStr << mPlayPts / 90000.0f;
   dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
                 RectF (getClientF().width-200.0f, getClientF().height-50.0f,
+                       getClientF().width, getClientF().height), getBlackBrush());
+  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
+                RectF (getClientF().width-200.0f+2.0f, getClientF().height-50.0f+2.0f,
                        getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowDebug) // show frames debug
@@ -654,10 +654,6 @@ void onDraw (ID2D1DeviceContext* dc) {
     mTs.drawServices (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
   if (mShowTransportStream) // show pids
     mTs.drawPids (dc, getClientF(), getTextFormat(), getWhiteBrush(), getBlueBrush(), getBlackBrush(), getGreyBrush());
-
-  // file position yellow bar
-  auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
-  dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
 
   // yellow volume bar
   auto v = getClientF().height * getVolume() * 0.8f;
@@ -704,7 +700,7 @@ private:
 
     mFilePtr = 0;
     int64_t lastFilePtr = 0;
-    uint8_t tsBuf[256*188];
+    uint8_t tsBuf[512*188];
     DWORD numberOfBytesRead = 0;
     while (true) {
       auto skip = mFilePtr != lastFilePtr;
@@ -715,7 +711,8 @@ private:
         SetFilePointerEx (readFile, large, NULL, FILE_BEGIN);
         }
         //}}}
-      ReadFile (readFile, tsBuf, 256 * 188, &numberOfBytesRead, NULL);
+
+      ReadFile (readFile, tsBuf, 512 * 188, &numberOfBytesRead, NULL);
       if (numberOfBytesRead) {
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
@@ -726,17 +723,20 @@ private:
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
-          while (mTs.loaded (mPlayPts, kAudLoadAhead, kVidLoadAhead) >= kAudLoadAhead + kVidLoadAhead)
-            Sleep (1);
+          while (mTs.loaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
+            Sleep (40);
 
           int64_t diff = mPlayPts - mTs.getLastAudPts();
-          printf ("loader diff:%4.3f pos:%4.3f rate:%4.3f\n", diff / 90000.0f, mPlayPts / 90000.0f, mBytesPerPts);
-          //mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
-          //mTs.invalidateFrames();
+          printf ("loader diff:%4.3f pos:%4.3f last:%4.3f rate:%4.3f f:%lld\n",
+                  diff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts()/90000.0f, mBytesPerPts, mFilePtr/188);
+          if (diff < -90000) {
+            printf ("jump\n");
+            mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
+            //mTs.invalidateFrames();
+            }
           }
         }
 
-      // fileSize can change dynamically
       GetFileSizeEx (readFile, (PLARGE_INTEGER)(&mFileSize));
       }
 
