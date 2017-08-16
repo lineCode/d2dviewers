@@ -20,6 +20,9 @@ using namespace std;
 const bool kDebugPes = false;
 const int kMaxVidFrames = 50;
 const int kMaxAudFrames = 100;
+const int kAudLoadAhead = 10;
+const int kVidLoadAhead = 0;
+
 //{{{
 class cDecodedTransportStream : public cTransportStream {
 public:
@@ -51,8 +54,38 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  bool loaded (uint64_t playPts) {
-    return mLastAudPts && (playPts + 90000 < getLastAudPts());
+  bool loaded (uint64_t pts, uint64_t numAudFrames, uint64_t numVidFrames) {
+
+    pts += mBasePts;
+
+    int found = 0;
+    for (uint64_t i = 0; i < numAudFrames; i++) {
+      for (auto frame : mAudFrames) {
+        if (frame->mPts) {
+          auto ptsWidth = uint64_t ((90000 * frame->mNumSamples) / 48000);
+          if ((pts + (i * ptsWidth) >= frame->mPts) &&
+              (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
+            found++;
+            break;
+            }
+          }
+        }
+      }
+
+    for (uint64_t i = 0; i < numVidFrames; i++) {
+      for (auto frame : mVidFrames) {
+        if (frame->mPts) {
+          auto ptsWidth = uint64_t ((90000 * 25) / 48000);
+          if ((pts + (i * ptsWidth) >= frame->mPts) &&
+              (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
+            found++;
+            break;
+            }
+          }
+        }
+      }
+
+    return found == numAudFrames + numVidFrames;
     }
   //}}}
   //{{{
@@ -472,6 +505,13 @@ public:
                                           12.0f, L"en-us", &mSmallTextFormat);
     mSmallTextFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_CENTER);
 
+    getDwriteFactory()->CreateTextFormat (L"Consolas", NULL,
+                                          DWRITE_FONT_WEIGHT_BOLD,
+                                          DWRITE_FONT_STYLE_NORMAL,
+                                          DWRITE_FONT_STRETCH_NORMAL,
+                                          50.0f, L"en-us", &mBigTextFormat);
+    mBigTextFormat->SetTextAlignment (DWRITE_TEXT_ALIGNMENT_LEADING);
+
     if (arg) {
       // launch loaderThread
       thread ([=](){loader(arg);}).detach();
@@ -590,16 +630,21 @@ void onDraw (ID2D1DeviceContext* dc) {
   // draw title
   wstringstream str;
   str << L"service:" << mServiceSelector
-      << L" " << mFileSize / 1000000.0f << L"m "
       << L" cont:" << mTs.getDiscontinuity()
-      << L" p:" << mPlayPts / 90000.0f
       << L" a:" << mTs.getLastAudPts() / 90000.0f
       << L" v:" << mTs.getLastVidPts() / 90000.0f
-      << L" r:" << mBytesPerPts
-      << L" f:" << mFilePtr/188
+      << L" " << mFilePtr/188
+      << L" of " << mFileSize / 188
+      << L" rate:" << mBytesPerPts
       ;
   dc->DrawText (str.str().data(), (uint32_t)str.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+
+  wstringstream playStr;
+  playStr << mPlayPts / 90000.0f;
+  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
+                RectF (getClientF().width-200.0f, getClientF().height-50.0f,
+                       getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowDebug) // show frames debug
     mTs.drawDebug (dc, getClientF(), mSmallTextFormat,
@@ -675,23 +720,19 @@ private:
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
+        mBytesPerPts = (float)mFilePtr / (float)mTs.getLastAudPts();
 
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
-          // estimate file rate
-          mBytesPerPts = (float)mFilePtr / (float)mTs.getLastAudPts();
+          while (mTs.loaded (mPlayPts, kAudLoadAhead, kVidLoadAhead))
+            Sleep (1);
 
           int64_t diff = mPlayPts - mTs.getLastAudPts();
-          if ((diff > 2 * 90000) || (diff < -2 * 90000)) {
-            printf ("loaderJump %4.3f pos:%4.3f rate:%4.3f\n", diff / 90000.0f, mPlayPts / 90000.0f, mBytesPerPts);
-            mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
-            mTs.invalidateFrames();
-            }
-          else
-            while (mTs.loaded (mPlayPts))
-              Sleep (1);
+          printf ("loader diff:%4.3f pos:%4.3f rate:%4.3f\n", diff / 90000.0f, mPlayPts / 90000.0f, mBytesPerPts);
+          //mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
+          //mTs.invalidateFrames();
           }
         }
 
@@ -738,17 +779,17 @@ private:
 
   uint64_t mPlayPts = 0;
   bool mPlaying = true;
+  float mBytesPerPts = 0;
 
   bool mShowDebug = true;
   bool mShowChannel = false;
   bool mShowTransportStream = false;
 
-  float mBytesPerPts = 0;
-
   uint64_t mBitmapPts = 0;
   ID2D1Bitmap* mBitmap = nullptr;
 
   IDWriteTextFormat* mSmallTextFormat = nullptr;
+  IDWriteTextFormat* mBigTextFormat = nullptr;
   //}}}
   };
 
