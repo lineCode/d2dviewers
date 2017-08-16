@@ -54,18 +54,18 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  bool loaded (uint64_t pts, uint64_t numAudFrames, uint64_t numVidFrames) {
+  int loaded (uint64_t pts, uint64_t numAudFrames, uint64_t numVidFrames) {
 
     pts += mBasePts;
 
-    int found = 0;
+    int foundFrames = 0;
     for (uint64_t i = 0; i < numAudFrames; i++) {
       for (auto frame : mAudFrames) {
         if (frame->mPts) {
           auto ptsWidth = uint64_t ((90000 * frame->mNumSamples) / 48000);
           if ((pts + (i * ptsWidth) >= frame->mPts) &&
               (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
-            found++;
+            foundFrames++;
             break;
             }
           }
@@ -78,14 +78,14 @@ public:
           auto ptsWidth = uint64_t ((90000 * 25) / 48000);
           if ((pts + (i * ptsWidth) >= frame->mPts) &&
               (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
-            found++;
+            foundFrames++;
             break;
             }
           }
         }
       }
 
-    return found == numAudFrames + numVidFrames;
+    return foundFrames;
     }
   //}}}
   //{{{
@@ -726,7 +726,7 @@ private:
           mTs.selectService (0);
 
         if (mTs.getLastAudPts()) {
-          while (mTs.loaded (mPlayPts, kAudLoadAhead, kVidLoadAhead))
+          while (mTs.loaded (mPlayPts, kAudLoadAhead, kVidLoadAhead) >= kAudLoadAhead + kVidLoadAhead)
             Sleep (1);
 
           int64_t diff = mPlayPts - mTs.getLastAudPts();
@@ -762,7 +762,7 @@ private:
       if (mPlaying)
         mPlayPts += ptsWidth;
 
-      if (mMouseDown || mPlaying)
+      //if (mMouseDown || mPlaying)
         changed();
       }
 
