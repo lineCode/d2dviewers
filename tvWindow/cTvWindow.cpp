@@ -19,7 +19,7 @@ using namespace std;
 //}}}
 const bool kDebugPes = false;
 const int kMaxVidFrames = 50;
-const int kMaxAudFrames = 100;
+const int kMaxAudFrames = 50;
 const int kAudFramesLoadAhead = 10;
 
 //{{{
@@ -48,6 +48,25 @@ public:
     }
   //}}}
 
+  //{{{
+  uint64_t getFirstAudPts() {
+
+    if (mLastAudPts) {
+      uint64_t pts = 0;
+      for (auto frame : mAudFrames) {
+        if (frame->mPts) {
+          if (!pts)
+            pts = frame->mPts;
+          else if (frame->mPts < pts)
+            pts = frame->mPts;
+          }
+        }
+      return pts - mBasePts;
+      }
+    else
+      return 0;
+    }
+  //}}}
   uint64_t getLastAudPts() { return mLastAudPts ? mLastAudPts - mBasePts : 0; }
   uint64_t getLastVidPts() { return mLastVidPts ? mLastVidPts - mBasePts : 0; }
   float getPixPerPts() { return mPixPerPts; }
@@ -526,8 +545,8 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : bigJump (-90000*5); break; // page up
-    case 0x22 : bigJump (90000*5); break;  // page down
+    case 0x21 : bigJump (-90000*10); break; // page up
+    case 0x22 : bigJump (90000*10); break;  // page down
     case 0x26 : jump (-90000); break; // up arrow
     case 0x28 : jump (90000); break;  // down arrow
     case 0x25 : step (-90000/25); break; // left arrow
@@ -615,16 +634,6 @@ void onDraw (ID2D1DeviceContext* dc) {
   if (makeBitmap (mTs.getVidByPts (mPlayPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
-  // title str
-  wstringstream titleStr;
-  titleStr << L"service:" << mServiceSelector
-           << L" cont:" << mTs.getDiscontinuity()
-           << L" a:" << mTs.getLastAudPts() / 90000.0f
-           << L" v:" << mTs.getLastVidPts() / 90000.0f
-           ;
-  dc->DrawText (titleStr.str().data(), (uint32_t)titleStr.str().size(), getTextFormat(),
-                RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
-
   // file position yellow bar
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
   dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
@@ -635,16 +644,9 @@ void onDraw (ID2D1DeviceContext* dc) {
           << L" of " << mFileSize / 188
           << L" rate:" << mBytesPerPts;
   dc->DrawText (fileStr.str().data(), (uint32_t)fileStr.str().size(), getTextFormat(),
+                RectF (2.0f, getClientF().height-20.0f+2.0f, getClientF().width, getClientF().height), getBlackBrush());
+  dc->DrawText (fileStr.str().data(), (uint32_t)fileStr.str().size(), getTextFormat(),
                 RectF (0, getClientF().height-20.0f, getClientF().width, getClientF().height), getWhiteBrush());
-
-  wstringstream playStr;
-  playStr << mPlayPts / 90000.0f;
-  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
-                RectF (getClientF().width-200.0f, getClientF().height-50.0f,
-                       getClientF().width, getClientF().height), getBlackBrush());
-  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
-                RectF (getClientF().width-200.0f+2.0f, getClientF().height-50.0f+2.0f,
-                       getClientF().width, getClientF().height), getWhiteBrush());
 
   if (mShowDebug) // show frames debug
     mTs.drawDebug (dc, getClientF(), mSmallTextFormat,
@@ -658,6 +660,34 @@ void onDraw (ID2D1DeviceContext* dc) {
   // yellow volume bar
   auto v = getClientF().height * getVolume() * 0.8f;
   dc->FillRectangle (RectF(getClientF().width - 20.0f, 0, getClientF().width, v), getYellowBrush());
+
+  // title str
+  wstringstream titleStr;
+  titleStr << L"service:" << mServiceSelector
+           << L" cont:" << mTs.getDiscontinuity();
+  dc->DrawText (titleStr.str().data(), (uint32_t)titleStr.str().size(), getTextFormat(),
+                RectF (2.0f, 2.0f, getClientF().width, getClientF().height), getBlackBrush());
+  dc->DrawText (titleStr.str().data(), (uint32_t)titleStr.str().size(), getTextFormat(),
+                RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
+
+  wstringstream avStr;
+  avStr << L" a" << mTs.getLastAudPts() / 90000.0f
+        << L"  v" << mTs.getLastVidPts() / 90000.0f;
+  dc->DrawText (avStr.str().data(), (uint32_t)avStr.str().size(), getTextFormat(),
+                RectF (getClientF().width-200.0f+2.0f, getClientF().height-60.0f+2.0f,
+                       getClientF().width, getClientF().height), getBlackBrush());
+  dc->DrawText (avStr.str().data(), (uint32_t)avStr.str().size(), getTextFormat(),
+                RectF (getClientF().width-200.0f, getClientF().height-60.0f,
+                       getClientF().width, getClientF().height), getWhiteBrush());
+
+  wstringstream playStr;
+  playStr << mPlayPts / 90000.0f;
+  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
+                RectF (getClientF().width-200.0f+2.0f, getClientF().height-50.0f+2.0f,
+                       getClientF().width, getClientF().height), getBlackBrush());
+  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
+                RectF (getClientF().width-200.0f, getClientF().height-50.0f,
+                       getClientF().width, getClientF().height), getWhiteBrush());
   }
 //}}}
 
@@ -726,13 +756,15 @@ private:
           while (mTs.loaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
             Sleep (40);
 
-          int64_t diff = mPlayPts - mTs.getLastAudPts();
-          printf ("loader diff:%4.3f pos:%4.3f last:%4.3f rate:%4.3f f:%lld\n",
-                  diff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts()/90000.0f, mBytesPerPts, mFilePtr/188);
-          if (diff < -90000) {
-            printf ("jump\n");
-            mFilePtr += (int64_t (diff * mBytesPerPts) / 188) * 188;
-            //mTs.invalidateFrames();
+          int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
+          int64_t afterDiff = mPlayPts - mTs.getLastAudPts();
+          if (beforeDiff > 0) {
+            printf ("jump back - beforeDiff:%4.3f\n", beforeDiff / 90000.0f);
+            mFilePtr -= (int64_t ((beforeDiff + 90000) * mBytesPerPts) / 188) * 188;
+            }
+          else if (afterDiff > 90000) {
+            printf ("jump forward - afterDiff:%4.3f\n", afterDiff / 90000.0f);
+            mFilePtr += (int64_t ((afterDiff - 90000) * mBytesPerPts) / 188) * 188;
             }
           }
         }
