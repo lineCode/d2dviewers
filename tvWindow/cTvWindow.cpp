@@ -18,9 +18,9 @@
 using namespace std;
 //}}}
 const bool kDebugPes = false;
-const int kMaxVidFrames = 50;
-const int kMaxAudFrames = 50;
-const int kAudFramesLoadAhead = 10;
+const int kMaxVidFrames = 100;
+const int kMaxAudFrames = 100;
+const int kAudFramesLoadAhead = 40;
 
 //{{{
 class cDecodedTransportStream : public cTransportStream {
@@ -694,13 +694,15 @@ void onDraw (ID2D1DeviceContext* dc) {
 private:
   //{{{
   void fracJump (float frac) {
-    mFilePtr = ((int64_t)(frac * mFileSize) / 188) * 188;
+    mPlayPts = uint64_t((frac / mBytesPerPts) * mFileSize);
+    printf ("fracJump %4.3f %4.3f\n", frac, mPlayPts/90000.0f);
     mTs.invalidateFrames();
     changed();
     }
   //}}}
   //{{{
   void bigJump (int inc) {
+    printf ("bigJump %d\n", inc/90000);
     mPlayPts += inc;
     mTs.invalidateFrames();
     changed();
@@ -708,6 +710,7 @@ private:
   //}}}
   //{{{
   void jump (int inc) {
+    printf ("jump %d\n", inc/90000);
     mPlayPts += inc;
     changed();
     }
@@ -756,15 +759,17 @@ private:
           while (mTs.loaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
             Sleep (40);
 
-          int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
           int64_t afterDiff = mPlayPts - mTs.getLastAudPts();
-          if (beforeDiff > 0) {
-            printf ("jump back - beforeDiff:%4.3f\n", beforeDiff / 90000.0f);
-            mFilePtr -= (int64_t ((beforeDiff + 90000) * mBytesPerPts) / 188) * 188;
-            }
-          else if (afterDiff > 90000) {
+          if (afterDiff > 90000) {
             printf ("jump forward - afterDiff:%4.3f\n", afterDiff / 90000.0f);
             mFilePtr += (int64_t ((afterDiff - 90000) * mBytesPerPts) / 188) * 188;
+            }
+          else {
+            int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
+            if (beforeDiff > 0) {
+              printf ("jump back - beforeDiff:%4.3f\n", beforeDiff / 90000.0f);
+              mFilePtr -= (int64_t ((beforeDiff + 90000) * mBytesPerPts) / 188) * 188;
+              }
             }
           }
         }
