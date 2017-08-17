@@ -18,9 +18,10 @@
 using namespace std;
 //}}}
 const bool kDebugPes = false;
-const int kMaxVidFrames = 100;
+const int kMaxVidFrames = 200;
 const int kMaxAudFrames = 100;
-const int kAudFramesLoadAhead = 40;
+const int kAudPtsLoadAhead = 90000; // 1sec
+const int kBeforeLoadAhead = 90000; // 1sec
 
 //{{{
 class cDecodedTransportStream : public cTransportStream {
@@ -69,25 +70,32 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  int audLoaded (uint64_t pts, uint64_t numAudFrames) {
+  bool audLoaded (uint64_t pts, uint64_t ptsWidth) {
 
     pts += mBasePts;
 
-    int foundFrames = 0;
-    for (uint64_t i = 0; i < numAudFrames; i++) {
+    uint64_t curPts = pts;
+    uint64_t framePtsWidth = 0;
+    while (curPts < pts + ptsWidth) {
+      bool found = false;
       for (auto frame : mAudFrames) {
         if (frame->mPts) {
-          auto ptsWidth = uint64_t ((frame->mNumSamples * 90000) / 48000);
-          if ((pts + (i * ptsWidth) >= frame->mPts) &&
-              (pts + (i * ptsWidth) < frame->mPts + ptsWidth)) {
-            foundFrames++;
+          if (!framePtsWidth)
+            framePtsWidth = uint64_t ((frame->mNumSamples * 90000) / 48000);
+          if ((curPts >= frame->mPts) && (curPts < frame->mPts + framePtsWidth)) {
+            found = true;
             break;
             }
           }
         }
+
+      if (!found)
+        return false;
+
+      curPts += framePtsWidth;
       }
 
-    return foundFrames;
+    return true;
     }
   //}}}
   //{{{
@@ -755,21 +763,21 @@ private:
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
         else {
-          while (mTs.audLoaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
+          while (mTs.audLoaded (mPlayPts, kAudPtsLoadAhead))
             Sleep (40);
 
           int64_t afterDiff = mPlayPts - mTs.getLastAudPts();
-          if (afterDiff > 90000) {
+          if (afterDiff > kAudPtsLoadAhead) {
             printf ("jump forward - afterDiff:%4.3f playPts:%4.3f getLastAudPts:%4.3f\n",
                     afterDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts() / 90000.0f);
-            mFilePtr += (int64_t ((afterDiff - 90000) * mBytesPerPts) / 188) * 188;
+            mFilePtr += (int64_t ((afterDiff - kAudPtsLoadAhead) * mBytesPerPts) / 188) * 188;
             }
           else {
             int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
             if (beforeDiff > 0) {
               printf ("jump back - beforeDiff:%4.3f playPts:%4.3f getFirstAudPts:%4.3f\n",
                       beforeDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getFirstAudPts() / 90000.0f);
-              mFilePtr -= (int64_t ((beforeDiff + 90000) * mBytesPerPts) / 188) * 188;
+              mFilePtr -= (int64_t ((beforeDiff + kBeforeLoadAhead) * mBytesPerPts) / 188) * 188;
               }
             }
           }
