@@ -51,20 +51,17 @@ public:
   //{{{
   uint64_t getFirstAudPts() {
 
-    if (mLastAudPts) {
-      uint64_t pts = 0;
-      for (auto frame : mAudFrames) {
-        if (frame->mPts) {
-          if (!pts)
-            pts = frame->mPts;
-          else if (frame->mPts < pts)
-            pts = frame->mPts;
-          }
+    uint64_t pts = 0;
+    for (auto frame : mAudFrames) {
+      if (frame->mPts) {
+        if (!pts)
+          pts = frame->mPts;
+        else if (frame->mPts < pts)
+          pts = frame->mPts;
         }
-      return pts - mBasePts;
       }
-    else
-      return 0;
+
+    return pts ? pts - mBasePts : 0;
     }
   //}}}
   uint64_t getLastAudPts() { return mLastAudPts ? mLastAudPts - mBasePts : 0; }
@@ -72,7 +69,7 @@ public:
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
-  int loaded (uint64_t pts, uint64_t numAudFrames) {
+  int audLoaded (uint64_t pts, uint64_t numAudFrames) {
 
     pts += mBasePts;
 
@@ -545,8 +542,8 @@ bool onKey (int key) {
 
     case 0x23 : break; // home
     case 0x24 : break; // end
-    case 0x21 : bigJump (-90000*10); break; // page up
-    case 0x22 : bigJump (90000*10); break;  // page down
+    case 0x21 : jump (-90000*10); break; // page up
+    case 0x22 : jump (90000*10); break;  // page down
     case 0x26 : jump (-90000); break; // up arrow
     case 0x28 : jump (90000); break;  // down arrow
     case 0x25 : step (-90000/25); break; // left arrow
@@ -636,7 +633,7 @@ void onDraw (ID2D1DeviceContext* dc) {
 
   // file position yellow bar
   auto x = getClientF().width * (float)mFilePtr / (float)mFileSize;
-  dc->FillRectangle (RectF(0, getClientF().height-10.0f, x, getClientF().height), getYellowBrush());
+  dc->FillRectangle (RectF(0, getClientF().height-16.0f, x, getClientF().height), getYellowBrush());
 
   // file position str
   wstringstream fileStr;
@@ -670,41 +667,44 @@ void onDraw (ID2D1DeviceContext* dc) {
   dc->DrawText (titleStr.str().data(), (uint32_t)titleStr.str().size(), getTextFormat(),
                 RectF (0, 0, getClientF().width, getClientF().height), getWhiteBrush());
 
-  wstringstream avStr;
-  avStr << L" a" << mTs.getLastAudPts() / 90000.0f
-        << L"  v" << mTs.getLastVidPts() / 90000.0f;
-  dc->DrawText (avStr.str().data(), (uint32_t)avStr.str().size(), getTextFormat(),
+  string avStr = getTimeStrFromPts (mTs.getLastAudPts()) + " " + getTimeStrFromPts (mTs.getLastVidPts());
+  dc->DrawText (wstring (avStr.begin(), avStr.end()).data(), (uint32_t)avStr.size(), getTextFormat(),
                 RectF (getClientF().width-200.0f+2.0f, getClientF().height-60.0f+2.0f,
                        getClientF().width, getClientF().height), getBlackBrush());
-  dc->DrawText (avStr.str().data(), (uint32_t)avStr.str().size(), getTextFormat(),
+  dc->DrawText (wstring (avStr.begin(), avStr.end()).data(), (uint32_t)avStr.size(), getTextFormat(),
                 RectF (getClientF().width-200.0f, getClientF().height-60.0f,
                        getClientF().width, getClientF().height), getWhiteBrush());
 
-  wstringstream playStr;
-  playStr << mPlayPts / 90000.0f;
-  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
-                RectF (getClientF().width-200.0f+2.0f, getClientF().height-50.0f+2.0f,
+  string playStr = getTimeStrFromPts (mPlayPts);
+  dc->DrawText (wstring (playStr.begin(), playStr.end()).data(), (uint32_t)playStr.size(), mBigTextFormat,
+                RectF (getClientF().width-240.0f+2.0f, getClientF().height-50.0f+2.0f,
                        getClientF().width, getClientF().height), getBlackBrush());
-  dc->DrawText (playStr.str().data(), (uint32_t)playStr.str().size(), mBigTextFormat,
-                RectF (getClientF().width-200.0f, getClientF().height-50.0f,
+  dc->DrawText (wstring (playStr.begin(), playStr.end()).data(), (uint32_t)playStr.size(), mBigTextFormat,
+                RectF (getClientF().width-240.0f, getClientF().height-50.0f,
                        getClientF().width, getClientF().height), getWhiteBrush());
   }
 //}}}
 
 private:
   //{{{
-  void fracJump (float frac) {
-    mPlayPts = uint64_t((frac / mBytesPerPts) * mFileSize);
-    printf ("fracJump %4.3f %4.3f\n", frac, mPlayPts/90000.0f);
-    mTs.invalidateFrames();
-    changed();
+  string getTimeStrFromPts (uint64_t pts) {
+
+    pts /= 900;
+    uint32_t hs = pts % 100;
+    pts /= 100;
+    uint32_t secs = pts % 60;
+    pts /= 60;
+    uint32_t mins = pts % 60;
+
+    return dec (mins) + ':' + dec(secs, 2, '0') + ':' + dec(hs, 2, '0');
     }
   //}}}
+
   //{{{
-  void bigJump (int inc) {
-    printf ("bigJump %d\n", inc/90000);
-    mPlayPts += inc;
-    mTs.invalidateFrames();
+  void fracJump (float frac) {
+    mPlayPts = uint64_t((frac * mFileSize) / mBytesPerPts);
+    printf ("fracJump frac:%4.3f playPts:%4.3f\n", frac, mPlayPts/90000.0f);
+    //mTs.invalidateFrames();
     changed();
     }
   //}}}
@@ -754,20 +754,21 @@ private:
 
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
-
-        if (mTs.getLastAudPts()) {
-          while (mTs.loaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
+        else {
+          while (mTs.audLoaded (mPlayPts, kAudFramesLoadAhead) >= kAudFramesLoadAhead)
             Sleep (40);
 
           int64_t afterDiff = mPlayPts - mTs.getLastAudPts();
           if (afterDiff > 90000) {
-            printf ("jump forward - afterDiff:%4.3f\n", afterDiff / 90000.0f);
+            printf ("jump forward - afterDiff:%4.3f playPts:%4.3f getLastAudPts:%4.3f\n",
+                    afterDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts() / 90000.0f);
             mFilePtr += (int64_t ((afterDiff - 90000) * mBytesPerPts) / 188) * 188;
             }
           else {
             int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
             if (beforeDiff > 0) {
-              printf ("jump back - beforeDiff:%4.3f\n", beforeDiff / 90000.0f);
+              printf ("jump back - beforeDiff:%4.3f playPts:%4.3f getFirstAudPts:%4.3f\n",
+                      beforeDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getFirstAudPts() / 90000.0f);
               mFilePtr -= (int64_t ((beforeDiff + 90000) * mBytesPerPts) / 188) * 188;
               }
             }
