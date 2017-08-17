@@ -710,15 +710,15 @@ private:
 
   //{{{
   void fracJump (float frac) {
-    mPlayPts = uint64_t((frac * mFileSize) / mBytesPerPts);
-    printf ("fracJump frac:%4.3f playPts:%4.3f\n", frac, mPlayPts/90000.0f);
+    mPlayPts = uint64_t((frac * mFileSize) / mBestBytesPerPts);
+    printf ("fracJump frac:%4.3f playPts:%4.3f\n", frac, mPlayPts / 90000.0f);
     //mTs.invalidateFrames();
     changed();
     }
   //}}}
   //{{{
   void jump (int inc) {
-    printf ("jump %d\n", inc/90000);
+    printf ("jump %d\n", inc / 90000);
     mPlayPts += inc;
     changed();
     }
@@ -758,7 +758,12 @@ private:
         mTs.demux (tsBuf, tsBuf + numberOfBytesRead, skip);
         mFilePtr += numberOfBytesRead;
         lastFilePtr = mFilePtr;
+
         mBytesPerPts = (float)mFilePtr / (float)mTs.getLastAudPts();
+        if (mFilePtr > mBestFilePtr) {
+          mBestFilePtr = mFilePtr;
+          mBestBytesPerPts = mBytesPerPts;
+          }
 
         if (!mTs.isServiceSelected())
           mTs.selectService (0);
@@ -770,14 +775,14 @@ private:
           if (afterDiff > kAudPtsLoadAhead) {
             printf ("jump forward - afterDiff:%4.3f playPts:%4.3f getLastAudPts:%4.3f\n",
                     afterDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts() / 90000.0f);
-            mFilePtr += (int64_t ((afterDiff - kAudPtsLoadAhead) * mBytesPerPts) / 188) * 188;
+            mFilePtr += (int64_t ((afterDiff*7 / 8) * mBytesPerPts) / 188) * 188;
             }
           else {
             int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
             if (beforeDiff > 0) {
               printf ("jump back - beforeDiff:%4.3f playPts:%4.3f getFirstAudPts:%4.3f\n",
                       beforeDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getFirstAudPts() / 90000.0f);
-              mFilePtr -= (int64_t ((beforeDiff + kBeforeLoadAhead) * mBytesPerPts) / 188) * 188;
+              mFilePtr -= (int64_t (((beforeDiff * 7/8) + kBeforeLoadAhead) * mBytesPerPts) / 188) * 188;
               }
             }
           }
@@ -826,6 +831,9 @@ private:
   uint64_t mPlayPts = 0;
   bool mPlaying = true;
   float mBytesPerPts = 0;
+
+  int64_t mBestFilePtr = 0;
+  float mBestBytesPerPts = 0;
 
   bool mShowDebug = true;
   bool mShowChannel = false;
