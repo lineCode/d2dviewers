@@ -99,7 +99,7 @@ public:
     }
   //}}}
   //{{{
-  cAudFrame* getAudByPts (uint64_t pts) {
+  cAudFrame* getAudFrameByPts (uint64_t pts) {
   // find audFrame containing pts
   // - returns nullPtr if no frame loaded yet
 
@@ -116,7 +116,7 @@ public:
     }
   //}}}
   //{{{
-  cYuvFrame* getVidByPts (uint64_t pts) {
+  cYuvFrame* getVidFrameByPts (uint64_t pts) {
   // find vidFrame containing pts, else nearestVidFrame to pts
   // - returns nullPtr if no frame loaded yet
 
@@ -278,22 +278,44 @@ public:
       int64_t diff = vidFrame->mPts - mBasePts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
+      float y1 = y+h+g;
 
-      dc->FillRectangle (RectF(x, y+h+g, x+w-g, y+h+g+h), yellow);
+      // draw index
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), yellow);
       wstring wstr (to_wstring (index++));
-      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g, x+w-g, y+h+g+h), black);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      y1 += h+g;
 
-      dc->FillRectangle (RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), white);
+      // draw type
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       switch (vidFrame->mPictType) {
         case 1: wstr = L"I"; break;
         case 2: wstr = L"P"; break;
         case 3: wstr = L"B"; break;
         default: wstr = to_wstring (vidFrame->mPictType); break;
         }
-      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y+h+g+h+g, x+w-g, y+h+g+h+g+h), black);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      y1 += h+g;
 
+      if (vidFrame->mPesPts)
+        wstr = to_wstring ((vidFrame->mPts - vidFrame->mPesPts)/3600);
+      else
+        wstr = L"none";
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      y1 += h+g;
+
+      if (vidFrame->mPesDts)
+        wstr = to_wstring ((vidFrame->mPts - vidFrame->mPesDts)/3600);
+      else
+        wstr = L"none";
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      y1 += h+g;
+
+      // draw size
       float l = vidFrame->mLen / 1000.0f;
-      dc->FillRectangle (RectF(x, y+h+g+h+g+h+g, x+w-g, y+h+g+h+g+h+g+l), white);
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+l), white);
       }
       //}}}
     }
@@ -429,12 +451,13 @@ protected:
             avPacket.data += bytesUsed;
             avPacket.size -= bytesUsed;
             if (got) {
-              if (((pidInfo->mStreamType == 27) && !pidInfo->mDts) || ((pidInfo->mStreamType == 2) && pidInfo->mDts)) // use pts
+              if (((pidInfo->mStreamType == 2) && pidInfo->mDts) ||
+                  ((pidInfo->mStreamType == 27) && !pidInfo->mDts)) // use pts
                 mInterpolatedVidPts = pidInfo->mPts;
               else // interpolate pts
                 mInterpolatedVidPts += 90000/25;
               mLastVidPts = mInterpolatedVidPts;
-              mVidFrames[mLoadVidFrame]->set (mInterpolatedVidPts,
+              mVidFrames[mLoadVidFrame]->set (mInterpolatedVidPts, pidInfo->mPts, pidInfo->mDts,
                                               avFrame->data, avFrame->linesize,
                                               mVidContext->width, mVidContext->height,
                                               pesLen, avFrame->pict_type);
@@ -636,7 +659,7 @@ void onMouseMove (bool right, int x, int y, int xInc, int yInc) {
 //{{{
 void onDraw (ID2D1DeviceContext* dc) {
 
-  if (makeBitmap (mTs.getVidByPts (mPlayPts), mBitmap, mBitmapPts))
+  if (makeBitmap (mTs.getVidFrameByPts (mPlayPts), mBitmap, mBitmapPts))
     dc->DrawBitmap (mBitmap, RectF (0.0f, 0.0f, getClientF().width, getClientF().height));
 
   // file position yellow bar
@@ -773,16 +796,16 @@ private:
 
           int64_t afterDiff = mPlayPts - mTs.getLastAudPts();
           if (afterDiff > kAudPtsLoadAhead) {
-            printf ("jump forward - afterDiff:%4.3f playPts:%4.3f getLastAudPts:%4.3f\n",
+            printf ("jump forward diff:%4.3f playPts:%4.3f getLastAudPts:%4.3f\n",
                     afterDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getLastAudPts() / 90000.0f);
-            mFilePtr += (int64_t ((afterDiff*7 / 8) * mBytesPerPts) / 188) * 188;
+            mFilePtr += (int64_t (afterDiff * mBytesPerPts) / 188) * 188;
             }
           else {
-            int64_t beforeDiff = mTs.getFirstAudPts() - mPlayPts;
-            if (beforeDiff > 0) {
-              printf ("jump back - beforeDiff:%4.3f playPts:%4.3f getFirstAudPts:%4.3f\n",
+            int64_t beforeDiff = mPlayPts - mTs.getFirstAudPts();
+            if (beforeDiff < 0) {
+              printf ("jump back diff:%4.3f playPts:%4.3f getFirstAudPts:%4.3f\n",
                       beforeDiff / 90000.0f, mPlayPts / 90000.0f, mTs.getFirstAudPts() / 90000.0f);
-              mFilePtr -= (int64_t (((beforeDiff * 7/8) + kBeforeLoadAhead) * mBytesPerPts) / 188) * 188;
+              mFilePtr += (int64_t ((beforeDiff - kBeforeLoadAhead) * mBytesPerPts) / 188) * 188;
               }
             }
           }
@@ -803,7 +826,7 @@ private:
 
     mPlayPts = 0;
     while (true) {
-      auto audFrame = mTs.getAudByPts (mPlayPts);
+      auto audFrame = mTs.getAudFrameByPts (mPlayPts);
       auto ptsWidth = uint64_t (90000 * (audFrame ? audFrame->mNumSamples : 1024) / 48000);
       if (audFrame && (mMouseDown || mPlaying))
         audPlay (audFrame->mSamples, audFrame->mNumSamples * 2 * 2, 1.0f);
