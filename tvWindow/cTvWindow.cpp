@@ -62,17 +62,15 @@ public:
         }
       }
 
-    return pts ? pts - mBasePts : 0;
+    return pts;
     }
   //}}}
-  uint64_t getLastAudPts() { return mLastAudPts ? mLastAudPts - mBasePts : 0; }
-  uint64_t getLastVidPts() { return mLastVidPts ? mLastVidPts - mBasePts : 0; }
+  uint64_t getLastAudPts() { return mLastAudPts; }
+  uint64_t getLastVidPts() { return mLastVidPts; }
   float getPixPerPts() { return mPixPerPts; }
 
   //{{{
   bool audLoaded (uint64_t pts, uint64_t ptsWidth) {
-
-    pts += mBasePts;
 
     uint64_t curPts = pts;
     uint64_t framePtsWidth = 0;
@@ -103,7 +101,6 @@ public:
   // find audFrame containing pts
   // - returns nullPtr if no frame loaded yet
 
-    pts += mBasePts;
     for (auto frame : mAudFrames) {
       if (frame->mPts) {
         auto ptsWidth = uint64_t ((frame->mNumSamples * 90000) / 48000);
@@ -121,8 +118,6 @@ public:
   // - returns nullPtr if no frame loaded yet
 
     cYuvFrame* nearestFrame = nullptr;
-
-    pts += mBasePts;
 
     uint64_t nearest = 0;
     for (auto frame : mVidFrames) {
@@ -254,7 +249,7 @@ public:
         }
 
       // make sure we get a signed diff from unsigned pts
-      int64_t diff = audFrame->mPts - mBasePts - playPts;
+      int64_t diff = audFrame->mPts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u;
 
@@ -275,7 +270,7 @@ public:
     for (auto vidFrame : mVidFrames) {
       //{{{  draw vidFrame graphic
       // make sure we get a signed diff from unsigned pts
-      int64_t diff = vidFrame->mPts - mBasePts - playPts;
+      int64_t diff = vidFrame->mPts - playPts;
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
       float y1 = y+h+g;
@@ -297,16 +292,25 @@ public:
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
 
-      if (vidFrame->mPesPts)
-        wstr = to_wstring ((vidFrame->mPts - vidFrame->mPesPts)/3600);
+      if (vidFrame->mPts)
+        wstr = to_wstring (vidFrame->mPts/3600);
       else
         wstr = L"none";
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
 
+      if (vidFrame->mPesPts)
+        wstr = to_wstring (vidFrame->mPesPts/3600);
+      else
+        wstr = L"none";
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      y1 += h+g;
+
+
       if (vidFrame->mPesDts)
-        wstr = to_wstring ((vidFrame->mPts - vidFrame->mPesDts)/3600);
+        wstr = to_wstring (vidFrame->mPesDts/3600);
       else
         wstr = L"none";
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
@@ -339,7 +343,7 @@ protected:
       if (kDebugPes)
         printf ("A %4.3f %4.3f\n", pidInfo->mPts / 90000.0f, mBasePts / 90000.0f);
 
-      mInterpolatedAudPts = pidInfo->mPts;
+      mInterpolatedAudPts = pidInfo->mPts - mBasePts;
 
       AVPacket avPacket;
       av_init_packet (&avPacket);
@@ -429,7 +433,7 @@ protected:
         }
         //}}}
 
-      mLastVidPts = pidInfo->mPts;
+      mLastVidPts = pidInfo->mPts - mBasePts;
 
       AVPacket avPacket;
       av_init_packet (&avPacket);
@@ -457,7 +461,9 @@ protected:
               else // interpolate pts
                 mInterpolatedVidPts += 90000/25;
               mLastVidPts = mInterpolatedVidPts;
-              mVidFrames[mLoadVidFrame]->set (mInterpolatedVidPts, pidInfo->mPts, pidInfo->mDts,
+              mVidFrames[mLoadVidFrame]->set (mInterpolatedVidPts ? mInterpolatedVidPts - mBasePts : 0,
+                                              pidInfo->mPts ? pidInfo->mPts - mBasePts : 0,
+                                              pidInfo->mDts ? pidInfo->mDts - mBasePts : 0,
                                               avFrame->data, avFrame->linesize,
                                               mVidContext->width, mVidContext->height,
                                               pesLen, avFrame->pict_type);
