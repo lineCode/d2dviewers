@@ -262,7 +262,8 @@ public:
 
       dc->FillRectangle (RectF(x, y, x+w-g, y+h), blue);
       wstring wstr (to_wstring (index++));
-      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h), black);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y, x+w-g, y+h),
+                    audFrame->mPts == audFrame->mPesPts ? white : black);
       }
       //}}}
 
@@ -319,6 +320,11 @@ public:
       // draw size
       float l = vidFrame->mLen / 1000.0f;
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+l), white);
+      if (vidFrame->mLen >= 1000)
+        wstr = to_wstring (vidFrame->mLen / 1000) + L"k";
+      else 
+        wstr = to_wstring (vidFrame->mLen);
+      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       }
       //}}}
     }
@@ -365,7 +371,9 @@ protected:
 
           if (got) {
             auto audFrame = mAudFrames[mLoadAudFrame];
-            audFrame->set (mInterpolatedAudPts, avFrame->channels, 48000, avFrame->nb_samples);
+            audFrame->set (mInterpolatedAudPts,
+                           pidInfo->mPts ? pidInfo->mPts - mBasePts : 0,
+                           avFrame->channels, 48000, avFrame->nb_samples);
             mLastAudPts = mInterpolatedAudPts;
             mInterpolatedAudPts += (avFrame->nb_samples * 90000) / 48000;
 
