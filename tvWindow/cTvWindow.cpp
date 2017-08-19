@@ -292,27 +292,26 @@ public:
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
 
-      if (vidFrame->mPts)
-        wstr = to_wstring (vidFrame->mPts/3600);
+      if (!vidFrame->mPesPts)
+        wstr = L"*";
+      else if (vidFrame->mPesPts == vidFrame->mPts)
+        wstr = L"0";
+      else if (vidFrame->mPesPts > vidFrame->mPts)
+        wstr = L"+" + to_wstring ((vidFrame->mPesPts - vidFrame->mPts)/3600);
       else
-        wstr = L"none";
+        wstr = L"-" + to_wstring ((vidFrame->mPts - vidFrame->mPesPts)/3600);
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
 
-      if (vidFrame->mPesPts)
-        wstr = to_wstring (vidFrame->mPesPts/3600);
+      if (!vidFrame->mPesDts)
+        wstr = L"*";
+      else if (vidFrame->mPesDts == vidFrame->mPts)
+        wstr = L"0";
+      else if (vidFrame->mPesDts > vidFrame->mPts)
+        wstr =  L"+" + to_wstring ((vidFrame->mPesDts - vidFrame->mPts)/3600);
       else
-        wstr = L"none";
-      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
-      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
-      y1 += h+g;
-
-
-      if (vidFrame->mPesDts)
-        wstr = to_wstring (vidFrame->mPesDts/3600);
-      else
-        wstr = L"none";
+        wstr = L"-" + to_wstring ((vidFrame->mPts - vidFrame->mPesDts)/3600);
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
