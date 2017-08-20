@@ -275,24 +275,36 @@ public:
       float x = (client.width/2.0f) + float(diff) * mPixPerPts;
       float w = u * vidFrameWidthPts / audFrameWidthPts;
       float y1 = y+h+g;
-
-      // draw index
+      //}}}
+      //{{{  draw index
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), yellow);
       wstring wstr (to_wstring (index++));
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
-
-      // draw type
-      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      //}}}
+      //{{{  draw type
+      auto brush = white;
       switch (vidFrame->mPictType) {
-        case 1: wstr = L"I"; break;
-        case 2: wstr = L"P"; break;
-        case 3: wstr = L"B"; break;
-        default: wstr = to_wstring (vidFrame->mPictType); break;
+        case 1:
+          brush = blue;
+          wstr = L"I";
+          break;
+        case 2:
+          brush = yellow;
+          wstr = L"P";
+          break;
+        case 3:
+          wstr = L"B";
+          break;
+        default:
+          wstr = to_wstring (vidFrame->mPictType);
+          break;
         }
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), brush);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
-
+      //}}}
+      //{{{  draw pts
       if (!vidFrame->mPesPts)
         wstr = L"*";
       else if (vidFrame->mPesPts == vidFrame->mPts)
@@ -304,7 +316,8 @@ public:
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
-
+      //}}}
+      //{{{  draw dts
       if (!vidFrame->mPesDts)
         wstr = L"*";
       else if (vidFrame->mPesDts == vidFrame->mPts)
@@ -316,17 +329,18 @@ public:
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
-
+      //}}}
+      //{{{  draw size
       // draw size
       float l = vidFrame->mLen / 1000.0f;
       dc->FillRectangle (RectF(x, y1, x+w-g, y1+l), white);
       if (vidFrame->mLen >= 1000)
         wstr = to_wstring (vidFrame->mLen / 1000) + L"k";
-      else 
+      else
         wstr = to_wstring (vidFrame->mLen);
       dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
-      }
       //}}}
+      }
     }
   //}}}
 
