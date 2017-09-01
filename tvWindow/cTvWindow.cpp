@@ -285,7 +285,12 @@ public:
       //{{{  draw type
       string str;
       str = av_get_picture_type_char (AVPictureType (vidFrame->mPictType));
-      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      auto brush = white;
+      if (vidFrame->mPictType == 1)
+        brush = blue;
+      else if (vidFrame->mPictType == 2)
+        brush = yellow;
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), brush);
       dc->DrawText (wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
       //}}}
