@@ -283,25 +283,10 @@ public:
       y1 += h+g;
       //}}}
       //{{{  draw type
-      auto brush = white;
-      switch (vidFrame->mPictType) {
-        case 1:
-          brush = blue;
-          wstr = L"I";
-          break;
-        case 2:
-          brush = yellow;
-          wstr = L"P";
-          break;
-        case 3:
-          wstr = L"B";
-          break;
-        default:
-          wstr = to_wstring (vidFrame->mPictType);
-          break;
-        }
-      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), brush);
-      dc->DrawText (wstr.data(), (uint32_t)wstr.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
+      string str;
+      str = av_get_picture_type_char (AVPictureType (vidFrame->mPictType));
+      dc->FillRectangle (RectF(x, y1, x+w-g, y1+h), white);
+      dc->DrawText (wstring (str.begin(), str.end()).data(), (uint32_t)str.size(), textFormat, RectF(x, y1, x+w-g, y1+h), black);
       y1 += h+g;
       //}}}
       //{{{  draw pts
